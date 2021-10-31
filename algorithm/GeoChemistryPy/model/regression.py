@@ -221,8 +221,8 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
             early_stopping_rounds = self.early_stopping_rounds)
 
     def _feature_importance(self):
-        print('1')
-        print(self.X)
+        #print('1')
+        #print(self.X)
         for feature_name, score in zip(list(self.X.columns), self.model.feature_importances_):
             print(feature_name, ":", score)
 

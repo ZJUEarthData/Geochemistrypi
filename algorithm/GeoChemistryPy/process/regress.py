@@ -29,5 +29,6 @@ class ModelSelection(object):
         y_test_prediction = self.reg_workflow.predict(X_test)
         self.reg_workflow.score(y_test, y_test_prediction)
         self.reg_workflow.cross_validation(X_train, y_train, cv_num=10)
+
         # special components of different algorithms
-        self.reg_workflow.special_components()
+        # self.reg_workflow.special_components()
