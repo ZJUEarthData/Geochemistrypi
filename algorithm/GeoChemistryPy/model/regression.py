@@ -11,18 +11,33 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xgboost
 
+
 class RegressionWorkflowBase(object):
+
+    # Default for chile class
+    X = None
+    y = None
+    name = None
+    functionality = []
+
+    @classmethod
+    def show_info(cls):
+        print("*-*" * 2, cls.name, "is running ...", "*-*" * 2)
+        print("Expected Functionality:")
+        for i in range(len(cls.functionality)):
+            print("+ ", cls.functionality[i])
 
     def __init__(self, random_state: int= 42) -> None:
         self.random_state = random_state
         self.model = None
-        self.X = None
-        self.y = None
 
-    def data_split(self, X, y, test_size=0.2, random_state=42):
-        self.X = X
-        self.y = y
-        X_train, X_test, y_train, y_test = train_test_split(self.X, self.y, test_size=0.2, random_state=42)
+    def data_split(self, X_data, y_data, test_size=0.2, random_state=42):
+        RegressionWorkflowBase.X = X_data
+        RegressionWorkflowBase.y = y_data
+        X_train, X_test, y_train, y_test = train_test_split(RegressionWorkflowBase.X,
+                                                            RegressionWorkflowBase.y,
+                                                            test_size=0.2,
+                                                            random_state=42)
         return X_train, X_test, y_train, y_test
 
     def fit(self, X_train, y_train):
@@ -66,12 +81,17 @@ class RegressionWorkflowBase(object):
             print('-------------')
         return scores
 
-        # def is_overfitting()
+    def is_overfitting():
+        pass
 
-        # def search_best_hyper_parameter()
+    def search_best_hyper_parameter():
+        pass
 
 
 class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
+
+    name = "Polynomial Regression"
+    functionality = ["Regression Score", "Polynomial Regression Formula"]
 
     def __init__(self,
                  degree: int = 2,
@@ -82,6 +102,7 @@ class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
                  normalize: bool = False,
                  copy_X: bool = True,
                  n_jobs: Optional[int] = None) -> None:
+        super().__init__(random_state=42)
         self.degree = degree
         self.is_include_bias = is_include_bias
         self.interaction_only = interaction_only
@@ -104,8 +125,11 @@ class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
         X_test_poly = poly_features.fit_transform(X_test)
         return X_train_poly, X_test_poly
 
-    # def _show_formula(self):
+    def _show_formula(self):
+        pass
 
+    def special_components(self):
+        self._show_formula()
 
 class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
     # https://github.com/dmlc/xgboost/blob/master/python-package/xgboost/sklearn.py
@@ -115,6 +139,9 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
             str, Callable[[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]
         ]
     ]
+
+    name = "Xgboost"
+    functionality = ['Regression Score', 'Feature Importance']
 
     def __init__(
         self,
@@ -152,7 +179,7 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
         **kwargs: Any
         ) -> None:
 
-        # super().__init__(self.X)
+        super().__init__()
         self.n_estimators = n_estimators
         self.objective = objective
         self.max_depth = max_depth
@@ -221,13 +248,13 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
             early_stopping_rounds = self.early_stopping_rounds)
 
     def _feature_importance(self):
-        #print('1')
-        #print(self.X)
-        for feature_name, score in zip(list(self.X.columns), self.model.feature_importances_):
+        for feature_name, score in zip(list(RegressionWorkflowBase.X.columns), self.model.feature_importances_):
             print(feature_name, ":", score)
 
     def special_components(self):
         self._feature_importance()
 
-#class SVM(GeoChemistryPyWorkflow, BaseEstimator):
+
+class SVM(RegressionWorkflowBase, BaseEstimator):
+    pass
 

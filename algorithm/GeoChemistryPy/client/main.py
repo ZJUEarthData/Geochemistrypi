@@ -27,15 +27,14 @@ def main():
     if model_num != all_models_num:
         # gain the designated model'result
         model = MODELS[int(model_num) - 1]
-        print("-"*5, model, "is running ...", "-"*5)
         run = ModelSelection(model)
         run.activate(data)
     else:
         # gain all models'result
         for i in range(len(MODELS)):
-            print("-"*5 + MODELS[i] + "-"*5)
             run = ModelSelection(MODELS[i])
             run.activate(data)
+
 
 if __name__ == "__main__":
     main()
