@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 """GeoChemistryPy Wrapper interface for Scikit-Learn"""
+import sys, os
+sys.path.append("..")
+from global_variable import *
 from sklearn.base import clone, BaseEstimator, TransformerMixin
 from sklearn.model_selection import train_test_split, cross_validate
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, explained_variance_score
@@ -9,6 +12,7 @@ from typing import Union, Optional, List, Dict, Callable, Tuple, Any, TypeVar, T
 from typing import Sequence
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import xgboost
 
 
@@ -81,7 +85,18 @@ class RegressionWorkflowBase(object):
             print('-------------')
         return scores
 
-    def is_overfitting():
+    def _save_fig(self, fig_name, tight_layout=True):
+        '''Run to save automatic pictures
+
+        :param fig_name: Picture Name
+        '''
+        path = os.path.join(IMAGE_PATH, fig_name + ".png")
+        print("Saving figure", fig_name)
+        if tight_layout:
+            plt.tight_layout()
+        plt.savefig(path, format='png', dpi=300)
+
+    def is_overfit():
         pass
 
     def search_best_hyper_parameter():
@@ -248,8 +263,22 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
             early_stopping_rounds = self.early_stopping_rounds)
 
     def _feature_importance(self):
-        for feature_name, score in zip(list(RegressionWorkflowBase.X.columns), self.model.feature_importances_):
+        print("-----* Feature Importance *-----")
+        columns_name = RegressionWorkflowBase.X.columns
+        # print the feature importance value orderly
+        for feature_name, score in zip(list(columns_name), self.model.feature_importances_):
             print(feature_name, ":", score)
+
+        # histograms present feature weights for XGBoost predictions
+        plt.figure(figsize=(40, 6))
+        plt.bar(range(len(columns_name)), self.model.feature_importances_, tick_label=columns_name)
+        self._save_fig("xgb_feature_importance")
+
+        # feature importance map ranked by importance
+        plt.rcParams["figure.figsize"] = (14, 8)
+        xgboost.plot_importance(self.model)
+        self._save_fig("xgb_feature_importance_fscore")
+
 
     def special_components(self):
         self._feature_importance()
