@@ -22,14 +22,16 @@ class RegressionWorkflowBase(object):
     X = None
     y = None
     name = None
-    functionality = []
+    common_function = ['Model Score', 'Cross Validation']
+    special_function = None
 
     @classmethod
     def show_info(cls):
         print("*-*" * 2, cls.name, "is running ...", "*-*" * 2)
         print("Expected Functionality:")
-        for i in range(len(cls.functionality)):
-            print("+ ", cls.functionality[i])
+        function = cls.common_function + cls.special_function
+        for i in range(len(cls.common_function)):
+            print("+ ", cls.common_function[i])
 
     def __init__(self, random_state: int= 42) -> None:
         self.random_state = random_state
@@ -106,7 +108,8 @@ class RegressionWorkflowBase(object):
 class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
 
     name = "Polynomial Regression"
-    functionality = ["Regression Score", "Polynomial Regression Formula"]
+    #function = ["Model Score", "Polynomial Regression Formula"]
+    special_function = ["Polynomial Regression Formula"]
 
     def __init__(self,
                  degree: int = 2,
@@ -117,6 +120,7 @@ class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
                  normalize: bool = False,
                  copy_X: bool = True,
                  n_jobs: Optional[int] = None) -> None:
+
         super().__init__(random_state=42)
         self.degree = degree
         self.is_include_bias = is_include_bias
@@ -126,10 +130,15 @@ class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
         self.normalize = normalize
         self.copy_X = copy_X
         self.n_jobs = n_jobs
+
         self.model = LinearRegression(fit_intercept=self.fit_intercept,
                                       normalize=self.normalize,
                                       copy_X=self.copy_X,
                                       n_jobs=self.n_jobs)
+
+        self.__features_name = None
+        self.__coefficient = None
+        self.__intercept = None
 
     def poly(self, X_train, X_test):
         poly_features = PolynomialFeatures(degree=self.degree,
@@ -138,10 +147,36 @@ class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
                                            order=self.order)
         X_train_poly = poly_features.fit_transform(X_train)
         X_test_poly = poly_features.fit_transform(X_test)
+        self.__features_name = poly_features.get_feature_names()
         return X_train_poly, X_test_poly
 
     def _show_formula(self):
-        pass
+        print("-----* Polynomial Regression Formula *-----")
+        self.__coefficient = self.model.coef_
+        self.__intercept = self.model.intercept_
+        term = []
+        coef = list(np.around(self.__coefficient, decimals=3))
+        for i in range(len(coef)):
+            # the first value stay the same
+            if i == 0:
+                # not append if zero
+                if coef[i] != 0:
+                    temp = str(coef[i]) + self.__features_name[i]
+                    term.append(temp)
+            else:
+                # add plus symbol if positive, maintain if negative, not append if zero
+                if coef[i] > 0:
+                    temp = '+' + str(coef[i]) + self.__features_name[i]
+                    term.append(temp)
+                elif coef[i] < 0:
+                    temp = str(coef[i]) + self.__features_name[i]
+                    term.append(temp)
+        if self.__intercept >= 0:
+            # formula of polynomial regression
+            formula = ''.join(term) + '+' + str(self.__intercept)
+        else:
+            formula = ''.join(term) + str(self.__intercept)
+        print('y=', formula)
 
     def special_components(self):
         self._show_formula()
@@ -156,7 +191,7 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
     ]
 
     name = "Xgboost"
-    functionality = ['Regression Score', 'Feature Importance']
+    special_function = ['Feature Importance']
 
     def __init__(
         self,
@@ -194,7 +229,7 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
         **kwargs: Any
         ) -> None:
 
-        super().__init__()
+        super().__init__(random_state=42)
         self.n_estimators = n_estimators
         self.objective = objective
         self.max_depth = max_depth
