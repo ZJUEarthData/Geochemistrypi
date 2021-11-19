@@ -8,11 +8,10 @@ from sklearn.model_selection import train_test_split, cross_validate
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, explained_variance_score
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
-from typing import Union, Optional, List, Dict, Callable, Tuple, Any, TypeVar, Type, cast
+from typing import Union, Optional, List, Dict, Callable, Tuple, Any
 from typing import Sequence
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import xgboost
 
 
@@ -176,7 +175,7 @@ class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
             formula = ''.join(term) + '+' + str(self.__intercept)
         else:
             formula = ''.join(term) + str(self.__intercept)
-        print('y=', formula)
+        print('y =', formula)
 
     def special_components(self):
         self._show_formula()
