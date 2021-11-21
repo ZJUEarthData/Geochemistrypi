@@ -1,9 +1,11 @@
 import sys
 sys.path.append("..")
 from global_variable import *
+import numpy as np
 import pandas as pd
 import re
 from typing import Optional, List
+from sklearn.impute import SimpleImputer
 
 
 def read_data(file_name):
@@ -12,42 +14,49 @@ def read_data(file_name):
     return data
 
 
-def show_data_columns(data):
-    feature_name = list(data.columns)
-    for i, j in enumerate(feature_name):
-        print(i+1, "-", j)
+def show_data_columns(columns_name, columns_index=None):
+    if columns_index == None:
+        for i, j in enumerate(columns_name):
+            print(i+1, "-", j)
+    else:
+        for i, j in zip(columns_index, columns_name):
+            print(i+1, "-", j)
 
 
 def select_columns(columns_range: Optional[str] = None) -> List[int]:
 
     columns_selected = []
-
-    # recognize "(xx:xx)" pattern
-    pattern1 = r'\(\d{1,2}.*?\d{1,2}\)'
-    continues_column = re.findall(pattern1, columns_range)
-    # find the integers in a specific range
-    for i in range(len(continues_column)):
-        min_max = re.findall(r"\d{1,2}", continues_column[i])
-        index1 = int(min_max[0])
-        index2 = int(min_max[1])
-        temp = [index2 - j for j in range(index2-index1+1)]
-        columns_selected = columns_selected + temp
-
-    # recognize "xx; | ;xx" pattern
-    pattern2 = r'\s*\d{1,2}\s*;|;\s*\d{1,2}\s*'
-    discrete_column = re.findall(pattern2, columns_range)
-    # extract the integers
-    for i in range(len(discrete_column)):
-        index = re.sub(r';|\s', '', discrete_column[i])
-        columns_selected.append(int(index))
+    temp = columns_range.split(";")
+    for i in range(len(temp)):
+        if isinstance(eval(temp[i]), int):
+            columns_selected.append(eval(temp[i]))
+        else:
+            min_max = eval(temp[i])
+            index1 = min_max[0]
+            index2 = min_max[1]
+            j = [index2 - j for j in range(index2 - index1 + 1)]
+            columns_selected = columns_selected + j
 
     # delete the repetitive index in the list
     columns_selected = list(set(columns_selected))
     # sort the index list
     columns_selected.sort()
+    # reindex by subtracting 1 due to python list traits
+    columns_selected = [columns_selected[i] - 1 for i in range(len(columns_selected))]
     return columns_selected
 
 
+def num2option(items: List = None) -> None:
+    for i, j in enumerate(items):
+        print(str(i+1) + " - " + j)
 
-def imputing():
-    pass
+
+def np2pd(array, columns_name):
+    return pd.DataFrame(array, columns=columns_name)
+
+
+def imputer(data, method):
+    imp = SimpleImputer(missing_values=np.nan, strategy=method)
+    print(f"Successfully fill the missing values with the {method} value "
+          f"of each feature column respectively")
+    return imp.fit_transform(data)

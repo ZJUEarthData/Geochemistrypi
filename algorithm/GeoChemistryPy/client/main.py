@@ -14,40 +14,65 @@ def main():
     #file_name = input("Upload the data set.(Enter the name of data set) ")
     file_name = 'Data_Example_for_Geochemistry_Py.xlsx'
     data = read_data(file_name)
-    show_data_columns(data)
-    columns_range = input('Select the data range you want to process.\n'
-                          'Input format "(xx: xx); xx; (xx, xx)", such as "(1: 3); 7; (10: 13)"\n'
-                          'It means you want to deal with the columns 1, 2, 3, 7, 10, 11, 12, 13\n'
-                          '@input: ')
-    columns_selected = select_columns(columns_range)
-    # reindex by subtract 1 due to python list traits
-    columns_selected = [columns_selected[i]-1 for i in range(len(columns_selected))]
-    data_selected = data.iloc[:, columns_selected]
-    for i, j in zip(columns_selected, data_selected.columns):
-        print(i+1, "-", j)
-    #print(re.sub(r'\[|\]', '', str(list(data_selected.columns))))
 
+    # create X data set
+    show_data_columns(data.columns)
+    X_columns_range = input('Select the data range as X you want to process.\n'
+                            'Input format "[**, **]; **; [**, **]", such as "[1, 3]; 7; [10, 13]",'
+                            'ignore double quotation marks.\n'
+                            'It means you want to deal with the columns 1, 2, 3, 7, 10, 11, 12, 13.\n'
+                            '@input: ')
+    X_columns_selected = select_columns(X_columns_range)
+    X = data.iloc[:, X_columns_selected]
+    show_data_columns(X.columns, X_columns_selected)
 
+    # create Y data set
+    y_columns_range = input('Select the data range as Y you want to process.\n'
+                            'Input format "xx", such as "7",'
+                            'ignore double quotation marks.\n'
+                            'It means you want to deal with the columns 7.\n'
+                            '@input: ')
+    y_columns_selected = select_columns(y_columns_range)
+    y = data.iloc[:, y_columns_selected]
+    show_data_columns(y.columns, y_columns_selected)
+
+    print("\n")
+
+    # imputing
+    print("Strategy for Missing Values:")
+    num2option(IMPUTING_STRATEGY)
+    strategy_num = int(input("Which strategy do you want to apply?(Enter the Corresponding Number): "))
+    X_imputed_np = imputer(X, IMPUTING_STRATEGY[int(strategy_num) - 1])
+    X_imputed = np2pd(X_imputed_np, X.columns)
+    print(f'X data set: \n {X_imputed}')
+    y_imputed_np = imputer(y, IMPUTING_STRATEGY[int(strategy_num) - 1])
+    y_imputed = np2pd(y_imputed_np, y.columns)
+    print(f'Y data set: \n {y_imputed}')
+
+    # feature engineering
+
+    print("\n")
 
     # model option for users
     print("Model Selection:")
-    for i in range(len(MODELS)):
-        print(str(i+1) + " - " + MODELS[i])
-    all_models_num = len(MODELS) + 1
+    num2option(REGRESSION_MODELS)
+    # for i in range(len(REGRESSION_MODELS)):
+    #     print(str(i+1) + " - " + REGRESSION_MODELS[i])
+    all_models_num = len(REGRESSION_MODELS) + 1
     print(str(all_models_num) + " - All models above trained")
     model_num = int(input("Which model do you want to apply?(Enter the Corresponding Number): "))
 
     # model trained selection
     if model_num != all_models_num:
         # gain the designated model'result
-        model = MODELS[int(model_num) - 1]
+        model = REGRESSION_MODELS[int(model_num) - 1]
         run = ModelSelection(model)
-        run.activate(data)
+        run.activate(X_imputed, y_imputed)
     else:
         # gain all models'result
-        for i in range(len(MODELS)):
-            run = ModelSelection(MODELS[i])
-            run.activate(data)
+        for i in range(len(REGRESSION_MODELS)):
+            run = ModelSelection(REGRESSION_MODELS[i])
+            run.activate(X_imputed, y_imputed)
 
 
 if __name__ == "__main__":

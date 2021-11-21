@@ -13,6 +13,6 @@ IMAGE_PATH = os.path.join(WORKING_PATH, "images")
 os.makedirs(DATASET_PATH, exist_ok=True)
 os.makedirs(IMAGE_PATH, exist_ok=True)
 
-MODELS = ['Polynomial Regression', 'Xgboost']
+REGRESSION_MODELS = ['Polynomial Regression', 'Xgboost']
 
-
+IMPUTING_STRATEGY = ['mean', 'median', 'most_frequent']

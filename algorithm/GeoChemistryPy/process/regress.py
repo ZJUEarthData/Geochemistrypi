@@ -10,10 +10,7 @@ class ModelSelection(object):
         self.model = model
         self.reg_workflow = RegressionWorkflowBase()
 
-    def activate(self, data, degree=2):
-        X = data.loc[:, 'SIO2(WT%)':'AL2O3(WT%)']
-        y = data.loc[:, 'FEOT(WT%)']
-
+    def activate(self, X, y, degree=2):
         X_train, X_test, y_train, y_test = self.reg_workflow.data_split(X, y)
 
         # model option

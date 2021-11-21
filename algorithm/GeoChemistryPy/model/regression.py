@@ -29,8 +29,8 @@ class RegressionWorkflowBase(object):
         print("*-*" * 2, cls.name, "is running ...", "*-*" * 2)
         print("Expected Functionality:")
         function = cls.common_function + cls.special_function
-        for i in range(len(cls.common_function)):
-            print("+ ", cls.common_function[i])
+        for i in range(len(function)):
+            print("+ ", function[i])
 
     def __init__(self, random_state: int= 42) -> None:
         self.random_state = random_state
@@ -107,7 +107,6 @@ class RegressionWorkflowBase(object):
 class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
 
     name = "Polynomial Regression"
-    #function = ["Model Score", "Polynomial Regression Formula"]
     special_function = ["Polynomial Regression Formula"]
 
     def __init__(self,
@@ -154,7 +153,7 @@ class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
         self.__coefficient = self.model.coef_
         self.__intercept = self.model.intercept_
         term = []
-        coef = list(np.around(self.__coefficient, decimals=3))
+        coef = np.around(self.__coefficient, decimals=3).tolist()[0]
         for i in range(len(coef)):
             # the first value stay the same
             if i == 0:
@@ -170,11 +169,11 @@ class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
                 elif coef[i] < 0:
                     temp = str(coef[i]) + self.__features_name[i]
                     term.append(temp)
-        if self.__intercept >= 0:
+        if self.__intercept[0] >= 0:
             # formula of polynomial regression
-            formula = ''.join(term) + '+' + str(self.__intercept)
+            formula = ''.join(term) + '+' + str(self.__intercept[0])
         else:
-            formula = ''.join(term) + str(self.__intercept)
+            formula = ''.join(term) + str(self.__intercept[0])
         print('y =', formula)
 
     def special_components(self):
@@ -312,7 +311,6 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
         plt.rcParams["figure.figsize"] = (14, 8)
         xgboost.plot_importance(self.model)
         self._save_fig("xgb_feature_importance_fscore")
-
 
     def special_components(self):
         self._feature_importance()
