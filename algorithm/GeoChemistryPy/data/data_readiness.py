@@ -14,6 +14,10 @@ def read_data(file_name):
     return data
 
 
+def basic_info(data):
+    print(data.info())
+
+
 def show_data_columns(columns_name, columns_index=None):
     if columns_index == None:
         for i, j in enumerate(columns_name):
@@ -24,7 +28,6 @@ def show_data_columns(columns_name, columns_index=None):
 
 
 def select_columns(columns_range: Optional[str] = None) -> List[int]:
-
     columns_selected = []
     temp = columns_range.split(";")
     for i in range(len(temp)):
@@ -44,6 +47,19 @@ def select_columns(columns_range: Optional[str] = None) -> List[int]:
     # reindex by subtracting 1 due to python list traits
     columns_selected = [columns_selected[i] - 1 for i in range(len(columns_selected))]
     return columns_selected
+
+
+def create_sub_data_set(data):
+    sub_data_set_columns_range = input('Select the data range you want to process.\n'
+                                       'Input format:\n'
+                                       'Method 1: "[**, **]; **; [**, **]", such as "[1, 3]; 7; [10, 13]" '
+                                       '--> you want to deal with the columns 1, 2, 3, 7, 10, 11, 12, 13 \n'
+                                       'Method 2: "xx", such as "7" --> you want to deal with the columns 7 \n'
+                                       '@input: ')
+    sub_data_set_columns_selected = select_columns(sub_data_set_columns_range)
+    sub_data_set = data.iloc[:, sub_data_set_columns_selected]
+    show_data_columns(sub_data_set.columns, sub_data_set_columns_selected)
+    return sub_data_set
 
 
 def num2option(items: List = None) -> None:
