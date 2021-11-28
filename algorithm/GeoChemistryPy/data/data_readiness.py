@@ -19,6 +19,7 @@ def basic_info(data):
 
 
 def show_data_columns(columns_name, columns_index=None):
+    print("Index - Column Name")
     if columns_index == None:
         for i, j in enumerate(columns_name):
             print(i+1, "-", j)
@@ -52,9 +53,9 @@ def select_columns(columns_range: Optional[str] = None) -> List[int]:
 def create_sub_data_set(data):
     sub_data_set_columns_range = input('Select the data range you want to process.\n'
                                        'Input format:\n'
-                                       'Method 1: "[**, **]; **; [**, **]", such as "[1, 3]; 7; [10, 13]" '
+                                       'Format 1: "[**, **]; **; [**, **]", such as "[1, 3]; 7; [10, 13]" '
                                        '--> you want to deal with the columns 1, 2, 3, 7, 10, 11, 12, 13 \n'
-                                       'Method 2: "xx", such as "7" --> you want to deal with the columns 7 \n'
+                                       'Format 2: "xx", such as "7" --> you want to deal with the columns 7 \n'
                                        '@input: ')
     sub_data_set_columns_selected = select_columns(sub_data_set_columns_range)
     sub_data_set = data.iloc[:, sub_data_set_columns_selected]

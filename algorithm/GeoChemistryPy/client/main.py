@@ -15,53 +15,62 @@ def main():
     #file_name = input("Upload the data set.(Enter the name of data set) ")
     file_name = 'Data_Example_for_Geochemistry_Py.xlsx'
     data = read_data(file_name)
-
-    basic_info(data)
-
-    basic_statistic(data)
-
-    is_null_value(data)
-
     show_data_columns(data.columns)
 
-    # create X data set
-    print("Data Split")
-    print("X data:")
-    X = create_sub_data_set(data)
-    # X_columns_range = input('Select the data range as X you want to process.\n'
-    #                         'Input format:\n'
-    #                         'Method 1: "[**, **]; **; [**, **]", such as "[1, 3]; 7; [10, 13]" '
-    #                         '--> you want to deal with the columns 1, 2, 3, 7, 10, 11, 12, 13 \n'
-    #                         'Method 2: "xx", such as "7" --> you want to deal with the columns 7 \n'
-    #                         '@input: ')
-    # X_columns_selected = select_columns(X_columns_range)
-    # X = data.iloc[:, X_columns_selected]
-    # show_data_columns(X.columns, X_columns_selected)
+    # create the processing data set
+    print("-*-*- Data Selected -*-*-")
+    data_processed = create_sub_data_set(data)
+    print("the Processing Data Set:")
+    print(data_processed)
+    basic_info(data_processed)
+    basic_statistic(data_processed)
+    is_null_value(data_processed)
 
-    # create Y data set
-    print("Y data")
-    y = create_sub_data_set(data)
-    # y_columns_range = input('Select the data range as Y you want to process.\n'
-    #                         'Input format "xx", such as "7",'
-    #                         'ignore double quotation marks.\n'
-    #                         'It means you want to deal with the columns 7.\n'
-    #                         '@input: ')
-    # y_columns_selected = select_columns(y_columns_range)
-    # y = data.iloc[:, y_columns_selected]
-    # show_data_columns(y.columns, y_columns_selected)
+    # imputing
+    print("-*-*- Strategy for Missing Values -*-*-")
+    num2option(IMPUTING_STRATEGY)
+    strategy_num = int(input("Which strategy do you want to apply?(Enter the Corresponding Number): "))
+    data_processed_imputed_np = imputer(data_processed, IMPUTING_STRATEGY[strategy_num - 1])
+    data_processed_imputed = np2pd(data_processed_imputed_np, data_processed.columns)
+
+    # feature engineering
+    print("Selected sub data set to be processed...")
+    show_data_columns(data_processed)
+    num2option(OPTION)
+    is_feature_engineering = int(input("Feature Engineering Option: "))
+    if is_feature_engineering == 1:
+        #print("")
+        pass
+
+    # divide features set and target set
+    print("-*-*- Mode Options -*-*-")
+    num2option(MODE_OPTION)
+    mode_num = int(input("@Number: "))
+    if mode_num == 1:
+        # create X data set
+        print("-*-*- Data Split -*-*-")
+        print("Divide X and Y in the processing data set. ")
+        print("X data:")
+        X = create_sub_data_set(data_processed_imputed)
+        # create Y data set
+        print("Y data")
+        y = create_sub_data_set(data_processed_imputed)
+    else:
+        # unsupervised learning
+        pass
 
     print("\n")
 
     # imputing
-    print("Strategy for Missing Values:")
-    num2option(IMPUTING_STRATEGY)
-    strategy_num = int(input("Which strategy do you want to apply?(Enter the Corresponding Number): "))
-    X_imputed_np = imputer(X, IMPUTING_STRATEGY[int(strategy_num) - 1])
-    X_imputed = np2pd(X_imputed_np, X.columns)
-    print(f'X data set: \n {X_imputed}')
-    y_imputed_np = imputer(y, IMPUTING_STRATEGY[int(strategy_num) - 1])
-    y_imputed = np2pd(y_imputed_np, y.columns)
-    print(f'Y data set: \n {y_imputed}')
+    # print("-*-*- Strategy for Missing Values -*-*-")
+    # num2option(IMPUTING_STRATEGY)
+    # strategy_num = int(input("Which strategy do you want to apply?(Enter the Corresponding Number): "))
+    # X_imputed_np = imputer(X, IMPUTING_STRATEGY[int(strategy_num) - 1])
+    # X_imputed = np2pd(X_imputed_np, X.columns)
+    # print(f'X data set: \n {X_imputed}')
+    # y_imputed_np = imputer(y, IMPUTING_STRATEGY[int(strategy_num) - 1])
+    # y_imputed = np2pd(y_imputed_np, y.columns)
+    # print(f'Y data set: \n {y_imputed}')
 
     # feature engineering
 
@@ -69,7 +78,7 @@ def main():
     print("\n")
 
     # model option for users
-    print("Model Selection:")
+    print("-*-*- Model Selection -*-*-:")
     num2option(REGRESSION_MODELS)
     # for i in range(len(REGRESSION_MODELS)):
     #     print(str(i+1) + " - " + REGRESSION_MODELS[i])
