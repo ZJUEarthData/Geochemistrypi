@@ -1,4 +1,5 @@
-![logo](./docs/logo.jpeg)
+![logo1](./docs/logo.jpg)
+![logo2](./docs/logo.png)
 
 GeochemistryPy is **a Python framework** for data-driven geochemistry discovery.It provides an extendable tool and one-stop shop for **geochemical data analysis**.
 
