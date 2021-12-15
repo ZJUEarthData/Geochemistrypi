@@ -36,13 +36,14 @@ class RegressionWorkflowBase(object):
         self.random_state = random_state
         self.model = None
 
-    def data_split(self, X_data, y_data, test_size=0.2, random_state=42):
+    @staticmethod
+    def data_split(X_data, y_data, test_size=0.2, random_state=42):
         RegressionWorkflowBase.X = X_data
         RegressionWorkflowBase.y = y_data
         X_train, X_test, y_train, y_test = train_test_split(RegressionWorkflowBase.X,
                                                             RegressionWorkflowBase.y,
-                                                            test_size=0.2,
-                                                            random_state=42)
+                                                            test_size=test_size,
+                                                            random_state=random_state)
         return X_train, X_test, y_train, y_test
 
     def fit(self, X_train, y_train):
@@ -65,7 +66,8 @@ class RegressionWorkflowBase(object):
         print("Explained Variance Score:", evs)
         # return rmse, mae
 
-    def _display_cross_validation_scores(self, scores):
+    @staticmethod
+    def _display_cross_validation_scores(scores):
         print("Scores:", scores)
         print("Mean:", scores.mean())
         print("Standard deviation:", scores.std())
@@ -86,11 +88,12 @@ class RegressionWorkflowBase(object):
             print('-------------')
         return scores
 
+
     def _save_fig(self, fig_name, tight_layout=True):
-        '''Run to save automatic pictures
+        """Run to save automatic pictures
 
         :param fig_name: Picture Name
-        '''
+        """
         path = os.path.join(IMAGE_PATH, fig_name + ".png")
         print("Saving figure", fig_name)
         if tight_layout:
@@ -130,7 +133,6 @@ class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
         self.n_jobs = n_jobs
 
         self.model = LinearRegression(fit_intercept=self.fit_intercept,
-                                      normalize=self.normalize,
                                       copy_X=self.copy_X,
                                       n_jobs=self.n_jobs)
 
@@ -145,7 +147,7 @@ class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
                                            order=self.order)
         X_train_poly = poly_features.fit_transform(X_train)
         X_test_poly = poly_features.fit_transform(X_test)
-        self.__features_name = poly_features.get_feature_names()
+        self.__features_name = poly_features.get_feature_names_out()
         return X_train_poly, X_test_poly
 
     def _show_formula(self):
@@ -178,6 +180,7 @@ class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
 
     def special_components(self):
         self._show_formula()
+
 
 class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
     # https://github.com/dmlc/xgboost/blob/master/python-package/xgboost/sklearn.py

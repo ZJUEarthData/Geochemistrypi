@@ -20,3 +20,6 @@ MODE_OPTION = ['Supervised Learning', 'Unsupervised Learning']
 REGRESSION_MODELS = ['Polynomial Regression', 'Xgboost']
 
 IMPUTING_STRATEGY = ['mean', 'median', 'most_frequent']
+
+
+

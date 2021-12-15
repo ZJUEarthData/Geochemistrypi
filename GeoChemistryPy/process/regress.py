@@ -3,19 +3,23 @@ import sys, os
 sys.path.append("..")
 import pandas as pd
 from model.regression import PolynomialRegression, XgboostRegression, RegressionWorkflowBase
+from core.base import *
 
-class ModelSelection(object):
+
+class RegressionModelSelection(object):
 
     def __init__(self, model):
         self.model = model
         self.reg_workflow = RegressionWorkflowBase()
 
-    def activate(self, X, y, degree=2):
+    def activate(self, X, y):
         X_train, X_test, y_train, y_test = self.reg_workflow.data_split(X, y)
 
         # model option
         if self.model == "Polynomial Regression":
-            self.reg_workflow = PolynomialRegression()
+            print("Please specify the maximal degree of the polynomial features.")
+            poly_degree = int(input("@Degree: "))
+            self.reg_workflow = PolynomialRegression(degree=poly_degree)
             X_train, X_test = self.reg_workflow.poly(X_train, X_test)
         elif self.model == "Xgboost":
             self.reg_workflow = XgboostRegression()

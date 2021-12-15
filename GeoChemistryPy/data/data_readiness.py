@@ -20,10 +20,11 @@ def basic_info(data):
 
 def show_data_columns(columns_name, columns_index=None):
     print("Index - Column Name")
-    if columns_index == None:
+    if columns_index is None:
         for i, j in enumerate(columns_name):
             print(i+1, "-", j)
     else:
+        # specify the designated column index
         for i, j in zip(columns_index, columns_name):
             print(i+1, "-", j)
 
@@ -57,13 +58,19 @@ def create_sub_data_set(data):
                                        '--> you want to deal with the columns 1, 2, 3, 7, 10, 11, 12, 13 \n'
                                        'Format 2: "xx", such as "7" --> you want to deal with the columns 7 \n'
                                        '@input: ')
+    # column name
     sub_data_set_columns_selected = select_columns(sub_data_set_columns_range)
+    # select designated column
     sub_data_set = data.iloc[:, sub_data_set_columns_selected]
     show_data_columns(sub_data_set.columns, sub_data_set_columns_selected)
     return sub_data_set
 
 
 def num2option(items: List = None) -> None:
+    """pattern show: num - item
+
+    :param items: list, a series of items need to be enumerated
+    """
     for i, j in enumerate(items):
         print(str(i+1) + " - " + j)
 
