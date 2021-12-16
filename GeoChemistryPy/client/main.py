@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
-import sys, os
+import sys
 sys.path.append("..")
 from process.regress import RegressionModelSelection
 from global_variable import *
 from data.data_readiness import *
 from data.feature_engineering import *
-import re
 from plot.statistic_plot import *
 from core.base import *
 
@@ -50,14 +49,17 @@ def main():
     is_feature_engineering = int(input("@Number: "))
     clear_output()
     if is_feature_engineering == 1:
-        # print("-*-*- Feature Engineering -*-*-")
+        print("-*-*- Feature Engineering -*-*-")
         # # TODO: Build up feature engineering module
         # map_dict = create_index_vs_name(data_processed.columns)
-        # feature_name = input("Please name the new feature. \n"
-        #                      "@input: ")
-        pass
-    else:
-        pass
+        feature_name = input("Please name the new feature. \n"
+                             "@input: ")
+        a = FeatureConstructor(feature_name)
+        map_dict = create_index_vs_name(data_processed.columns)
+        a.input_expression()
+        a.infix_expr2postfix_expr()
+        a.show_postfix_expr()
+
 
     # divide features set and target set
     print("-*-*- Mode Options -*-*-")
@@ -79,21 +81,6 @@ def main():
     else:
         # unsupervised learning
         pass
-
-    print("\n")
-
-    # imputing
-    # print("-*-*- Strategy for Missing Values -*-*-")
-    # num2option(IMPUTING_STRATEGY)
-    # strategy_num = int(input("Which strategy do you want to apply?(Enter the Corresponding Number): "))
-    # X_imputed_np = imputer(X, IMPUTING_STRATEGY[int(strategy_num) - 1])
-    # X_imputed = np2pd(X_imputed_np, X.columns)
-    # print(f'X data set: \n {X_imputed}')
-    # y_imputed_np = imputer(y, IMPUTING_STRATEGY[int(strategy_num) - 1])
-    # y_imputed = np2pd(y_imputed_np, y.columns)
-    # print(f'Y data set: \n {y_imputed}')
-
-    print("\n")
 
     # model option for users
     print("-*-*- Model Selection -*-*-:")
