@@ -3,40 +3,7 @@ import string
 from global_variable import *
 import operator
 import gc
-
-
-def create_index_vs_name(columns_name):
-    """pattern: letter : column name, e.g. a : 1st column name; b : 2nd column name
-
-    :param columns_name: the name of each column
-    :return: columns index, list
-    """
-    map_dict = {}
-    print("Selected data set:")
-    for i in range(len(columns_name)):
-        print(string.ascii_letters[i] + ' - ' + columns_name[i])
-        map_dict[string.ascii_letters[i]] = columns_name[i]
-    return map_dict
-
-
-# def create_columns_index(columns_name):
-#     """pattern: C[num], e.g. C1 -> 1st column
-#
-#      :param columns_name: the name of each column
-#      :return: columns index, list
-#     """
-#     columns_index = []
-#     for i, j in enumerate(columns_name):
-#         index = "C{}".format(str(i+1))
-#         columns_index.append(index)
-#         print(index + " - " + j)
-#     return columns_index
-#
-#
-# def index2name(columns_index, columns_name):
-#     map_dict = dict([(i, j) for i, j in zip(columns_index, columns_name)])
-#     return map_dict
-
+import pandas
 
 
 class Stack(object):
@@ -75,11 +42,33 @@ class FeatureConstructor(object):
 
     oper = ['-', '+', '*', '/', '(', ')']
     parenthesis = ['(', ')']
+    alphabet = string.ascii_letters
 
-    def __init__(self, feature_name):
-        self.feature_name = feature_name
+    def __init__(self, data):
+        self.feature_name = None
+        self.data = data
         self._infix_expr = []
         self._postfix_expr = []
+        self.map_dict = {}
+        self._result = None
+
+    def index2name(self):
+        """pattern: [letter : column name], e.g. a : 1st column name; b : 2nd column name
+
+        :return: index : column name, dict
+        """
+        columns_name = self.data.columns
+        print("Selected data set:")
+        for i in range(len(columns_name)):
+            print(FeatureConstructor.alphabet[i] + ' - ' + columns_name[i])
+            self.map_dict[FeatureConstructor.alphabet[i]] = columns_name[i]
+
+    def _get_column(self, index):
+        return self.data[self.map_dict[index]]
+
+    def name_feature(self):
+        self.feature_name = input("Please name the new feature. \n"
+                                  "@input: ")
 
     def input_expression(self):
         expression = input("Build up new feature with the combination of 4 basic arithmatic operator.\n"
@@ -122,13 +111,9 @@ class FeatureConstructor(object):
 
     @staticmethod
     def _eval_binary_expr(op1, oper, op2):
-        op1, op2 = float(op1), float(op2)
         return FeatureConstructor._get_operator_fn(oper)(op1, op2)
 
-    # TODO: infix expression -> postfix expression
-
     def infix_expr2postfix_expr(self):
-        op_stack = Stack(100)
         oper_stack = Stack(100)
 
         for i in range(len(self._infix_expr)):
@@ -140,7 +125,7 @@ class FeatureConstructor(object):
                 # then pop out the current top item in the stack and append it to the postfix expression.
                 # Outside the operator stack, '(' is the highest priority
                 # while inside the operator stack, it is the lowest priority.
-                while oper_stack.Top != -1 and \
+                while not oper_stack.is_empty() and \
                         FeatureConstructor._oper_priority_out(self._infix_expr[i]) < \
                         FeatureConstructor._oper_priority_in(oper_stack.Data[oper_stack.Top]):
                     # When the operator is ')', pop out all the items in the operator stack
@@ -167,10 +152,45 @@ class FeatureConstructor(object):
                 self._postfix_expr.append(self._infix_expr[i])
 
         # pop up the rest of items in the stack until it's empty
-        while oper_stack.Top != -1:
+        while not oper_stack.is_empty():
             self._postfix_expr.append(oper_stack.pop())
 
-    def show_postfix_expr(self):
-        print(self._infix_expr)
-        print(self._postfix_expr)
+    # TODO: detect zero value in case of division error
+    def eval_expression(self):
+        expr_stack = Stack(100)
+        for i in range(len(self._postfix_expr)):
+            # when the top item is not an operator
+            if self._postfix_expr[i] not in FeatureConstructor.oper:
+                expr_stack.push(self._postfix_expr[i])
+            else:
+                op2 = expr_stack.pop()
+                op1 = expr_stack.pop()
+                oper = self._postfix_expr[i]
+                # check the type of the items
+                if isinstance(op2, pandas.core.series.Series):
+                    pass
+                else:
+                    if op2 in FeatureConstructor.alphabet:
+                        op2 = self._get_column(op2)
+                    else:
+                        op2 = float(op2)
+                if isinstance(op1, pandas.core.series.Series):
+                    pass
+                else:
+                    if op1 in FeatureConstructor.alphabet:
+                        op1 = self._get_column(op1)
+                    else:
+                        op1 = float(op1)
+                temp = FeatureConstructor._eval_binary_expr(op1, oper, op2)
+                expr_stack.push(temp)
+        self._result = expr_stack.pop()
+        self._result.name = self.feature_name
+        print(self._result)
 
+    def create_data_set(self):
+        print(f'Successfully construct a new feature "{self.feature_name}".')
+        return pandas.concat([self.data, self._result], axis=1)
+
+    # TODO: Is the scope of input right?
+    def check_data_scope(self):
+        pass

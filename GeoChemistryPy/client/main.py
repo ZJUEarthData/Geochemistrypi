@@ -42,24 +42,40 @@ def main():
     clear_output()
 
     # feature engineering
-    print("Selected sub data set to be processed...")
+    print("Data set to be processed...")
     show_data_columns(data_processed.columns)
-    print("Feature Engineering Option:")
-    num2option(OPTION)
-    is_feature_engineering = int(input("@Number: "))
+    flag = 0
+    while True:
+        if flag != 1:
+            print("Feature Engineering Option:")
+            num2option(OPTION)
+            is_feature_engineering = int(input("@Number: "))
+            clear_output()
+        if is_feature_engineering == 1:
+            print("-*-*- Feature Engineering -*-*-")
+            feature_built = FeatureConstructor(data_processed_imputed)
+            feature_built.index2name()
+            feature_built.name_feature()
+            feature_built.input_expression()
+            feature_built.infix_expr2postfix_expr()
+            feature_built.eval_expression()
+            # update the original data with a new feature
+            data_processed_imputed = feature_built.create_data_set()
+            basic_info(data_processed_imputed)
+            basic_statistic(data_processed_imputed)
+            clear_output()
+        else:
+            clear_output()
+            break
+        print("Do you want to continue to construct a new feature")
+        num2option(OPTION)
+        flag = int(input("@Number: "))
+        if flag == 1:
+            continue
+        else:
+            print('Exit Feature Engineering Mode.')
+            break
     clear_output()
-    if is_feature_engineering == 1:
-        print("-*-*- Feature Engineering -*-*-")
-        # # TODO: Build up feature engineering module
-        # map_dict = create_index_vs_name(data_processed.columns)
-        feature_name = input("Please name the new feature. \n"
-                             "@input: ")
-        a = FeatureConstructor(feature_name)
-        map_dict = create_index_vs_name(data_processed.columns)
-        a.input_expression()
-        a.infix_expr2postfix_expr()
-        a.show_postfix_expr()
-
 
     # divide features set and target set
     print("-*-*- Mode Options -*-*-")

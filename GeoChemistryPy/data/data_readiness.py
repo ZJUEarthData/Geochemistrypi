@@ -82,5 +82,5 @@ def np2pd(array, columns_name):
 def imputer(data, method):
     imp = SimpleImputer(missing_values=np.nan, strategy=method)
     print(f"Successfully fill the missing values with the {method} value "
-          f"of each feature column respectively")
+          f"of each feature column respectively.")
     return imp.fit_transform(data)
