@@ -7,11 +7,13 @@ WORKING_PATH = os.getcwd()
 DATASET_PATH = os.path.join(WORKING_PATH, "dataset")
 
 # the directory where pictures saved
-IMAGE_PATH = os.path.join(WORKING_PATH, "images")
+MODEL_OUTPUT_IMAGE_PATH = os.path.join(WORKING_PATH, "images", "model_output")
+STATISTIC_IMAGE_PATH = os.path.join(WORKING_PATH, "images", "statistic")
 
 # create the directories if they didn't exist yet
 os.makedirs(DATASET_PATH, exist_ok=True)
-os.makedirs(IMAGE_PATH, exist_ok=True)
+os.makedirs(MODEL_OUTPUT_IMAGE_PATH, exist_ok=True)
+os.makedirs(STATISTIC_IMAGE_PATH, exist_ok=True)
 
 OPTION = ['Yes', 'No']
 

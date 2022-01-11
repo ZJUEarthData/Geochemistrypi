@@ -4,6 +4,7 @@ sys.path.append("..")
 from process.regress import RegressionModelSelection
 from global_variable import *
 from data.data_readiness import *
+from data.imputation import *
 from data.feature_engineering import *
 from plot.statistic_plot import *
 from core.base import *
@@ -30,8 +31,11 @@ def main():
     clear_output()
     basic_info(data_processed)
     basic_statistic(data_processed)
+    correlation_plot(data_processed.columns, data_processed)
+    distribution_plot(data_processed.columns, data_processed)
     is_null_value(data_processed)
     clear_output()
+
 
     # imputing
     print("-*-*- Strategy for Missing Values -*-*-")
@@ -39,6 +43,7 @@ def main():
     strategy_num = int(input("Which strategy do you want to apply?(Enter the Corresponding Number): "))
     data_processed_imputed_np = imputer(data_processed, IMPUTING_STRATEGY[strategy_num - 1])
     data_processed_imputed = np2pd(data_processed_imputed_np, data_processed.columns)
+    probability_plot(data_processed.columns, data_processed, data_processed_imputed)
     clear_output()
 
     # feature engineering

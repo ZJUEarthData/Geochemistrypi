@@ -13,6 +13,9 @@ def read_data(file_name):
     data = pd.read_excel(data_path, engine="openpyxl")
     return data
 
+# TODO: is the directory exists? -> build automatically
+def save_data(file_name):
+    pass
 
 def basic_info(data):
     print(data.info())
@@ -78,9 +81,3 @@ def num2option(items: List = None) -> None:
 def np2pd(array, columns_name):
     return pd.DataFrame(array, columns=columns_name)
 
-
-def imputer(data, method):
-    imp = SimpleImputer(missing_values=np.nan, strategy=method)
-    print(f"Successfully fill the missing values with the {method} value "
-          f"of each feature column respectively.")
-    return imp.fit_transform(data)

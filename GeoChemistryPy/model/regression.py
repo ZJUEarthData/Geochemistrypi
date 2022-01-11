@@ -90,12 +90,12 @@ class RegressionWorkflowBase(object):
 
 
     def _save_fig(self, fig_name, tight_layout=True):
-        """Run to save automatic pictures
+        """Run to save pictures
 
         :param fig_name: Picture Name
         """
-        path = os.path.join(IMAGE_PATH, fig_name + ".png")
-        print("Saving figure", fig_name)
+        path = os.path.join(MODEL_OUTPUT_IMAGE_PATH, fig_name + ".png")
+        print(f"Save figure '{fig_name}' in {MODEL_OUTPUT_IMAGE_PATH}")
         if tight_layout:
             plt.tight_layout()
         plt.savefig(path, format='png', dpi=300)
