@@ -17,12 +17,14 @@ DATASET_OUTPUT_PATH = os.path.join(WORKING_PATH, "output")
 # the directory where pictures saved
 MODEL_OUTPUT_IMAGE_PATH = os.path.join(WORKING_PATH, "images", "model_output")
 STATISTIC_IMAGE_PATH = os.path.join(WORKING_PATH, "images", "statistic")
+MAP_IMAGE_PATH = os.path.join(WORKING_PATH, "images", "map")
 
 # create the directories if they didn't exist yet
 os.makedirs(DATASET_PATH, exist_ok=True)
 os.makedirs(MODEL_OUTPUT_IMAGE_PATH, exist_ok=True)
 os.makedirs(STATISTIC_IMAGE_PATH, exist_ok=True)
 os.makedirs(DATASET_OUTPUT_PATH, exist_ok=True)
+os.makedirs(MAP_IMAGE_PATH, exist_ok=True)
 
 OPTION = ['Yes', 'No']
 

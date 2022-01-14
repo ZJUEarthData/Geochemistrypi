@@ -6,6 +6,7 @@ from data.data_readiness import *
 from data.imputation import *
 from data.feature_engineering import *
 from plot.statistic_plot import *
+from plot.map_plot import map_projected
 from core.base import *
 from process.regress import RegressionModelSelection
 from process.classify import ClassificationModelSelection
@@ -26,8 +27,39 @@ def main():
     show_data_columns(data.columns)
     clear_output()
 
+
+    # world map projection for a specific element
+    map_flag = 0
+    while True:
+        if map_flag != 1:
+            print("World Map Projection for A Specific Element Option:")
+            num2option(OPTION)
+            is_map_projection = int(input("@Number: "))
+            clear_output()
+        if is_map_projection == 1:
+            print("-*-*- Distribution in World Map -*-*-")
+            print("Select one of the elements below to be projected in the World Map: ")
+            show_data_columns(data.columns)
+            elm_num = int(input("@number: "))
+            map_projected(data.iloc[:, elm_num-1], data)
+            clear_output()
+        else:
+            break
+        print("Do you want to continue to project a new element in the World Map?")
+        num2option(OPTION)
+        map_flag = int(input("@Number: "))
+        if map_flag == 1:
+            clear_output()
+            continue
+        else:
+            print('Exit Map Projection Mode.')
+            clear_output()
+            break
+
+
     # create the processing data set
     print("-*-*- Data Selected -*-*-")
+    show_data_columns(data.columns)
     data_processed = create_sub_data_set(data)
     clear_output()
     print("The Selected Data Set:")
@@ -54,9 +86,9 @@ def main():
     # feature engineering
     print("The Selected Data Set:")
     show_data_columns(data_processed.columns)
-    flag = 0
+    fe_flag = 0
     while True:
-        if flag != 1:
+        if fe_flag != 1:
             print("Feature Engineering Option:")
             num2option(OPTION)
             is_feature_engineering = int(input("@Number: "))
@@ -80,8 +112,8 @@ def main():
             break
         print("Do you want to continue to construct a new feature?")
         num2option(OPTION)
-        flag = int(input("@Number: "))
-        if flag == 1:
+        fe_flag = int(input("@Number: "))
+        if fe_flag == 1:
             clear_output()
             continue
         else:
@@ -120,9 +152,10 @@ def main():
 
     # model option for users
     print("-*-*- Model Selection -*-*-:")
-    Modes2Models = {1: REGRESSION_MODELS, 2: CLASSIFICATION_MODELS, 3: CLUSTERING_MODELS, 4: DIMENSIONAL_REDUCTION_MODELS}
-    Modes2Initiators = {1: RegressionModelSelection, 2: ClassificationModelSelection, 3: ClusteringModelSelection, 4: DimensionalReductionModelSelection}
-
+    Modes2Models = {1: REGRESSION_MODELS, 2: CLASSIFICATION_MODELS,
+                    3: CLUSTERING_MODELS, 4: DIMENSIONAL_REDUCTION_MODELS}
+    Modes2Initiators = {1: RegressionModelSelection, 2: ClassificationModelSelection,
+                        3: ClusteringModelSelection, 4: DimensionalReductionModelSelection}
     MODELS = Modes2Models[mode_num]
     num2option(MODELS)
     all_models_num = len(MODELS) + 1
