@@ -11,7 +11,7 @@ from core.base import *
 from process.regress import RegressionModelSelection
 from process.classify import ClassificationModelSelection
 from process.cluster import ClusteringModelSelection
-from process.reduct import DimensionalReductionModelSelection
+from process.decompose import DecompositionModelSelection
 
 
 def main():
@@ -80,6 +80,8 @@ def main():
     strategy_num = int(input("Which strategy do you want to apply?(Enter the Corresponding Number): "))
     data_processed_imputed_np = imputer(data_processed, IMPUTING_STRATEGY[strategy_num - 1])
     data_processed_imputed = np2pd(data_processed_imputed_np, data_processed.columns)
+    basic_info(data_processed_imputed)
+    basic_statistic(data_processed_imputed)
     probability_plot(data_processed.columns, data_processed, data_processed_imputed)
     clear_output()
 
@@ -153,9 +155,9 @@ def main():
     # model option for users
     print("-*-*- Model Selection -*-*-:")
     Modes2Models = {1: REGRESSION_MODELS, 2: CLASSIFICATION_MODELS,
-                    3: CLUSTERING_MODELS, 4: DIMENSIONAL_REDUCTION_MODELS}
+                    3: CLUSTERING_MODELS, 4: DECOMPOSITION_MODELS}
     Modes2Initiators = {1: RegressionModelSelection, 2: ClassificationModelSelection,
-                        3: ClusteringModelSelection, 4: DimensionalReductionModelSelection}
+                        3: ClusteringModelSelection, 4: DecompositionModelSelection}
     MODELS = Modes2Models[mode_num]
     num2option(MODELS)
     all_models_num = len(MODELS) + 1

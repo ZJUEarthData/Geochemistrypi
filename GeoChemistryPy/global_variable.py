@@ -1,9 +1,4 @@
 import os
-# from process.regress import RegressionModelSelection
-# from process.classify import ClassificationModelSelection
-# from process.cluster import ClusteringModelSelection
-# from process.reduct import DimensionalReductionModelSelection
-
 
 # current package path
 WORKING_PATH = os.getcwd()
@@ -31,12 +26,9 @@ OPTION = ['Yes', 'No']
 MODE_OPTION = ['Regression', 'Classification', 'Clustering', 'Dimensional Reduction']
 
 REGRESSION_MODELS = ['Polynomial Regression', 'Xgboost']
-CLASSIFICATION_MODELS = ['Polynomial Regression', 'Xgboost']
+CLASSIFICATION_MODELS = ['Support Vector Machine']
 CLUSTERING_MODELS = ['KMeans']
-DIMENSIONAL_REDUCTION_MODELS = ['PCA']
-
-# Modes2Models = {1: REGRESSION_MODELS, 2: CLASSIFICATION_MODELS, 3: CLUSTERING_MODELS, 4: DIMENSIONAL_REDUCTION_MODELS}
-# Modes2Initiators = {1: RegressionModelSelection, 2: ClassificationModelSelection, 3: ClusteringModelSelection, 4: DimensionalReductionModelSelection}
+DECOMPOSITION_MODELS = ['Principal Component Analysis']
 
 IMPUTING_STRATEGY = ['mean', 'median', 'most_frequent']
 
