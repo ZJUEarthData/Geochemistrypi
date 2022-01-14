@@ -67,7 +67,7 @@ class FeatureConstructor(object):
         return self.data[self.map_dict[index]]
 
     def name_feature(self):
-        self.feature_name = input("Please name the new feature. \n"
+        self.feature_name = input("Name the constructed feature (column name): \n"
                                   "@input: ")
 
     def input_expression(self):
@@ -76,7 +76,7 @@ class FeatureConstructor(object):
                            "--> Step 1: Multiply a column with b column; \n "
                            "--> Step 2: Subtract c from the result of Step 1; \n"
                            "Input example 2: (d + 5 * f) / g \n"
-                           "--> Step 1: multiply 5 with f"
+                           "--> Step 1: multiply 5 with f \n"
                            "--> Step 2: Plus d column with the result of Step 1;\n"
                            "--> Step 3: Divide the result of Step 1 by g \n"
                            "@input: ")
@@ -185,10 +185,10 @@ class FeatureConstructor(object):
                 expr_stack.push(temp)
         self._result = expr_stack.pop()
         self._result.name = self.feature_name
-        print(self._result)
 
     def create_data_set(self):
         print(f'Successfully construct a new feature "{self.feature_name}".')
+        print(self._result)
         return pandas.concat([self.data, self._result], axis=1)
 
     # TODO: Is the scope of input right?

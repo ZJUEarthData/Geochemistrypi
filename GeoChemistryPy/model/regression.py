@@ -3,6 +3,7 @@
 import sys, os
 sys.path.append("..")
 from global_variable import *
+from core.base import save_fig
 from sklearn.base import clone, BaseEstimator, TransformerMixin
 from sklearn.model_selection import train_test_split, cross_validate
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, explained_variance_score
@@ -53,7 +54,8 @@ class RegressionWorkflowBase(object):
         y_test_prediction = self.model.predict(X_test)
         return y_test_prediction
 
-    def score(self, y_test, y_test_prediction):
+    @staticmethod
+    def score(y_test, y_test_prediction):
         mse = mean_squared_error(y_test, y_test_prediction)
         rmse = np.sqrt(mse)
         mae = mean_absolute_error(y_test, y_test_prediction)
@@ -73,7 +75,7 @@ class RegressionWorkflowBase(object):
         print("Standard deviation:", scores.std())
 
     def cross_validation(self, X_train, y_train, cv_num=10):
-        #param_grid = {}
+        # param_grid = {}
         print("-----* Cross Validation *-----")
         # self.model comes from the subclass of every regression algorithm
         scores = cross_validate(self.model, X_train, y_train,
@@ -88,21 +90,11 @@ class RegressionWorkflowBase(object):
             print('-------------')
         return scores
 
-
-    def _save_fig(self, fig_name, tight_layout=True):
-        """Run to save pictures
-
-        :param fig_name: Picture Name
-        """
-        path = os.path.join(MODEL_OUTPUT_IMAGE_PATH, fig_name + ".png")
-        print(f"Save figure '{fig_name}' in {MODEL_OUTPUT_IMAGE_PATH}")
-        if tight_layout:
-            plt.tight_layout()
-        plt.savefig(path, format='png', dpi=300)
-
+    # TODO: How to preven overfitting
     def is_overfit():
         pass
 
+    # TODO: Do Hyperparameter Searching
     def search_best_hyper_parameter():
         pass
 
@@ -308,12 +300,12 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
         # histograms present feature weights for XGBoost predictions
         plt.figure(figsize=(40, 6))
         plt.bar(range(len(columns_name)), self.model.feature_importances_, tick_label=columns_name)
-        self._save_fig("xgb_feature_importance")
+        save_fig("xgb_feature_importance", MODEL_OUTPUT_IMAGE_PATH)
 
         # feature importance map ranked by importance
         plt.rcParams["figure.figsize"] = (14, 8)
         xgboost.plot_importance(self.model)
-        self._save_fig("xgb_feature_importance_fscore")
+        save_fig("xgb_feature_importance_fscore", MODEL_OUTPUT_IMAGE_PATH)
 
     def special_components(self):
         self._feature_importance()

@@ -22,6 +22,7 @@ def basic_info(data):
 
 
 def show_data_columns(columns_name, columns_index=None):
+    print('-' * 20)
     print("Index - Column Name")
     if columns_index is None:
         for i, j in enumerate(columns_name):
@@ -30,6 +31,7 @@ def show_data_columns(columns_name, columns_index=None):
         # specify the designated column index
         for i, j in zip(columns_index, columns_name):
             print(i+1, "-", j)
+    print('-' * 20)
 
 
 def select_columns(columns_range: Optional[str] = None) -> List[int]:

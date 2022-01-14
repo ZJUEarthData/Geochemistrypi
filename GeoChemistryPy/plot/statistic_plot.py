@@ -16,7 +16,9 @@ def basic_statistic(data):
 
 def is_null_value(data):
     print("Check which column has null values:")
+    print("--" * 10)
     print(data.isnull().any())
+    print("--" * 10)
 
 
 def correlation_plot(col, df):
@@ -29,7 +31,7 @@ def correlation_plot(col, df):
     plot_df_cor = plot_df.corr()
     plt.figure(figsize=(20, 20))
     sns.heatmap(plot_df_cor, cmap = 'coolwarm', annot=True, linewidths=.5)
-    print("Successfully calculate the pair-wise correlation coefficient among the selected columns")
+    print("Successfully calculate the pair-wise correlation coefficient among the selected columns.")
     save_fig("correlation_plot", STATISTIC_IMAGE_PATH)
 
 
@@ -42,7 +44,7 @@ def distribution_plot(col, df):
     n = int(np.sqrt(len(col))) + 1
     plt.figure(figsize=(n*2, n*2))
     df.hist()
-    print("Successfully plot the distribution plot of the selected columns")
+    print("Successfully plot the distribution plot of the selected columns.")
     save_fig("distribution_histogram", STATISTIC_IMAGE_PATH)
 
 
@@ -61,6 +63,6 @@ def probability_plot(col, df_origin, df_impute):
         pp_impute = sm.ProbPlot(df_impute[feature], fit=True)
         ax = fig.add_subplot(r, c, i+1)
         pp_origin.ppplot(line="45", other=pp_impute, ax=ax)
-        plt.title(f"{feature}, origin vs. impute")
+        plt.title(f"{feature}, origin data vs. imputed data")
     print("Successfully graph the respective probability plot (origin vs. impute) of the selected columns")
     save_fig("probability_plot", STATISTIC_IMAGE_PATH)

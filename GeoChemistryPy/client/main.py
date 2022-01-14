@@ -1,21 +1,24 @@
 # -*- coding: utf-8 -*-
 import sys
 sys.path.append("..")
-from process.regress import RegressionModelSelection
 from global_variable import *
 from data.data_readiness import *
 from data.imputation import *
 from data.feature_engineering import *
 from plot.statistic_plot import *
 from core.base import *
+from process.regress import RegressionModelSelection
+from process.classify import ClassificationModelSelection
+from process.cluster import ClusteringModelSelection
+from process.reduct import DimensionalReductionModelSelection
 
 
 def main():
-    print("User Behaviour Testing Demo on Regression Model")
+    print("GeoChemistryPy - User Behaviour Testing Demo")
     print(".......")
 
     # read the data
-    # TODO: seperate the input outside
+    # TODO: seperate the input into outside
     # file_name = input("Upload the data set.(Enter the name of data set) ")
     print("-*-*- Data Uploaded -*-*-")
     file_name = 'Data_Regression.xlsx'
@@ -26,9 +29,11 @@ def main():
     # create the processing data set
     print("-*-*- Data Selected -*-*-")
     data_processed = create_sub_data_set(data)
-    print("the Processing Data Set:")
+    clear_output()
+    print("The Selected Data Set:")
     print(data_processed)
     clear_output()
+    print('Basic Statistical Information: ')
     basic_info(data_processed)
     basic_statistic(data_processed)
     correlation_plot(data_processed.columns, data_processed)
@@ -47,7 +52,7 @@ def main():
     clear_output()
 
     # feature engineering
-    print("Data set to be processed...")
+    print("The Selected Data Set:")
     show_data_columns(data_processed.columns)
     flag = 0
     while True:
@@ -64,64 +69,80 @@ def main():
             feature_built.input_expression()
             feature_built.infix_expr2postfix_expr()
             feature_built.eval_expression()
+            clear_output()
             # update the original data with a new feature
             data_processed_imputed = feature_built.create_data_set()
+            clear_output()
             basic_info(data_processed_imputed)
             basic_statistic(data_processed_imputed)
             clear_output()
         else:
-            clear_output()
             break
-        print("Do you want to continue to construct a new feature")
+        print("Do you want to continue to construct a new feature?")
         num2option(OPTION)
         flag = int(input("@Number: "))
         if flag == 1:
+            clear_output()
             continue
         else:
             print('Exit Feature Engineering Mode.')
+            clear_output()
             break
-    clear_output()
 
-    # divide features set and target set
+
     print("-*-*- Mode Options -*-*-")
     num2option(MODE_OPTION)
     mode_num = int(input("@Number: "))
-    if mode_num == 1:
-        # create X data set
+    clear_output()
+    # divide X and y data set when it is supervised learning
+    if mode_num == 1 or mode_num == 2:
         print("-*-*- Data Split -*-*-")
-        print("Divide X and Y in the processing data set. ")
-        print("Selected sub data set to be processed...")
-        print("X data:")
+        print("Divide the processing data set into X (feature value) and Y (target value) respectively.")
+        # create X data set
+        print("Selected sub data set to create X data set:")
         show_data_columns(data_processed_imputed.columns)
+        print('The selected X data set:')
         X = create_sub_data_set(data_processed_imputed)
+        print('Successfully create X data set.')
         clear_output()
         # create Y data set
-        print("Y data")
+        print("Selected sub data set to create Y data set:")
         show_data_columns(data_processed_imputed.columns)
+        print('The selected Y data set:')
         y = create_sub_data_set(data_processed_imputed)
+        print('Successfully create Y data set.')
+        clear_output()
     else:
         # unsupervised learning
-        pass
+        X = data_processed_imputed
+        y = None
+
 
     # model option for users
     print("-*-*- Model Selection -*-*-:")
-    num2option(REGRESSION_MODELS)
-    all_models_num = len(REGRESSION_MODELS) + 1
-    print(str(all_models_num) + " - All models above trained")
+    Modes2Models = {1: REGRESSION_MODELS, 2: CLASSIFICATION_MODELS, 3: CLUSTERING_MODELS, 4: DIMENSIONAL_REDUCTION_MODELS}
+    Modes2Initiators = {1: RegressionModelSelection, 2: ClassificationModelSelection, 3: ClusteringModelSelection, 4: DimensionalReductionModelSelection}
+
+    MODELS = Modes2Models[mode_num]
+    num2option(MODELS)
+    all_models_num = len(MODELS) + 1
+    print(str(all_models_num) + " - All models above to be trained")
     model_num = int(input("Which model do you want to apply?(Enter the Corresponding Number): "))
+    clear_output()
 
     # model trained selection
     if model_num != all_models_num:
-        # gain the designated model result
-        model = REGRESSION_MODELS[int(model_num) - 1]
-        run = RegressionModelSelection(model)
+        # run the designated model
+        model = MODELS[int(model_num) - 1]
+        run = Modes2Initiators[mode_num](model)
         run.activate(X, y)
     else:
-        # gain all models result
-        for i in range(len(REGRESSION_MODELS)):
-            run = RegressionModelSelection(REGRESSION_MODELS[i])
+        # gain all models result in the specific mode
+        for i in range(len(MODELS)):
+            run = Modes2Initiators[mode_num](MODELS[i])
             run.activate(X, y)
 
 
 if __name__ == "__main__":
     main()
+    

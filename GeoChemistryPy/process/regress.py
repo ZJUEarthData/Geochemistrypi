@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
-import sys, os
+import sys
 sys.path.append("..")
-import pandas as pd
 from model.regression import PolynomialRegression, XgboostRegression, RegressionWorkflowBase
-from core.base import *
 
 
 class RegressionModelSelection(object):
@@ -24,7 +22,7 @@ class RegressionModelSelection(object):
         elif self.model == "Xgboost":
             self.reg_workflow = XgboostRegression()
 
-        # common components for every algorithms
+        # common components for every regression algorithm
         self.reg_workflow.show_info()
         self.reg_workflow.fit(X_train, y_train)
         y_test_prediction = self.reg_workflow.predict(X_test)
