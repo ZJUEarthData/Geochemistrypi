@@ -5,7 +5,7 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_samples, silhouette_score
 import matplotlib as mpl
 from matplotlib.ticker import FixedLocator, FixedFormatter
-from core.base import *
+from utils.base import *
 from global_variable import DATASET_OUTPUT_PATH, MODEL_OUTPUT_IMAGE_PATH
 
 

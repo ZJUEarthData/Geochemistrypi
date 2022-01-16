@@ -7,7 +7,7 @@ from data.imputation import *
 from data.feature_engineering import *
 from plot.statistic_plot import *
 from plot.map_plot import map_projected
-from core.base import *
+from utils.base import *
 from process.regress import RegressionModelSelection
 from process.classify import ClassificationModelSelection
 from process.cluster import ClusteringModelSelection

@@ -3,7 +3,7 @@
 import sys, os
 sys.path.append("..")
 from global_variable import *
-from core.base import save_fig
+from utils.base import save_fig
 from sklearn.base import clone, BaseEstimator, TransformerMixin
 from sklearn.model_selection import train_test_split, cross_validate
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, explained_variance_score
@@ -139,7 +139,9 @@ class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
                                            order=self.order)
         X_train_poly = poly_features.fit_transform(X_train)
         X_test_poly = poly_features.fit_transform(X_test)
-        self.__features_name = poly_features.get_feature_names_out()
+        # TODO: How to
+        self.__features_name = poly_features.get_feature_names()
+        # self.__features_name = poly_features.get_feature_names_out()
         return X_train_poly, X_test_poly
 
     def _show_formula(self):

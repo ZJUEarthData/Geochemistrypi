@@ -1,21 +1,28 @@
 import sys
+
+import openpyxl.utils.exceptions
+
 sys.path.append("..")
 from global_variable import *
-import numpy as np
 import pandas as pd
-import re
 from typing import Optional, List
-from sklearn.impute import SimpleImputer
+from utils.exceptions import InvalidFileError
 
 
+# TODO: restrict the input data format
 def read_data(file_name):
     data_path = os.path.join(DATASET_PATH, file_name)
-    data = pd.read_excel(data_path, engine="openpyxl")
-    return data
+    try:
+        data = pd.read_excel(data_path, engine="openpyxl")
+        return data
+    except ImportError as err:
+        print(err)
+        print("On Mac, input the following command in terminal: pip3 install openpyxl")
+        raise
+    except:
+        print(f"Unexpected error: {sys.exc_info()[0]} - check the last line of Traceback about the error information")
+        raise
 
-# TODO: is the directory exists? -> build automatically
-def save_data(file_name):
-    pass
 
 def basic_info(data):
     print(data.info())

@@ -6,7 +6,7 @@ import pandas as pd
 import math
 from mpl_toolkits.basemap import Basemap
 import matplotlib.pyplot as plt
-from core.base import save_fig
+from utils.base import save_fig
 from global_variable import MAP_IMAGE_PATH
 import logging
 logging.captureWarnings(True)

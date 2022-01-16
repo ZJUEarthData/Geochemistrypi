@@ -1,6 +1,6 @@
 import sys
 sys.path.append("..")
-from core.base import save_fig
+from utils.base import save_fig
 from global_variable import *
 import pandas as pd
 import matplotlib.pyplot as plt
