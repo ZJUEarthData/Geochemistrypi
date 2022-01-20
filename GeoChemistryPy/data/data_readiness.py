@@ -5,7 +5,7 @@ import openpyxl.utils.exceptions
 sys.path.append("..")
 from global_variable import *
 import pandas as pd
-from typing import Optional, List
+from typing import Optional, List, Any
 from utils.exceptions import InvalidFileError
 
 
@@ -85,6 +85,19 @@ def num2option(items: List = None) -> None:
     """
     for i, j in enumerate(items):
         print(str(i+1) + " - " + j)
+
+
+def num_input(slogan: Optional[str] = "@Number: ") -> int:
+    # capture exception: input is not digit
+    while True:
+        option = input(slogan).strip()
+        if option.isdigit():
+            option = int(option)
+            if isinstance(option, int):
+                break
+        else:
+            print("Caution: please input the right number again!")
+    return option
 
 
 def np2pd(array, columns_name):

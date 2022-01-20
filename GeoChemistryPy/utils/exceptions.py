@@ -5,4 +5,3 @@ class InvalidFileError(Exception):
 
     def __str__(self):
         return repr(self._value)
-

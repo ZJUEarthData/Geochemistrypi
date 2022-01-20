@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 import sys
 sys.path.append("..")
-from global_variable import *
-from data.data_readiness import *
-from data.imputation import *
-from data.feature_engineering import *
-from plot.statistic_plot import *
+from global_variable import OPTION, IMPUTING_STRATEGY, MODE_OPTION, REGRESSION_MODELS, CLASSIFICATION_MODELS, \
+    CLUSTERING_MODELS, DECOMPOSITION_MODELS
+from data.data_readiness import read_data, show_data_columns, num2option, create_sub_data_set, basic_info, np2pd,\
+    num_input
+from data.imputation import imputer
+from data.feature_engineering import FeatureConstructor
+from plot.statistic_plot import basic_statistic, correlation_plot, distribution_plot, is_null_value, probability_plot
 from plot.map_plot import map_projected
-from utils.base import *
+from utils.base import clear_output
 from process.regress import RegressionModelSelection
 from process.classify import ClassificationModelSelection
 from process.cluster import ClusteringModelSelection
@@ -19,7 +21,7 @@ def main():
     print(".......")
 
     # read the data
-    # TODO: seperate the input into outside
+    # TODO: separate the input into outside
     # file_name = input("Upload the data set.(Enter the name of data set) ")
     print("-*-*- Data Uploaded -*-*-")
     file_name = 'Data_Regression.xlsx'
@@ -34,20 +36,20 @@ def main():
         if map_flag != 1:
             print("World Map Projection for A Specific Element Option:")
             num2option(OPTION)
-            is_map_projection = int(input("@Number: "))
+            is_map_projection = num_input()
             clear_output()
         if is_map_projection == 1:
             print("-*-*- Distribution in World Map -*-*-")
             print("Select one of the elements below to be projected in the World Map: ")
             show_data_columns(data.columns)
-            elm_num = int(input("@number: "))
+            elm_num = num_input()
             map_projected(data.iloc[:, elm_num-1], data)
             clear_output()
         else:
             break
         print("Do you want to continue to project a new element in the World Map?")
         num2option(OPTION)
-        map_flag = int(input("@Number: "))
+        map_flag = num_input()
         if map_flag == 1:
             clear_output()
             continue
@@ -77,7 +79,7 @@ def main():
     # imputing
     print("-*-*- Strategy for Missing Values -*-*-")
     num2option(IMPUTING_STRATEGY)
-    strategy_num = int(input("Which strategy do you want to apply?(Enter the Corresponding Number): "))
+    strategy_num = num_input("Which strategy do you want to apply?(Enter the Corresponding Number)\n@Number: ")
     data_processed_imputed_np = imputer(data_processed, IMPUTING_STRATEGY[strategy_num - 1])
     data_processed_imputed = np2pd(data_processed_imputed_np, data_processed.columns)
     basic_info(data_processed_imputed)
@@ -93,7 +95,7 @@ def main():
         if fe_flag != 1:
             print("Feature Engineering Option:")
             num2option(OPTION)
-            is_feature_engineering = int(input("@Number: "))
+            is_feature_engineering = num_input()
             clear_output()
         if is_feature_engineering == 1:
             print("-*-*- Feature Engineering -*-*-")
@@ -114,7 +116,7 @@ def main():
             break
         print("Do you want to continue to construct a new feature?")
         num2option(OPTION)
-        fe_flag = int(input("@Number: "))
+        fe_flag = num_input()
         if fe_flag == 1:
             clear_output()
             continue
@@ -126,7 +128,7 @@ def main():
 
     print("-*-*- Mode Options -*-*-")
     num2option(MODE_OPTION)
-    mode_num = int(input("@Number: "))
+    mode_num = num_input()
     clear_output()
     # divide X and y data set when it is supervised learning
     if mode_num == 1 or mode_num == 2:
@@ -162,13 +164,13 @@ def main():
     num2option(MODELS)
     all_models_num = len(MODELS) + 1
     print(str(all_models_num) + " - All models above to be trained")
-    model_num = int(input("Which model do you want to apply?(Enter the Corresponding Number): "))
+    model_num = num_input("Which model do you want to apply?(Enter the Corresponding Number):\n@Number: ")
     clear_output()
 
     # model trained selection
     if model_num != all_models_num:
         # run the designated model
-        model = MODELS[int(model_num) - 1]
+        model = MODELS[model_num - 1]
         run = Modes2Initiators[mode_num](model)
         run.activate(X, y)
     else:

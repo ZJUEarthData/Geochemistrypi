@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 
 
 def clear_output():
+    # TODO: Incite exception capture mechanism
     flag = input("(Press Enter key to move forward.)")
     if flag == '':
         os.system('clear')
