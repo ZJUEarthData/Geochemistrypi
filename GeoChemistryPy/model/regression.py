@@ -139,9 +139,11 @@ class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
                                            order=self.order)
         X_train_poly = poly_features.fit_transform(X_train)
         X_test_poly = poly_features.fit_transform(X_test)
-        # TODO: How to
-        self.__features_name = poly_features.get_feature_names()
-        # self.__features_name = poly_features.get_feature_names_out()
+        try:
+            # scikit-learn >= 1.0
+            self.__features_name = poly_features.get_feature_names_out()
+        except AttributeError:
+            self.__features_name = poly_features.get_feature_names()
         return X_train_poly, X_test_poly
 
     def _show_formula(self):

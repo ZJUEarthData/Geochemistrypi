@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 from matplotlib import pyplot as plt
-
+import logging
 
 def clear_output():
     # TODO: Incite exception capture mechanism
@@ -41,3 +41,17 @@ def save_data(df, df_name, path):
         # store the result in the directory "results"
         df.to_csv(os.path.join(path, "{}.csv".format(df_name)))
         print(f"Successfully store the results of {df_name} in '{df_name}.csv' in {path}.")
+
+
+def log(log_path, log_name):
+    # Create and configure logger
+    # LOG_FORMAT = "%(levelname)s %(asctime)s - %(message)s"
+    LOG_FORMAT = "%(asctime)s %(name)s %(levelname)s %(pathname)s %(message)s"
+    DATE_FORMAT = '%Y-%m-%d  %H:%M:%S %a '
+    logging.basicConfig(filename=os.path.join(log_path, log_name),
+                        level=logging.DEBUG,
+                        format=LOG_FORMAT,
+                        datefmt=DATE_FORMAT,
+                        filemode="w")
+    logger = logging.getLogger()
+    return logger

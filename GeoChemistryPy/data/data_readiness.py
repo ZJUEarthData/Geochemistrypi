@@ -19,7 +19,7 @@ def read_data(file_name):
         print(err)
         print("On Mac, input the following command in terminal: pip3 install openpyxl")
         raise
-    except:
+    except Exception:
         print(f"Unexpected error: {sys.exc_info()[0]} - check the last line of Traceback about the error information")
         raise
 

@@ -2,14 +2,14 @@
 import sys
 sys.path.append("..")
 from global_variable import OPTION, IMPUTING_STRATEGY, MODE_OPTION, REGRESSION_MODELS, CLASSIFICATION_MODELS, \
-    CLUSTERING_MODELS, DECOMPOSITION_MODELS
+    CLUSTERING_MODELS, DECOMPOSITION_MODELS, WORKING_PATH
 from data.data_readiness import read_data, show_data_columns, num2option, create_sub_data_set, basic_info, np2pd,\
     num_input
 from data.imputation import imputer
 from data.feature_engineering import FeatureConstructor
 from plot.statistic_plot import basic_statistic, correlation_plot, distribution_plot, is_null_value, probability_plot
 from plot.map_plot import map_projected
-from utils.base import clear_output
+from utils.base import clear_output, log
 from process.regress import RegressionModelSelection
 from process.classify import ClassificationModelSelection
 from process.cluster import ClusteringModelSelection
@@ -19,10 +19,13 @@ from process.decompose import DecompositionModelSelection
 def main():
     print("GeoChemistryPy - User Behaviour Testing Demo")
     print(".......")
+    logger = log(WORKING_PATH, "test.log")
+    logger.info("GeoChemistryPy - User Behaviour Testing Demo")
 
     # read the data
     # TODO: separate the input into outside
     # file_name = input("Upload the data set.(Enter the name of data set) ")
+    logger.debug("Data Uploaded")
     print("-*-*- Data Uploaded -*-*-")
     file_name = 'Data_Regression.xlsx'
     data = read_data(file_name)
@@ -31,6 +34,7 @@ def main():
 
 
     # world map projection for a specific element
+    logger.debug("World Map Projection")
     map_flag = 0
     while True:
         if map_flag != 1:
@@ -60,6 +64,7 @@ def main():
 
 
     # create the processing data set
+    logger.debug("Data Selected")
     print("-*-*- Data Selected -*-*-")
     show_data_columns(data.columns)
     data_processed = create_sub_data_set(data)
@@ -77,6 +82,7 @@ def main():
 
 
     # imputing
+    logger.debug("Imputation")
     print("-*-*- Strategy for Missing Values -*-*-")
     num2option(IMPUTING_STRATEGY)
     strategy_num = num_input("Which strategy do you want to apply?(Enter the Corresponding Number)\n@Number: ")
@@ -88,6 +94,7 @@ def main():
     clear_output()
 
     # feature engineering
+    logger.debug("Feature Engineering")
     print("The Selected Data Set:")
     show_data_columns(data_processed.columns)
     fe_flag = 0
@@ -126,11 +133,14 @@ def main():
             break
 
 
+    # mode selection
+    logger.debug("Mode Selection")
     print("-*-*- Mode Options -*-*-")
     num2option(MODE_OPTION)
     mode_num = num_input()
     clear_output()
     # divide X and y data set when it is supervised learning
+    logger.debug("Data Split")
     if mode_num == 1 or mode_num == 2:
         print("-*-*- Data Split -*-*-")
         print("Divide the processing data set into X (feature value) and Y (target value) respectively.")
@@ -155,6 +165,7 @@ def main():
 
 
     # model option for users
+    logger.debug("Model Selection")
     print("-*-*- Model Selection -*-*-:")
     Modes2Models = {1: REGRESSION_MODELS, 2: CLASSIFICATION_MODELS,
                     3: CLUSTERING_MODELS, 4: DECOMPOSITION_MODELS}
@@ -168,6 +179,7 @@ def main():
     clear_output()
 
     # model trained selection
+    logger.debug("Model Training")
     if model_num != all_models_num:
         # run the designated model
         model = MODELS[model_num - 1]
