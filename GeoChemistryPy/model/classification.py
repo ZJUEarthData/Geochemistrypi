@@ -3,7 +3,7 @@ import sys
 
 from sklearn.svm import SVC
 sys.path.append("..")
-from sklearn.metrics import classification_report, plot_confusion_matrix
+from sklearn.metrics import classification_report, plot_confusion_matrix, confusion_matrix
 from utils.base import save_fig
 from global_variable import MODEL_OUTPUT_IMAGE_PATH
 from sklearn.model_selection import train_test_split
@@ -52,7 +52,9 @@ class ClassificationWorkflowBase(object):
         print("-----* Model Score *-----")
         print(classification_report(y_test, y_test_prediction))
 
-    def confusion_matrix_plot(self, X_test, y_test):
+    def confusion_matrix_plot(self, X_test, y_test, y_test_prediction):
+        print("-----* Confusion Matrix *-----")
+        print(confusion_matrix(y_test, y_test_prediction))
         plot_confusion_matrix(self.model, X_test, y_test)
         save_fig(f"Confusion Matrix - {self.naming}", MODEL_OUTPUT_IMAGE_PATH)
 

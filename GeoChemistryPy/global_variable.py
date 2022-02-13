@@ -22,7 +22,9 @@ os.makedirs(DATASET_OUTPUT_PATH, exist_ok=True)
 os.makedirs(MAP_IMAGE_PATH, exist_ok=True)
 
 OPTION = ['Yes', 'No']
-
+DATA_OPTION = ['Own Data', 'Provided Testing Data']
+TEST_DATA_OPTION = ['Data For Regression', 'Data For Classification',
+                    'Data For Clustering', 'Data For Dimensional Reduction']
 MODE_OPTION = ['Regression', 'Classification', 'Clustering', 'Dimensional Reduction']
 
 REGRESSION_MODELS = ['Polynomial Regression', 'Xgboost']

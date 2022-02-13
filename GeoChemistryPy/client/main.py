@@ -2,12 +2,13 @@
 import sys
 sys.path.append("..")
 from global_variable import OPTION, IMPUTING_STRATEGY, MODE_OPTION, REGRESSION_MODELS, CLASSIFICATION_MODELS, \
-    CLUSTERING_MODELS, DECOMPOSITION_MODELS, WORKING_PATH
+    CLUSTERING_MODELS, DECOMPOSITION_MODELS, WORKING_PATH, DATA_OPTION, TEST_DATA_OPTION
 from data.data_readiness import read_data, show_data_columns, num2option, create_sub_data_set, basic_info, np2pd,\
     num_input
 from data.imputation import imputer
 from data.feature_engineering import FeatureConstructor
-from plot.statistic_plot import basic_statistic, correlation_plot, distribution_plot, is_null_value, probability_plot
+from plot.statistic_plot import basic_statistic, correlation_plot, distribution_plot, is_null_value, probability_plot, \
+    ratio_null_vs_filled, is_imputed
 from plot.map_plot import map_projected
 from utils.base import clear_output, log
 from process.regress import RegressionModelSelection
@@ -22,18 +23,32 @@ def main():
     logger = log(WORKING_PATH, "test.log")
     logger.info("GeoChemistryPy - User Behaviour Testing Demo")
 
-    # read the data
-    # TODO: separate the input into outside
-    # file_name = input("Upload the data set.(Enter the name of data set) ")
+    # Read the data
     logger.debug("Data Uploaded")
     print("-*-*- Data Uploaded -*-*-")
-    file_name = 'Data_Regression.xlsx'
-    data = read_data(file_name)
+    print("Data Option:")
+    num2option(DATA_OPTION)
+    is_own_data = num_input()
+    if is_own_data == 1:
+        file_name = input("Data Set Name (including the working path and suffix. e.g. /Users/Sany/data/aa.xlsx):")
+        data = read_data(file_name, path_completed=True)
+    else:
+        num2option(TEST_DATA_OPTION)
+        test_data_num = num_input()
+        if test_data_num == 1:
+            file_name = 'Data_Regression.xlsx'
+        elif test_data_num == 2:
+            file_name = 'Data_Classification.xlsx'
+        elif test_data_num == 3:
+            file_name = 'Data_Clustering.xlsx'
+        else:
+            file_name = 'Data_Decomposition.xlsx'
+        data = read_data(file_name)
     show_data_columns(data.columns)
     clear_output()
 
 
-    # world map projection for a specific element
+    # World map projection for a specific element
     logger.debug("World Map Projection")
     map_flag = 0
     while True:
@@ -63,7 +78,7 @@ def main():
             break
 
 
-    # create the processing data set
+    # Create the processing data set
     logger.debug("Data Selected")
     print("-*-*- Data Selected -*-*-")
     show_data_columns(data.columns)
@@ -78,10 +93,13 @@ def main():
     correlation_plot(data_processed.columns, data_processed)
     distribution_plot(data_processed.columns, data_processed)
     is_null_value(data_processed)
+    ratio_null_vs_filled(data_processed)
+    imputed_flag = is_imputed(data_processed)
     clear_output()
 
 
-    # imputing
+    # Imputing
+    # TODO: if no null value, skip it
     logger.debug("Imputation")
     print("-*-*- Strategy for Missing Values -*-*-")
     num2option(IMPUTING_STRATEGY)
@@ -93,7 +111,9 @@ def main():
     probability_plot(data_processed.columns, data_processed, data_processed_imputed)
     clear_output()
 
-    # feature engineering
+
+    # Feature engineering
+    # FixME: fix the logic
     logger.debug("Feature Engineering")
     print("The Selected Data Set:")
     show_data_columns(data_processed.columns)
@@ -133,7 +153,7 @@ def main():
             break
 
 
-    # mode selection
+    # Mode selection
     logger.debug("Mode Selection")
     print("-*-*- Mode Options -*-*-")
     num2option(MODE_OPTION)
@@ -164,7 +184,7 @@ def main():
         y = None
 
 
-    # model option for users
+    # Model option for users
     logger.debug("Model Selection")
     print("-*-*- Model Selection -*-*-:")
     Modes2Models = {1: REGRESSION_MODELS, 2: CLASSIFICATION_MODELS,
@@ -178,7 +198,7 @@ def main():
     model_num = num_input("Which model do you want to apply?(Enter the Corresponding Number):\n@Number: ")
     clear_output()
 
-    # model trained selection
+    # Model trained selection
     logger.debug("Model Training")
     if model_num != all_models_num:
         # run the designated model

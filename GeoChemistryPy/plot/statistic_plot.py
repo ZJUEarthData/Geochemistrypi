@@ -20,6 +20,20 @@ def is_null_value(data):
     print(data.isnull().any())
     print("--" * 10)
 
+def is_imputed(data):
+    flag = data.isnull().any().any()
+    if flag:
+        print("Tip: you'd better use imputation techniques to deal with the missing values.")
+    else:
+        print("Tip: you don't need to deal with the missing values, we'll just pass this part!")
+    return flag
+
+
+def ratio_null_vs_filled(data):
+    print('The ratio of the null values in each column:')
+    print("--" * 10)
+    print(data.isnull().mean().sort_values(ascending=False))
+    print("--" * 10)
 
 def correlation_plot(col, df):
     """A heatmap describing the correlation between the required columns

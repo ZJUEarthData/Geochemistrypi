@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import sys
 sys.path.append("..")
+from data.data_readiness import num_input
 from model.clustering import *
 
 
@@ -13,7 +14,8 @@ class ClusteringModelSelection(object):
     def activate(self, X, y=None):
         # TODO: For KMeans, provide n_cluster option
         if self.model == "KMeans":
-            self.clt_workflow = KMeansClustering()
+            cluster_num = num_input("Designate the clustering number in advance:\n@Number: ")
+            self.clt_workflow = KMeansClustering(n_clusters=cluster_num)
 
         # common components for every clustering algorithm
         self.clt_workflow.show_info()

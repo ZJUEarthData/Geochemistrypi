@@ -11,7 +11,7 @@ class DecompositionModelSelection(object):
         self.dcp_workflow = DecompositionWorkflowBase()
 
     def activate(self, X, y=None):
-        if self.model == "Principal Component Analysis'":
+        if self.model == "Principal Component Analysis":
             self.dcp_workflow = PrincipalComponentAnalysis()
 
         # common components for every decomposition algorithm

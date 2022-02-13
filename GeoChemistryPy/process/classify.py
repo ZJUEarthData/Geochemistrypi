@@ -22,7 +22,7 @@ class ClassificationModelSelection(object):
         self.clf_workflow.fit(X_train, y_train)
         y_test_prediction = self.clf_workflow.predict(X_test)
         self.clf_workflow.score(y_test, y_test_prediction)
-        self.clf_workflow.confusion_matrix_plot(X_test, y_test)
+        self.clf_workflow.confusion_matrix_plot(X_test, y_test, y_test_prediction)
 
         # special components of different algorithms
         self.clf_workflow.special_components()

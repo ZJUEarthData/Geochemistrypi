@@ -10,14 +10,22 @@ from utils.exceptions import InvalidFileError
 
 
 # TODO: restrict the input data format
-def read_data(file_name):
-    data_path = os.path.join(DATASET_PATH, file_name)
+def read_data(file_name, path_completed=False):
+    if path_completed:
+        data_path = file_name
+    else:
+        data_path = os.path.join(DATASET_PATH, file_name)
     try:
         data = pd.read_excel(data_path, engine="openpyxl")
         return data
     except ImportError as err:
         print(err)
-        print("On Mac, input the following command in terminal: pip3 install openpyxl")
+        print("Warning: on Mac, input the following command in terminal: pip3 install openpyxl")
+        raise
+    except FileNotFoundError as err:
+        print(err)
+        print("Warning: please put your own data in the right place and input the completed data set name including"
+              " the stored path and suffix")
         raise
     except Exception:
         print(f"Unexpected error: {sys.exc_info()[0]} - check the last line of Traceback about the error information")
