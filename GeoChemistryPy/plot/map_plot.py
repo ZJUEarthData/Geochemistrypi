@@ -14,6 +14,11 @@ logging.captureWarnings(True)
 
 # TODO: check how to download basemap
 def map_projected(col, df):
+    """
+
+    :param col: pd.Series, one selected column from the data sheet
+    :param df: pd.DataFrame, the data sheet
+    """
     Lat = df['LATITUDE']
     Lon = df['LONGITUDE']
     # 读取并处理经纬度

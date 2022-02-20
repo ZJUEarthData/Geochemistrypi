@@ -90,8 +90,8 @@ class RegressionWorkflowBase(object):
             print('-------------')
         return scores
 
-    # TODO: How to preven overfitting
-    def is_overfit():
+    # TODO: How to prevent overfitting
+    def is_overfitting():
         pass
 
     # TODO: Do Hyperparameter Searching

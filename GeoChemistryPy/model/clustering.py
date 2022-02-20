@@ -5,14 +5,14 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_samples, silhouette_score
 import matplotlib as mpl
 from matplotlib.ticker import FixedLocator, FixedFormatter
-from utils.base import *
+from utils.base import save_fig, save_data
 from global_variable import DATASET_OUTPUT_PATH, MODEL_OUTPUT_IMAGE_PATH
 
 
 class ClusteringWorkflowBase(object):
 
     name = None
-    # TODO: build virtualization in 2D and 3D graph
+    # TODO: build virtualization in 2D, 3D graph and silhouette plot
     common_function = ['Cluster Centers',
                        'Cluster Labels',
                        'Virtualization in 2D graph',
@@ -34,6 +34,7 @@ class ClusteringWorkflowBase(object):
         self.naming = None
 
     def fit(self, X, y=None):
+        # keep y to be in consistent with the framework
         self.X = X
         self.model.fit(X)
 
@@ -46,6 +47,15 @@ class ClusteringWorkflowBase(object):
         self.X['clustering result'] = self.model.labels_
         print(self.X)
         save_data(self.X, f"{self.naming}", DATASET_OUTPUT_PATH)
+
+    def plot_silhouette_diagram(self):
+        pass
+
+    def plot_2d_graph(self):
+        pass
+
+    def plot_3d_graph(self):
+        pass
 
     # FIXME: code silhouette diagram
     # def plot_silhouette_diagram(self, show_xlabels=True,

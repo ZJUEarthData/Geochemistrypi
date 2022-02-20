@@ -12,7 +12,6 @@ class ClusteringModelSelection(object):
         self.clt_workflow = ClusteringWorkflowBase()
 
     def activate(self, X, y=None):
-        # TODO: For KMeans, provide n_cluster option
         if self.model == "KMeans":
             cluster_num = num_input("Designate the clustering number in advance:\n@Number: ")
             self.clt_workflow = KMeansClustering(n_clusters=cluster_num)
