@@ -10,3 +10,23 @@ The layout of the GeochemistryPy Version 1.0:
 
 The whole package is under construction and the documentation is progressively evolving. 
 
+### Team Leaders
++ Can He (Sany)  
+Email: hecan@mail2.sysu.edu.cn  
+  
+
++ Anzhou Li (Andrian)  
+Email: anzhouli@zju.edu.cn
+
+### Team Members
++ Yang Lyv
++ Shengxin Wang
++ Qiuhao Zhao
++ Jianhao Sun
++ Wenyu Zhao
++ Xunxin Liu
+
+## Join Us
+Do you want to be a part of our team and make your own contribution to this program?  
+Refer to: https://person.zju.edu.cn/zhangzhou#0  
+Contact: zhangzhou333@zju.edu.cn
