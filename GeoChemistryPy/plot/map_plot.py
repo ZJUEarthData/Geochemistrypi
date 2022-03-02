@@ -14,13 +14,11 @@ import geopandas
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
-# TODO: check how to download basemap
 def map_projected(col, df):
     """
 
     :param col: pd.Series, one selected column from the data sheet
     :param df: pd.DataFrame, the data sheet
-    
     """
     
     # Create point geometries
