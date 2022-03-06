@@ -5,7 +5,7 @@ sys.path.append("..")
 from global_variable import *
 from utils.base import save_fig
 from sklearn.base import clone, BaseEstimator, TransformerMixin
-from sklearn.model_selection import train_test_split, cross_validate
+from sklearn.model_selection import train_test_split, cross_validate, GridSearchCV
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, explained_variance_score
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
@@ -90,13 +90,21 @@ class RegressionWorkflowBase(object):
             print('-------------')
         return scores
 
-    # TODO: How to prevent overfitting
-    def is_overfitting():
-        pass
-
     # TODO: Do Hyperparameter Searching
-    def search_best_hyper_parameter():
-        pass
+    def search_best_hyper_parameter(self, param_grid, X_train, y_train, cv_num=10):
+        print("-----* search_best_hyper_parameter *-----")
+        grid_search = GridSearchCV(self.model, param_grid, cv=5,
+                          scoring=('neg_root_mean_squared_error',
+                                             'neg_mean_absolute_error',
+                                             'r2',
+                                             'explained_variance'),
+                                       cv=cv_num)
+        grid_search.fit(X_train, y_train)
+        print("-----* best_hyper_parameter *-----")
+        print(grid_search.best_params_)
+        print("-----* best_model_details *-----")
+        print(grid_search.best_estimator_)
+ 
 
 
 class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
