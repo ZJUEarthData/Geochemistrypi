@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys
 sys.path.append("..")
-#返回上一级目录
 import numpy as np
 import pandas as pd
 import math
@@ -22,16 +21,16 @@ def map_projected(col, df):
     """
     
     # Create point geometries
-    geometry = geopandas.points_from_xy(df['LONTITUDE'], df['LATITUDE'])
-    geo_df = geopandas.GeoDataFrame(df[[ col.name, 'LONTITUDE', 'LATITUDE']], geometry=geometry)
+    geometry = geopandas.points_from_xy(df['LONGITUDE'], df['LATITUDE'])
+    geo_df = geopandas.GeoDataFrame(df[[col.name, 'LONGITUDE', 'LATITUDE']], geometry=geometry)
     world = geopandas.read_file(geopandas.datasets.get_path('naturalearth_lowres'))
    
     # Make figure
     fig, ax = plt.subplots(figsize=(24,18))
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.1)
-    world.plot(ax=ax, alpha=0.4,color = 'grey',edgecolor='black')
-    geo_df.plot(col.name, ax=ax,s=20,cmap='gist_heat_r',cax=cax,legend=True) 
+    world.plot(ax=ax, alpha=0.4, color='grey', edgecolor='black')
+    geo_df.plot(col.name, ax=ax, s=20, cmap='gist_heat_r', cax=cax, legend=True)
     plt.title('colorbar')
-    save_fig(f"map_projection - {col.name}", MAP_IMAGE_PATH)
+    save_fig(f"map projection - {col.name}", MAP_IMAGE_PATH)
     

@@ -13,6 +13,7 @@ DATASET_OUTPUT_PATH = os.path.join(WORKING_PATH, "output")
 MODEL_OUTPUT_IMAGE_PATH = os.path.join(WORKING_PATH, "images", "model_output")
 STATISTIC_IMAGE_PATH = os.path.join(WORKING_PATH, "images", "statistic")
 MAP_IMAGE_PATH = os.path.join(WORKING_PATH, "images", "map")
+GEO_IMAGE_PATH = os.path.join(WORKING_PATH, "images", "geochemistry")
 
 # create the directories if they didn't exist yet
 os.makedirs(DATASET_PATH, exist_ok=True)
@@ -20,6 +21,7 @@ os.makedirs(MODEL_OUTPUT_IMAGE_PATH, exist_ok=True)
 os.makedirs(STATISTIC_IMAGE_PATH, exist_ok=True)
 os.makedirs(DATASET_OUTPUT_PATH, exist_ok=True)
 os.makedirs(MAP_IMAGE_PATH, exist_ok=True)
+os.makedirs(GEO_IMAGE_PATH, exist_ok=True)
 
 OPTION = ['Yes', 'No']
 DATA_OPTION = ['Own Data', 'Provided Testing Data']

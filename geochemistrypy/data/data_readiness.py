@@ -27,6 +27,11 @@ def read_data(file_name, path_completed=False):
         print("Warning: please put your own data in the right place and input the completed data set name including"
               " the stored path and suffix")
         raise
+    except openpyxl.utils.exceptions.InvalidFileException as err:
+        print(err)
+        print("Warning: please put your own data in the right place and input the completed data set name including"
+              " the stored path and suffix")
+        raise
     except Exception:
         print(f"Unexpected error: {sys.exc_info()[0]} - check the last line of Traceback about the error information")
         raise

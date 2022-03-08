@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""GeoChemistryPy Wrapper interface for Scikit-Learn"""
+"""Geochemistrypy Wrapper interface for Scikit-Learn"""
 import sys, os
 sys.path.append("..")
 from global_variable import *
