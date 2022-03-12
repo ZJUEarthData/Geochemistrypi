@@ -5,7 +5,7 @@ import openpyxl.utils.exceptions
 sys.path.append("..")
 from global_variable import *
 import pandas as pd
-from typing import Optional, List, Any
+from typing import Optional, List
 from utils.exceptions import InvalidFileError
 
 
