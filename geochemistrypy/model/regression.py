@@ -5,7 +5,7 @@ sys.path.append("..")
 from global_variable import *
 from utils.base import save_fig
 from sklearn.base import clone, BaseEstimator, TransformerMixin
-from sklearn.model_selection import train_test_split, cross_validate, GridSearchCV
+from sklearn.model_selection import train_test_split, cross_validate, GridSearchCV, RandomizedSearchCV
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, explained_variance_score
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
@@ -90,20 +90,29 @@ class RegressionWorkflowBase(object):
             print('-------------')
         return scores
 
-    # TODO: Do Hyperparameter Searching
-    def search_best_hyper_parameter(self, param_grid, X_train, y_train, cv_num=10):
-        print("-----* search_best_hyper_parameter *-----")
-        grid_search = GridSearchCV(self.model, param_grid, cv=5,
+    # Do Hyperparameter Searching, the default is using grid_search
+    def search_best_hyper_parameter(self, param_space, X_train, y_train, method="grid_search", cv_num=10, n_iters=300, n_job=-1):
+        print("-----* search_best_hyper_parameter using %s *-----"%method)
+        if method == "grid_search":
+            hyperparameter_search = GridSearchCV(self.model, param_grid=param_space, cv=cv_num,
                           scoring=('neg_root_mean_squared_error',
                                              'neg_mean_absolute_error',
                                              'r2',
                                              'explained_variance'),
-                                       cv=cv_num)
-        grid_search.fit(X_train, y_train)
+                                                 n_iter=n_iters, n_jobs=n_job)
+        elif method == "RandomizedSearchCV":
+            hyperparameter_search = RandomizedSearchCV(self.model, param_distributions=param_space, cv=cv_num,
+                          scoring=('neg_root_mean_squared_error',
+                                             'neg_mean_absolute_error',
+                                             'r2',
+                                             'explained_variance'),
+                                                       n_iter=n_iters, n_jobs=n_job)
+        
+        hyperparameter_search.fit(X_train, y_train)
         print("-----* best_hyper_parameter *-----")
-        print(grid_search.best_params_)
+        print(hyperparameter_search.best_params_)
         print("-----* best_model_details *-----")
-        print(grid_search.best_estimator_)
+        print(hyperparameter_search.best_estimator_)
  
 
 
