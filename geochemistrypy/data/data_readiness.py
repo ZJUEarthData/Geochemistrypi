@@ -5,7 +5,7 @@ import openpyxl.utils.exceptions
 sys.path.append("..")
 from global_variable import *
 import pandas as pd
-from typing import Optional, List, Any
+from typing import Optional, List
 from utils.exceptions import InvalidFileError
 
 
@@ -23,6 +23,11 @@ def read_data(file_name, path_completed=False):
         print("Warning: on Mac, input the following command in terminal: pip3 install openpyxl")
         raise
     except FileNotFoundError as err:
+        print(err)
+        print("Warning: please put your own data in the right place and input the completed data set name including"
+              " the stored path and suffix")
+        raise
+    except openpyxl.utils.exceptions.InvalidFileException as err:
         print(err)
         print("Warning: please put your own data in the right place and input the completed data set name including"
               " the stored path and suffix")

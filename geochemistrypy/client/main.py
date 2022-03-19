@@ -18,10 +18,10 @@ from process.decompose import DecompositionModelSelection
 
 
 def main():
-    print("GeoChemistryPy - User Behaviour Testing Demo")
+    print("Geochemistrypy - User Behaviour Testing Demo")
     print(".......")
     logger = log(WORKING_PATH, "test.log")
-    logger.info("GeoChemistryPy - User Behaviour Testing Demo")
+    logger.info("Geochemistrypy - User Behaviour Testing Demo")
 
     # Read the data
     logger.debug("Data Uploaded")
@@ -30,7 +30,7 @@ def main():
     num2option(DATA_OPTION)
     is_own_data = num_input()
     if is_own_data == 1:
-        file_name = input("Data Set Name (including the working path and suffix. e.g. /Users/Sany/data/aa.xlsx):")
+        file_name = input("Data Set Name (including the stored path and suffix. e.g. /Users/Sany/data/aa.xlsx): ")
         data = read_data(file_name, path_completed=True)
     else:
         num2option(TEST_DATA_OPTION)
@@ -110,6 +110,9 @@ def main():
     basic_statistic(data_processed_imputed)
     probability_plot(data_processed.columns, data_processed, data_processed_imputed)
     clear_output()
+
+
+    # TODO(sany hecan@mail2.sysu.edu.cn): Use Hypothesis Test
 
 
     # Feature engineering
