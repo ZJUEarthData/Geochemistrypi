@@ -9,18 +9,24 @@ import numpy as np
 import statsmodels.api as sm
 
 
-def basic_statistic(data):
+def basic_statistic(data: pd.DataFrame) -> None:
     print("Some basic statistic information of the designated data set:")
     print(data.describe())
 
 
-def is_null_value(data):
+def is_null_value(data: pd.DataFrame) -> None:
     print("Check which column has null values:")
     print("--" * 10)
     print(data.isnull().any())
     print("--" * 10)
 
-def is_imputed(data):
+
+def is_imputed(data: pd.DataFrame) -> bool:
+    """Check whether the data set has null value or not
+
+    :param data: pd.DataFrame, the data set
+    :return: bool, True if it has null value
+    """
     flag = data.isnull().any().any()
     if flag:
         print("Tip: you'd better use imputation techniques to deal with the missing values.")
@@ -29,31 +35,32 @@ def is_imputed(data):
     return flag
 
 
-def ratio_null_vs_filled(data):
+def ratio_null_vs_filled(data: pd.DataFrame) -> None:
     print('The ratio of the null values in each column:')
     print("--" * 10)
     print(data.isnull().mean().sort_values(ascending=False))
     print("--" * 10)
 
-def correlation_plot(col, df):
+
+def correlation_plot(col: pd.Index, df: pd.DataFrame) -> None:
     """A heatmap describing the correlation between the required columns
 
-    :param col: A list of columns that need to plot
-    :param df: The dataframe
+    :param col: pd.Index, a list of columns that need to plot
+    :param df: pd.DataFrame, the dataframe
     """
     plot_df = df[col]
     plot_df_cor = plot_df.corr()
     plt.figure(figsize=(20, 20))
-    sns.heatmap(plot_df_cor, cmap = 'coolwarm', annot=True, linewidths=.5)
+    sns.heatmap(plot_df_cor, cmap='coolwarm', annot=True, linewidths=.5)
     print("Successfully calculate the pair-wise correlation coefficient among the selected columns.")
     save_fig("correlation_plot", STATISTIC_IMAGE_PATH)
 
 
-def distribution_plot(col, df):
-    """the histogram containing the respective distribution subplots of the required columns
+def distribution_plot(col: pd.Index, df: pd.DataFrame) -> None:
+    """The histogram containing the respective distribution subplots of the required columns
 
-    :param col: A list of columns that need to plot
-    :param df: The dataframe
+    :param col: pd.Index, a list of columns that need to plot
+    :param df: pd.DataFrame, the dataframe
     """
     n = int(np.sqrt(len(col))) + 1
     plt.figure(figsize=(n*2, n*2))
@@ -62,12 +69,12 @@ def distribution_plot(col, df):
     save_fig("distribution_histogram", STATISTIC_IMAGE_PATH)
 
 
-def probability_plot(col, df_origin, df_impute):
+def probability_plot(col: pd.Index, df_origin: pd.DataFrame, df_impute: pd.DataFrame) -> None:
     """A large graph containing the respective probability plots (origin vs. impute) of the required columns
 
-    :param col: A list of columns that need to plot
-    :param df_origin: The original dataframe
-    :param df_impute: The dataframe after missing value imputation
+    :param col: pd.Index, a list of columns that need to plot
+    :param df_origin: pd.DataFrame, the original dataframe
+    :param df_impute: pd.DataFrame, the dataframe after missing value imputation
     """
     r, c = len(col) // 4 + 1, 4
     fig = plt.figure(figsize=(c*8, r*8))

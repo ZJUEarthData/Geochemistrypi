@@ -51,8 +51,10 @@ def main():
     # World map projection for a specific element
     logger.debug("World Map Projection")
     map_flag = 0
+    is_map_projection = 0
     while True:
         if map_flag != 1:
+            # option selection
             print("World Map Projection for A Specific Element Option:")
             num2option(OPTION)
             is_map_projection = num_input()
@@ -64,17 +66,17 @@ def main():
             elm_num = num_input()
             map_projected(data.iloc[:, elm_num-1], data)
             clear_output()
+            print("Do you want to continue to project a new element in the World Map?")
+            num2option(OPTION)
+            map_flag = num_input()
+            if map_flag == 1:
+                clear_output()
+                continue
+            else:
+                print('Exit Map Projection Mode.')
+                clear_output()
+                break
         else:
-            break
-        print("Do you want to continue to project a new element in the World Map?")
-        num2option(OPTION)
-        map_flag = num_input()
-        if map_flag == 1:
-            clear_output()
-            continue
-        else:
-            print('Exit Map Projection Mode.')
-            clear_output()
             break
 
 
@@ -99,7 +101,7 @@ def main():
 
 
     # Imputing
-    # TODO: if no null value, skip it
+    # TODO(sany hecan@mail2.sysu.edu.cn): if no null value, skip it
     logger.debug("Imputation")
     print("-*-*- Strategy for Missing Values -*-*-")
     num2option(IMPUTING_STRATEGY)
@@ -116,11 +118,12 @@ def main():
 
 
     # Feature engineering
-    # FixME: fix the logic
+    # FIXME(sany hecan@mail2.sysu.edu.cn): fix the logic
     logger.debug("Feature Engineering")
     print("The Selected Data Set:")
     show_data_columns(data_processed.columns)
     fe_flag = 0
+    is_feature_engineering = 0
     while True:
         if fe_flag != 1:
             print("Feature Engineering Option:")
@@ -142,17 +145,17 @@ def main():
             basic_info(data_processed_imputed)
             basic_statistic(data_processed_imputed)
             clear_output()
+            print("Do you want to continue to construct a new feature?")
+            num2option(OPTION)
+            fe_flag = num_input()
+            if fe_flag == 1:
+                clear_output()
+                continue
+            else:
+                print('Exit Feature Engineering Mode.')
+                clear_output()
+                break
         else:
-            break
-        print("Do you want to continue to construct a new feature?")
-        num2option(OPTION)
-        fe_flag = num_input()
-        if fe_flag == 1:
-            clear_output()
-            continue
-        else:
-            print('Exit Feature Engineering Mode.')
-            clear_output()
             break
 
 

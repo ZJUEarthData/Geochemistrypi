@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys
 sys.path.append("..")
-import numpy as np
-import pandas as pd
-import math
 import matplotlib.pyplot as plt
 from utils.base import save_fig
 from global_variable import MAP_IMAGE_PATH

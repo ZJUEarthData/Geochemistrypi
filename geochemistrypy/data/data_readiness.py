@@ -91,7 +91,7 @@ def create_sub_data_set(data):
     return sub_data_set
 
 
-def num2option(items: List = None) -> None:
+def num2option(items: List[str]) -> None:
     """pattern show: num - item
 
     :param items: list, a series of items need to be enumerated
