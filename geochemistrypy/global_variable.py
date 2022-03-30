@@ -29,6 +29,7 @@ TEST_DATA_OPTION = ['Data For Regression', 'Data For Classification',
                     'Data For Clustering', 'Data For Dimensional Reduction']
 MODE_OPTION = ['Regression', 'Classification', 'Clustering', 'Dimensional Reduction']
 
+# the model provided to use
 REGRESSION_MODELS = ['Polynomial Regression', 'Xgboost']
 CLASSIFICATION_MODELS = ['Support Vector Machine']
 CLUSTERING_MODELS = ['KMeans']
