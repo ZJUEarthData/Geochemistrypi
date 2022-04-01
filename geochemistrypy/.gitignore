@@ -13,3 +13,7 @@ __pycache__
 # Microsoft Office
 .~*.xlsx
 ~*.xlsx
+
+# Python Virtual Environment
+venv_geo/*
+venv_geo

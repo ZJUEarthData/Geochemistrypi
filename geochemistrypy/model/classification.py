@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
-import sys
-
+# import sys
 from sklearn.svm import SVC
-sys.path.append("..")
 from sklearn.metrics import classification_report, plot_confusion_matrix, confusion_matrix
 from utils.base import save_fig
 from global_variable import MODEL_OUTPUT_IMAGE_PATH
 from sklearn.model_selection import train_test_split
+# sys.path.append("..")
 
 
 class ClassificationWorkflowBase(object):
@@ -25,7 +24,7 @@ class ClassificationWorkflowBase(object):
         for i in range(len(function)):
             print("+ ", function[i])
 
-    def __init__(self, random_state: int= 42) -> None:
+    def __init__(self, random_state: int = 42) -> None:
         self.random_state = random_state
         self.model = None
         self.naming = None
@@ -118,4 +117,3 @@ class SVMClassification(ClassificationWorkflowBase):
 
     def special_components(self):
         pass
-

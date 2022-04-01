@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import string
-from global_variable import *
 import operator
 import gc
 import pandas

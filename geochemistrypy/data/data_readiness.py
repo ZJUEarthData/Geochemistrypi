@@ -1,12 +1,11 @@
-import sys
-
+# import sys
+import os
 import openpyxl.utils.exceptions
-
-sys.path.append("..")
-from global_variable import *
+from global_variable import DATASET_PATH
 import pandas as pd
 from typing import Optional, List
-from utils.exceptions import InvalidFileError
+# from utils.exceptions import InvalidFileError
+# sys.path.append("..")
 
 
 # TODO: restrict the input data format
@@ -115,4 +114,3 @@ def num_input(slogan: Optional[str] = "@Number: ") -> int:
 
 def np2pd(array, columns_name):
     return pd.DataFrame(array, columns=columns_name)
-

@@ -36,6 +36,3 @@ CLUSTERING_MODELS = ['KMeans']
 DECOMPOSITION_MODELS = ['Principal Component Analysis']
 
 IMPUTING_STRATEGY = ['mean', 'median', 'most_frequent']
-
-
-

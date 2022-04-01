@@ -1,12 +1,12 @@
-import sys
-sys.path.append("..")
+# import sys
 from utils.base import save_fig
-from global_variable import *
+from global_variable import STATISTIC_IMAGE_PATH
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import statsmodels.api as sm
+# sys.path.append("..")
 
 
 def basic_statistic(data: pd.DataFrame) -> None:

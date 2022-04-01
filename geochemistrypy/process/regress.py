@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-import sys
-sys.path.append("..")
+# import sys
 from model.regression import PolynomialRegression, XgboostRegression, RegressionWorkflowBase
 from data.data_readiness import num_input
+# sys.path.append("..")
+
 
 class RegressionModelSelection(object):
 

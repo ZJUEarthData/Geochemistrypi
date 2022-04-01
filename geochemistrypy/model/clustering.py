@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
-import numpy as np
 from sklearn import metrics
 from sklearn.cluster import KMeans
-from sklearn.metrics import silhouette_samples, silhouette_score
-import matplotlib as mpl
-from matplotlib.ticker import FixedLocator, FixedFormatter
-from utils.base import save_fig, save_data
-from global_variable import DATASET_OUTPUT_PATH, MODEL_OUTPUT_IMAGE_PATH
+# from sklearn.metrics import silhouette_samples, silhouette_score
+# import matplotlib as mpl
+# from matplotlib.ticker import FixedLocator, FixedFormatter
+from utils.base import save_data
+from global_variable import DATASET_OUTPUT_PATH
 
 
 class ClusteringWorkflowBase(object):

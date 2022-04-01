@@ -1,11 +1,10 @@
-import sys, os
-
+# import sys
 from global_variable import GEO_IMAGE_PATH
-
-sys.path.append("..")
 from utils.base import save_fig
 import numpy as np
 import matplotlib.pyplot as plt
+# sys.path.append("..")
+
 
 # TODO(Sany hecan@mail2.sysu.edu.cn): test and incorporate it into the current framework
 def elements_ratio_map(col1, col2, df):

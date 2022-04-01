@@ -3,6 +3,7 @@ import os
 from matplotlib import pyplot as plt
 import logging
 
+
 def clear_output():
     # TODO(sany hecan@mail2.sysu.edu.cn): Incite exception capture mechanism
     flag = input("(Press Enter key to move forward.)")

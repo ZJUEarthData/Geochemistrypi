@@ -22,7 +22,7 @@ def test_once(df_orig: pd.DataFrame, df_impute: pd.DataFrame, test: str = 'wilco
             try:
                 stat, pval = wilcoxon(df_orig[c], df_impute[c])
                 pvals = np.append(pvals, pval)
-            except:
+            except Exception:
                 pvals = np.append(pvals, 0)
 
     if test == 'kruskal':

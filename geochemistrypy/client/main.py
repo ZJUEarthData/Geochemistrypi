@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
-import sys
-sys.path.append("..")
-from global_variable import OPTION, IMPUTING_STRATEGY, MODE_OPTION, REGRESSION_MODELS, CLASSIFICATION_MODELS, \
-    CLUSTERING_MODELS, DECOMPOSITION_MODELS, WORKING_PATH, DATA_OPTION, TEST_DATA_OPTION
-from data.data_readiness import read_data, show_data_columns, num2option, create_sub_data_set, basic_info, np2pd,\
+import tmp
+from global_variable import OPTION, IMPUTING_STRATEGY, MODE_OPTION, REGRESSION_MODELS,\
+    CLASSIFICATION_MODELS, CLUSTERING_MODELS, DECOMPOSITION_MODELS, WORKING_PATH, DATA_OPTION, TEST_DATA_OPTION
+from data.data_readiness import read_data, show_data_columns, num2option, create_sub_data_set, basic_info, np2pd, \
     num_input
 from data.imputation import imputer
 from data.feature_engineering import FeatureConstructor
 from plot.statistic_plot import basic_statistic, correlation_plot, distribution_plot, is_null_value, probability_plot, \
-    ratio_null_vs_filled, is_imputed
+    ratio_null_vs_filled
+# from plot.statistic_plot import is_imputed
 from plot.map_plot import map_projected
 from utils.base import clear_output, log
 from process.regress import RegressionModelSelection
@@ -47,7 +47,6 @@ def main():
     show_data_columns(data.columns)
     clear_output()
 
-
     # World map projection for a specific element
     logger.debug("World Map Projection")
     map_flag = 0
@@ -64,7 +63,7 @@ def main():
             print("Select one of the elements below to be projected in the World Map: ")
             show_data_columns(data.columns)
             elm_num = num_input()
-            map_projected(data.iloc[:, elm_num-1], data)
+            map_projected(data.iloc[:, elm_num - 1], data)
             clear_output()
             print("Do you want to continue to project a new element in the World Map?")
             num2option(OPTION)
@@ -78,7 +77,6 @@ def main():
                 break
         else:
             break
-
 
     # Create the processing data set
     logger.debug("Data Selected")
@@ -96,9 +94,9 @@ def main():
     distribution_plot(data_processed.columns, data_processed)
     is_null_value(data_processed)
     ratio_null_vs_filled(data_processed)
-    imputed_flag = is_imputed(data_processed)
+    # TODO(sany hecan@mail2.sysu.edu.cn): this variable used for imputing
+    # imputed_flag = is_imputed(data_processed)
     clear_output()
-
 
     # Imputing
     # TODO(sany hecan@mail2.sysu.edu.cn): if no null value, skip it
@@ -113,9 +111,7 @@ def main():
     probability_plot(data_processed.columns, data_processed, data_processed_imputed)
     clear_output()
 
-
     # TODO(sany hecan@mail2.sysu.edu.cn): Use Hypothesis Test
-
 
     # Feature engineering
     # FIXME(sany hecan@mail2.sysu.edu.cn): fix the logic
@@ -158,7 +154,6 @@ def main():
         else:
             break
 
-
     # Mode selection
     logger.debug("Mode Selection")
     print("-*-*- Mode Options -*-*-")
@@ -189,7 +184,6 @@ def main():
         X = data_processed_imputed
         y = None
 
-
     # Model option for users
     logger.debug("Model Selection")
     print("-*-*- Model Selection -*-*-:")
@@ -219,5 +213,5 @@ def main():
 
 
 if __name__ == "__main__":
+    tmp.tmp()
     main()
-    

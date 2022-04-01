@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-import sys
-sys.path.append("..")
+# import sys
 from data.data_readiness import num_input
-from model.clustering import *
+from model.clustering import KMeansClustering, ClusteringWorkflowBase
+
+# sys.path.append("..")
 
 
 class ClusteringModelSelection(object):
@@ -25,6 +26,3 @@ class ClusteringModelSelection(object):
 
         # special components of different algorithms
         self.clt_workflow.special_components()
-
-
-
