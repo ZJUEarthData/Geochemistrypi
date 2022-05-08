@@ -1,11 +1,10 @@
-# import sys
+import sys
 import os
 import openpyxl.utils.exceptions
 from global_variable import DATASET_PATH
 import pandas as pd
 from typing import Optional, List
 # from utils.exceptions import InvalidFileError
-# sys.path.append("..")
 
 
 # TODO: restrict the input data format
