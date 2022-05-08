@@ -2,9 +2,9 @@
 
 GeochemistryPy is **a Python framework** for data-driven geochemistry discovery. It provides an extendable tool and one-stop shop for **geochemical data analysis**.
 
-The goal of the GeochemistryPy is to create user-friendly and extensible products of high automation for the full cycle of geochemistry research.
+The goal of the Geochemistry Py is to create user-friendly and extensible products of high automation for the full cycle of geochemistry research.
 
-The layout of the GeochemistryPy Version 1.0.0:
+The layout of the Geochemistry Py Version 1.0.0:
 
 <img src="./docs/GeochemistryPy-Activity%20Diagram_v1.png" />
 
