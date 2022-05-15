@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-import sys
-sys.path.append("..")
-from model.classification import *
+# import sys
+from model.classification import ClassificationWorkflowBase, SVMClassification
+
+# sys.path.append("..")
 
 
 class ClassificationModelSelection(object):

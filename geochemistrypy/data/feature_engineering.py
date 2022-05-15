@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import string
-from global_variable import *
 import operator
 import gc
 import pandas
@@ -73,12 +72,12 @@ class FeatureConstructor(object):
     def input_expression(self):
         expression = input("Build up new feature with the combination of 4 basic arithmatic operator.\n"
                            "Input example 1: a * b - c \n"
-                           "--> Step 1: Multiply a column with b column; \n "
+                           "--> Step 1: Multiply a column with b column; \n"
                            "--> Step 2: Subtract c from the result of Step 1; \n"
                            "Input example 2: (d + 5 * f) / g \n"
-                           "--> Step 1: multiply 5 with f \n"
+                           "--> Step 1: multiply 5 with f; \n"
                            "--> Step 2: Plus d column with the result of Step 1;\n"
-                           "--> Step 3: Divide the result of Step 1 by g \n"
+                           "--> Step 3: Divide the result of Step 1 by g; \n"
                            "@input: ")
         self._infix_expr = list(expression.replace(' ', ''))
 

@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-import sys
-sys.path.append("..")
-from model.decomposition import *
+# import sys
+from model.decomposition import DecompositionWorkflowBase, PrincipalComponentAnalysis
+
+# sys.path.append("..")
 
 
 class DecompositionModelSelection(object):

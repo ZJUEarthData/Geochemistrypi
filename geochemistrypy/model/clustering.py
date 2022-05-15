@@ -1,17 +1,11 @@
 # -*- coding: utf-8 -*-
-import numpy as np
-
 from sklearn import metrics
 from sklearn.cluster import KMeans
-from sklearn.metrics import silhouette_samples, silhouette_score
-
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-from matplotlib.ticker import FixedLocator, FixedFormatter
-
-from utils.base import save_fig, save_data
-from global_variable import DATASET_OUTPUT_PATH, MODEL_OUTPUT_IMAGE_PATH
+# from sklearn.metrics import silhouette_samples, silhouette_score
+# import matplotlib as mpl
+# from matplotlib.ticker import FixedLocator, FixedFormatter
+from utils.base import save_data
+from global_variable import DATASET_OUTPUT_PATH
 
 
 class ClusteringWorkflowBase(object):
@@ -53,147 +47,8 @@ class ClusteringWorkflowBase(object):
         print(self.X)
         save_data(self.X, f"{self.naming}", DATASET_OUTPUT_PATH)
 
-    def plot_silhouette_diagram(self, show_xlabels=True,
-                                show_ylabels=True, show_title=True):
-        """Plot silhouette diagram
-
-        :param show_xlabels: If true, add abscissa information
-        :param show_ylabels: If true, add ordinate information
-        :param show_title: If true, add the figure name
-        """
-
-        plt.figure(1)
-        y_pred = self.model.labels_
-        silhouette_coefficients = silhouette_samples(self.X, y_pred)
-        silhouette_average = silhouette_score(self.X, y_pred)
-
-        padding = len(self.X) // 30
-        pos = padding
-        ticks = []
-        for i in range(self.model.n_clusters):
-            coeffs = silhouette_coefficients[y_pred == i]
-            coeffs.sort()
-
-            color = mpl.cm.Spectral(i / self.model.n_clusters)
-            plt.fill_betweenx(np.arange(pos, pos + len(coeffs)), 0, coeffs,
-                              facecolor=color, edgecolor=color, alpha=0.7)
-            ticks.append(pos + len(coeffs) // 2)
-            pos += len(coeffs) + padding
-
-        plt.axvline(x=silhouette_average, color="red", linestyle="--")
-
-        plt.gca().yaxis.set_major_locator(FixedLocator(ticks))
-        plt.gca().yaxis.set_major_formatter(FixedFormatter(range(self.model.n_clusters)))
-
-        if show_xlabels:
-            plt.gca().set_xticks([-0.1, 0, 0.2, 0.4, 0.6, 0.8, 1])
-            plt.xlabel("Silhouette Coefficient")
-        else:
-            plt.tick_params(labelbottom=False)
-        if show_ylabels:
-            plt.ylabel("Cluster")
-        if show_title:
-            plt.title("init:{}  n_cluster:{}".format(self.model.init, self.model.n_clusters))
-        print("Successfully graph the Silhouette Diagram.")
-        plt.show()
-        save_fig(f"Silhouette Plot - {self.naming}", MODEL_OUTPUT_IMAGE_PATH)
-
-    #
-    #
-    def plot_silhouette_diagram_test(self, n_clusters:int = 0, show_xlabels=True,show_ylabels=True, show_title=True):
-        # TODO(Samson 1057266013@qq.com): The current version is not mature.Please not use it;
-
-        #The current version is not mature
-        # Create a subplot with 1 row and 2 columns
-        # TODO(Samson 1057266013@qq.com): Maybe remain a one subplot
-        fig, (ax1, ax2) = plt.subplots(1, 2)
-        # Set the figure size in inches.
-        fig.set_size_inches(18, 7)
-
-        # The 1st subplot is the silhouette plot
-        # The silhouette coefficient can range from -1, 1 but in this example all
-        # lie within [-0.1, 1]
-        ax1.set_xlim([-0.1, 1])
-        # The (n_clusters+1)*10 is for inserting blank space between silhouette
-        # plots of individual clusters, to demarcate them clearly.
-
-        #I hope the type of self.X = <class 'pandas.core.frame.DataFrame'>
-        len_X = len(self.X)
-        ax1.set_ylim([0, len_X + (n_clusters + 1) * 10])
-
-        #For example:cluster_labels = [4 4 1 ... 0 0 0]
-        cluster_labels = self.X['clustering result']
-
-        # The silhouette_score gives the average value for all the samples.
-        # This gives a perspective into the density and separation of the formed
-        # clusters
-        silhouette_avg = silhouette_score(self.X, cluster_labels)
-        print("For n_clusters =", n_clusters, "The average silhouette_score is :", silhouette_avg)
-
-        # Compute the silhouette scores for each sample
-        sample_silhouette_values = silhouette_samples(self.X, cluster_labels)
-
-        y_lower = 10
-        for i in range(n_clusters):
-            # Aggregate the silhouette scores for samples belonging to
-            # cluster i, and sort them
-            ith_cluster_silhouette_values = \
-                sample_silhouette_values[cluster_labels == i]
-
-            ith_cluster_silhouette_values.sort()
-
-            size_cluster_i = ith_cluster_silhouette_values.shape[0]
-            y_upper = y_lower + size_cluster_i
-
-            color = cm.nipy_spectral(float(i) / n_clusters)
-            ax1.fill_betweenx(np.arange(y_lower, y_upper),
-                              0, ith_cluster_silhouette_values,
-                              facecolor=color, edgecolor=color, alpha=0.7)
-
-            # Label the silhouette plots with their cluster numbers at the middle
-            ax1.text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
-
-            # Compute the new y_lower for next plot
-            y_lower = y_upper + 10  # 10 for the 0 samples
-
-
-        ax1.set_title("The silhouette plot for the various clusters.")
-        ax1.set_xlabel("The silhouette coefficient values")
-        ax1.set_ylabel("Cluster label")
-
-        # The vertical line for average silhouette score of all the values
-        ax1.axvline(x=silhouette_avg, color="red", linestyle="--")
-
-        ax1.set_yticks([])  # Clear the yaxis labels / ticks
-        ax1.set_xticks([-0.1, 0, 0.2, 0.4, 0.6, 0.8, 1])
-
-        # 2nd Plot showing the actual clusters formed
-        colors = cm.nipy_spectral(cluster_labels.astype(float) / n_clusters)
-        ax2.scatter(self.X.iloc[:, [0]], self.X.iloc[:, [1]], marker='.', s=30, lw=0, alpha=0.7,
-                    c=colors, edgecolor='k')
-
-        # Labeling the clusters
-        centers = self.model.cluster_centers_
-        # Draw white circles at cluster centers
-        ax2.scatter(centers[:, 0], centers[:, 1], marker='o',
-                    c="white", alpha=1, s=200, edgecolor='k')
-
-        for i, c in enumerate(centers):
-            ax2.scatter(c[0], c[1], marker='$%d$' % i, alpha=1,
-                        s=50, edgecolor='k')
-
-        ax2.set_title("The visualization of the clustered data.")
-        ax2.set_xlabel("Feature space for the 1st feature")
-        ax2.set_ylabel("Feature space for the 2nd feature")
-
-        plt.suptitle(("Silhouette analysis for KMeans clustering on sample data "
-                      "with n_clusters = %d" % n_clusters),
-                     fontsize=14, fontweight='bold')
-
-        print("Successfully graph the Silhouette Diagram.")
-        plt.show()
-    #
-    #
+    def plot_silhouette_diagram(self):
+        pass
 
     def plot_2d_graph(self):
         pass
@@ -202,7 +57,50 @@ class ClusteringWorkflowBase(object):
         pass
 
     # FIXME: code silhouette diagram
-
+    # def plot_silhouette_diagram(self, show_xlabels=True,
+    #                             show_ylabels=True, show_title=True):
+    #     """Plot silhouette diagram
+    #
+    #     :param show_xlabels: If true, add abscissa information
+    #     :param show_ylabels: If true, add ordinate information
+    #     :param show_title: If true, add the figure name
+    #     """
+    #
+    #     plt.figure(1)
+    #     y_pred = self.model.labels_
+    #     silhouette_coefficients = silhouette_samples(self.X, y_pred)
+    #     silhouette_average = silhouette_score(self.X, y_pred)
+    #
+    #     padding = len(self.X) // 30
+    #     pos = padding
+    #     ticks = []
+    #     for i in range(self.model.n_clusters):
+    #         coeffs = silhouette_coefficients[y_pred == i]
+    #         coeffs.sort()
+    #
+    #         color = mpl.cm.Spectral(i / self.model.n_clusters)
+    #         plt.fill_betweenx(np.arange(pos, pos + len(coeffs)), 0, coeffs,
+    #                           facecolor=color, edgecolor=color, alpha=0.7)
+    #         ticks.append(pos + len(coeffs) // 2)
+    #         pos += len(coeffs) + padding
+    #
+    #     plt.axvline(x=silhouette_average, color="red", linestyle="--")
+    #
+    #     plt.gca().yaxis.set_major_locator(FixedLocator(ticks))
+    #     plt.gca().yaxis.set_major_formatter(FixedFormatter(range(self.model.n_clusters)))
+    #
+    #     if show_xlabels:
+    #         plt.gca().set_xticks([-0.1, 0, 0.2, 0.4, 0.6, 0.8, 1])
+    #         plt.xlabel("Silhouette Coefficient")
+    #     else:
+    #         plt.tick_params(labelbottom=False)
+    #     if show_ylabels:
+    #         plt.ylabel("Cluster")
+    #     if show_title:
+    #         plt.title("init:{}  n_cluster:{}".format(self.model.init, self.model.n_clusters))
+    #     print("Successfully graph the Silhouette Diagram.")
+    #     plt.show()
+    #     save_fig(f"Silhouette Plot - {self.naming}", MODEL_OUTPUT_IMAGE_PATH)
 
 
 class KMeansClustering(ClusteringWorkflowBase):
@@ -251,4 +149,3 @@ class KMeansClustering(ClusteringWorkflowBase):
 
     def special_components(self):
         self._get_scores()
-

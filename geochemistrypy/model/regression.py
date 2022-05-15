@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Geochemistrypy Wrapper interface for Scikit-Learn"""
-import sys, os
-sys.path.append("..")
-from global_variable import *
+# import sys
+from global_variable import MODEL_OUTPUT_IMAGE_PATH
 from utils.base import save_fig
-from sklearn.base import clone, BaseEstimator, TransformerMixin
+from sklearn.base import BaseEstimator
 from sklearn.model_selection import train_test_split, cross_validate
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, explained_variance_score
 from sklearn.linear_model import LinearRegression
@@ -14,6 +12,7 @@ from typing import Sequence
 import matplotlib.pyplot as plt
 import numpy as np
 import xgboost
+# sys.path.append("..")
 
 
 class RegressionWorkflowBase(object):
@@ -33,7 +32,7 @@ class RegressionWorkflowBase(object):
         for i in range(len(function)):
             print("+ ", function[i])
 
-    def __init__(self, random_state: int= 42) -> None:
+    def __init__(self, random_state: int = 42) -> None:
         self.random_state = random_state
         self.model = None
 
@@ -79,11 +78,11 @@ class RegressionWorkflowBase(object):
         print("-----* Cross Validation *-----")
         # self.model comes from the subclass of every regression algorithm
         scores = cross_validate(self.model, X_train, y_train,
-                                    scoring=('neg_root_mean_squared_error',
-                                             'neg_mean_absolute_error',
-                                             'r2',
-                                             'explained_variance'),
-                                    cv=cv_num)
+                                scoring=('neg_root_mean_squared_error',
+                                         'neg_mean_absolute_error',
+                                         'r2',
+                                         'explained_variance'),
+                                cv=cv_num)
         for key, values in scores.items():
             print("*", key.upper(), "*")
             self._display_cross_validation_scores(values)
@@ -224,7 +223,7 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
         eval_metric: Optional[Union[str, List[str], Callable]] = None,
         early_stopping_rounds: Optional[int] = None,
         **kwargs: Any
-        ) -> None:
+    ) -> None:
 
         super().__init__(random_state=42)
         self.n_estimators = n_estimators
@@ -262,37 +261,37 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
             self.kwargs = kwargs
 
         self.model = xgboost.XGBRegressor(
-            n_estimators = self.n_estimators,
-            objective = self.objective,
-            max_depth = self.max_depth,
-            learning_rate = self.learning_rate,
-            verbosity = self.verbosity,
-            booster = self.booster,
-            tree_method = self.tree_method,
-            gamma = self.gamma,
-            min_child_weight = self.min_child_weight,
-            max_delta_step = self.max_delta_step,
-            subsample = self.subsample,
-            colsample_bytree = self.colsample_bytree,
-            colsample_bylevel = self.colsample_bylevel,
-            colsample_bynode = self.colsample_bynode,
-            reg_alpha = self.reg_alpha,
-            reg_lambda = self.reg_lambda,
-            scale_pos_weight = self.scale_pos_weight,
-            base_score = self.base_score,
-            missing = self.missing,
-            num_parallel_tree = self.num_parallel_tree,
-            random_state = self.random_state,
-            n_jobs = self.n_jobs,
-            monotone_constraints = self.monotone_constraints,
-            interaction_constraints = self.interaction_constraints,
-            importance_type = self.importance_type,
-            gpu_id = self.gpu_id,
-            validate_parameters = self.validate_parameters,
-            predictor = self.predictor,
-            enable_categorical = self.enable_categorical,
-            eval_metric = self.eval_metric,
-            early_stopping_rounds = self.early_stopping_rounds)
+            n_estimators=self.n_estimators,
+            objective=self.objective,
+            max_depth=self.max_depth,
+            learning_rate=self.learning_rate,
+            verbosity=self.verbosity,
+            booster=self.booster,
+            tree_method=self.tree_method,
+            gamma=self.gamma,
+            min_child_weight=self.min_child_weight,
+            max_delta_step=self.max_delta_step,
+            subsample=self.subsample,
+            colsample_bytree=self.colsample_bytree,
+            colsample_bylevel=self.colsample_bylevel,
+            colsample_bynode=self.colsample_bynode,
+            reg_alpha=self.reg_alpha,
+            reg_lambda=self.reg_lambda,
+            scale_pos_weight=self.scale_pos_weight,
+            base_score=self.base_score,
+            missing=self.missing,
+            num_parallel_tree=self.num_parallel_tree,
+            random_state=self.random_state,
+            n_jobs=self.n_jobs,
+            monotone_constraints=self.monotone_constraints,
+            interaction_constraints=self.interaction_constraints,
+            importance_type=self.importance_type,
+            gpu_id=self.gpu_id,
+            validate_parameters=self.validate_parameters,
+            predictor=self.predictor,
+            enable_categorical=self.enable_categorical,
+            eval_metric=self.eval_metric,
+            early_stopping_rounds=self.early_stopping_rounds)
 
     def _feature_importance(self):
         print("-----* Feature Importance *-----")
@@ -317,4 +316,3 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
 
 class SVM(RegressionWorkflowBase, BaseEstimator):
     pass
-

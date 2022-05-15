@@ -1,12 +1,10 @@
 import sys
-
+import os
 import openpyxl.utils.exceptions
-
-sys.path.append("..")
-from global_variable import *
+from global_variable import DATASET_PATH
 import pandas as pd
 from typing import Optional, List
-from utils.exceptions import InvalidFileError
+# from utils.exceptions import InvalidFileError
 
 
 # TODO: restrict the input data format
@@ -91,7 +89,7 @@ def create_sub_data_set(data):
     return sub_data_set
 
 
-def num2option(items: List = None) -> None:
+def num2option(items: List[str]) -> None:
     """pattern show: num - item
 
     :param items: list, a series of items need to be enumerated
@@ -115,4 +113,3 @@ def num_input(slogan: Optional[str] = "@Number: ") -> int:
 
 def np2pd(array, columns_name):
     return pd.DataFrame(array, columns=columns_name)
-
