@@ -61,7 +61,7 @@ class ClassificationWorkflowBase(object):
 class SVMClassification(ClassificationWorkflowBase):
 
     name = "Support Vector Machine"
-    special_function = []
+    special_function = ['plot_svc_funtion']
 
     def __init__(
             self,
@@ -143,10 +143,7 @@ class SVMClassification(ClassificationWorkflowBase):
         save_fig('plot_svc', MODEL_OUTPUT_IMAGE_PATH)
         plt.show()
 
-
-
-
-
+        
     def special_components(self):
 
         self.plot_svc_function(self.plot_ready())
