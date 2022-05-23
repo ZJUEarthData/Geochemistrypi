@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="2a9b62ae-b85d-4bf7-9592-7f354de661be" name="Default Changelist" comment="add plot_svc_function" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="PUSH_TAGS">
+      <GitPushTagMode>
+        <option name="argument" value="--tags" />
+        <option name="title" value="All" />
+      </GitPushTagMode>
+    </option>
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="main" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectId" id="29YgStQVELaNLhEbS6mKJgGGSTa" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="node.js.detected.package.eslint" value="true" />
+    <property name="node.js.detected.package.tslint" value="true" />
+    <property name="node.js.path.for.package.eslint" value="project" />
+    <property name="node.js.path.for.package.tslint" value="project" />
+    <property name="node.js.selected.package.eslint" value="(autodetect)" />
+    <property name="node.js.selected.package.tslint" value="(autodetect)" />
+    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
+  </component>
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="2a9b62ae-b85d-4bf7-9592-7f354de661be" name="Default Changelist" comment="" />
+      <created>1653295435567</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1653295435567</updated>
+      <workItem from="1653295438992" duration="4275000" />
+    </task>
+    <task id="LOCAL-00001" summary="add plot_svc_function">
+      <created>1653297682787</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1653297682787</updated>
+    </task>
+    <task id="LOCAL-00002" summary="add plot_svc_function">
+      <created>1653298593612</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1653298593612</updated>
+    </task>
+    <task id="LOCAL-00003" summary="add plot_svc_function">
+      <created>1653299398142</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1653299398143</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="2" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="add plot_svc_function" />
+    <option name="LAST_COMMIT_MESSAGE" value="add plot_svc_function" />
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="239" y="77" key="SettingsEditor" timestamp="1653296351197">
+      <screen x="0" y="0" width="1474" height="864" />
+    </state>
+    <state x="239" y="77" key="SettingsEditor/0.0.1474.864@0.0.1474.864" timestamp="1653296351197" />
+    <state x="292" y="157" key="Vcs.Push.Dialog.v2" timestamp="1653299562780">
+      <screen x="0" y="0" width="1474" height="864" />
+    </state>
+    <state x="292" y="157" key="Vcs.Push.Dialog.v2/0.0.1474.864@0.0.1474.864" timestamp="1653299562780" />
+    <state x="412" y="219" key="git4idea.merge.GitPullDialog" timestamp="1653296559350">
+      <screen x="0" y="0" width="1474" height="864" />
+    </state>
+    <state x="412" y="219" key="git4idea.merge.GitPullDialog/0.0.1474.864@0.0.1474.864" timestamp="1653296559350" />
+    <state x="498" y="332" key="git4idea.remote.GitConfigureRemotesDialog" timestamp="1653298269768">
+      <screen x="0" y="0" width="1474" height="864" />
+    </state>
+    <state x="498" y="332" key="git4idea.remote.GitConfigureRemotesDialog/0.0.1474.864@0.0.1474.864" timestamp="1653298269768" />
+  </component>
+</project>
