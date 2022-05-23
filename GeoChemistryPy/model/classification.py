@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys
-
+import matplotlib.pyplot as plt
 from sklearn.svm import SVC
 sys.path.append("..")
 from sklearn.metrics import classification_report, plot_confusion_matrix, confusion_matrix
@@ -140,7 +140,7 @@ class SVMClassification(ClassificationWorkflowBase):
         ax.set_xlim(xlim)
         ax.set_ylim(ylim)
         save_fig('plot_svc', MODEL_OUTPUT_IMAGE_PATH)
-        plt.show()
+
 
     def special_components(self):
         self.plot_svc_function(self.plot_ready())
