@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 # import sys
+import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.svm import SVC
 from sklearn.metrics import classification_report, plot_confusion_matrix, confusion_matrix
