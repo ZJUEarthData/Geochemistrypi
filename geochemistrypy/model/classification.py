@@ -63,7 +63,7 @@ class ClassificationWorkflowBase(object):
 class SVMClassification(ClassificationWorkflowBase):
 
     name = "Support Vector Machine"
-    special_function = ['plot_svc_funtion']
+    special_function = ['two-dimensional decision boundary diagram']
 
     def __init__(
             self,
@@ -118,6 +118,9 @@ class SVMClassification(ClassificationWorkflowBase):
         self.naming = SVMClassification.name
 
     def plot_ready(self):
+        """
+        Data processing preparation before drawing
+        """
         self.X = ClassificationWorkflowBase().X
         self.y = ClassificationWorkflowBase().y
         y = np.array(self.y)
@@ -129,7 +132,11 @@ class SVMClassification(ClassificationWorkflowBase):
 
 
     def plot_svc_function(self,data, ax=None):
-
+        """
+        :param data: Data needed to draw two-dimensional decision boundary diagrams
+        :param ax:Graph object
+        """
+        print("-----* Plot SVC Function *-----")
         if ax is None:
             ax = plt.gca()
         xlim = ax.get_xlim()
@@ -147,5 +154,4 @@ class SVMClassification(ClassificationWorkflowBase):
 
         
     def special_components(self):
-
         self.plot_svc_function(self.plot_ready())
