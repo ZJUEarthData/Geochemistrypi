@@ -133,6 +133,7 @@ class SVMClassification(ClassificationWorkflowBase):
 
     def plot_svc_function(self,data, ax=None):
         """
+        Implement visualization of SVC
         :param data: Data needed to draw two-dimensional decision boundary diagrams
         :param ax:Graph object
         """
