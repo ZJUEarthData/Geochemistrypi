@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 # import sys
+import numpy as np
+import matplotlib.pyplot as plt
 from sklearn.svm import SVC
 from sklearn.metrics import classification_report, plot_confusion_matrix, confusion_matrix
 from utils.base import save_fig
@@ -61,7 +63,7 @@ class ClassificationWorkflowBase(object):
 class SVMClassification(ClassificationWorkflowBase):
 
     name = "Support Vector Machine"
-    special_function = []
+    special_function = ['two-dimensional decision boundary diagram']
 
     def __init__(
             self,
@@ -115,5 +117,42 @@ class SVMClassification(ClassificationWorkflowBase):
                          random_state=self.random_state)
         self.naming = SVMClassification.name
 
+    def plot_ready(self):
+        """
+        Data processing preparation before drawing
+        """
+        self.X = ClassificationWorkflowBase().X
+        self.y = ClassificationWorkflowBase().y
+        y = np.array(self.y)
+        X = np.array(self.X)
+        y = np.squeeze(y)
+        clf = self.model.fit(X,y)
+        plt.scatter(X[:,0], X[:,1], c=y,edgecolors='k', s=50, cmap="rainbow")
+        return clf
+
+
+    def plot_svc_function(self,data, ax=None):
+        """
+        Implement visualization of SVC
+        :param data: Data needed to draw two-dimensional decision boundary diagrams
+        :param ax:Graph object
+        """
+        print("-----* Plot SVC Function *-----")
+        if ax is None:
+            ax = plt.gca()
+        xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
+        x = np.linspace(xlim[0], xlim[1], 30)
+        y = np.linspace(ylim[0], ylim[1], 30)
+        Y, X = np.meshgrid(y, x)
+        xy = np.vstack([X.ravel(), Y.ravel()]).T
+        P = data.decision_function(xy).reshape(X.shape)
+        ax.contour(X, Y, P, colors="k", levels=[-1, 0, 1], alpha=0.5, linestyles=["--", "-", "--"])
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
+        save_fig('plot_svc', MODEL_OUTPUT_IMAGE_PATH)
+        
+
+        
     def special_components(self):
-        pass
+        self.plot_svc_function(self.plot_ready())
