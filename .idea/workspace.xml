@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
   <component name="BranchesTreeState">
     <expand>
       <path>
@@ -21,7 +24,14 @@
   <component name="ChangeListManager">
     <list default="true" id="2a9b62ae-b85d-4bf7-9592-7f354de661be" name="Default Changelist" comment="add plot_svc_function">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/geochemistrypy/client/images/model_output/Confusion Matrix - Support Vector Machine.png" beforeDir="false" afterPath="$PROJECT_DIR$/geochemistrypy/client/images/model_output/Confusion Matrix - Support Vector Machine.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/geochemistrypy/client/images/statistic/correlation_plot.png" beforeDir="false" afterPath="$PROJECT_DIR$/geochemistrypy/client/images/statistic/correlation_plot.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/geochemistrypy/client/images/statistic/distribution_histogram.png" beforeDir="false" afterPath="$PROJECT_DIR$/geochemistrypy/client/images/statistic/distribution_histogram.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/geochemistrypy/client/images/statistic/probability_plot.png" beforeDir="false" afterPath="$PROJECT_DIR$/geochemistrypy/client/images/statistic/probability_plot.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/geochemistrypy/client/test.log" beforeDir="false" afterPath="$PROJECT_DIR$/geochemistrypy/client/test.log" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/geochemistrypy/model/classification.py" beforeDir="false" afterPath="$PROJECT_DIR$/geochemistrypy/model/classification.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/geochemistrypy/model/regression.py" beforeDir="false" afterPath="$PROJECT_DIR$/geochemistrypy/model/regression.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/geochemistrypy/utils/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/geochemistrypy/utils/__init__.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -49,8 +59,13 @@
       </set>
     </option>
   </component>
+  <component name="HighlightingSettingsPerFile">
+    <setting file="file:///usr/local/Cellar/python@3.9/3.9.7_1/Frameworks/Python.framework/Versions/3.9/lib/python3.9/tokenize.py" root0="FORCE_HIGHLIGHTING" />
+  </component>
   <component name="ProjectId" id="29YgStQVELaNLhEbS6mKJgGGSTa" />
-  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
@@ -66,7 +81,7 @@
     <property name="node.js.path.for.package.tslint" value="project" />
     <property name="node.js.selected.package.eslint" value="(autodetect)" />
     <property name="node.js.selected.package.tslint" value="(autodetect)" />
-    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
+    <property name="settings.editor.selected.configurable" value="configurable.group.project" />
   </component>
   <component name="RunManager">
     <configuration name="classification" type="PythonConfigurationType" factoryName="Python" singleton="false" temporary="true" nameIsGenerated="true">
@@ -149,55 +164,18 @@
         </entry>
       </map>
     </option>
-    <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="add plot_svc_function" />
     <option name="LAST_COMMIT_MESSAGE" value="add plot_svc_function" />
   </component>
-  <component name="WindowStateProjectService">
-    <state x="192" y="87" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1653451007142">
-      <screen x="0" y="0" width="1474" height="864" />
-    </state>
-    <state x="192" y="87" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.0.1474.864@0.0.1474.864" timestamp="1653451007142" />
-    <state width="1431" height="224" key="GridCell.Tab.0.bottom" timestamp="1653451011244">
-      <screen x="0" y="0" width="1474" height="864" />
-    </state>
-    <state width="1431" height="224" key="GridCell.Tab.0.bottom/0.0.1474.864@0.0.1474.864" timestamp="1653451011244" />
-    <state width="1431" height="224" key="GridCell.Tab.0.center" timestamp="1653451011244">
-      <screen x="0" y="0" width="1474" height="864" />
-    </state>
-    <state width="1431" height="224" key="GridCell.Tab.0.center/0.0.1474.864@0.0.1474.864" timestamp="1653451011244" />
-    <state width="1431" height="224" key="GridCell.Tab.0.left" timestamp="1653451011244">
-      <screen x="0" y="0" width="1474" height="864" />
-    </state>
-    <state width="1431" height="224" key="GridCell.Tab.0.left/0.0.1474.864@0.0.1474.864" timestamp="1653451011244" />
-    <state width="1431" height="224" key="GridCell.Tab.0.right" timestamp="1653451011244">
-      <screen x="0" y="0" width="1474" height="864" />
-    </state>
-    <state width="1431" height="224" key="GridCell.Tab.0.right/0.0.1474.864@0.0.1474.864" timestamp="1653451011244" />
-    <state x="239" y="77" key="SettingsEditor" timestamp="1653296351197">
-      <screen x="0" y="0" width="1474" height="864" />
-    </state>
-    <state x="239" y="77" key="SettingsEditor/0.0.1474.864@0.0.1474.864" timestamp="1653296351197" />
-    <state x="292" y="157" key="Vcs.Push.Dialog.v2" timestamp="1653299562780">
-      <screen x="0" y="0" width="1474" height="864" />
-    </state>
-    <state x="292" y="157" key="Vcs.Push.Dialog.v2/0.0.1474.864@0.0.1474.864" timestamp="1653299562780" />
-    <state x="532" y="345" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2" timestamp="1653300121799">
-      <screen x="0" y="0" width="1474" height="864" />
-    </state>
-    <state x="532" y="345" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2/0.0.1474.864@0.0.1474.864" timestamp="1653300121799" />
-    <state x="412" y="219" key="git4idea.merge.GitPullDialog" timestamp="1653296559350">
-      <screen x="0" y="0" width="1474" height="864" />
-    </state>
-    <state x="412" y="219" key="git4idea.merge.GitPullDialog/0.0.1474.864@0.0.1474.864" timestamp="1653296559350" />
-    <state x="498" y="332" key="git4idea.remote.GitConfigureRemotesDialog" timestamp="1653298269768">
-      <screen x="0" y="0" width="1474" height="864" />
-    </state>
-    <state x="498" y="332" key="git4idea.remote.GitConfigureRemotesDialog/0.0.1474.864@0.0.1474.864" timestamp="1653298269768" />
-  </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/geochemistrypy$trial1.coverage" NAME="trial1 Coverage Results" MODIFIED="1639653120938" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$APPLICATION_CONFIG_DIR$/scratches" />
+    <SUITE FILE_PATH="coverage/geochemistrypy$main.coverage" NAME="main Coverage Results" MODIFIED="1644741887335" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/GeoChemistryPy/client" />
+    <SUITE FILE_PATH="coverage/geochemistrypy$geochemistrypy.coverage" NAME="geochemistrypy Coverage Results" MODIFIED="1647655465688" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/.." />
+    <SUITE FILE_PATH="coverage/geochemistrypy$trial.coverage" NAME="trial Coverage Results" MODIFIED="1646718200049" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$APPLICATION_CONFIG_DIR$/scratches" />
+    <SUITE FILE_PATH="coverage/geochemistrypy$typehint.coverage" NAME="typehint Coverage Results" MODIFIED="1646923813879" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$APPLICATION_CONFIG_DIR$/scratches" />
+    <SUITE FILE_PATH="coverage/geochemistrypy$scratch_5.coverage" NAME="scratch_5 Coverage Results" MODIFIED="1642760484778" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$APPLICATION_CONFIG_DIR$/scratches" />
     <SUITE FILE_PATH="coverage/geochemistrypy$classification.coverage" NAME="classification Coverage Results" MODIFIED="1653450991538" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/geochemistrypy/model" />
   </component>
 </project>
