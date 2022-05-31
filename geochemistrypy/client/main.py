@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
-import tmp
-from global_variable import OPTION, IMPUTING_STRATEGY, MODE_OPTION, REGRESSION_MODELS,\
-    CLASSIFICATION_MODELS, CLUSTERING_MODELS, DECOMPOSITION_MODELS, WORKING_PATH, DATA_OPTION, TEST_DATA_OPTION
+# import tmp
+import os
+from global_variable import OPTION, SECTION, IMPUTING_STRATEGY, MODE_OPTION, REGRESSION_MODELS,\
+    CLASSIFICATION_MODELS, CLUSTERING_MODELS, DECOMPOSITION_MODELS, WORKING_PATH, DATA_OPTION,\
+    TEST_DATA_OPTION, MODEL_OUTPUT_IMAGE_PATH, STATISTIC_IMAGE_PATH, DATASET_OUTPUT_PATH,\
+    GEO_IMAGE_PATH, MAP_IMAGE_PATH, DATASET_PATH
 from data.data_readiness import read_data, show_data_columns, num2option, create_sub_data_set, basic_info, np2pd, \
-    num_input
+    num_input, limit_num_input
 from data.imputation import imputer
 from data.feature_engineering import FeatureConstructor
 from plot.statistic_plot import basic_statistic, correlation_plot, distribution_plot, is_null_value, probability_plot, \
@@ -17,9 +20,17 @@ from process.cluster import ClusteringModelSelection
 from process.decompose import DecompositionModelSelection
 
 
+os.makedirs(DATASET_PATH, exist_ok=True)
+os.makedirs(MODEL_OUTPUT_IMAGE_PATH, exist_ok=True)
+os.makedirs(STATISTIC_IMAGE_PATH, exist_ok=True)
+os.makedirs(DATASET_OUTPUT_PATH, exist_ok=True)
+os.makedirs(MAP_IMAGE_PATH, exist_ok=True)
+os.makedirs(GEO_IMAGE_PATH, exist_ok=True)
+
+
 def main():
     print("Geochemistrypy - User Behaviour Testing Demo")
-    print(".......")
+    print("....... Initializing .......")
     logger = log(WORKING_PATH, "test.log")
     logger.info("Geochemistrypy - User Behaviour Testing Demo")
 
@@ -28,20 +39,23 @@ def main():
     print("-*-*- Data Uploaded -*-*-")
     print("Data Option:")
     num2option(DATA_OPTION)
-    is_own_data = num_input()
+    # TODO: abstract this function
+    is_own_data = limit_num_input(DATA_OPTION, SECTION[0], num_input)
     if is_own_data == 1:
         file_name = input("Data Set Name (including the stored path and suffix. e.g. /Users/Sany/data/aa.xlsx): ")
         data = read_data(file_name, path_completed=True)
     else:
+        print("Testing Data Option:")
         num2option(TEST_DATA_OPTION)
-        test_data_num = num_input()
+        test_data_num = limit_num_input(TEST_DATA_OPTION, SECTION[0], num_input)
+        file_name = ''
         if test_data_num == 1:
             file_name = 'Data_Regression.xlsx'
         elif test_data_num == 2:
             file_name = 'Data_Classification.xlsx'
         elif test_data_num == 3:
             file_name = 'Data_Clustering.xlsx'
-        else:
+        elif test_data_num == 4:
             file_name = 'Data_Decomposition.xlsx'
         data = read_data(file_name)
     show_data_columns(data.columns)
@@ -56,18 +70,18 @@ def main():
             # option selection
             print("World Map Projection for A Specific Element Option:")
             num2option(OPTION)
-            is_map_projection = num_input()
+            is_map_projection = num_input(SECTION[3])
             clear_output()
         if is_map_projection == 1:
             print("-*-*- Distribution in World Map -*-*-")
             print("Select one of the elements below to be projected in the World Map: ")
             show_data_columns(data.columns)
-            elm_num = num_input()
+            elm_num = num_input(SECTION[3])
             map_projected(data.iloc[:, elm_num - 1], data)
             clear_output()
             print("Do you want to continue to project a new element in the World Map?")
             num2option(OPTION)
-            map_flag = num_input()
+            map_flag = num_input(SECTION[3])
             if map_flag == 1:
                 clear_output()
                 continue
@@ -103,7 +117,8 @@ def main():
     logger.debug("Imputation")
     print("-*-*- Strategy for Missing Values -*-*-")
     num2option(IMPUTING_STRATEGY)
-    strategy_num = num_input("Which strategy do you want to apply?(Enter the Corresponding Number)\n@Number: ")
+    print("Which strategy do you want to apply?(Enter the Corresponding Number")
+    strategy_num = num_input(SECTION[1])
     data_processed_imputed_np = imputer(data_processed, IMPUTING_STRATEGY[strategy_num - 1])
     data_processed_imputed = np2pd(data_processed_imputed_np, data_processed.columns)
     basic_info(data_processed_imputed)
@@ -124,7 +139,7 @@ def main():
         if fe_flag != 1:
             print("Feature Engineering Option:")
             num2option(OPTION)
-            is_feature_engineering = num_input()
+            is_feature_engineering = num_input(SECTION[1])
             clear_output()
         if is_feature_engineering == 1:
             print("-*-*- Feature Engineering -*-*-")
@@ -143,7 +158,7 @@ def main():
             clear_output()
             print("Do you want to continue to construct a new feature?")
             num2option(OPTION)
-            fe_flag = num_input()
+            fe_flag = num_input(SECTION[1])
             if fe_flag == 1:
                 clear_output()
                 continue
@@ -158,7 +173,7 @@ def main():
     logger.debug("Mode Selection")
     print("-*-*- Mode Options -*-*-")
     num2option(MODE_OPTION)
-    mode_num = num_input()
+    mode_num = num_input(SECTION[2])
     clear_output()
     # divide X and y data set when it is supervised learning
     logger.debug("Data Split")
@@ -195,7 +210,8 @@ def main():
     num2option(MODELS)
     all_models_num = len(MODELS) + 1
     print(str(all_models_num) + " - All models above to be trained")
-    model_num = num_input("Which model do you want to apply?(Enter the Corresponding Number):\n@Number: ")
+    print("Which model do you want to apply?(Enter the Corresponding Number):")
+    model_num = num_input(SECTION[2])
     clear_output()
 
     # Model trained selection
@@ -213,5 +229,5 @@ def main():
 
 
 if __name__ == "__main__":
-    tmp.tmp()
+    # tmp.tmp()
     main()

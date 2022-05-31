@@ -115,5 +115,17 @@ def num_input(prefix: Optional[str] = None, slogan: Optional[str] = "@Number: ")
     return option
 
 
+def limit_num_input(option_list: List[str], prefix: str, input_func: num_input) -> int:
+    """limit the scope of the option"""
+    while True:
+        # in case that the option number is beyond the maximum
+        option = input_func(prefix)
+        if option > len(option_list):
+            print("Caution: please enter the correct number inside the scope!")
+        else:
+            break
+    return option
+
+
 def np2pd(array, columns_name):
     return pd.DataFrame(array, columns=columns_name)
