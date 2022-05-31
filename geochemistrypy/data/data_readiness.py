@@ -8,7 +8,7 @@ from typing import Optional, List
 
 
 # TODO: restrict the input data format
-def read_data(file_name, path_completed=False):
+def read_data(file_name: str, path_completed: bool = False):
     if path_completed:
         data_path = file_name
     else:
@@ -90,18 +90,22 @@ def create_sub_data_set(data):
 
 
 def num2option(items: List[str]) -> None:
-    """pattern show: num - item
+    """list all the options serially.
 
-    :param items: list, a series of items need to be enumerated
+    Parameters
+    ----------
+    items : list
+        a series of items need to be enumerated
     """
     for i, j in enumerate(items):
         print(str(i+1) + " - " + j)
 
 
-def num_input(slogan: Optional[str] = "@Number: ") -> int:
+def num_input(prefix: Optional[str] = None, slogan: Optional[str] = "@Number: ") -> int:
+    """get the number of the desired option"""
     # capture exception: input is not digit
     while True:
-        option = input(slogan).strip()
+        option = input(f"({prefix}) ➜ {slogan}").strip()
         if option.isdigit():
             option = int(option)
             if isinstance(option, int):

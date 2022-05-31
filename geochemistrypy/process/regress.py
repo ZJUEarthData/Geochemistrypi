@@ -2,6 +2,7 @@
 # import sys
 from model.regression import PolynomialRegression, XgboostRegression, RegressionWorkflowBase
 from data.data_readiness import num_input
+from global_variable import SECTION
 # sys.path.append("..")
 
 
@@ -16,7 +17,8 @@ class RegressionModelSelection(object):
 
         # model option
         if self.model == "Polynomial Regression":
-            poly_degree = num_input("Please specify the maximal degree of the polynomial features.\n@Degree:")
+            print("Please specify the maximal degree of the polynomial features.")
+            poly_degree = num_input(SECTION[2], "@Degree:")
             self.reg_workflow = PolynomialRegression(degree=poly_degree)
             X_train, X_test = self.reg_workflow.poly(X_train, X_test)
         elif self.model == "Xgboost":

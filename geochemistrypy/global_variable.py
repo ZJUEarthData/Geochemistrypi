@@ -16,13 +16,14 @@ MAP_IMAGE_PATH = os.path.join(WORKING_PATH, "images", "map")
 GEO_IMAGE_PATH = os.path.join(WORKING_PATH, "images", "geochemistry")
 
 # create the directories if they didn't exist yet
-os.makedirs(DATASET_PATH, exist_ok=True)
-os.makedirs(MODEL_OUTPUT_IMAGE_PATH, exist_ok=True)
-os.makedirs(STATISTIC_IMAGE_PATH, exist_ok=True)
-os.makedirs(DATASET_OUTPUT_PATH, exist_ok=True)
-os.makedirs(MAP_IMAGE_PATH, exist_ok=True)
-os.makedirs(GEO_IMAGE_PATH, exist_ok=True)
+# os.makedirs(DATASET_PATH, exist_ok=True)
+# os.makedirs(MODEL_OUTPUT_IMAGE_PATH, exist_ok=True)
+# os.makedirs(STATISTIC_IMAGE_PATH, exist_ok=True)
+# os.makedirs(DATASET_OUTPUT_PATH, exist_ok=True)
+# os.makedirs(MAP_IMAGE_PATH, exist_ok=True)
+# os.makedirs(GEO_IMAGE_PATH, exist_ok=True)
 
+SECTION = ['User', 'Data', 'Model', 'Plot']
 OPTION = ['Yes', 'No']
 DATA_OPTION = ['Own Data', 'Provided Testing Data']
 TEST_DATA_OPTION = ['Data For Regression', 'Data For Classification',
