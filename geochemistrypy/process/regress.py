@@ -25,6 +25,7 @@ class RegressionModelSelection(object):
             self.reg_workflow = XgboostRegression()
         elif self.model == "Decision Tree Regression":
             print("Please specify the max depth of the decision tree regression.")
+            #todo add another arg
             dts_max_depth = num_input(SECTION[2], "@Max_depth:")
             self.reg_workflow = DecisionTreeRegression(max_depth=dts_max_depth)
 
