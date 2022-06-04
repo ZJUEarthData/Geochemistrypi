@@ -7,6 +7,7 @@ from sklearn.model_selection import train_test_split, cross_validate
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, explained_variance_score
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
+from sklearn.tree import DecisionTreeRegressor, plot_tree
 from typing import Union, Optional, List, Dict, Callable, Tuple, Any
 from typing import Sequence
 import matplotlib.pyplot as plt
@@ -316,3 +317,54 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
 
 class SVM(RegressionWorkflowBase, BaseEstimator):
     pass
+
+
+class DecisionTreeRegression(RegressionWorkflowBase, BaseEstimator):
+    name = "Decision Tree Regression"
+    special_function = ["DecisionTree Tree Plot Function"]
+
+
+    def __init__(self,
+                 criteria='gini',
+                 splitter='best',
+                 max_depth=3,
+                 min_samples_split=2,
+                 min_samples_leaf=1,
+                 min_weight_fraction_leaf=0.0,
+                 max_features=None,
+                 random_state=None,
+                 max_leaf_nodes=None,
+                 min_impurity_decrease=0.0,
+                 ccp_alpha=0.0
+                 ):
+        super().__init__(random_state=42)
+        self.criteria = criteria,
+        self.splitter = splitter,
+        self.max_depth = max_depth,
+        self.min_samples_split = min_samples_split,
+        self.min_samples_leaf = min_samples_leaf,
+        self.min_weight_fraction_leaf = min_weight_fraction_leaf,
+        self.max_features = max_features,
+        self.random_state = random_state,
+        self.max_leaf_nodes = max_leaf_nodes,
+        self.min_impurity_decrease = min_impurity_decrease,
+        self.ccp_alpha = ccp_alpha
+
+        self.model = DecisionTreeRegressor()
+
+
+    def plot_tree_function(self):
+        ###################################################
+        # Drawing decision tree diagrams
+        ###################################################
+        print("Plot_Tree_Function")
+        y = RegressionWorkflowBase().y
+        X = RegressionWorkflowBase().X
+        clf = self.model.fit(X, y)
+        plt.figure()
+        plot_tree(clf, filled=True)
+        save_fig('plot_decisiontree_regression', MODEL_OUTPUT_IMAGE_PATH)
+        plt.show()
+
+    def special_components(self):
+        self.plot_tree_function()
