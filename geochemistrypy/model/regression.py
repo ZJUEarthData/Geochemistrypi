@@ -361,6 +361,7 @@ class DecisionTreeRegression(RegressionWorkflowBase, BaseEstimator):
         y = RegressionWorkflowBase().y
         X = RegressionWorkflowBase().X
         clf = self.model.fit(X, y)
+        #dpi need to optimize
         plt.figure()
         plot_tree(clf, filled=True)
         save_fig('plot_decisiontree_regression', MODEL_OUTPUT_IMAGE_PATH)
