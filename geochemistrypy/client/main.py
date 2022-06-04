@@ -29,17 +29,16 @@ os.makedirs(GEO_IMAGE_PATH, exist_ok=True)
 
 
 def main():
-    print("Geochemistrypy - User Behaviour Testing Demo")
+    print("Geochemistry Py - User Behaviour Testing Demo")
     print("....... Initializing .......")
     logger = log(WORKING_PATH, "test.log")
-    logger.info("Geochemistrypy - User Behaviour Testing Demo")
+    logger.info("Geochemistry Py - User Behaviour Testing Demo")
 
     # Read the data
     logger.debug("Data Uploaded")
     print("-*-*- Data Uploaded -*-*-")
     print("Data Option:")
     num2option(DATA_OPTION)
-    # TODO: abstract this function
     is_own_data = limit_num_input(DATA_OPTION, SECTION[0], num_input)
     if is_own_data == 1:
         file_name = input("Data Set Name (including the stored path and suffix. e.g. /Users/Sany/data/aa.xlsx): ")

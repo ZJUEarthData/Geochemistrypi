@@ -17,7 +17,7 @@ import xgboost
 
 class RegressionWorkflowBase(object):
 
-    # Default for chile class
+    # Default for child class
     X = None
     y = None
     name = None
@@ -38,7 +38,7 @@ class RegressionWorkflowBase(object):
 
     @staticmethod
     def data_split(X_data, y_data, test_size=0.2, random_state=42):
-        RegressionWorkflowBase.X = X_data
+        RegressionWorkflowBase.X = X_data  # child class is able to access to the data
         RegressionWorkflowBase.y = y_data
         X_train, X_test, y_train, y_test = train_test_split(RegressionWorkflowBase.X,
                                                             RegressionWorkflowBase.y,
@@ -308,7 +308,7 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
         # feature importance map ranked by importance
         plt.rcParams["figure.figsize"] = (14, 8)
         xgboost.plot_importance(self.model)
-        save_fig("xgb_feature_importance_fscore", MODEL_OUTPUT_IMAGE_PATH)
+        save_fig("xgb_feature_importance_score", MODEL_OUTPUT_IMAGE_PATH)
 
     def special_components(self):
         self._feature_importance()
