@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# import tmp
+import tmp
 import os
 from global_variable import OPTION, SECTION, IMPUTING_STRATEGY, MODE_OPTION, REGRESSION_MODELS,\
     CLASSIFICATION_MODELS, CLUSTERING_MODELS, DECOMPOSITION_MODELS, WORKING_PATH, DATA_OPTION,\
@@ -228,5 +228,5 @@ def main():
 
 
 if __name__ == "__main__":
-    # tmp.tmp()
+    tmp.tmp()
     main()
