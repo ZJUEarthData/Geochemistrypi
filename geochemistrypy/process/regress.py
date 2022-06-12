@@ -23,6 +23,14 @@ class RegressionModelSelection(object):
             X_train, X_test = self.reg_workflow.poly(X_train, X_test)
         elif self.model == "Xgboost":
             self.reg_workflow = XgboostRegression()
+        elif self.model == "ExtraTreeRegression":
+            self.reg_workflow = ExtraTreeRegression()
+        elif self.model == "RandomForestRegression":
+            self.reg_workflow = RandomForestRegression()
+        elif self.model == "MLPBaggingRegressor":
+            self.reg_workflow = MLPBaggingRegressor()
+        self.reg_workflow.X_train = X_train
+        self.reg_workflow.y_train = y_train
 
         # common components for every regression algorithm
         self.reg_workflow.show_info()

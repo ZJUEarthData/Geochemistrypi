@@ -19,6 +19,10 @@ class ClassificationModelSelection(object):
             self.clf_workflow = SVMClassification()
         elif self.model == "DecisionTreeClassification":
             self.clf_workflow = DecisionTreeClassification()
+        elif self.model == "RandomForestClassification":
+            self.clf_workflow = RandomForestClassification()
+            self.clf_workflow.X_train = X_train
+            self.clf_workflow.y_train = y_train
         # common components for every classification algorithm
         self.clf_workflow.show_info()
         self.clf_workflow.fit(X_train, y_train)
