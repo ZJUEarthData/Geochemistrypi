@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # import sys
-from model.classification import ClassificationWorkflowBase, SVMClassification, DecisionTreeClassification
+from model.classification import ClassificationWorkflowBase, SVMClassification, DecisionTreeClassification, RandomForestClassification
 
 # sys.path.append("..")
 

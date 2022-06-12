@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # import sys
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.svm import SVC
 from sklearn.metrics import classification_report, plot_confusion_matrix, confusion_matrix
@@ -9,6 +10,7 @@ from global_variable import MODEL_OUTPUT_IMAGE_PATH
 from sklearn.model_selection import train_test_split
 from sklearn import tree
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
 # sys.path.append("..")
 
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # import sys
-from model.regression import PolynomialRegression, XgboostRegression, RegressionWorkflowBase
+from model.regression import PolynomialRegression, XgboostRegression, ExtraTreeRegression, RandomForestRegression, MLPBaggingRegressor, RegressionWorkflowBase
 from data.data_readiness import num_input
 from global_variable import SECTION
 # sys.path.append("..")
