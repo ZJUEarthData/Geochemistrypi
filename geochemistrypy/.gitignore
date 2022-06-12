@@ -17,3 +17,6 @@ __pycache__
 # Python Virtual Environment
 venv_geo/*
 venv_geo
+
+# visual stdio
+.vs
