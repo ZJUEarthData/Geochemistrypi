@@ -7,17 +7,20 @@ from sklearn.model_selection import train_test_split, cross_validate
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, explained_variance_score
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
+from sklearn.ensemble import BaggingRegressor,ExtraTreesRegressor,RandomForestRegressor
+from sklearn.neural_network import MLPRegressor
 from typing import Union, Optional, List, Dict, Callable, Tuple, Any
 from typing import Sequence
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import xgboost
 # sys.path.append("..")
 
 
 class RegressionWorkflowBase(object):
 
-    # Default for child class
+    # Default for chile class
     X = None
     y = None
     name = None
@@ -38,7 +41,7 @@ class RegressionWorkflowBase(object):
 
     @staticmethod
     def data_split(X_data, y_data, test_size=0.2, random_state=42):
-        RegressionWorkflowBase.X = X_data  # child class is able to access to the data
+        RegressionWorkflowBase.X = X_data
         RegressionWorkflowBase.y = y_data
         X_train, X_test, y_train, y_test = train_test_split(RegressionWorkflowBase.X,
                                                             RegressionWorkflowBase.y,
@@ -308,7 +311,7 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
         # feature importance map ranked by importance
         plt.rcParams["figure.figsize"] = (14, 8)
         xgboost.plot_importance(self.model)
-        save_fig("xgb_feature_importance_score", MODEL_OUTPUT_IMAGE_PATH)
+        save_fig("xgb_feature_importance_fscore", MODEL_OUTPUT_IMAGE_PATH)
 
     def special_components(self):
         self._feature_importance()
@@ -316,3 +319,154 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
 
 class SVM(RegressionWorkflowBase, BaseEstimator):
     pass
+
+class ExtraTreeRegression(RegressionWorkflowBase, BaseEstimator):
+
+    name = "ExtraTreeRegression"
+    special_function = ["feature_importances"]
+
+    def __init__(self,
+                 n_estimator: int = 500, 
+                 bootstrap: bool = False, 
+                 oob_score: bool = False,
+                 max_leaf_nodes: int = 20, 
+                 random_state: int = 42, 
+                 n_jobs: int = -1):
+        super().__init__(random_state=42)
+        self.n_estimators = n_estimator
+        self.bootstrap = bootstrap
+        self.oob_score = oob_score
+        self.max_leaf_nodes = max_leaf_nodes
+        self.random_state = random_state
+        self.n_jobs = n_jobs
+
+        self.model = ExtraTreesRegressor(n_estimators = self.n_estimators,
+                                         bootstrap = self.bootstrap,
+                                         oob_score = self.oob_score,
+                                         max_leaf_nodes = self.max_leaf_nodes,
+                                         random_state = self.random_state,
+                                         n_jobs = self.n_jobs)
+    
+    def feature_importances(self):
+  
+        importances_values = self.model.feature_importances_
+        importances = pd.DataFrame(importances_values, columns=["importance"])
+        feature_data = pd.DataFrame(self.X_train.columns, columns=["feature"])
+        importance = pd.concat([feature_data, importances], axis=1)
+     
+        importance = importance.sort_values(["importance"], ascending=True)
+        importance["importance"] = (importance["importance"]).astype(float)
+        importance = importance.sort_values(["importance"])
+        importance.set_index('feature', inplace=True)
+        importance.plot.barh(color='r', alpha=0.7, rot=0, figsize=(8, 8))
+        save_fig("ExtraTreeRegression_feature_importance", MODEL_OUTPUT_IMAGE_PATH)
+
+    def extratree(self):
+        pass
+    
+    def special_components(self):
+        self.feature_importances()
+        pass
+
+
+class RandomForestRegression(RegressionWorkflowBase, BaseEstimator):
+
+    name = "RandomForestRegression"
+    special_function = ["feature_importances"]
+
+    def __init__(self,
+                 n_estimators:int = 500,
+                 oob_score:bool = True,
+                 max_leaf_nodes:int = 15,
+                 n_jobs:int = -1,
+                 random_state:int = 42):
+        super().__init__(random_state=42)
+        self.n_estimators = n_estimators
+        self.oob_score = oob_score
+        self.max_leaf_nodes = max_leaf_nodes
+        self.n_jobs = n_jobs
+        self.random_state = random_state
+
+        self.model = RandomForestRegressor(n_estimators = self.n_estimators,
+                                           oob_score = self.oob_score,
+                                           max_leaf_nodes = self.max_leaf_nodes,
+                                           n_jobs = self.n_jobs,
+                                           random_state = self.random_state)
+    def feature_importances(self):
+     
+        importances_values = self.model.feature_importances_
+        importances = pd.DataFrame(importances_values, columns=["importance"])
+        feature_data = pd.DataFrame(self.X_train.columns, columns=["feature"])
+        importance = pd.concat([feature_data, importances], axis=1)
+       
+        importance = importance.sort_values(["importance"], ascending=True)
+        importance["importance"] = (importance["importance"]).astype(float)
+        importance = importance.sort_values(["importance"])
+        importance.set_index('feature', inplace=True)
+        importance.plot.barh(color='r', alpha=0.7, rot=0, figsize=(8, 8))
+        save_fig("RandomForestRegression_feature_importance", MODEL_OUTPUT_IMAGE_PATH)
+
+    def plot(self):
+        pass
+        
+    def special_components(self):
+        self.feature_importances()
+        self.plot()
+        pass
+
+
+class MLPBaggingRegressor(RegressionWorkflowBase, BaseEstimator):
+
+    name = "MLPBaggingRegressor"
+    special_function = [" "]
+
+    def __init__(self,
+                 activation='relu',  
+                 alpha=0.0001, 
+                 batch_size='auto', 
+                 early_stopping=False,
+                 hidden_layer_sizes=(20, 120, 20), 
+                 max_iter=2000, 
+                 solver='adam', 
+                 tol=1e-05,
+                 n_estimators=100, 
+                 bootstrap=True, 
+                 bootstrap_features=True,
+                 n_jobs=-1, 
+                 oob_score=True,
+                 random_state_mlp = 42,
+                 random_state_bag = 42):
+        
+        super().__init__()
+        self.activation = activation
+        self.alpha=alpha
+        self.batch_size=batch_size 
+        self.early_stopping=early_stopping
+        self.hidden_layer_sizes=hidden_layer_sizes
+        self.max_iter=max_iter
+        self.solver=solver
+        self.tol=tol
+        self.bootstrap=bootstrap
+        self.bootstrap_features=bootstrap_features
+        self.n_jobs=n_jobs
+        self.oob_score=oob_score
+        self.n_estimators=n_estimators
+        self.random_state_mlp = random_state_mlp
+        self.random_state_bag = random_state_bag
+
+        # single ANN model with the same hyperparameter as 1.2 ANN
+        self.model = MLPRegressor(activation=self.activation, 
+                                            alpha=self.alpha, 
+                                            batch_size=self.batch_size, 
+                                            early_stopping=self.early_stopping,
+                                            hidden_layer_sizes=self.hidden_layer_sizes, 
+                                            max_iter=self.max_iter, 
+                                            solver=self.solver,
+                                            tol=self.tol,
+                                            random_state=random_state_mlp)
+    
+    def special_components(self):
+        pass
+
+
+
