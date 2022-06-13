@@ -41,8 +41,8 @@ def main():
     num2option(DATA_OPTION)
     is_own_data = limit_num_input(DATA_OPTION, SECTION[0], num_input)
     if is_own_data == 1:
-        file_name = input("Data Set Name (including the stored path and suffix. e.g. /Users/Sany/data/aa.xlsx): ")
-        data = read_data(file_name, path_completed=True)
+        slogan = "Data Set Name (including the stored path and suffix. e.g. /Users/Sany/data/aa.xlsx): "
+        data = read_data(is_own_data=is_own_data, prefix=SECTION[0], slogan=slogan)
     else:
         print("Testing Data Option:")
         num2option(TEST_DATA_OPTION)
@@ -56,7 +56,7 @@ def main():
             file_name = 'Data_Clustering.xlsx'
         elif test_data_num == 4:
             file_name = 'Data_Decomposition.xlsx'
-        data = read_data(file_name)
+        data = read_data(file_name=file_name)
     show_data_columns(data.columns)
     clear_output()
 
