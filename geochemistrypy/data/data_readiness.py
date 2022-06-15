@@ -125,7 +125,7 @@ def num_input(prefix: Optional[str] = None, slogan: Optional[str] = "@Number: ")
             if isinstance(option, int):
                 break
         else:
-            print("Caution: The number is invalid. Please input the right number again!")
+            print("Caution: The input is not a positive integer number. Please input the right number again!")
     return option
 
 
@@ -134,7 +134,7 @@ def limit_num_input(option_list: List[str], prefix: str, input_func: num_input) 
     while True:
         # in case that the option number is beyond the maximum
         option = input_func(prefix)
-        if option > len(option_list):
+        if option not in range(1, len(option_list)+1):
             print("Caution: The number is invalid. Please enter the correct number inside the scope!")
         else:
             break

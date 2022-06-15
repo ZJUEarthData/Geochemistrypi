@@ -69,18 +69,18 @@ def main():
             # option selection
             print("World Map Projection for A Specific Element Option:")
             num2option(OPTION)
-            is_map_projection = num_input(SECTION[3])
+            is_map_projection = limit_num_input(OPTION, SECTION[3], num_input)
             clear_output()
         if is_map_projection == 1:
             print("-*-*- Distribution in World Map -*-*-")
             print("Select one of the elements below to be projected in the World Map: ")
             show_data_columns(data.columns)
-            elm_num = num_input(SECTION[3])
+            elm_num = limit_num_input(data.columns, SECTION[3], num_input)
             map_projected(data.iloc[:, elm_num - 1], data)
             clear_output()
             print("Do you want to continue to project a new element in the World Map?")
             num2option(OPTION)
-            map_flag = num_input(SECTION[3])
+            map_flag = limit_num_input(OPTION, SECTION[3], num_input)
             if map_flag == 1:
                 clear_output()
                 continue
@@ -88,7 +88,7 @@ def main():
                 print('Exit Map Projection Mode.')
                 clear_output()
                 break
-        else:
+        elif is_map_projection == 2:
             break
 
     # Create the processing data set
@@ -117,7 +117,7 @@ def main():
     print("-*-*- Strategy for Missing Values -*-*-")
     num2option(IMPUTING_STRATEGY)
     print("Which strategy do you want to apply?(Enter the Corresponding Number")
-    strategy_num = num_input(SECTION[1])
+    strategy_num = limit_num_input(IMPUTING_STRATEGY, SECTION[1], num_input)
     data_processed_imputed_np = imputer(data_processed, IMPUTING_STRATEGY[strategy_num - 1])
     data_processed_imputed = np2pd(data_processed_imputed_np, data_processed.columns)
     basic_info(data_processed_imputed)
@@ -138,7 +138,7 @@ def main():
         if fe_flag != 1:
             print("Feature Engineering Option:")
             num2option(OPTION)
-            is_feature_engineering = num_input(SECTION[1])
+            is_feature_engineering = limit_num_input(OPTION, SECTION[1], num_input)
             clear_output()
         if is_feature_engineering == 1:
             print("-*-*- Feature Engineering -*-*-")
@@ -157,7 +157,7 @@ def main():
             clear_output()
             print("Do you want to continue to construct a new feature?")
             num2option(OPTION)
-            fe_flag = num_input(SECTION[1])
+            fe_flag = limit_num_input(OPTION, SECTION[1], num_input)
             if fe_flag == 1:
                 clear_output()
                 continue
@@ -172,7 +172,7 @@ def main():
     logger.debug("Mode Selection")
     print("-*-*- Mode Options -*-*-")
     num2option(MODE_OPTION)
-    mode_num = num_input(SECTION[2])
+    mode_num = limit_num_input(MODE_OPTION, SECTION[2], num_input)
     clear_output()
     # divide X and y data set when it is supervised learning
     logger.debug("Data Split")
@@ -208,9 +208,10 @@ def main():
     MODELS = Modes2Models[mode_num]
     num2option(MODELS)
     all_models_num = len(MODELS) + 1
+    # all_models_num = 0
     print(str(all_models_num) + " - All models above to be trained")
     print("Which model do you want to apply?(Enter the Corresponding Number):")
-    model_num = num_input(SECTION[2])
+    model_num = limit_num_input(MODELS, SECTION[2], num_input)
     clear_output()
 
     # Model trained selection
