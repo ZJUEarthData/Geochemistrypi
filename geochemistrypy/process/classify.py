@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 # import sys
 from model.classification import ClassificationWorkflowBase, SVMClassification, DecisionTreeClassification
+from model.classification import XgboostClassification
+
 
 # sys.path.append("..")
 
@@ -19,6 +21,10 @@ class ClassificationModelSelection(object):
             self.clf_workflow = SVMClassification()
         elif self.model == "DecisionTreeClassification":
             self.clf_workflow = DecisionTreeClassification()
+
+        elif self.model == "Xgboost Classification":
+            self.clf_workflow = XgboostClassification()
+
         # common components for every classification algorithm
         self.clf_workflow.show_info()
         self.clf_workflow.fit(X_train, y_train)

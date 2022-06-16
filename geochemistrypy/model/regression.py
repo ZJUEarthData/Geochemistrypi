@@ -14,11 +14,12 @@ from typing import Sequence
 import matplotlib.pyplot as plt
 import numpy as np
 import xgboost
+
+
 # sys.path.append("..")
 
 
 class RegressionWorkflowBase(object):
-
     # Default for child class
     X = None
     y = None
@@ -101,7 +102,6 @@ class RegressionWorkflowBase(object):
 
 
 class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
-
     name = "Polynomial Regression"
     special_function = ["Polynomial Regression Formula"]
 
@@ -192,39 +192,39 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
     special_function = ['Feature Importance']
 
     def __init__(
-        self,
-        max_depth: Optional[int] = None,
-        learning_rate: Optional[float] = None,
-        n_estimators: int = 100,
-        verbosity: Optional[int] = None,
-        objective: _SklObjective = None,
-        booster: Optional[str] = None,
-        tree_method: Optional[str] = None,
-        n_jobs: Optional[int] = None,
-        gamma: Optional[float] = None,
-        min_child_weight: Optional[float] = None,
-        max_delta_step: Optional[float] = None,
-        subsample: Optional[float] = None,
-        colsample_bytree: Optional[float] = None,
-        colsample_bylevel: Optional[float] = None,
-        colsample_bynode: Optional[float] = None,
-        reg_alpha: Optional[float] = None,
-        reg_lambda: Optional[float] = None,
-        scale_pos_weight: Optional[float] = None,
-        base_score: Optional[float] = None,
-        random_state: Optional[Union[np.random.RandomState, int]] = None,
-        missing: float = np.nan,
-        num_parallel_tree: Optional[int] = None,
-        monotone_constraints: Optional[Union[Dict[str, int], str]] = None,
-        interaction_constraints: Optional[Union[str, Sequence[Sequence[str]]]] = None,
-        importance_type: Optional[str] = None,
-        gpu_id: Optional[int] = None,
-        validate_parameters: Optional[bool] = None,
-        predictor: Optional[str] = None,
-        enable_categorical: bool = False,
-        eval_metric: Optional[Union[str, List[str], Callable]] = None,
-        early_stopping_rounds: Optional[int] = None,
-        **kwargs: Any
+            self,
+            max_depth: Optional[int] = None,
+            learning_rate: Optional[float] = None,
+            n_estimators: int = 100,
+            verbosity: Optional[int] = None,
+            objective: _SklObjective = None,
+            booster: Optional[str] = None,
+            tree_method: Optional[str] = None,
+            n_jobs: Optional[int] = None,
+            gamma: Optional[float] = None,
+            min_child_weight: Optional[float] = None,
+            max_delta_step: Optional[float] = None,
+            subsample: Optional[float] = None,
+            colsample_bytree: Optional[float] = None,
+            colsample_bylevel: Optional[float] = None,
+            colsample_bynode: Optional[float] = None,
+            reg_alpha: Optional[float] = None,
+            reg_lambda: Optional[float] = None,
+            scale_pos_weight: Optional[float] = None,
+            base_score: Optional[float] = None,
+            random_state: Optional[Union[np.random.RandomState, int]] = None,
+            missing: float = np.nan,
+            num_parallel_tree: Optional[int] = None,
+            monotone_constraints: Optional[Union[Dict[str, int], str]] = None,
+            interaction_constraints: Optional[Union[str, Sequence[Sequence[str]]]] = None,
+            importance_type: Optional[str] = None,
+            gpu_id: Optional[int] = None,
+            validate_parameters: Optional[bool] = None,
+            predictor: Optional[str] = None,
+            enable_categorical: bool = False,
+            eval_metric: Optional[Union[str, List[str], Callable]] = None,
+            early_stopping_rounds: Optional[int] = None,
+            **kwargs: Any
     ) -> None:
 
         super().__init__(random_state=42)
@@ -319,10 +319,10 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
 class SVM(RegressionWorkflowBase, BaseEstimator):
     pass
 
+
 class DecisionTreeRegression(RegressionWorkflowBase, BaseEstimator):
     name = "Decision Tree Regression"
     special_function = ["DecisionTree Tree Plot Function"]
-
 
     def __init__(self,
                  criteria='gini',
@@ -352,7 +352,6 @@ class DecisionTreeRegression(RegressionWorkflowBase, BaseEstimator):
 
         self.model = DecisionTreeRegressor()
 
-
     def plot_tree_function(self):
         ###################################################
         # Drawing decision tree diagrams
@@ -361,7 +360,7 @@ class DecisionTreeRegression(RegressionWorkflowBase, BaseEstimator):
         y = RegressionWorkflowBase().y
         X = RegressionWorkflowBase().X
         clf = self.model.fit(X, y)
-        #dpi need to optimize
+        # dpi need to optimize
         plt.figure()
         plot_tree(clf, filled=True)
         save_fig('plot_decisiontree_regression', MODEL_OUTPUT_IMAGE_PATH)
