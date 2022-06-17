@@ -1,5 +1,6 @@
 import sys
 import os
+import re
 import openpyxl.utils.exceptions
 from global_variable import DATASET_PATH
 import pandas as pd
@@ -7,10 +8,23 @@ from typing import Optional, List
 # from utils.exceptions import InvalidFileError
 
 
-# TODO: restrict the input data format
-def read_data(file_name: str, path_completed: bool = False):
-    if path_completed:
-        data_path = file_name
+def read_data(file_name: Optional[str] = None, is_own_data: int = 2, prefix: Optional[str] = None,
+              slogan: Optional[str] = "@File: "):
+    """process the data set"""
+    if is_own_data == 1:
+        while True:
+            # Capture exception: The path is invalid -> doesn't exist or not xlsx format
+            file_name = input(f"({prefix}) ➜ {slogan}").strip()
+            if os.path.exists(file_name):
+                if '.xlsx' in re.findall(r'.xlsx.*', file_name):
+                    print("Successfully loading the data set ...")
+                    data_path = file_name
+                    break
+                else:
+                    print("Caution: Please make sure the data is stored in xlsx format!")
+            else:
+                print("Caution: The path is invalid. Please input the correct path including the"
+                      " stored path and suffix!")
     else:
         data_path = os.path.join(DATASET_PATH, file_name)
     try:
@@ -111,7 +125,7 @@ def num_input(prefix: Optional[str] = None, slogan: Optional[str] = "@Number: ")
             if isinstance(option, int):
                 break
         else:
-            print("Caution: please input the right number again!")
+            print("Caution: The input is not a positive integer number. Please input the right number again!")
     return option
 
 
@@ -120,8 +134,8 @@ def limit_num_input(option_list: List[str], prefix: str, input_func: num_input) 
     while True:
         # in case that the option number is beyond the maximum
         option = input_func(prefix)
-        if option > len(option_list):
-            print("Caution: please enter the correct number inside the scope!")
+        if option not in range(1, len(option_list)+1):
+            print("Caution: The number is invalid. Please enter the correct number inside the scope!")
         else:
             break
     return option
