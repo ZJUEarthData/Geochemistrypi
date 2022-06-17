@@ -405,6 +405,6 @@ class XgboostClassification(ClassificationWorkflowBase):
         plt.rcParams["figure.figsize"] = (14, 8)
         xgboost.plot_importance(self.model)
         save_fig("xgboost_feature_importance_score", MODEL_OUTPUT_IMAGE_PATH)
-
+        
     def special_components(self):
         self._feature_importance()
