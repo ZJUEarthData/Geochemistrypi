@@ -27,6 +27,8 @@ Email: anzhouli@zju.edu.cn
 + Xunxin Liu (Tante, China University of Geosciences, Wuhan)
 + Aixiwake·Janganuer (Ayshuak, Sun Yat-sen University)
 + Jianming Zhao (Jamie, Jilin University, Changchun)
++ Yonghui Qin (Qinyh1, Sun Yat-sen University)
++ Ting Liu (Kira, Sun Yat-sen University)
 
 ### Join Us
 Do you want to contribute to this open-source program? Contact with your CV: hecan@mail2.sysu.edu.cn  
