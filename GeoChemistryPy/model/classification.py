@@ -181,7 +181,7 @@ class SVMClassification(ClassificationWorkflowBase):
 class DecisionTreeClassification(ClassificationWorkflowBase):
 
     name = "DecisionTree"
-    special_function = ["Drawing DecisionTree Tree Plot ", "Drawing Decision Surfaces Plot"]
+    special_function = ["Drawing DecisionTree Tree Plot ", "Drawing Decision Surface Plot"]
 
     def __init__(
             self,
@@ -278,8 +278,6 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
         plt.tight_layout(h_pad=0.2, w_pad=0.2, pad=2.5)
         save_fig('Decision Surface Plot', MODEL_OUTPUT_IMAGE_PATH)
         plt.show()
-
-    def
 
     def special_components(self):
         self.plot_tree_function()
