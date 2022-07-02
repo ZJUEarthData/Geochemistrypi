@@ -32,7 +32,7 @@ MODE_OPTION = ['Regression', 'Classification', 'Clustering', 'Dimensional Reduct
 
 # the model provided to use
 REGRESSION_MODELS = ['Polynomial Regression', 'Xgboost','ExtraTreeRegression', 'RandomForestRegression']
-CLASSIFICATION_MODELS = ['Support Vector Machine','DecisionTreeClassification', 'RandomForestClassification']
+CLASSIFICATION_MODELS = ['Support Vector Machine', 'DecisionTreeClassification', 'RandomForestClassification']
 CLUSTERING_MODELS = ['KMeans']
 DECOMPOSITION_MODELS = ['Principal Component Analysis']
 
