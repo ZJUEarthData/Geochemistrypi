@@ -7,10 +7,13 @@ from sklearn.model_selection import train_test_split, cross_validate
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, explained_variance_score
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
+from sklearn.ensemble import BaggingRegressor,ExtraTreesRegressor,RandomForestRegressor
+from sklearn.neural_network import MLPRegressor
 from typing import Union, Optional, List, Dict, Callable, Tuple, Any
 from typing import Sequence
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import xgboost
 # sys.path.append("..")
 
@@ -316,3 +319,95 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
 
 class SVM(RegressionWorkflowBase, BaseEstimator):
     pass
+
+
+class ExtraTreeRegression(RegressionWorkflowBase, BaseEstimator):
+    name = "ExtraTreeRegression"
+    special_function = ["feature_importances"]
+
+    def __init__(self,
+                 n_estimator: int = 500,
+                 bootstrap: bool = False,
+                 oob_score: bool = False,
+                 max_leaf_nodes: int = 20,
+                 random_state: int = 42,
+                 n_jobs: int = -1):
+        super().__init__(random_state=42)
+        self.n_estimators = n_estimator
+        self.bootstrap = bootstrap
+        self.oob_score = oob_score
+        self.max_leaf_nodes = max_leaf_nodes
+        self.random_state = random_state
+        self.n_jobs = n_jobs
+
+        self.model = ExtraTreesRegressor(n_estimators=self.n_estimators,
+                                         bootstrap=self.bootstrap,
+                                         oob_score=self.oob_score,
+                                         max_leaf_nodes=self.max_leaf_nodes,
+                                         random_state=self.random_state,
+                                         n_jobs=self.n_jobs)
+
+    def feature_importances(self):
+        importances_values = self.model.feature_importances_
+        importances = pd.DataFrame(importances_values, columns=["importance"])
+        feature_data = pd.DataFrame(self.X_train.columns, columns=["feature"])
+        importance = pd.concat([feature_data, importances], axis=1)
+
+        importance = importance.sort_values(["importance"], ascending=True)
+        importance["importance"] = (importance["importance"]).astype(float)
+        importance = importance.sort_values(["importance"])
+        importance.set_index('feature', inplace=True)
+        importance.plot.barh(color='r', alpha=0.7, rot=0, figsize=(8, 8))
+        save_fig("ExtraTreeRegression_feature_importance", MODEL_OUTPUT_IMAGE_PATH)
+
+    def extratree(self):
+        pass
+
+    def special_components(self):
+        self.feature_importances()
+        pass
+
+
+class RandomForestRegression(RegressionWorkflowBase, BaseEstimator):
+    name = "RandomForestRegression"
+    special_function = ["feature_importances"]
+
+    def __init__(self,
+                 n_estimators: int = 500,
+                 oob_score: bool = True,
+                 max_leaf_nodes: int = 15,
+                 n_jobs: int = -1,
+                 random_state: int = 42):
+        super().__init__(random_state=42)
+        self.n_estimators = n_estimators
+        self.oob_score = oob_score
+        self.max_leaf_nodes = max_leaf_nodes
+        self.n_jobs = n_jobs
+        self.random_state = random_state
+
+        self.model = RandomForestRegressor(n_estimators=self.n_estimators,
+                                           oob_score=self.oob_score,
+                                           max_leaf_nodes=self.max_leaf_nodes,
+                                           n_jobs=self.n_jobs,
+                                           random_state=self.random_state)
+
+    def feature_importances(self):
+        importances_values = self.model.feature_importances_
+        importances = pd.DataFrame(importances_values, columns=["importance"])
+        feature_data = pd.DataFrame(self.X_train.columns, columns=["feature"])
+        importance = pd.concat([feature_data, importances], axis=1)
+
+        importance = importance.sort_values(["importance"], ascending=True)
+        importance["importance"] = (importance["importance"]).astype(float)
+        importance = importance.sort_values(["importance"])
+        importance.set_index('feature', inplace=True)
+        importance.plot.barh(color='r', alpha=0.7, rot=0, figsize=(8, 8))
+        save_fig("RandomForestRegression_feature_importance", MODEL_OUTPUT_IMAGE_PATH)
+
+    def plot(self):
+        pass
+
+    def special_components(self):
+        self.feature_importances()
+        self.plot()
+        pass

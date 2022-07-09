@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # import sys
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.svm import SVC
 from sklearn.metrics import classification_report, plot_confusion_matrix, confusion_matrix
@@ -9,6 +10,7 @@ from global_variable import MODEL_OUTPUT_IMAGE_PATH
 from sklearn.model_selection import train_test_split
 from sklearn import tree
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
 # sys.path.append("..")
 
 
@@ -257,3 +259,137 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
 
     def special_components(self):
         self.plot_tree_function()
+
+
+class RandomForestClassification(ClassificationWorkflowBase):
+    name = "RandomForestClassification"
+    special_function = ['feature_importances', 'plot']
+
+    def __init__(
+            self,
+            n_estimators=100,
+            criterion='gini',
+            max_depth=4,
+            min_samples_split=2,
+            min_samples_leaf=1,
+            min_weight_fraction_leaf=0.0,
+            max_features='sqrt',
+            max_leaf_nodes=3,
+            min_impurity_decrease=0.0,
+            bootstrap=True,
+            oob_score=False,
+            n_jobs=-1,
+            random_state=42,
+            verbose=0,
+            warm_start=False,
+            class_weight=None,
+            ccp_alpha=0.0,
+            max_samples=10):
+        ##############################################################
+        # RandomForestRegression is used to classify the data
+        ##############################################################
+        """
+        :param n_estimators:int, default=100.The number of trees in the forest.
+        :param criterion:{“gini”, “entropy”, “log_loss”}, default=”gini”The function to measure the quality of a split.
+        :param max_depthint, default=None.The maximum depth of the tree.
+        :param min_samples_splitint or float, default=2
+                The minimum number of samples required to split an internal node
+        :param min_samples_leafint or float, default=1
+                The minimum number of samples required to be at a leaf node.
+        :param min_weight_fraction_leaffloat, default=0.0
+                The minimum weighted fraction of the sum total of weights (of all the input samples) required to be at a leaf node.
+        :param max_features{“sqrt”, “log2”, None}, int or float, default=”sqrt”
+                The number of features to consider when looking for the best split:
+        :param max_leaf_nodesint, default=None
+                Grow trees with max_leaf_nodes in best-first fashion.
+        :param min_impurity_decreasefloat, default=0.0
+                A node will be split if this split induces a decrease of the impurity greater than or equal to this value.
+        :param bootstrapbool, default=True
+                Whether bootstrap samples are used when building trees.
+        :param oob_scorebool, default=False
+                Whether to use out-of-bag samples to estimate the generalization score.
+        :param n_jobsint, default=None
+                The number of jobs to run in parallel.
+        :param random_stateint, RandomState instance or None, default=None
+                Controls both the randomness of the bootstrapping of the samples used when building trees
+        :param verboseint, default=0
+                Controls the verbosity when fitting and predicting.
+        :param warm_startbool, default=False
+                When set to True, reuse the solution of the previous call to fit and add more estimators to the ensemble, otherwise, just fit a whole new forest. See the Glossary.
+        :param class_weight{“balanced”, “balanced_subsample”}, dict or list of dicts, default=None
+                Weights associated with classes in the form {class_label: weight}.
+        :param ccp_alphanon-negative float, default=0.0
+                Complexity parameter used for Minimal Cost-Complexity Pruning.
+        :param max_samplesint or float, default=None
+                If bootstrap is True, the number of samples to draw from X to train each base estimator.
+
+        References
+        ----------------------------------------
+        scikit API:sklearn.ensemble.RandomForestClassifier
+        https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html
+        """
+        super().__init__(random_state)
+        self.n_estimators = n_estimators
+        self.criterion = criterion
+        self.max_depth = max_depth
+        self.min_samples_split = min_samples_split
+        self.min_samples_leaf = min_samples_leaf
+        self.min_weight_fraction_leaf = min_weight_fraction_leaf
+        self.max_features = max_features
+        self.max_leaf_nodes = max_leaf_nodes
+        self.min_impurity_decrease = min_impurity_decrease
+        self.bootstrap = bootstrap
+        self.oob_score = oob_score
+        self.n_jobs = n_jobs
+        self.random_state = random_state
+        self.verbose = verbose
+        self.warm_start = warm_start
+        self.class_weight = class_weight
+        self.ccp_alpha = ccp_alpha
+        self.max_samples = max_samples
+        self.model = RandomForestClassifier(n_estimators=self.n_estimators,
+                                            criterion=self.criterion,
+                                            max_depth=self.max_depth,
+                                            min_samples_split=self.min_samples_split,
+                                            min_samples_leaf=self.min_samples_leaf,
+                                            min_weight_fraction_leaf=self.min_weight_fraction_leaf,
+                                            max_features=self.max_features,
+                                            max_leaf_nodes=self.max_leaf_nodes,
+                                            min_impurity_decrease=self.min_impurity_decrease,
+                                            bootstrap=self.bootstrap,
+                                            oob_score=self.oob_score,
+                                            n_jobs=self.n_jobs,
+                                            random_state=self.random_state,
+                                            verbose=self.verbose,
+                                            warm_start=self.warm_start,
+                                            class_weight=self.class_weight,
+                                            ccp_alpha=self.ccp_alpha,
+                                            max_samples=self.max_samples)
+
+    def feature_importances(self):
+        ###################################################
+        # Drawing feature importances barh diagram
+        ###################################################
+        importances_values = self.model.feature_importances_
+        importances = pd.DataFrame(importances_values, columns=["importance"])
+        feature_data = pd.DataFrame(self.X_train.columns, columns=["feature"])
+        importance = pd.concat([feature_data, importances], axis=1)
+
+        importance = importance.sort_values(["importance"], ascending=True)
+        importance["importance"] = (importance["importance"]).astype(float)
+        importance = importance.sort_values(["importance"])
+        importance.set_index('feature', inplace=True)
+        importance.plot.barh(color='r', alpha=0.7, rot=0, figsize=(8, 8))
+        save_fig("RandomForest_feature_importance", MODEL_OUTPUT_IMAGE_PATH)
+
+    def plot(self):
+        ###################################################
+        # Drawing diagrams of the first decision tree of forest
+        ###################################################
+        tree.plot_tree(self.model.estimators_[0]);
+        save_fig("RandomForest_tree", MODEL_OUTPUT_IMAGE_PATH)
+        pass
+
+    def special_components(self):
+        self.feature_importances()
+        self.plot()
