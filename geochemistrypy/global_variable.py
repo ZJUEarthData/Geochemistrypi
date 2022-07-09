@@ -32,7 +32,7 @@ MODE_OPTION = ['Regression', 'Classification', 'Clustering', 'Dimensional Reduct
 # the model provided to use
 REGRESSION_MODELS = ['Polynomial Regression', 'Xgboost']
 CLASSIFICATION_MODELS = ['Support Vector Machine']
-CLUSTERING_MODELS = ['KMeans']
+CLUSTERING_MODELS = ['KMeans','DBSCAN']
 DECOMPOSITION_MODELS = ['Principal Component Analysis']
 
 IMPUTING_STRATEGY = ['mean', 'median', 'most_frequent']
