@@ -27,3 +27,7 @@ class ClusteringModelSelection(object):
 
         # special components of different algorithms
         self.clt_workflow.special_components()
+
+        if self.model == "DBSCAN":
+            print("DBSCAN")
+            cluster_num = num_input("Designate the clustering number in advance:\n@Number: ")
