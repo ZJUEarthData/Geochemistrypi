@@ -8,7 +8,8 @@ def clear_output():
     # TODO(sany hecan@mail2.sysu.edu.cn): Incite exception capture mechanism
     flag = input("(Press Enter key to move forward.)")
     if flag == '':
-        os.system('clear')
+        #os.system('clear')#for Linux
+        os.system('cls')#for Window
 
 
 def save_fig(fig_name, image_path, tight_layout=True):
