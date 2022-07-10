@@ -1,0 +1,24 @@
+# own virtual environment
+/venv_geo/
+
+# images produced
+*.png
+
+# OS
+.DS_Store
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Pycharm
+.idea
+
+# Bytecode
+__pycache__
+
+# Microsoft Office
+.~*.xlsx
+~*.xlsx
+
+# Pytest
+.pytest_cache

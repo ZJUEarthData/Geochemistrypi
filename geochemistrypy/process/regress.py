@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 # import sys
-from model.regression import PolynomialRegression, XgboostRegression, RegressionWorkflowBase
+from model.regression import PolynomialRegression, XgboostRegression, DecisionTreeRegression, ExtraTreeRegression, RandomForestRegression, RegressionWorkflowBase
 from data.data_readiness import num_input
+from global_variable import SECTION
 # sys.path.append("..")
 
 
@@ -16,11 +17,22 @@ class RegressionModelSelection(object):
 
         # model option
         if self.model == "Polynomial Regression":
-            poly_degree = num_input("Please specify the maximal degree of the polynomial features.\n@Degree:")
+            print("Please specify the maximal degree of the polynomial features.")
+            poly_degree = num_input(SECTION[2], "@Degree:")
             self.reg_workflow = PolynomialRegression(degree=poly_degree)
             X_train, X_test = self.reg_workflow.poly(X_train, X_test)
         elif self.model == "Xgboost":
             self.reg_workflow = XgboostRegression()
+        elif self.model == "Decision Tree Regression":
+            print("Please specify the max depth of the decision tree regression.")
+            dts_max_depth = num_input(SECTION[2], "@Max_depth:")
+            self.reg_workflow = DecisionTreeRegression(max_depth=dts_max_depth)
+        elif self.model == "ExtraTreeRegression":
+            self.reg_workflow = ExtraTreeRegression()
+        elif self.model == "RandomForestRegression":
+            self.reg_workflow = RandomForestRegression()
+        self.reg_workflow.X_train = X_train
+        self.reg_workflow.y_train = y_train
 
         # common components for every regression algorithm
         self.reg_workflow.show_info()

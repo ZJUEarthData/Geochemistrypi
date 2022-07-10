@@ -16,13 +16,14 @@ MAP_IMAGE_PATH = os.path.join(WORKING_PATH, "images", "map")
 GEO_IMAGE_PATH = os.path.join(WORKING_PATH, "images", "geochemistry")
 
 # create the directories if they didn't exist yet
-os.makedirs(DATASET_PATH, exist_ok=True)
-os.makedirs(MODEL_OUTPUT_IMAGE_PATH, exist_ok=True)
-os.makedirs(STATISTIC_IMAGE_PATH, exist_ok=True)
-os.makedirs(DATASET_OUTPUT_PATH, exist_ok=True)
-os.makedirs(MAP_IMAGE_PATH, exist_ok=True)
-os.makedirs(GEO_IMAGE_PATH, exist_ok=True)
+# os.makedirs(DATASET_PATH, exist_ok=True)
+# os.makedirs(MODEL_OUTPUT_IMAGE_PATH, exist_ok=True)
+# os.makedirs(STATISTIC_IMAGE_PATH, exist_ok=True)
+# os.makedirs(DATASET_OUTPUT_PATH, exist_ok=True)
+# os.makedirs(MAP_IMAGE_PATH, exist_ok=True)
+# os.makedirs(GEO_IMAGE_PATH, exist_ok=True)
 
+SECTION = ['User', 'Data', 'Model', 'Plot']
 OPTION = ['Yes', 'No']
 DATA_OPTION = ['Own Data', 'Provided Testing Data']
 TEST_DATA_OPTION = ['Data For Regression', 'Data For Classification',
@@ -30,9 +31,10 @@ TEST_DATA_OPTION = ['Data For Regression', 'Data For Classification',
 MODE_OPTION = ['Regression', 'Classification', 'Clustering', 'Dimensional Reduction']
 
 # the model provided to use
-REGRESSION_MODELS = ['Polynomial Regression', 'Xgboost']
-CLASSIFICATION_MODELS = ['Support Vector Machine']
-CLUSTERING_MODELS = ['KMeans','DBSCAN']
-DECOMPOSITION_MODELS = ['Principal Component Analysis']
 
+REGRESSION_MODELS = ['Polynomial Regression', 'Xgboost','ExtraTreeRegression', 'Decision Tree Regression', 'RandomForestRegression']
+CLASSIFICATION_MODELS = ['Support Vector Machine', 'DecisionTreeClassification', 'RandomForestClassification']
+CLUSTERING_MODELS = ['KMeans','DBSCAN']
+
+DECOMPOSITION_MODELS = ['Principal Component Analysis']
 IMPUTING_STRATEGY = ['mean', 'median', 'most_frequent']

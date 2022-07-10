@@ -7,17 +7,21 @@ from sklearn.model_selection import train_test_split, cross_validate
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, explained_variance_score
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
+from sklearn.tree import DecisionTreeRegressor, plot_tree
+from sklearn.ensemble import BaggingRegressor,ExtraTreesRegressor,RandomForestRegressor
+from sklearn.neural_network import MLPRegressor
 from typing import Union, Optional, List, Dict, Callable, Tuple, Any
 from typing import Sequence
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import xgboost
 # sys.path.append("..")
 
 
 class RegressionWorkflowBase(object):
 
-    # Default for chile class
+    # Default for child class
     X = None
     y = None
     name = None
@@ -38,7 +42,7 @@ class RegressionWorkflowBase(object):
 
     @staticmethod
     def data_split(X_data, y_data, test_size=0.2, random_state=42):
-        RegressionWorkflowBase.X = X_data
+        RegressionWorkflowBase.X = X_data  # child class is able to access to the data
         RegressionWorkflowBase.y = y_data
         X_train, X_test, y_train, y_test = train_test_split(RegressionWorkflowBase.X,
                                                             RegressionWorkflowBase.y,
@@ -308,7 +312,7 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
         # feature importance map ranked by importance
         plt.rcParams["figure.figsize"] = (14, 8)
         xgboost.plot_importance(self.model)
-        save_fig("xgb_feature_importance_fscore", MODEL_OUTPUT_IMAGE_PATH)
+        save_fig("xgb_feature_importance_score", MODEL_OUTPUT_IMAGE_PATH)
 
     def special_components(self):
         self._feature_importance()
@@ -316,3 +320,147 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
 
 class SVM(RegressionWorkflowBase, BaseEstimator):
     pass
+
+
+class DecisionTreeRegression(RegressionWorkflowBase, BaseEstimator):
+    name = "Decision Tree Regression"
+    special_function = ["DecisionTree Tree Plot Function"]
+
+
+    def __init__(self,
+                 criteria='gini',
+                 splitter='best',
+                 max_depth=3,
+                 min_samples_split=2,
+                 min_samples_leaf=1,
+                 min_weight_fraction_leaf=0.0,
+                 max_features=None,
+                 random_state=None,
+                 max_leaf_nodes=None,
+                 min_impurity_decrease=0.0,
+                 ccp_alpha=0.0
+                 ):
+        super().__init__(random_state=42)
+        self.criteria = criteria,
+        self.splitter = splitter,
+        self.max_depth = max_depth,
+        self.min_samples_split = min_samples_split,
+        self.min_samples_leaf = min_samples_leaf,
+        self.min_weight_fraction_leaf = min_weight_fraction_leaf,
+        self.max_features = max_features,
+        self.random_state = random_state,
+        self.max_leaf_nodes = max_leaf_nodes,
+        self.min_impurity_decrease = min_impurity_decrease,
+        self.ccp_alpha = ccp_alpha
+
+        self.model = DecisionTreeRegressor()
+
+
+    def plot_tree_function(self):
+        ###################################################
+        # Drawing decision tree diagrams
+        ###################################################
+        print("Plot_Tree_Function")
+        y = RegressionWorkflowBase().y
+        X = RegressionWorkflowBase().X
+        clf = self.model.fit(X, y)
+        plt.figure()
+        plot_tree(clf, filled=True)
+        save_fig('plot_decisiontree_regression', MODEL_OUTPUT_IMAGE_PATH)
+        plt.show()
+
+    def special_components(self):
+        self.plot_tree_function()
+
+
+class ExtraTreeRegression(RegressionWorkflowBase, BaseEstimator):
+    name = "ExtraTreeRegression"
+    special_function = ["feature_importances"]
+
+    def __init__(self,
+                 n_estimator: int = 500,
+                 bootstrap: bool = False,
+                 oob_score: bool = False,
+                 max_leaf_nodes: int = 20,
+                 random_state: int = 42,
+                 n_jobs: int = -1):
+        super().__init__(random_state=42)
+        self.n_estimators = n_estimator
+        self.bootstrap = bootstrap
+        self.oob_score = oob_score
+        self.max_leaf_nodes = max_leaf_nodes
+        self.random_state = random_state
+        self.n_jobs = n_jobs
+
+        self.model = ExtraTreesRegressor(n_estimators=self.n_estimators,
+                                         bootstrap=self.bootstrap,
+                                         oob_score=self.oob_score,
+                                         max_leaf_nodes=self.max_leaf_nodes,
+                                         random_state=self.random_state,
+                                         n_jobs=self.n_jobs)
+
+    def feature_importances(self):
+        importances_values = self.model.feature_importances_
+        importances = pd.DataFrame(importances_values, columns=["importance"])
+        feature_data = pd.DataFrame(self.X_train.columns, columns=["feature"])
+        importance = pd.concat([feature_data, importances], axis=1)
+
+        importance = importance.sort_values(["importance"], ascending=True)
+        importance["importance"] = (importance["importance"]).astype(float)
+        importance = importance.sort_values(["importance"])
+        importance.set_index('feature', inplace=True)
+        importance.plot.barh(color='r', alpha=0.7, rot=0, figsize=(8, 8))
+        save_fig("ExtraTreeRegression_feature_importance", MODEL_OUTPUT_IMAGE_PATH)
+
+    def extratree(self):
+        pass
+
+    def special_components(self):
+        self.feature_importances()
+        pass
+
+
+class RandomForestRegression(RegressionWorkflowBase, BaseEstimator):
+    name = "RandomForestRegression"
+    special_function = ["feature_importances"]
+
+    def __init__(self,
+                 n_estimators: int = 500,
+                 oob_score: bool = True,
+                 max_leaf_nodes: int = 15,
+                 n_jobs: int = -1,
+                 random_state: int = 42):
+        super().__init__(random_state=42)
+        self.n_estimators = n_estimators
+        self.oob_score = oob_score
+        self.max_leaf_nodes = max_leaf_nodes
+        self.n_jobs = n_jobs
+        self.random_state = random_state
+
+        self.model = RandomForestRegressor(n_estimators=self.n_estimators,
+                                           oob_score=self.oob_score,
+                                           max_leaf_nodes=self.max_leaf_nodes,
+                                           n_jobs=self.n_jobs,
+                                           random_state=self.random_state)
+
+    def feature_importances(self):
+        importances_values = self.model.feature_importances_
+        importances = pd.DataFrame(importances_values, columns=["importance"])
+        feature_data = pd.DataFrame(self.X_train.columns, columns=["feature"])
+        importance = pd.concat([feature_data, importances], axis=1)
+
+        importance = importance.sort_values(["importance"], ascending=True)
+        importance["importance"] = (importance["importance"]).astype(float)
+        importance = importance.sort_values(["importance"])
+        importance.set_index('feature', inplace=True)
+        importance.plot.barh(color='r', alpha=0.7, rot=0, figsize=(8, 8))
+        save_fig("RandomForestRegression_feature_importance", MODEL_OUTPUT_IMAGE_PATH)
+
+    def plot(self):
+        pass
+
+    def special_components(self):
+        self.feature_importances()
+        self.plot()
+        pass
+
