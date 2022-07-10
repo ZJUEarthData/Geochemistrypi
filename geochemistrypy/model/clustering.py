@@ -29,11 +29,9 @@ class ClusteringWorkflowBase(object):
     def show_info(cls):
         print("*-*" * 2, cls.name, "is running ...", "*-*" * 2)
         print("Expected Functionality:")
-        #warning
-        if cls.special_function != None:
-            function = cls.common_function + cls.special_function
-            for i in range(len(function)):
-                print("+ ", function[i])
+        function = cls.common_function + cls.special_function
+        for i in range(len(function)):
+            print("+ ", function[i])
 
     def __init__(self):
         self.model = None
@@ -164,11 +162,11 @@ class ClusteringWorkflowBase(object):
         print("-----* Plot 3d Graph *-----")
         fig = plt.figure(figsize=(12, 6), facecolor='w')
         cm = mpl.colors.ListedColormap(['#FFC2CC', '#C2FFCC', '#CCC2FF'])
-        cm2 = mpl.colors.ListedColormap(['#FF0000', '#00FF00', '#0000FF'])
+        # cm2 = mpl.colors.ListedColormap(['#FF0000', '#00FF00', '#0000FF'])
         plt.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.9)
 
         ax = fig.add_subplot(121, projection='3d')
-        ax.scatter(self.X.iloc[:, [0]], self.X.iloc[:, [1]], self.X.iloc[:, [2]], alpha=0.3, c="#FF0000", s=6)  # 生成散点.利用c控制颜色序列,s控制大小
+        ax.scatter(self.X.iloc[:, [0]], self.X.iloc[:, [1]], self.X.iloc[:, [2]], alpha=0.3, c="#FF0000", s=6)
         plt.title('原始数据分布图')
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
@@ -176,13 +174,13 @@ class ClusteringWorkflowBase(object):
         plt.grid(True)
 
         ax2 = fig.add_subplot(122, projection='3d')
-        ax2.scatter(self.X.iloc[:, [0]], self.X.iloc[:, [1]], self.X.iloc[:, [2]],c=self.X['clustering result'], s=6, cmap=cm, edgecolors='none')
+        ax2.scatter(self.X.iloc[:, [0]], self.X.iloc[:, [1]], self.X.iloc[:, [2]],
+                    c=self.X['clustering result'], s=6, cmap=cm, edgecolors='none')
         ax2.set_xlabel('X')
         ax2.set_ylabel('Y')
         ax2.set_zlabel('Z')
         plt.grid(True)
         save_fig(f"Plot 3d Graph - {self.naming}", MODEL_OUTPUT_IMAGE_PATH)
-
 
 
 class KMeansClustering(ClusteringWorkflowBase):
@@ -211,7 +209,6 @@ class KMeansClustering(ClusteringWorkflowBase):
         self.random_state = random_state
         self.copy_x = copy_x
         self.algorithm = algorithm
-
         self.model = KMeans(n_clusters=self.n_clusters,
                             init=self.init,
                             n_init=self.n_init,
@@ -234,6 +231,7 @@ class KMeansClustering(ClusteringWorkflowBase):
         self.plot_silhouette_diagram(self.n_clusters)
         self.plot_2d_graph()
         self.plot_3d_graph()
+
 
 class DBSCANClustering(ClusteringWorkflowBase):
 
@@ -261,16 +259,14 @@ class DBSCANClustering(ClusteringWorkflowBase):
         self.p = p
         self.n_jobs = n_jobs
 
-        self.model = DBSCAN(eps = self.eps,
-                            min_samples = self.min_samples,
-                            metric = self.metric,
-                            metric_params = self.min_samples,
-                            algorithm = self.algorithm,
-                            leaf_size = self.leaf_size,
-                            p = self.p,
-                            n_jobs = self.n_jobs)
+        self.model = DBSCAN(eps=self.eps,
+                            min_samples=self.min_samples,
+                            metric=self.metric,
+                            metric_params=self.min_samples,
+                            algorithm=self.algorithm,
+                            leaf_size=self.leaf_size,
+                            p=self.p,
+                            n_jobs=self.n_jobs)
 
     def special_components(self):
         pass
-
-
