@@ -8,8 +8,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, e
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.tree import DecisionTreeRegressor, plot_tree
-from sklearn.ensemble import BaggingRegressor,ExtraTreesRegressor,RandomForestRegressor
-from sklearn.neural_network import MLPRegressor
+from sklearn.ensemble import ExtraTreesRegressor, RandomForestRegressor
 from typing import Union, Optional, List, Dict, Callable, Tuple, Any
 from typing import Sequence
 import matplotlib.pyplot as plt
@@ -323,9 +322,8 @@ class SVM(RegressionWorkflowBase, BaseEstimator):
 
 
 class DecisionTreeRegression(RegressionWorkflowBase, BaseEstimator):
-    name = "Decision Tree Regression"
-    special_function = ["DecisionTree Tree Plot Function"]
-
+    name = "Decision Tree"
+    special_function = ["Decision Tree Plot"]
 
     def __init__(self,
                  criteria='gini',
@@ -355,27 +353,25 @@ class DecisionTreeRegression(RegressionWorkflowBase, BaseEstimator):
 
         self.model = DecisionTreeRegressor()
 
-
     def plot_tree_function(self):
         ###################################################
         # Drawing decision tree diagrams
         ###################################################
-        print("Plot_Tree_Function")
+        print("-----* Decision Tree Plot *-----")
         y = RegressionWorkflowBase().y
         X = RegressionWorkflowBase().X
         clf = self.model.fit(X, y)
         plt.figure()
         plot_tree(clf, filled=True)
-        save_fig('plot_decisiontree_regression', MODEL_OUTPUT_IMAGE_PATH)
-        plt.show()
+        save_fig('plot_decision_tree_regression', MODEL_OUTPUT_IMAGE_PATH)
 
     def special_components(self):
         self.plot_tree_function()
 
 
 class ExtraTreeRegression(RegressionWorkflowBase, BaseEstimator):
-    name = "ExtraTreeRegression"
-    special_function = ["feature_importances"]
+    name = "Extra-Trees"
+    special_function = ["Feature Importance"]
 
     def __init__(self,
                  n_estimator: int = 500,
@@ -421,8 +417,8 @@ class ExtraTreeRegression(RegressionWorkflowBase, BaseEstimator):
 
 
 class RandomForestRegression(RegressionWorkflowBase, BaseEstimator):
-    name = "RandomForestRegression"
-    special_function = ["feature_importances"]
+    name = "Random Forest"
+    special_function = ["Feature Importance"]
 
     def __init__(self,
                  n_estimators: int = 500,
@@ -444,6 +440,7 @@ class RandomForestRegression(RegressionWorkflowBase, BaseEstimator):
                                            random_state=self.random_state)
 
     def feature_importances(self):
+        print("-----* Feature Importance *-----")
         importances_values = self.model.feature_importances_
         importances = pd.DataFrame(importances_values, columns=["importance"])
         feature_data = pd.DataFrame(self.X_train.columns, columns=["feature"])

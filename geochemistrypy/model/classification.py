@@ -61,7 +61,7 @@ class ClassificationWorkflowBase(object):
         print("-----* Confusion Matrix *-----")
         print(confusion_matrix(y_test, y_test_prediction))
         plot_confusion_matrix(self.model, X_test, y_test)
-        plt.show()
+        # plt.show()
         save_fig(f"Confusion Matrix - {self.naming}", MODEL_OUTPUT_IMAGE_PATH)
 
 
@@ -153,7 +153,7 @@ class SVMClassification(ClassificationWorkflowBase):
         Dichotomize the two selected elements and draw an image
 
         """
-        print("PLot_SVC_Function")
+        print("-----* Two-dimensional Decision Boundary Diagram *-----")
         y = np.array(ClassificationWorkflowBase().y)
         X = np.array(ClassificationWorkflowBase().X)
         y = np.squeeze(y)
@@ -171,7 +171,6 @@ class SVMClassification(ClassificationWorkflowBase):
         ax.set_xlim(xlim)
         ax.set_ylim(ylim)
         save_fig('plot_svc', MODEL_OUTPUT_IMAGE_PATH)
-        plt.show()
 
     def special_components(self):
         self.plot_svc_function()
@@ -179,8 +178,8 @@ class SVMClassification(ClassificationWorkflowBase):
 
 class DecisionTreeClassification(ClassificationWorkflowBase):
 
-    name = "DecisionTree"
-    special_function = ["DecisionTree Tree Plot Function"]
+    name = "Decision Tree"
+    special_function = ["Decision Tree Plot"]
 
     def __init__(
             self,
@@ -249,21 +248,20 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
         ###################################################
         #Drawing decision tree diagrams
         ###################################################
-        print("Plot_Tree_Function")
+        print("-----* Decision Tree Plot *-----")
         y = ClassificationWorkflowBase().y
         X = ClassificationWorkflowBase().X
         clf = self.model.fit(X,y)
         tree.plot_tree(clf, filled=True)
-        save_fig('plot_decisiontree', MODEL_OUTPUT_IMAGE_PATH)
-        plt.show()
+        save_fig('plot_decision_tree_classification', MODEL_OUTPUT_IMAGE_PATH)
 
     def special_components(self):
         self.plot_tree_function()
 
 
 class RandomForestClassification(ClassificationWorkflowBase):
-    name = "RandomForestClassification"
-    special_function = ['feature_importances', 'plot']
+    name = "Random Forest"
+    special_function = ['Feature Importance', "Random Forest's Tree Plot"]
 
     def __init__(
             self,
@@ -370,6 +368,7 @@ class RandomForestClassification(ClassificationWorkflowBase):
         ###################################################
         # Drawing feature importances barh diagram
         ###################################################
+        print("-----* Feature Importance *-----")
         importances_values = self.model.feature_importances_
         importances = pd.DataFrame(importances_values, columns=["importance"])
         feature_data = pd.DataFrame(self.X_train.columns, columns=["feature"])
@@ -386,7 +385,8 @@ class RandomForestClassification(ClassificationWorkflowBase):
         ###################################################
         # Drawing diagrams of the first decision tree of forest
         ###################################################
-        tree.plot_tree(self.model.estimators_[0]);
+        print("-----* Random Forest's Tree Plot *-----")
+        tree.plot_tree(self.model.estimators_[0])
         save_fig("RandomForest_tree", MODEL_OUTPUT_IMAGE_PATH)
         pass
 
