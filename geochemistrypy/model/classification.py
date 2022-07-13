@@ -406,7 +406,7 @@ class XgboostClassification(ClassificationWorkflowBase):
     ]
     name = "Xgboost"
     special_function = ['Feature Importance']
-    #TODO(3180101673@zju.edu.cn): plot tree
+
 
     def __init__(
             self,
@@ -528,7 +528,7 @@ class XgboostClassification(ClassificationWorkflowBase):
             print(feature_name, ":", score)
 
         # histograms present feature weights for XGBoost predictions
-        plt.figure(figsize=(40, 6))
+        plt.figure(figsize=(16, 8))
         plt.bar(range(len(columns_name)), self.model.feature_importances_, tick_label=columns_name)
         save_fig("xgboost_feature_importance", MODEL_OUTPUT_IMAGE_PATH)
 
@@ -547,6 +547,7 @@ class XgboostClassification(ClassificationWorkflowBase):
         #xgboost.plot_tree(self.model, num_trees=2)
         plt.show()
         save_fig('plot_xgboost_tree', MODEL_OUTPUT_IMAGE_PATH)
+        # TODO(3180101673@zju.edu.cn): plot tree
 
 
 
