@@ -537,20 +537,34 @@ class XgboostClassification(ClassificationWorkflowBase):
         xgboost.plot_importance(self.model)
         save_fig("xgboost_feature_importance_score", MODEL_OUTPUT_IMAGE_PATH)
 
-        print("Plot_Tree_Function")
+    def plot(self):
+        ###################################################
+        # Drawing diagrams of the first decision tree of xgboost
+        ###################################################
+        print("-----* Xgboost's Tree Plot *-----")
+        plt.rcParams["figure.figsize"] = (14, 8)
+        node_params = {
+            'shape': 'box',
+            'style': 'filled,rounded',
+            'fillcolor': '#78bceb'
+        }
+        xgboost.to_graphviz(self.model, condition_node_params = node_params)
+        plt.show()
+        save_fig('plot_xgboost_tree', MODEL_OUTPUT_IMAGE_PATH)
+        pass
+
+
+        # print("Plot_Tree_Function")
         # y = ClassificationWorkflowBase().y
         # X = ClassificationWorkflowBase().X
         # clf = self.model.fit(X,y)
-        plt.figure()
-        xgboost.to_graphviz(self.model, num_trees=1)
-        #xgboost.to_graphviz(clf, num_trees=1, filled=True)
-        #xgboost.plot_tree(self.model, num_trees=2)
-        plt.show()
-        save_fig('plot_xgboost_tree', MODEL_OUTPUT_IMAGE_PATH)
-        # TODO(3180101673@zju.edu.cn): plot tree
-
-
-
+        # plt.figure()
+        # xgboost.to_graphviz(self.model, num_trees=1)
+        # #xgboost.to_graphviz(clf, num_trees=1, filled=True)
+        # #xgboost.plot_tree(self.model, num_trees=2)
+        # plt.show()
+        # save_fig('plot_xgboost_tree', MODEL_OUTPUT_IMAGE_PATH)
 
     def special_components(self):
         self._feature_importance()
+        self.plot()
