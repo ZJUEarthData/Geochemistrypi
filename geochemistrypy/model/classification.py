@@ -12,7 +12,6 @@ from sklearn import tree
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 import xgboost
-from xgboost.callback import TrainingCallback
 from typing import Union, Optional, List, Dict, Callable, Tuple, Any, Sequence
 # sys.path.append("..")
 
@@ -542,28 +541,15 @@ class XgboostClassification(ClassificationWorkflowBase):
         # Drawing diagrams of the first decision tree of xgboost
         ###################################################
         print("-----* Xgboost's Tree Plot *-----")
-        plt.rcParams["figure.figsize"] = (14, 8)
-        node_params = {
-            'shape': 'box',
-            'style': 'filled,rounded',
-            'fillcolor': '#78bceb'
-        }
-        xgboost.to_graphviz(self.model, condition_node_params = node_params)
-        plt.show()
+        xgboost.plot_tree(self.model)
+        # node_params = {
+        #     'shape': 'box',
+        #     'style': 'filled,rounded',
+        #     'fillcolor': '#78bceb'
+        # }
+        # xgboost.to_graphviz(self.model, condition_node_params = node_params)
         save_fig('plot_xgboost_tree', MODEL_OUTPUT_IMAGE_PATH)
         pass
-
-
-        # print("Plot_Tree_Function")
-        # y = ClassificationWorkflowBase().y
-        # X = ClassificationWorkflowBase().X
-        # clf = self.model.fit(X,y)
-        # plt.figure()
-        # xgboost.to_graphviz(self.model, num_trees=1)
-        # #xgboost.to_graphviz(clf, num_trees=1, filled=True)
-        # #xgboost.plot_tree(self.model, num_trees=2)
-        # plt.show()
-        # save_fig('plot_xgboost_tree', MODEL_OUTPUT_IMAGE_PATH)
 
     def special_components(self):
         self._feature_importance()
