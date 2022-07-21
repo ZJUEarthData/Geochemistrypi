@@ -536,20 +536,21 @@ class XgboostClassification(ClassificationWorkflowBase):
         xgboost.plot_importance(self.model)
         save_fig("xgboost_feature_importance_score", MODEL_OUTPUT_IMAGE_PATH)
 
-    def plot(self):
-        ###################################################
-        # Drawing diagrams of the first decision tree of xgboost
-        ###################################################
-        print("-----* Xgboost's Tree Plot *-----")
-        xgboost.plot_tree(self.model)
-        # node_params = {
-        #     'shape': 'box',
-        #     'style': 'filled,rounded',
-        #     'fillcolor': '#78bceb'
-        # }
-        # xgboost.to_graphviz(self.model, condition_node_params = node_params)
-        save_fig('plot_xgboost_tree', MODEL_OUTPUT_IMAGE_PATH)
-        pass
+    # def plot(self):
+    # TODO(solve the problem of failed to execute WindowsPath('dot'), make sure the Graphviz executables are on your systems' PATH
+    #     ###################################################
+    #     # Drawing diagrams of the first decision tree of xgboost
+    #     ###################################################
+    #     print("-----* Xgboost's Tree Plot *-----")
+    #     xgboost.plot_tree(self.model)
+    #     # node_params = {
+    #     #     'shape': 'box',
+    #     #     'style': 'filled,rounded',
+    #     #     'fillcolor': '#78bceb'
+    #     # }
+    #     # xgboost.to_graphviz(self.model, condition_node_params = node_params)
+    #     save_fig('plot_xgboost_tree', MODEL_OUTPUT_IMAGE_PATH)
+    #     pass
 
     def special_components(self):
         self._feature_importance()
