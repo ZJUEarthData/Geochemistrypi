@@ -11,6 +11,8 @@ from sklearn.model_selection import train_test_split
 from sklearn import tree
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
+import xgboost
+from typing import Union, Optional, List, Dict, Callable, Tuple, Any, Sequence
 # sys.path.append("..")
 
 
@@ -392,4 +394,164 @@ class RandomForestClassification(ClassificationWorkflowBase):
 
     def special_components(self):
         self.feature_importances()
+        self.plot()
+
+class XgboostClassification(ClassificationWorkflowBase):
+    # https: // xgboost.readthedocs.io / en / stable / python / python_api.html  # module-xgboost.sklearn
+    _SklObjective = Optional[
+        Union[
+            str, Callable[[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]
+        ]
+    ]
+    name = "Xgboost"
+    special_function = ['Feature Importance']
+
+
+    def __init__(
+            self,
+            n_estimators: int = 100,
+            max_depth: Optional[int] = None,
+            max_leaves: Optional[int] = None,
+            max_bin: Optional[int] = None,
+            grow_policy=1,
+            learning_rate: Optional[float] = None,
+            verbosity: Optional[int] = None,
+            objective: _SklObjective = None,
+            booster: Optional[str] = None,
+            tree_method: Optional[str] = None,
+            n_jobs: Optional[int] = None,
+            gamma: Optional[float] = None,
+            min_child_weight: Optional[float] = None,
+            max_delta_step: Optional[float] = None,
+            subsample: Optional[float] = None,
+            colsample_bytree: Optional[float] = None,
+            colsample_bylevel: Optional[float] = None,
+            colsample_bynode: Optional[float] = None,
+            reg_alpha: Optional[float] = None,
+            reg_lambda: Optional[float] = None,
+            scale_pos_weight: Optional[float] = None,
+            base_score: Optional[float] = None,
+            random_state: Optional[Union[np.random.RandomState, int]] = None,
+            missing: float = np.nan,
+            num_parallel_tree: Optional[int] = None,
+            monotone_constraints: Optional[Union[Dict[str, int], str]] = None,
+            interaction_constraints: Optional[Union[str, Sequence[Sequence[str]]]] = None,
+            importance_type: Optional[str] = None,
+            gpu_id: Optional[int] = None,
+            validate_parameters: Optional[bool] = None,
+            predictor: Optional[str] = None,
+            enable_categorical: bool = False,
+            eval_metric: Optional[Union[str, List[str], Callable]] = None,
+            early_stopping_rounds: Optional[int] = None,
+            **kwargs: Any
+    ):
+        super().__init__(random_state=42)
+        self.n_estimators = n_estimators
+        self.learning_rate = learning_rate
+        self.objective = objective
+        self.max_depth = max_depth
+        self.max_leaves = max_leaves
+        self.max_bin = max_bin
+        self.grow_policy = grow_policy
+        self.verbosity = verbosity
+        self.booster = booster
+        self.tree_method = tree_method
+        self.gamma = gamma
+        self.min_child_weight = min_child_weight
+        self.max_delta_step = max_delta_step
+        self.subsample = subsample
+        self.colsample_bytree = colsample_bytree
+        self.colsample_bylevel = colsample_bylevel
+        self.colsample_bynode = colsample_bynode
+        self.reg_alpha = reg_alpha
+        self.reg_lambda = reg_lambda
+        self.scale_pos_weight = scale_pos_weight
+        self.base_score = base_score
+        self.missing = missing
+        self.num_parallel_tree = num_parallel_tree
+        self.random_state = random_state
+        self.n_jobs = n_jobs
+        self.monotone_constraints = monotone_constraints
+        self.interaction_constraints = interaction_constraints
+        self.importance_type = importance_type
+        self.gpu_id = gpu_id
+        self.validate_parameters = validate_parameters
+        self.predictor = predictor
+        self.enable_categorical = enable_categorical
+        self.eval_metric = eval_metric
+        self.early_stopping_rounds = early_stopping_rounds
+        if kwargs:
+            self.kwargs = kwargs
+
+        self.model = xgboost.XGBClassifier(
+            n_estimators=self.n_estimators,
+            objective=self.objective,
+            max_depth=self.max_depth,
+            max_leaves=self.max_leaves,
+            max_bin=self.max_bin,
+            learning_rate=self.learning_rate,
+            verbosity=self.verbosity,
+            booster=self.booster,
+            tree_method=self.tree_method,
+            gamma=self.gamma,
+            min_child_weight=self.min_child_weight,
+            max_delta_step=self.max_delta_step,
+            subsample=self.subsample,
+            colsample_bytree=self.colsample_bytree,
+            colsample_bylevel=self.colsample_bylevel,
+            colsample_bynode=self.colsample_bynode,
+            reg_alpha=self.reg_alpha,
+            reg_lambda=self.reg_lambda,
+            scale_pos_weight=self.scale_pos_weight,
+            base_score=self.base_score,
+            missing=self.missing,
+            num_parallel_tree=self.num_parallel_tree,
+            random_state=self.random_state,
+            n_jobs=self.n_jobs,
+            monotone_constraints=self.monotone_constraints,
+            interaction_constraints=self.interaction_constraints,
+            importance_type=self.importance_type,
+            gpu_id=self.gpu_id,
+            validate_parameters=self.validate_parameters,
+            predictor=self.predictor,
+            enable_categorical=self.enable_categorical,
+            eval_metric=self.eval_metric,
+            early_stopping_rounds=self.early_stopping_rounds,
+            )
+
+    def _feature_importance(self):
+        print("-----* Feature Importance *-----")
+        columns_name = ClassificationWorkflowBase.X.columns
+        # print the feature importance value orderly
+        for feature_name, score in zip(list(columns_name), self.model.feature_importances_):
+            print(feature_name, ":", score)
+
+        # histograms present feature weights for XGBoost predictions
+        plt.figure(figsize=(16, 8))
+        plt.bar(range(len(columns_name)), self.model.feature_importances_, tick_label=columns_name)
+        save_fig("xgboost_feature_importance", MODEL_OUTPUT_IMAGE_PATH)
+
+        # feature importance map ranked by importance
+        plt.rcParams["figure.figsize"] = (14, 8)
+        xgboost.plot_importance(self.model)
+        save_fig("xgboost_feature_importance_score", MODEL_OUTPUT_IMAGE_PATH)
+
+    # def plot(self):
+    # TODO(solve the problem of failed to execute WindowsPath('dot'), make sure the Graphviz executables are on your systems' PATH
+    #     ###################################################
+    #     # Drawing diagrams of the first decision tree of xgboost
+    #     ###################################################
+    #     print("-----* Xgboost's Tree Plot *-----")
+    #     xgboost.plot_tree(self.model)
+    #     # node_params = {
+    #     #     'shape': 'box',
+    #     #     'style': 'filled,rounded',
+    #     #     'fillcolor': '#78bceb'
+    #     # }
+    #     # xgboost.to_graphviz(self.model, condition_node_params = node_params)
+    #     save_fig('plot_xgboost_tree', MODEL_OUTPUT_IMAGE_PATH)
+    #     pass
+
+    def special_components(self):
+        self._feature_importance()
         self.plot()

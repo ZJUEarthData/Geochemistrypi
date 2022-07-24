@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # import sys
-from model.classification import ClassificationWorkflowBase, SVMClassification, DecisionTreeClassification, RandomForestClassification
+from model.classification import ClassificationWorkflowBase, SVMClassification, DecisionTreeClassification, RandomForestClassification,XgboostClassification
 
 # sys.path.append("..")
 
@@ -23,6 +23,8 @@ class ClassificationModelSelection(object):
             self.clf_workflow = RandomForestClassification()
             self.clf_workflow.X_train = X_train
             self.clf_workflow.y_train = y_train
+        elif self.model == "Xgboost":
+            self.clf_workflow = XgboostClassification()
         # common components for every classification algorithm
         self.clf_workflow.show_info()
         self.clf_workflow.fit(X_train, y_train)
