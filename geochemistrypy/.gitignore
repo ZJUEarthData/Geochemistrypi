@@ -1,3 +1,12 @@
+# all produced graphs in png format under the directory images
+**/images
+
+# all produced data set under directory output
+**/output
+
+# log
+test.log
+
 # OS
 .DS_Store
 
@@ -10,9 +19,8 @@
 # Bytecode
 __pycache__
 
-# Microsoft Office
-.~*.xlsx
-~*.xlsx
+# pytest
+.pytest_cache
 
 # Python Virtual Environment
 venv_geo/*

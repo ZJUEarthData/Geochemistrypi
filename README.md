@@ -12,11 +12,8 @@ The whole package is under construction and the documentation is progressively e
 
 ### Team Leaders
 + Can He (Sany, Sun Yat-sen University)  
-Email: hecan@mail2.sysu.edu.cn  
-  
+Email: sanyhew1097618435@163.com
 
-+ Anzhou Li (Andrian, Zhejiang University)  
-Email: anzhouli@zju.edu.cn
 
 ### Team Members
 + Yang Lyv (Daisy, China University of Geosciences, Wuhan)
@@ -27,17 +24,26 @@ Email: anzhouli@zju.edu.cn
 + Xunxin Liu (Tante, China University of Geosciences, Wuhan)
 + Aixiwake·Janganuer (Ayshuak, Sun Yat-sen University)
 + Jianming Zhao (Jamie, Jilin University, Changchun)
-+ Yonghui Qin (Qinyh1, Sun Yat-sen University)
 + Ting Liu (Kira, Sun Yat-sen University)
++ Kaixin Zheng (Hayne, Sun Yat-sen University)
++ Fang Li (liv, Shenzhen University)
+
+
 
 ### Join Us
-Do you want to contribute to this open-source program? Contact with your CV: hecan@mail2.sysu.edu.cn  
+Do you want to contribute to this open-source program? Contact with your CV: sanyhew1097618435@163.com  
 What can you get? Please refer to: https://person.zju.edu.cn/zhangzhou#0  
 
 
 ### Related Videos
-Technical record videos are on Bilibili and Youtube synchronously while other meeting videos are internal materials
+Technical record videos are on Bilibili and Youtube synchronously while other meeting videos are internal materials.
 1. [ZJU_Earth_Data Introduction (Geochemical Data, Python, Geochemistry Py) - Prof. Zhang](https://www.bilibili.com/video/BV1Lf4y1w7EK?spm_id_from=333.999.0.0)
-2. [How to Collaborate and Provide Bug Report on Geochemistry Py Through GitHub - Can He (Sany)](https://www.bilibili.com/video/BV1LA4y1Q7Va?spm_id_from=333.999.0.0)
+2. [How to Collaborate and Provide Bug Report on Geochemistry Py Through GitHub - Can He (Sany)](https://www.youtube.com/watch?v=1DWoEsqsfvQ&list=PLy8hNsI55lvh1UHjhVhqNUj3xPdV9sEiM&index=3)
 3. [How to Run Geochemistry Py v1.0.0-alpha - Can He (Sany)](https://www.bilibili.com/video/BV1i541117dd?spm_id_from=333.999.0.0)
-4. [How to Create and Use Virtual Environment on Geochemistry Py - Can He (Sany)](https://www.bilibili.com/video/BV1C34y1x7sR?spm_id_from=333.999.0.0)
+4. [How to Create and Use Virtual Environment on Geochemistry Py - Can He (Sany)](https://www.youtube.com/watch?v=4KFi7OXxD-c&list=PLy8hNsI55lvh1UHjhVhqNUj3xPdV9sEiM&index=4)
+5. [How to use Github-Desktop in conflict resolution - Qiuhao Zhao (Brad)](https://www.youtube.com/watch?v=KT1g5JpuUVI&list=PLy8hNsI55lvh1UHjhVhqNUj3xPdV9sEiM)
+6. [Virtual Environment & Packages On Windows-- Jianming Zhao (Jamie)](https://www.youtube.com/watch?v=e4VqSBuNp_o&list=PLy8hNsI55lvh1UHjhVhqNUj3xPdV9sEiM&index=2)
+
+
+### Contributors
++ Anzhou Li (Andrian, Zhejiang University) 
