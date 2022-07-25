@@ -551,7 +551,6 @@ class XgboostClassification(ClassificationWorkflowBase):
     #     # }
     #     # xgboost.to_graphviz(self.model, condition_node_params = node_params)
     #     save_fig('plot_xgboost_tree', MODEL_OUTPUT_IMAGE_PATH)
-    #     pass
 
     def special_components(self):
         self._feature_importance()
