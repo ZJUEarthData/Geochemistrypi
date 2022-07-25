@@ -396,6 +396,7 @@ class RandomForestClassification(ClassificationWorkflowBase):
         self.feature_importances()
         self.plot()
 
+
 class XgboostClassification(ClassificationWorkflowBase):
     # https: // xgboost.readthedocs.io / en / stable / python / python_api.html  # module-xgboost.sklearn
     _SklObjective = Optional[
@@ -405,7 +406,6 @@ class XgboostClassification(ClassificationWorkflowBase):
     ]
     name = "Xgboost"
     special_function = ['Feature Importance']
-
 
     def __init__(
             self,
@@ -436,7 +436,7 @@ class XgboostClassification(ClassificationWorkflowBase):
             num_parallel_tree: Optional[int] = None,
             monotone_constraints: Optional[Union[Dict[str, int], str]] = None,
             interaction_constraints: Optional[Union[str, Sequence[Sequence[str]]]] = None,
-            importance_type: Optional[str] = None,
+            importance_type: Optional[str] = 'weight',
             gpu_id: Optional[int] = None,
             validate_parameters: Optional[bool] = None,
             predictor: Optional[str] = None,
@@ -518,6 +518,7 @@ class XgboostClassification(ClassificationWorkflowBase):
             eval_metric=self.eval_metric,
             early_stopping_rounds=self.early_stopping_rounds,
             )
+        self.naming = XgboostClassification.name
 
     def _feature_importance(self):
         print("-----* Feature Importance *-----")
@@ -554,4 +555,4 @@ class XgboostClassification(ClassificationWorkflowBase):
 
     def special_components(self):
         self._feature_importance()
-        self.plot()
+        # self.plot()
