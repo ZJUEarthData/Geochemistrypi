@@ -436,7 +436,7 @@ class XgboostClassification(ClassificationWorkflowBase):
             num_parallel_tree: Optional[int] = None,
             monotone_constraints: Optional[Union[Dict[str, int], str]] = None,
             interaction_constraints: Optional[Union[str, Sequence[Sequence[str]]]] = None,
-            importance_type: Optional[str] = None,
+            importance_type: Optional[str] = 'weight',
             gpu_id: Optional[int] = None,
             validate_parameters: Optional[bool] = None,
             predictor: Optional[str] = None,
@@ -551,7 +551,6 @@ class XgboostClassification(ClassificationWorkflowBase):
     #     # }
     #     # xgboost.to_graphviz(self.model, condition_node_params = node_params)
     #     save_fig('plot_xgboost_tree', MODEL_OUTPUT_IMAGE_PATH)
-    #     pass
 
     def special_components(self):
         self._feature_importance()
