@@ -53,12 +53,24 @@ class ClusteringWorkflowBase(object):
         print(self.X)
         save_data(self.X, f"{self.naming}", DATASET_OUTPUT_PATH)
 
-    def plot_silhouette_diagram(self, n_clusters: int = 0,
-                                show_xlabel: bool = True, show_ylabel: bool = True, show_title: bool = True):
+     """
+    :param n_clusters:The number of clusters to form as well as the number of centroids to generate.
 
+    References
+    ----------------------------------------
+    Silhouette analysis can be used to study the separation distance between the resulting clusters. 
+    The silhouette plot displays a measure of how close each point in one cluster is to points in the 
+    neighboring clusters and thus provides a way to assess parameters like number of clusters visually. 
+    This measure has a range of [-1, 1].
+
+    https://scikit-learn.org/stable/auto_examples/cluster/plot_kmeans_silhouette_analysis.html
+    """
+
+    def plot_silhouette_diagram(self, n_clusters: int = 0, ):
+        print("")
+        print("-----* Silhouette Analysis *-----")
         # Create a subplot with 1 row and 2 columns
         fig, (ax1, ax2) = plt.subplots(1, 2)
-        # Set the figure size in inches.
         fig.set_size_inches(18, 7)
 
         # The 1st subplot is the silhouette plot
@@ -69,8 +81,7 @@ class ClusteringWorkflowBase(object):
         # plots of individual clusters, to demarcate them clearly.
 
         # I hope the type of self.X = <class 'pandas.core.frame.DataFrame'>
-        len_X = len(self.X)
-        ax1.set_ylim([0, len_X + (n_clusters + 1) * 10])
+        ax1.set_ylim([0, len(self.X) + (n_clusters + 1) * 10])
 
         # For example:cluster_labels = [4 4 1 ... 0 0 0]
         cluster_labels = self.X['clustering result']
@@ -142,7 +153,6 @@ class ClusteringWorkflowBase(object):
 
         print("Successfully graph the Silhouette Diagram.")
         save_fig(f"Silhouette Diagram - {self.naming}", MODEL_OUTPUT_IMAGE_PATH)
-        # plt.show()
 
     def plot_2d_graph(self):
         fig = plt.figure()
