@@ -13,6 +13,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 import xgboost
 from typing import Union, Optional, List, Dict, Callable, Tuple, Any, Sequence
+from matplotlib.colors import ListedColormap
 # sys.path.append("..")
 
 
@@ -62,8 +63,8 @@ class ClassificationWorkflowBase(object):
     def confusion_matrix_plot(self, X_test, y_test, y_test_prediction):
         print("-----* Confusion Matrix *-----")
         print(confusion_matrix(y_test, y_test_prediction))
+        plt.figure()
         plot_confusion_matrix(self.model, X_test, y_test)
-        # plt.show()
         save_fig(f"Confusion Matrix - {self.naming}", MODEL_OUTPUT_IMAGE_PATH)
 
 
@@ -156,11 +157,12 @@ class SVMClassification(ClassificationWorkflowBase):
 
         """
         print("-----* Two-dimensional Decision Boundary Diagram *-----")
+        plt.figure()
         y = np.array(ClassificationWorkflowBase().y)
         X = np.array(ClassificationWorkflowBase().X)
         y = np.squeeze(y)
         clf = self.model.fit(X,y)
-        plt.scatter(X[:, 0], X[:, 1], c=y, s=50, edgecolors='k',cmap="rainbow")
+        plt.scatter(X[:, 0], X[:, 1], c=y,cmap=ListedColormap(['#FF0000', '#0000FF']), s=50,alpha=0.6)
         ax = plt.gca()
         xlim = ax.get_xlim()
         ylim = ax.get_ylim()
@@ -172,10 +174,38 @@ class SVMClassification(ClassificationWorkflowBase):
         ax.contour(X, Y, P, colors="k", levels=[-1, 0, 1], alpha=0.5, linestyles=["--", "-", "--"])
         ax.set_xlim(xlim)
         ax.set_ylim(ylim)
-        save_fig('plot_svc', MODEL_OUTPUT_IMAGE_PATH)
+        save_fig('SVC Plot', MODEL_OUTPUT_IMAGE_PATH)
+
+    def plot_svc_surface_function(self):
+        """
+               Dichotomize the two selected elements and draw an image
+
+        """
+        print("-----* Two-dimensional Decision Surface Boundary Diagram *-----")
+        plt.figure()
+        y = np.array(ClassificationWorkflowBase().y)
+        X = np.array(ClassificationWorkflowBase().X)
+        y = np.squeeze(y)
+        clf = self.model.fit(X, y)
+        plt.scatter(X[:, 0], X[:, 1], c=y, s=50, cmap=ListedColormap(['#FF0000', '#0000FF']),alpha=0.6)
+        ax = plt.gca()
+        xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
+        x = np.linspace(xlim[0], xlim[1], 30)
+        y = np.linspace(ylim[0], ylim[1], 30)
+        Y, X = np.meshgrid(y, x)
+        Z = clf.decision_function(np.c_[X.ravel(), Y.ravel()])
+        Z = Z.reshape(X.shape)
+        ax.contourf(X, Y, Z, cmap=plt.cm.RdYlBu, alpha=0.5)
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
+        save_fig('SVC Surface Function Plot', MODEL_OUTPUT_IMAGE_PATH)
+
+
 
     def special_components(self):
         self.plot_svc_function()
+        self.plot_svc_surface_function()
 
 
 class DecisionTreeClassification(ClassificationWorkflowBase):
@@ -251,26 +281,49 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
         #Drawing decision tree diagrams
         ###################################################
         print("-----* Decision Tree Plot *-----")
+        plt.figure()
         y = ClassificationWorkflowBase().y
         X = ClassificationWorkflowBase().X
         clf = self.model.fit(X,y)
         tree.plot_tree(clf, filled=True)
-        save_fig('plot_decision_tree_classification', MODEL_OUTPUT_IMAGE_PATH)
+        save_fig('Decision Tree Classification Plot', MODEL_OUTPUT_IMAGE_PATH)
+
+    def decision_surface_plot(self):
+        #############################################################
+        #Plot the decision surfaces of forests of the data
+        #############################################################
+        print("Decision_Surface_Plot", "Drawing Decision Surface Plot")
+        plt.figure()
+        y = np.array(ClassificationWorkflowBase().y)
+        X = np.array(ClassificationWorkflowBase().X)
+        self.model.fit(X,y)
+        x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
+        y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
+        xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.02), np.arange(y_min, y_max, 0.02))
+        Z = self.model.predict(np.c_[xx.ravel(), yy.ravel()])
+        Z = Z.reshape(xx.shape)
+        plt.contourf(xx, yy, Z, cmap=plt.cm.RdYlBu, alpha=0.5)
+        plt.scatter(X[:, 0], X[:, 1],c=y,cmap=ListedColormap(['#FF0000', '#0000FF']),alpha=0.6,s=20)
+        plt.suptitle("Decision Surface Plot ", fontsize=12)
+        plt.axis("tight")
+        plt.tight_layout(h_pad=0.2, w_pad=0.2, pad=2.5)
+        save_fig('Decision Surface Plot', MODEL_OUTPUT_IMAGE_PATH)
 
     def special_components(self):
         self.plot_tree_function()
+        self.decision_surface_plot()
 
 
 class RandomForestClassification(ClassificationWorkflowBase):
     name = "Random Forest"
-    special_function = ['Feature Importance', "Random Forest's Tree Plot"]
+    special_function = ['Feature Importance', "Random Forest's Tree Plot", "Drawing Decision Surfaces Plot"]
 
     def __init__(
             self,
             n_estimators=100,
             criterion='gini',
             max_depth=4,
-            min_samples_split=2,
+            min_samples_split=4,
             min_samples_leaf=1,
             min_weight_fraction_leaf=0.0,
             max_features='sqrt',
@@ -388,13 +441,37 @@ class RandomForestClassification(ClassificationWorkflowBase):
         # Drawing diagrams of the first decision tree of forest
         ###################################################
         print("-----* Random Forest's Tree Plot *-----")
+        plt.figure()
         tree.plot_tree(self.model.estimators_[0])
         save_fig("RandomForest_tree", MODEL_OUTPUT_IMAGE_PATH)
-        pass
+
+    def decision_surfaces_plot(self):
+        #############################################################
+        #Plot the decision surfaces of forests of the data
+        #############################################################
+        plt.figure()
+        y = np.array(ClassificationWorkflowBase().y)
+        X = np.array(ClassificationWorkflowBase().X)
+        self.model.fit(X,y)
+        x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
+        y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
+        xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.02), np.arange(y_min, y_max, 0.02))
+        estimator_alpha = 1.0 / len(self.model.estimators_)
+        for tree in self.model.estimators_:
+            Z = tree.predict(np.c_[xx.ravel(), yy.ravel()])
+            Z = Z.reshape(xx.shape)
+            plt.contourf(xx, yy, Z, alpha=estimator_alpha, cmap=plt.cm.RdYlBu)
+        plt.scatter(X[:, 0], X[:, 1], c=y, cmap=ListedColormap(['#FF0000', '#0000FF']),alpha=0.6, s=20)
+        plt.suptitle("Decision Surfaces Plot ", fontsize=12)
+        plt.axis("tight")
+        plt.tight_layout(h_pad=0.2, w_pad=0.2, pad=2.5)
+        save_fig('Decision Surfaces Plot', MODEL_OUTPUT_IMAGE_PATH)
+
 
     def special_components(self):
         self.feature_importances()
         self.plot()
+        self.decision_surfaces_plot()
 
 
 class XgboostClassification(ClassificationWorkflowBase):
