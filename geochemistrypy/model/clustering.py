@@ -58,9 +58,9 @@ class ClusteringWorkflowBase(object):
 
     References
     ----------------------------------------
-    Silhouette analysis can be used to study the separation distance between the resulting clusters. 
-    The silhouette plot displays a measure of how close each point in one cluster is to points in the 
-    neighboring clusters and thus provides a way to assess parameters like number of clusters visually. 
+    Silhouette analysis can be used to study the separation distance between the resulting clusters.
+    The silhouette plot displays a measure of how close each point in one cluster is to points in the
+    neighboring clusters and thus provides a way to assess parameters like number of clusters visually.
     This measure has a range of [-1, 1].
 
     https://scikit-learn.org/stable/auto_examples/cluster/plot_kmeans_silhouette_analysis.html
@@ -154,18 +154,27 @@ class ClusteringWorkflowBase(object):
         print("Successfully graph the Silhouette Diagram.")
         save_fig(f"Silhouette Diagram - {self.naming}", MODEL_OUTPUT_IMAGE_PATH)
 
+    """
+
+    References
+    ----------------------------------------
+    Just a simple plot 2d function.Encourage to overwrite in subclass.
+    None
+
+    """
     def plot_2d_graph(self):
+        print("")
+        print("-----* 2D Scatter Plot *-----")
+        nameList = self.X.columns.values.tolist()
+
         fig = plt.figure()
         ax1 = fig.add_subplot(111)
-        ax1.set_title('Scatter Plot')
-        # 设置X轴标签
-        plt.xlabel('X')
-        # 设置Y轴标签
-        plt.ylabel('Y')
-        # 画散点图
-        ax1.scatter(self.X.iloc[:, [0]], self.X.iloc[:, [1]], c=self.X['clustering result'], marker='o')
-        # 设置图标
-        plt.legend('x1')
+        ax1.set_title('2D Scatter Plot')
+        print(type(self.X))
+        plt.xlabel(nameList[0])
+        plt.ylabel(nameList[1])
+        ax1.scatter(self.X.iloc[:, [0]], self.X.iloc[:, [1]], c=self.X['clustering result'], marker='o', cmap=plt.cm.Paired)
+        # plt.legend('x1')
         save_fig(f"Scatter Plot - {self.naming}", MODEL_OUTPUT_IMAGE_PATH)
 
     def plot_3d_graph(self):
