@@ -7,6 +7,7 @@ from sklearn.svm import SVC
 from sklearn.metrics import classification_report, plot_confusion_matrix, confusion_matrix
 from utils.base import save_fig
 from global_variable import MODEL_OUTPUT_IMAGE_PATH
+from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
 from sklearn import tree
 from sklearn.tree import DecisionTreeClassifier
@@ -160,6 +161,7 @@ class SVMClassification(ClassificationWorkflowBase):
         plt.figure()
         y = np.array(ClassificationWorkflowBase().y)
         X = np.array(ClassificationWorkflowBase().X)
+        X = PCA(n_components=2).fit_transform(X)
         y = np.squeeze(y)
         clf = self.model.fit(X,y)
         plt.scatter(X[:, 0], X[:, 1], c=y,cmap=ListedColormap(['#FF0000', '#0000FF']), s=50,alpha=0.6)
@@ -171,7 +173,7 @@ class SVMClassification(ClassificationWorkflowBase):
         Y, X = np.meshgrid(y, x)
         xy = np.vstack([X.ravel(), Y.ravel()]).T
         P = clf.decision_function(xy).reshape(X.shape)
-        ax.contour(X, Y, P, colors="k", levels=[-1, 0, 1], alpha=0.5, linestyles=["--", "-", "--"])
+        ax.contour(X, Y, P, colors="k", levels=[-1, 0, 1], alpha=0.5, linestyles=["--", "-", "--"],s=2)
         ax.set_xlim(xlim)
         ax.set_ylim(ylim)
         save_fig('SVC Plot', MODEL_OUTPUT_IMAGE_PATH)
@@ -185,6 +187,7 @@ class SVMClassification(ClassificationWorkflowBase):
         plt.figure()
         y = np.array(ClassificationWorkflowBase().y)
         X = np.array(ClassificationWorkflowBase().X)
+        X = PCA(n_components=2).fit_transform(X)
         y = np.squeeze(y)
         clf = self.model.fit(X, y)
         plt.scatter(X[:, 0], X[:, 1], c=y, s=50, cmap=ListedColormap(['#FF0000', '#0000FF']),alpha=0.6)
@@ -296,12 +299,14 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
         plt.figure()
         y = np.array(ClassificationWorkflowBase().y)
         X = np.array(ClassificationWorkflowBase().X)
+        X = PCA(n_components=2).fit_transform(X)
         self.model.fit(X,y)
         x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
         y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
         xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.02), np.arange(y_min, y_max, 0.02))
         Z = self.model.predict(np.c_[xx.ravel(), yy.ravel()])
         Z = Z.reshape(xx.shape)
+        plt.contour(xx, yy, Z, colors="k", levels=[-1, 0, 1], alpha=0.5, linestyles=["--", "-", "--"], s=2)
         plt.contourf(xx, yy, Z, cmap=plt.cm.RdYlBu, alpha=0.5)
         plt.scatter(X[:, 0], X[:, 1],c=y,cmap=ListedColormap(['#FF0000', '#0000FF']),alpha=0.6,s=20)
         plt.suptitle("Decision Surface Plot ", fontsize=12)
@@ -452,6 +457,7 @@ class RandomForestClassification(ClassificationWorkflowBase):
         plt.figure()
         y = np.array(ClassificationWorkflowBase().y)
         X = np.array(ClassificationWorkflowBase().X)
+        X = PCA(n_components=2).fit_transform(X)
         self.model.fit(X,y)
         x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
         y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
@@ -465,7 +471,7 @@ class RandomForestClassification(ClassificationWorkflowBase):
         plt.suptitle("Decision Surfaces Plot ", fontsize=12)
         plt.axis("tight")
         plt.tight_layout(h_pad=0.2, w_pad=0.2, pad=2.5)
-        save_fig('Decision Surfaces Plot', MODEL_OUTPUT_IMAGE_PATH)
+        save_fig('Decision Surfaces Plot - RandomForest', MODEL_OUTPUT_IMAGE_PATH)
 
 
     def special_components(self):
