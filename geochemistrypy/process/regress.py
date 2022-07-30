@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # import sys
 from model.regression import PolynomialRegression, XgboostRegression, DecisionTreeRegression, ExtraTreeRegression, RandomForestRegression, RegressionWorkflowBase
+from model.regression import SupportVectorRegression
 from data.data_readiness import num_input
 from global_variable import SECTION
 # sys.path.append("..")
@@ -31,6 +32,8 @@ class RegressionModelSelection(object):
             self.reg_workflow = ExtraTreeRegression()
         elif self.model == "RandomForestRegression":
             self.reg_workflow = RandomForestRegression()
+        elif self.model == "SupportVectorRegression":
+            self.reg_workflow = SupportVectorRegression()
         self.reg_workflow.X_train = X_train
         self.reg_workflow.y_train = y_train
 
