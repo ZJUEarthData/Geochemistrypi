@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # import sys
 from data.data_readiness import num_input
-from model.clustering import KMeansClustering, ClusteringWorkflowBase
+from model.clustering import KMeansClustering, DBSCANClustering, ClusteringWorkflowBase
 from global_variable import SECTION
 # sys.path.append("..")
 
@@ -17,6 +17,9 @@ class ClusteringModelSelection(object):
             print("Designate the clustering number in advance:")
             cluster_num = num_input(SECTION[2])
             self.clt_workflow = KMeansClustering(n_clusters=cluster_num)
+        elif self.model == "DBSCAN":
+            # cluster_num = num_input("Designate the clustering number in advance:\n@Number: ")
+            self.clt_workflow = DBSCANClustering()
 
         # common components for every clustering algorithm
         self.clt_workflow.show_info()
@@ -27,3 +30,4 @@ class ClusteringModelSelection(object):
 
         # special components of different algorithms
         self.clt_workflow.special_components()
+

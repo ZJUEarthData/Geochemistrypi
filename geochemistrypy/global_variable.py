@@ -25,14 +25,14 @@ GEO_IMAGE_PATH = os.path.join(WORKING_PATH, "images", "geochemistry")
 
 SECTION = ['User', 'Data', 'Model', 'Plot']
 OPTION = ['Yes', 'No']
-DATA_OPTION = ['Own Data', 'Provided Testing Data']
+DATA_OPTION = ['Own Data', 'Testing Data (Built-in)']
 TEST_DATA_OPTION = ['Data For Regression', 'Data For Classification',
                     'Data For Clustering', 'Data For Dimensional Reduction']
 MODE_OPTION = ['Regression', 'Classification', 'Clustering', 'Dimensional Reduction']
 
 # the model provided to use
-REGRESSION_MODELS = ['Polynomial Regression', 'Xgboost','ExtraTreeRegression', 'Decision Tree Regression', 'RandomForestRegression', 'SupportVectorRegression']
-CLASSIFICATION_MODELS = ['Support Vector Machine', 'DecisionTreeClassification', 'RandomForestClassification']
-CLUSTERING_MODELS = ['KMeans']
+REGRESSION_MODELS = ['Polynomial Regression', 'Xgboost', 'Extra-Trees', 'Decision Tree', 'Random Forest', 'SupportVectorRegression']
+CLASSIFICATION_MODELS = ['Support Vector Machine', 'Decision Tree', 'Random Forest','Xgboost']
+CLUSTERING_MODELS = ['KMeans', 'DBSCAN']
 DECOMPOSITION_MODELS = ['Principal Component Analysis']
-IMPUTING_STRATEGY = ['mean', 'median', 'most_frequent']
+IMPUTING_STRATEGY = ['Mean', 'Median', 'Most Frequent']

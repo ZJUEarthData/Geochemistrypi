@@ -116,7 +116,7 @@ def main():
     logger.debug("Imputation")
     print("-*-*- Strategy for Missing Values -*-*-")
     num2option(IMPUTING_STRATEGY)
-    print("Which strategy do you want to apply?(Enter the Corresponding Number")
+    print("Which strategy do you want to apply?")
     strategy_num = limit_num_input(IMPUTING_STRATEGY, SECTION[1], num_input)
     data_processed_imputed_np = imputer(data_processed, IMPUTING_STRATEGY[strategy_num - 1])
     data_processed_imputed = np2pd(data_processed_imputed_np, data_processed.columns)

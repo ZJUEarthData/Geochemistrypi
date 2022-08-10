@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 from sklearn import metrics
 from sklearn.cluster import KMeans
+from sklearn.cluster import DBSCAN
 from sklearn.metrics import silhouette_samples, silhouette_score
-# import matplotlib as mpl
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 # from matplotlib.ticker import FixedLocator, FixedFormatter
@@ -144,10 +145,42 @@ class ClusteringWorkflowBase(object):
         # plt.show()
 
     def plot_2d_graph(self):
-        pass
+        fig = plt.figure()
+        ax1 = fig.add_subplot(111)
+        ax1.set_title('Scatter Plot')
+        # 设置X轴标签
+        plt.xlabel('X')
+        # 设置Y轴标签
+        plt.ylabel('Y')
+        # 画散点图
+        ax1.scatter(self.X.iloc[:, [0]], self.X.iloc[:, [1]], c=self.X['clustering result'], marker='o')
+        # 设置图标
+        plt.legend('x1')
+        save_fig(f"Scatter Plot - {self.naming}", MODEL_OUTPUT_IMAGE_PATH)
 
-    def plot_3d_graph(self,):
-        pass
+    def plot_3d_graph(self):
+        print("-----* Plot 3d Graph *-----")
+        fig = plt.figure(figsize=(12, 6), facecolor='w')
+        cm = mpl.colors.ListedColormap(['#FFC2CC', '#C2FFCC', '#CCC2FF'])
+        # cm2 = mpl.colors.ListedColormap(['#FF0000', '#00FF00', '#0000FF'])
+        plt.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.9)
+
+        ax = fig.add_subplot(121, projection='3d')
+        ax.scatter(self.X.iloc[:, [0]], self.X.iloc[:, [1]], self.X.iloc[:, [2]], alpha=0.3, c="#FF0000", s=6)
+        plt.title('原始数据分布图')
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+        plt.grid(True)
+
+        ax2 = fig.add_subplot(122, projection='3d')
+        ax2.scatter(self.X.iloc[:, [0]], self.X.iloc[:, [1]], self.X.iloc[:, [2]],
+                    c=self.X['clustering result'], s=6, cmap=cm, edgecolors='none')
+        ax2.set_xlabel('X')
+        ax2.set_ylabel('Y')
+        ax2.set_zlabel('Z')
+        plt.grid(True)
+        save_fig(f"Plot 3d Graph - {self.naming}", MODEL_OUTPUT_IMAGE_PATH)
 
 
 class KMeansClustering(ClusteringWorkflowBase):
@@ -176,7 +209,6 @@ class KMeansClustering(ClusteringWorkflowBase):
         self.random_state = random_state
         self.copy_x = copy_x
         self.algorithm = algorithm
-
         self.model = KMeans(n_clusters=self.n_clusters,
                             init=self.init,
                             n_init=self.n_init,
@@ -197,3 +229,44 @@ class KMeansClustering(ClusteringWorkflowBase):
     def special_components(self):
         self._get_scores()
         self.plot_silhouette_diagram(self.n_clusters)
+        self.plot_2d_graph()
+        self.plot_3d_graph()
+
+
+class DBSCANClustering(ClusteringWorkflowBase):
+
+    name = "DBSCAN"
+    special_function = ['KMeans Score']
+
+    def __init__(self,
+                 eps=0.5,
+                 min_samples=5,
+                 metric="euclidean",
+                 metric_params=None,
+                 algorithm="auto",
+                 leaf_size=30,
+                 p=None,
+                 n_jobs=None,
+                 ):
+
+        super().__init__()
+        self.eps = eps
+        self.min_samples = min_samples
+        self.metric = metric
+        self.metric_params = metric_params
+        self.algorithm = algorithm
+        self.leaf_size = leaf_size
+        self.p = p
+        self.n_jobs = n_jobs
+
+        self.model = DBSCAN(eps=self.eps,
+                            min_samples=self.min_samples,
+                            metric=self.metric,
+                            metric_params=self.min_samples,
+                            algorithm=self.algorithm,
+                            leaf_size=self.leaf_size,
+                            p=self.p,
+                            n_jobs=self.n_jobs)
+
+    def special_components(self):
+        pass
