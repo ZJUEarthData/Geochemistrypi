@@ -165,16 +165,47 @@ class ClusteringWorkflowBase(object):
     def plot_2d_graph(self):
         print("")
         print("-----* 2D Scatter Plot *-----")
-        nameList = self.X.columns.values.tolist()
+        # Get name
+        namelist = self.X.columns.values.tolist()
 
         fig = plt.figure()
         ax1 = fig.add_subplot(111)
+        self.plot_test(ax1,plt)
         ax1.set_title('2D Scatter Plot')
-        plt.xlabel(nameList[0])
-        plt.ylabel(nameList[1])
-        ax1.scatter(self.X.iloc[:, [0]], self.X.iloc[:, [1]], c=self.X['clustering result'], marker='o', cmap=plt.cm.Paired)
-        ax1.scatter(self.model.cluster_centers_[:, [0]], self.model.cluster_centers_[:, [1]], c=list(set(self.X['clustering result']))
-                    , marker='o', cmap=plt.cm.Paired,s=60)
+        plt.xlabel(namelist[0])
+        plt.ylabel(namelist[1])
+
+        # Step size of the mesh. Decrease to increase the quality of the VQ.
+        h = 0.02  # point in the mesh [x_min, x_max]x[y_min, y_max].
+        x_min, x_max = self.X[namelist[0]].min() - 1, self.X[namelist[0]].max() + 1
+        y_min, y_max = self.X[namelist[1]].min() - 1, self.X[namelist[1]].max() + 1
+        xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
+
+        print(np.c_[xx.ravel(), yy.ravel()])
+        Z = self.model.predict(np.c_[xx.ravel(), yy.ravel()])
+        Z = Z.reshape(xx.shape)
+        plt.imshow(
+            Z,
+            interpolation="nearest",
+            extent=(xx.min(), xx.max(), yy.min(), yy.max()),
+            cmap=plt.cm.Paired,
+            aspect="auto",
+            origin="lower",
+        )
+        plt.plot(self.X[namelist[0]], self.X[namelist[1]], "k.", markersize=2)
+        # has wrong
+        #c=self.X['clustering result'], marker='o', cmap=plt.cm.Paired)
+
+        # Plot the centroids as a white X
+        plt.scatter(
+            self.model.cluster_centers_[:, [0]],
+            self.model.cluster_centers_[:, [1]],
+            marker="x",
+            s=169,
+            linewidths=3,
+            color="w",
+            zorder=10,
+        )
 
         # plt.legend('x1')
         save_fig(f"Scatter Plot - {self.naming}", MODEL_OUTPUT_IMAGE_PATH)
@@ -202,6 +233,10 @@ class ClusteringWorkflowBase(object):
         ax2.set_zlabel(nameList[1])
         plt.grid(True)
         save_fig(f"Plot 3d Graph - {self.naming}", MODEL_OUTPUT_IMAGE_PATH)
+
+    def plot_test(self, figure, plot):
+        value = self.X
+        print("www")
 
 
 class KMeansClustering(ClusteringWorkflowBase):
