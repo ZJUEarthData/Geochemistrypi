@@ -165,27 +165,29 @@ class ClusteringWorkflowBase(object):
 
         fig = plt.figure()
         ax1 = fig.add_subplot(111)
-        #self.plot_test(ax1,plt)
         ax1.set_title('2D Scatter Plot')
         plt.xlabel(namelist[0])
         plt.ylabel(namelist[1])
 
         # Step size of the mesh. Decrease to increase the quality of the VQ.
-        h = 0.02  # point in the mesh [x_min, x_max]x[y_min, y_max].
-        x_min, x_max = self.X[namelist[0]].min() - 1, self.X[namelist[0]].max() + 1
-        y_min, y_max = self.X[namelist[1]].min() - 1, self.X[namelist[1]].max() + 1
-        xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
+        if len(namelist) == 3:
+            h = 0.02  # point in the mesh [x_min, x_max]x[y_min, y_max].
+            x_min, x_max = self.X[namelist[0]].min() - 1, self.X[namelist[0]].max() + 1
+            y_min, y_max = self.X[namelist[1]].min() - 1, self.X[namelist[1]].max() + 1
+            xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
 
-        Z = self.model.predict(np.c_[xx.ravel(), yy.ravel()])
-        Z = Z.reshape(xx.shape)
-        plt.imshow(
-            Z,
-            interpolation="nearest",
-            extent=(xx.min(), xx.max(), yy.min(), yy.max()),
-            cmap=plt.cm.Paired,
-            aspect="auto",
-            origin="lower",
-        )
+            print(np.c_[xx.ravel(), yy.ravel()])
+            Z = self.model.predict(np.c_[xx.ravel(), yy.ravel()])
+            Z = Z.reshape(xx.shape)
+            plt.imshow(
+                Z,
+                interpolation="nearest",
+                extent=(xx.min(), xx.max(), yy.min(), yy.max()),
+                cmap=plt.cm.Paired,
+                aspect="auto",
+                origin="lower",
+            )
+            
         plt.plot(self.X[namelist[0]], self.X[namelist[1]], "k.", markersize=2)
         # has wrong
         #c=self.X['clustering result'], marker='o', cmap=plt.cm.Paired)
