@@ -31,7 +31,7 @@ TEST_DATA_OPTION = ['Data For Regression', 'Data For Classification',
 MODE_OPTION = ['Regression', 'Classification', 'Clustering', 'Dimensional Reduction']
 
 # the model provided to use
-REGRESSION_MODELS = ['Polynomial Regression', 'Xgboost', 'Extra-Trees', 'Decision Tree', 'Random Forest', 'SupportVectorRegression']
+REGRESSION_MODELS = ['Polynomial Regression', 'Xgboost', 'Extra-Trees', 'Decision Tree', 'Random Forest', 'Support Vector Machine']
 CLASSIFICATION_MODELS = ['Support Vector Machine', 'Decision Tree', 'Random Forest','Xgboost']
 CLUSTERING_MODELS = ['KMeans', 'DBSCAN']
 DECOMPOSITION_MODELS = ['Principal Component Analysis']

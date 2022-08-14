@@ -463,8 +463,8 @@ class RandomForestRegression(RegressionWorkflowBase, BaseEstimator):
 
 #todo SVR
 class SupportVectorRegression(RegressionWorkflowBase, BaseEstimator):
-    name = "SupportVectorRegression"
-    special_function = ["feature_importances"]
+    name = "Support Vector Machine"
+    special_function = ["Dpport Vector Machine"]
 
     def __init__(self,
                  kernel ='rbf',
@@ -504,19 +504,6 @@ class SupportVectorRegression(RegressionWorkflowBase, BaseEstimator):
                          cache_size=self.cache_size,
                          verbose=self.verbose,
                          max_iter=self.max_iter)
-
-    def feature_importances(self):
-        importances_values = self.model.feature_importances_
-        importances = pd.DataFrame(importances_values, columns=["importance"])
-        feature_data = pd.DataFrame(self.X_train.columns, columns=["feature"])
-        importance = pd.concat([feature_data, importances], axis=1)
-
-        importance = importance.sort_values(["importance"], ascending=True)
-        importance["importance"] = (importance["importance"]).astype(float)
-        importance = importance.sort_values(["importance"])
-        importance.set_index('feature', inplace=True)
-        importance.plot.barh(color='r', alpha=0.7, rot=0, figsize=(8, 8))
-        save_fig("RandomForestRegression_feature_importance", MODEL_OUTPUT_IMAGE_PATH)
 
     def plot(self):
         print("Plot_Function")
