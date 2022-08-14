@@ -54,6 +54,22 @@ class ClusteringWorkflowBase(object):
         save_data(self.X, f"{self.naming}", DATASET_OUTPUT_PATH)
 
     def plot_silhouette_diagram(self, n_clusters: int = 0, ):
+        """Draw the silhouette diagram for analysis.
+
+        Parameters
+        ----------
+        n_clusters: int
+            The number of clusters to form as well as the number of centroids to generate.
+
+        References
+        ----------
+        Silhouette analysis can be used to study the separation distance between the resulting clusters.
+        The silhouette plot displays a measure of how close each point in one cluster is to other points in the
+        neighboring clusters and thus provides a way to assess parameters like number of clusters visually.
+        This measure has a range of [-1, 1].
+
+        https://scikit-learn.org/stable/auto_examples/cluster/plot_kmeans_silhouette_analysis.html
+        """
         print("")
         print("-----* Silhouette Analysis *-----")
         # Create a subplot with 1 row and 2 columns
@@ -141,14 +157,6 @@ class ClusteringWorkflowBase(object):
         print("Successfully graph the Silhouette Diagram.")
         save_fig(f"Silhouette Diagram - {self.naming}", MODEL_OUTPUT_IMAGE_PATH)
 
-    """
-
-    References
-    ----------------------------------------
-    Just a simple plot 2d function.Encourage to overwrite in subclass.
-    None
-
-    """
     def plot_2d_graph(self):
         print("")
         print("-----* 2D Scatter Plot *-----")
@@ -157,7 +165,7 @@ class ClusteringWorkflowBase(object):
 
         fig = plt.figure()
         ax1 = fig.add_subplot(111)
-        self.plot_test(ax1,plt)
+        #self.plot_test(ax1,plt)
         ax1.set_title('2D Scatter Plot')
         plt.xlabel(namelist[0])
         plt.ylabel(namelist[1])
@@ -168,7 +176,6 @@ class ClusteringWorkflowBase(object):
         y_min, y_max = self.X[namelist[1]].min() - 1, self.X[namelist[1]].max() + 1
         xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
 
-        print(np.c_[xx.ravel(), yy.ravel()])
         Z = self.model.predict(np.c_[xx.ravel(), yy.ravel()])
         Z = Z.reshape(xx.shape)
         plt.imshow(
@@ -193,6 +200,12 @@ class ClusteringWorkflowBase(object):
             color="w",
             zorder=10,
         )
+        plt.xlabel(namelist[0])
+        plt.ylabel(namelist[1])
+        ax1.scatter(self.X.iloc[:, [0]], self.X.iloc[:, [1]], c=self.X['clustering result'],
+                    marker='o', cmap=plt.cm.Paired)
+        ax1.scatter(self.model.cluster_centers_[:, [0]], self.model.cluster_centers_[:, [1]],
+                    c=list(set(self.X['clustering result'])), marker='o', cmap=plt.cm.Paired, s=60)
 
         # plt.legend('x1')
         save_fig(f"Scatter Plot - {self.naming}", MODEL_OUTPUT_IMAGE_PATH)
@@ -271,15 +284,12 @@ class KMeansClustering(ClusteringWorkflowBase):
 
     def special_components(self):
         self._get_scores()
-        self.plot_silhouette_diagram(self.n_clusters)
-        self.plot_2d_graph()
-        self.plot_3d_graph()
 
 
 class DBSCANClustering(ClusteringWorkflowBase):
 
     name = "DBSCAN"
-    special_function = ['KMeans Score']
+    special_function = []
 
     def __init__(self,
                  eps=0.5,
