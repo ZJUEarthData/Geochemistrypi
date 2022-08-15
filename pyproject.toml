@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "geochemistrypy"
+version = "0.0.1"
+authors = [
+  { name="Can He", email="sanyhew1097618435@163.com" },
+]
+maintainers = [] 
+description = "A Python framework for data-driven geochemistry discovery"
+readme = "README.md"
+license = { file="LICENSE" }
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/ZJUEarthData/geochemistrypy"
+"Bug Tracker" = "https://github.com/ZJUEarthData/geochemistrypy/issues"
