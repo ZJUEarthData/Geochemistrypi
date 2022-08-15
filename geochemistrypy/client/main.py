@@ -212,6 +212,7 @@ def main():
     # all_models_num = 0
     print(str(all_models_num) + " - All models above to be trained")
     print("Which model do you want to apply?(Enter the Corresponding Number):")
+    # FIXME(hecan sanyhew1097618435@163.com): how to train all the algorithms at once
     MODELS.append("all_models")
     # print(MODELS)
     model_num = limit_num_input(MODELS, SECTION[2], num_input)

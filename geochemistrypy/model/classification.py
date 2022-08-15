@@ -151,38 +151,8 @@ class SVMClassification(ClassificationWorkflowBase):
                          random_state=self.random_state)
         self.naming = SVMClassification.name
 
-
-    def plot_svc_function(self):
-        """
-        Dichotomize the two selected elements and draw an image
-
-        """
-        print("-----* Two-dimensional Decision Boundary Diagram *-----")
-        plt.figure()
-        y = np.array(ClassificationWorkflowBase().y)
-        X = np.array(ClassificationWorkflowBase().X)
-        X = PCA(n_components=2).fit_transform(X)
-        y = np.squeeze(y)
-        clf = self.model.fit(X,y)
-        plt.scatter(X[:, 0], X[:, 1], c=y,cmap=ListedColormap(['#FF0000', '#0000FF']), s=50,alpha=0.6)
-        ax = plt.gca()
-        xlim = ax.get_xlim()
-        ylim = ax.get_ylim()
-        x = np.linspace(xlim[0], xlim[1], 30)
-        y = np.linspace(ylim[0], ylim[1], 30)
-        Y, X = np.meshgrid(y, x)
-        xy = np.vstack([X.ravel(), Y.ravel()]).T
-        P = clf.decision_function(xy).reshape(X.shape)
-        ax.contour(X, Y, P, colors="k", levels=[-1, 0, 1], alpha=0.5, linestyles=["--", "-", "--"],s=2)
-        ax.set_xlim(xlim)
-        ax.set_ylim(ylim)
-        save_fig('SVC Plot', MODEL_OUTPUT_IMAGE_PATH)
-
     def plot_svc_surface_function(self):
-        """
-               Dichotomize the two selected elements and draw an image
-
-        """
+        """divide the two selected elements and draw an image"""
         print("-----* Two-dimensional Decision Surface Boundary Diagram *-----")
         plt.figure()
         y = np.array(ClassificationWorkflowBase().y)
@@ -204,10 +174,7 @@ class SVMClassification(ClassificationWorkflowBase):
         ax.set_ylim(ylim)
         save_fig('SVC Surface Function Plot', MODEL_OUTPUT_IMAGE_PATH)
 
-
-
     def special_components(self):
-        self.plot_svc_function()
         self.plot_svc_surface_function()
 
 
@@ -454,6 +421,7 @@ class RandomForestClassification(ClassificationWorkflowBase):
         #############################################################
         #Plot the decision surfaces of forests of the data
         #############################################################
+        print("-----* Decision Surfaces Plot *-----")
         plt.figure()
         y = np.array(ClassificationWorkflowBase().y)
         X = np.array(ClassificationWorkflowBase().X)
@@ -472,7 +440,6 @@ class RandomForestClassification(ClassificationWorkflowBase):
         plt.axis("tight")
         plt.tight_layout(h_pad=0.2, w_pad=0.2, pad=2.5)
         save_fig('Decision Surfaces Plot - RandomForest', MODEL_OUTPUT_IMAGE_PATH)
-
 
     def special_components(self):
         self.feature_importances()
