@@ -1,3 +1,6 @@
+# distribution archives
+**/dist
+
 # all produced graphs in png format under the directory images
 **/images
 
