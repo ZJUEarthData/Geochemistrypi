@@ -200,7 +200,7 @@ def main():
 
     # Model option for users
     logger.debug("Model Selection")
-    print("-*-*- Model Selection -*-*-:")
+    print("2-*-*- Model Selection -*-*-:")
     Modes2Models = {1: REGRESSION_MODELS, 2: CLASSIFICATION_MODELS,
                     3: CLUSTERING_MODELS, 4: DECOMPOSITION_MODELS}
     Modes2Initiators = {1: RegressionModelSelection, 2: ClassificationModelSelection,
