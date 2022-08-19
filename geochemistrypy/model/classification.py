@@ -707,6 +707,7 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
             )
         self.naming = LogisticRegressionClassification.name
 
+
     def feature_importance(self):
         columns_name = ClassificationWorkflowBase.X.columns
 
@@ -738,3 +739,4 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
 
     def special_components(self):
         self.feature_importance()
+
