@@ -157,7 +157,6 @@ def main():
             clear_output()
             print("Do you want to continue to construct a new feature?")
             num2option(OPTION)
-            fe_flag = limit_num_input(OPTION, SECTION[1], num_input)
             if fe_flag == 1:
                 clear_output()
                 continue

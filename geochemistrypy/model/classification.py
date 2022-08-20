@@ -610,7 +610,7 @@ class XgboostClassification(ClassificationWorkflowBase):
 
 class LogisticRegressionClassification(ClassificationWorkflowBase):
     name = "Logistic Regression"
-    special_function = []
+    special_function = ['Feature Importance']
 
     def __init__(
          self,
@@ -706,8 +706,35 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
             l1_ratio = self.l1_ratio,
             )
         self.naming = LogisticRegressionClassification.name
-    # TODO: special function
-    def special(self):
-            print('Special Function is developing....')
+
+    def feature_importance(self):
+        columns_name = ClassificationWorkflowBase.X.columns
+
+        # print the feature coefficient value orderly
+        print("-----* Feature Importance *-----")
+        for feature_name, score in zip(list(columns_name), self.model.coef_.flatten()):
+            print(feature_name, ":", score)
+
+        # feature importance map ranked by coefficient
+        coef_lr = pd.DataFrame({
+            'var': columns_name,
+            'coef': self.model.coef_.flatten()
+        })
+        index_sort = np.abs(coef_lr['coef']).sort_values().index
+        coef_lr_sort = coef_lr.loc[index_sort, :]
+
+        # Horizontal column chart plot
+        fig, ax = plt.subplots(figsize=(14,8))
+        x, y = coef_lr_sort['var'], coef_lr_sort['coef']
+        rects = plt.barh(x, y, color='dodgerblue')
+        plt.grid(linestyle="-.", axis='y', alpha=0.4)
+        plt.tight_layout()
+
+        # Add data labels
+        for rect in rects:
+            w = rect.get_width()
+            ax.text(w, rect.get_y() + rect.get_height() / 2, '%.2f' % w, ha='left', va='center')
+        save_fig("LogisticRegression_feature_importance", MODEL_OUTPUT_IMAGE_PATH)
+
     def special_components(self):
-            self.special()
+            self.feature_importance()
