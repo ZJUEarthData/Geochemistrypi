@@ -1,0 +1,98 @@
+[33me6bb5a8[m[33m ([m[1;36mHEAD -> [m[1;32mpr/50[m[33m, [m[1;31morigin/pr/50[m[33m)[m Update classification.py
+[33mcea53e5[m Update .gitignore
+[33m6d8e342[m Add class LogisticRegressionClassification()
+[33mb3e949a[m Add  function LogisticRegressionClassification() in classification.py
+[33m8c0ebdc[m[33m ([m[1;31mupstream/main[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m Merge pull request #64 from ZJUEarthData/algorithm-0725
+[33m3056aae[m delete redundant codes of the function plot_svc_function in class SVMClassification on classification.py
+[33m8ac8312[m Merge pull request #57 from Jin-sjh/NBranch
+[33m2e8f5ba[m For clustering.py and cluster.py, 1) delete useless docstring and replace the docsting position; 2) update the logic of invoking special functions and common functions.
+[33m23988fd[m Merge pull request #58 from Jinger52035/algorithm-0725
+[33m5894dc1[m publish the demo of geochemistrypy to pypi
+[33m607741a[m Merge pull request #2 from Jin-sjh/main
+[33m48ee138[m The optimization of "Bug on SVM (classification) -> plot_svc_function #46" and "Bug on Part "Model option for users" (main.py) -> limit_num_input (data_readiness.py) #59"
+[33m75e714f[m Small Update
+[33mad00f56[m Optimizing part of the code
+[33m6a168ce[m Merge pull request #1 from Jin-sjh/main
+[33m45e5896[m Add the function of drawing decision surface for Class SVC,Decisiontree,RandomForest of classification.py
+[33mfa7e6c8[m Update clustering.py
+[33m99e35eb[m Small Update
+[33m625dba4[m[33m ([m[1;31morigin/test-Brad[m[33m)[m Merge pull request #54 from ZJUEarthData/algorithm-0725
+[33ma39e130[m Merge pull request #53 from ZJUEarthData/test-branch
+[33mfdf6dd9[m update basic info of the project and delete redundant .gitignore
+[33mf816406[m Merge pull request #52 from Brad-zqh/test-Brad
+[33m4cf61d6[m Update classification.py
+[33m40e74e3[m Update classification.py
+[33m711cdf5[m 1. update team info and resources in README.md; 2. append ignored file type in .gitignore; 3. create one instance attribute of xgboost classifier.
+[33m9fb66af[m Merge pull request #50 from Brad-zqh/test-Brad
+[33md5fb7af[m Delete the function of xgb plot tree
+[33m3f7116e[m xgboost classification tree plot
+[33m46d9c78[m xgb classification plot tree
+[33m65c6d6a[m Xgboost classification
+[33mfc6fa73[m add xgb classification
+[33m225ffe0[m normalize the variables name and output words to be consistent with the whole style
+[33mb157d04[m Merge pull request #48 from Jinger52035/main
+[33m28cbf1a[m Merge branch 'main' into main
+[33mc2a1d6e[m Merge pull request #42 from PotatoXi/Jamie
+[33m63a9730[m Merge branch 'main' into Jamie
+[33m3f99923[m Update clustering.py
+[33m913516a[m New Class And Function
+[33m9fc785f[m Merge pull request #41 from tnate0/main
+[33m7360a98[m Create .gitignore
+[33meee190e[m Merge branch 'main' into main
+[33m83c1113[m Merge branch 'main' into Jamie
+[33m1e35261[m optimize the function of num_input and limit_num_input and apply to the workflow except polynomail degree and feature engineering
+[33mebc6383[m add model and function: Regssion model: RandomForest(feature importance plot) and Extretree(feature importance plot) Classification model: RandomForest(feature importance plot and tree plot)
+[33mf17ea87[m optimize read_data function to capture exception and restrict the input data format
+[33m76606a9[m model
+[33m90787b2[m model
+[33mea64dca[m fix the problem of failing to run main.py
+[33mda814e3[m Merge branch 'main' of https://github.com/ZJUEarthData/geochemistrypy into main
+[33m791586e[m update framework UML
+[33mbc1b8bc[m Merge pull request #38 from Jinger52035/main
+[33mcf3f67c[m update team member info
+[33m4b15560[m add regression
+[33mc16e8a3[m add corresponding test cases for the function of limit_num_input
+[33me62cd75[m Update clustering.py
+[33m6a8376e[m Merge pull request #37 from Jin-sjh/NBranch
+[33m863f078[m build the function of limit_num_input and wrap it with data option
+[33m930c754[m optimize the function of num_input and num2option and add some corresponding tests to them
+[33m34fbbaa[m add plot_tree_function
+[33m1ccec74[m untrack the useless file like setup file from pycharm
+[33m93bcaff[m remove IDE setup files
+[33m9608b11[m remove useless files like pycharm setup files
+[33m3011174[m Merge pull request #36 from Jin-sjh/NBranch
+[33m0aed5c7[m Update classification.py
+[33m76b18d1[m perfect plot_svc_function
+[33m792e0f1[m add plot_svc_function in classification,py
+[33mab0cf52[m add plot_svc_funtion in classification.py
+[33mcb219ff[m add new function to classification.py
+[33m2da175e[m Update classification.py
+[33m0aa98f8[m Update classification.py
+[33mdd80334[m Update classification.py
+[33mf3fd968[m Merge remote-tracking branch 'upstream/main'
+[33m5c399a3[m minor modification
+[33m3262ecd[m update member infomation and append videos resource
+[33m8212106[m modify the GitHub Action operations
+[33mdd96e33[m Merge branch 'main' of https://github.com/ZJUEarthData/geochemistrypy into main amend github action for continuous integration
+[33m55ea8a5[m Create geochemistrypy.yml
+[33med1e8bc[m 1. format the code according to the flake8 standard 2. deal with the import problem regard to sys module
+[33m500d15f[m Merge branch 'main' of https://github.com/ZJUEarthData/geochemistrypy into main correct the commit information
+[33m34547cd[m  1.amend the rules of ignoring some specific files in .gitignore; 2.amend the dependencies in requirements.txt
+[33medd4ca9[m 1.amend the rules of ignoring some specific files in .gitignore; 2.amend the dependencies in requirements.txt
+[33mba78e0e[m 1. add type hint to some functions in statistic_plot.py and data_readiness.py; 2. modify the logic of executing the module of world map projection and feature engineering.
+[33m597bd21[m Update clustering.py
+[33m651ca10[m 1. build hypothesis test with monte carlo sampling for imputing effect
+[33m66ef5f6[m 1. rename the package name from GeoChemistryPy to geochemistrypy 2. modify team information 3. correct and normalize geochemistry_plot.py and map_plot.py 4. minor change
+[33m6accdb7[m Merge pull request #20 from GeoAB123/NBranch
+[33m5c25fbc[m a function of plotting the ratio of two different chemical elements
+[33m7dec4f3[m 1. modify team and invitation information 2. add up the interface of plotting the ratio of two different chemical elements in geochemistry_plot.py
+[33mc8142d1[m Merge pull request #16 from Brad-zqh/patch-1
+[33m8aeac60[m[33m ([m[1;31morigin/patch-1[m[33m)[m Update map_plot.py
+[33m4593484[m Update map_plot.py
+[33m2659c13[m 1. Add up team and invitation information
+[33mc2fab4d[m 1. specify the interface of is_overfitting() and search_best_hyper_parameter() in model.regression.py 2. specify the required parameters in map_projected() in plot.map_plot.py 3. specify the interface of plot_silhouette_diagram(), plot_2d_graph, plot_3d_graph() in model.clustering.py
+[33m7a65614[m 1. add the function "ratio_null_vs_filled" in statistic_plot.py to compute the ratio of the null values in each column 2. data reading: provide four data set for testing and allow users to upload their own data set 3. Kmeans: allow users to designate the clustering number 4. Cluster Algorithm: calculate the confusion matrix
+[33m3e8cc82[m 1. optimize error-detection in function "read_data" in data_readiness.py 2. append error-detection in PolynomialRegression.poly() in regression.py 3. build function "log" in base.py to preserve operating information
+[33m2b5f4da[m 1.build up num_input function in data_readiness.py.py and related error-prevention function 2.optimize number input process in main.py
+[33m079e032[m 1.add error-detected function to read_data module in data.data_readiness.py 2.build up own exception module in utils.exceptions.py 3.rename directory 'core' into 'utils'
+[33m632936f[m 1.build up SVM Algorithm in classification.py and link them to the current structure by classify.py 2.build up PCA Algorithm in decomposition.py and link them to the current structure by decom
