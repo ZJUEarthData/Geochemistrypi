@@ -737,4 +737,4 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
         save_fig("LogisticRegression_feature_importance", MODEL_OUTPUT_IMAGE_PATH)
 
     def special_components(self):
-            self.feature_importance()
+        self.feature_importance()
