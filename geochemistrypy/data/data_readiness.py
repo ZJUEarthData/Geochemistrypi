@@ -49,7 +49,7 @@ def read_data(file_name: Optional[str] = None, is_own_data: int = 2, prefix: Opt
         raise
 
 
-def basic_info(data):
+def basic_info(data: pd.DataFrame):
     print(data.info())
 
 
@@ -88,7 +88,7 @@ def select_columns(columns_range: Optional[str] = None) -> List[int]:
     return columns_selected
 
 
-def create_sub_data_set(data):
+def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
     sub_data_set_columns_range = input('Select the data range you want to process.\n'
                                        'Input format:\n'
                                        'Format 1: "[**, **]; **; [**, **]", such as "[1, 3]; 7; [10, 13]" '
@@ -116,7 +116,20 @@ def num2option(items: List[str]) -> None:
 
 
 def num_input(prefix: Optional[str] = None, slogan: Optional[str] = "@Number: ") -> int:
-    """get the number of the desired option"""
+    """Get the number of the desired option.
+
+    Parameters
+    ----------
+    prefix : str, default=None
+        It indicates which section the user currently is in on the UML, which is shown on the command-line console.
+    slogan : str, default="@Number: "
+        It acts like the first parameter of input function in Python, which output the hint.
+
+    Returns
+    -------
+    option: int
+        An option number. Be careful that 'option = real index  + 1'
+    """
     # capture exception: input is not digit
     while True:
         option = input(f"({prefix}) ➜ {slogan}").strip()
@@ -130,7 +143,22 @@ def num_input(prefix: Optional[str] = None, slogan: Optional[str] = "@Number: ")
 
 
 def limit_num_input(option_list: List[str], prefix: str, input_func: num_input) -> int:
-    """limit the scope of the option"""
+    """Limit the scope of the option
+
+    Parameters
+    ----------
+    option_list : List[str]
+        All the options provided are stored in a list.
+    prefix : str
+        It indicates which section the user currently is in on the UML, which is shown on the command-line console.
+    input_func: function
+        The function of input_func.
+
+    Returns
+    -------
+    option: int
+        An option number. Be careful that 'option = real index  + 1'
+    """
     while True:
         # in case that the option number is beyond the maximum
         option = input_func(prefix)
