@@ -9,7 +9,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.tree import DecisionTreeRegressor, plot_tree
 
-from sklearn.ensemble import BaggingRegressor,ExtraTreesRegressor,RandomForestRegressor
+from sklearn.ensemble import BaggingRegressor, ExtraTreesRegressor, RandomForestRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.svm import SVR
 
@@ -19,11 +19,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xgboost
+
+
 # sys.path.append("..")
 
 
 class RegressionWorkflowBase(object):
-
     # Default for child class
     X = None
     y = None
@@ -106,7 +107,6 @@ class RegressionWorkflowBase(object):
 
 
 class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
-
     name = "Polynomial Regression"
     special_function = ["Polynomial Regression Formula"]
 
@@ -197,39 +197,39 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
     special_function = ['Feature Importance']
 
     def __init__(
-        self,
-        max_depth: Optional[int] = None,
-        learning_rate: Optional[float] = None,
-        n_estimators: int = 100,
-        verbosity: Optional[int] = None,
-        objective: _SklObjective = None,
-        booster: Optional[str] = None,
-        tree_method: Optional[str] = None,
-        n_jobs: Optional[int] = None,
-        gamma: Optional[float] = None,
-        min_child_weight: Optional[float] = None,
-        max_delta_step: Optional[float] = None,
-        subsample: Optional[float] = None,
-        colsample_bytree: Optional[float] = None,
-        colsample_bylevel: Optional[float] = None,
-        colsample_bynode: Optional[float] = None,
-        reg_alpha: Optional[float] = None,
-        reg_lambda: Optional[float] = None,
-        scale_pos_weight: Optional[float] = None,
-        base_score: Optional[float] = None,
-        random_state: Optional[Union[np.random.RandomState, int]] = None,
-        missing: float = np.nan,
-        num_parallel_tree: Optional[int] = None,
-        monotone_constraints: Optional[Union[Dict[str, int], str]] = None,
-        interaction_constraints: Optional[Union[str, Sequence[Sequence[str]]]] = None,
-        importance_type: Optional[str] = None,
-        gpu_id: Optional[int] = None,
-        validate_parameters: Optional[bool] = None,
-        predictor: Optional[str] = None,
-        enable_categorical: bool = False,
-        eval_metric: Optional[Union[str, List[str], Callable]] = None,
-        early_stopping_rounds: Optional[int] = None,
-        **kwargs: Any
+            self,
+            max_depth: Optional[int] = None,
+            learning_rate: Optional[float] = None,
+            n_estimators: int = 100,
+            verbosity: Optional[int] = None,
+            objective: _SklObjective = None,
+            booster: Optional[str] = None,
+            tree_method: Optional[str] = None,
+            n_jobs: Optional[int] = None,
+            gamma: Optional[float] = None,
+            min_child_weight: Optional[float] = None,
+            max_delta_step: Optional[float] = None,
+            subsample: Optional[float] = None,
+            colsample_bytree: Optional[float] = None,
+            colsample_bylevel: Optional[float] = None,
+            colsample_bynode: Optional[float] = None,
+            reg_alpha: Optional[float] = None,
+            reg_lambda: Optional[float] = None,
+            scale_pos_weight: Optional[float] = None,
+            base_score: Optional[float] = None,
+            random_state: Optional[Union[np.random.RandomState, int]] = None,
+            missing: float = np.nan,
+            num_parallel_tree: Optional[int] = None,
+            monotone_constraints: Optional[Union[Dict[str, int], str]] = None,
+            interaction_constraints: Optional[Union[str, Sequence[Sequence[str]]]] = None,
+            importance_type: Optional[str] = None,
+            gpu_id: Optional[int] = None,
+            validate_parameters: Optional[bool] = None,
+            predictor: Optional[str] = None,
+            enable_categorical: bool = False,
+            eval_metric: Optional[Union[str, List[str], Callable]] = None,
+            early_stopping_rounds: Optional[int] = None,
+            **kwargs: Any
     ) -> None:
 
         super().__init__(random_state=42)
@@ -461,23 +461,23 @@ class RandomForestRegression(RegressionWorkflowBase, BaseEstimator):
         self.plot()
         pass
 
-#todo SVR
-class SupportVectorRegression(RegressionWorkflowBase, BaseEstimator):
+
+class SVMRegression(RegressionWorkflowBase, BaseEstimator):
     name = "Support Vector Machine"
-    special_function = ["Dpport Vector Machine"]
+    special_function = ["Plot SVR Regression"]
 
     def __init__(self,
-                 kernel ='rbf',
-                 degree:int=3,
-                 gamma = 'scale',
-                 coef0:float =0.0,
-                 tol:float =1e-3,
-                 C:float =1.0,
-                 epsilon:float =0.1,
-                 shrinking:bool =True,
-                 cache_size:float =200,
-                 verbose:bool =False,
-                 max_iter:int =-1,
+                 kernel='rbf',
+                 degree: int = 3,
+                 gamma='scale',
+                 coef0: float = 0.0,
+                 tol: float = 1e-3,
+                 C: float = 1.0,
+                 epsilon: float = 0.1,
+                 shrinking: bool = True,
+                 cache_size: float = 200,
+                 verbose: bool = False,
+                 max_iter: int = -1,
                  random_state: int = 42):
         super().__init__(random_state=42)
         self.kernel = kernel
@@ -493,20 +493,19 @@ class SupportVectorRegression(RegressionWorkflowBase, BaseEstimator):
         self.max_iter = max_iter
 
         self.model = SVR(
-                         kernel=self.kernel,
-                         degree=self.degree,
-                         gamma=self.gamma,
-                         coef0=self.coef0,
-                         tol=self.tol,
-                         C=self.C,
-                         epsilon = self.epsilon,
-                         shrinking=self.shrinking,
-                         cache_size=self.cache_size,
-                         verbose=self.verbose,
-                         max_iter=self.max_iter)
+            kernel=self.kernel,
+            degree=self.degree,
+            gamma=self.gamma,
+            coef0=self.coef0,
+            tol=self.tol,
+            C=self.C,
+            epsilon=self.epsilon,
+            shrinking=self.shrinking,
+            cache_size=self.cache_size,
+            verbose=self.verbose,
+            max_iter=self.max_iter)
 
-    def plot(self):
-        print("Plot_Function")
+    def Plot_SVR_Regression(self):
         y = RegressionWorkflowBase().y
         X = RegressionWorkflowBase().X
         clf = self.model.fit(X, y)
@@ -519,13 +518,10 @@ class SupportVectorRegression(RegressionWorkflowBase, BaseEstimator):
         line_a = y_test.min()
         line_b = y_test.max()
         # the lien between a and b.
-        plt.plot([line_a,line_b], [line_a,line_b], '-r', linewidth=1)
-        plt.plot(y_test, y_test_prediction,'o',color='gold', alpha=0.3)
-
-
+        plt.plot([line_a, line_b], [line_a, line_b], '-r', linewidth=1)
+        plt.plot(y_test, y_test_prediction, 'o', color='gold', alpha=0.3)
         save_fig('Plot_SVR_Regression', MODEL_OUTPUT_IMAGE_PATH)
-        plt.show()
 
     def special_components(self):
-        self.plot()
+        self.Plot_SVR_Regression()
         pass
