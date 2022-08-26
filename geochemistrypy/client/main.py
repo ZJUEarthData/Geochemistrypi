@@ -206,11 +206,15 @@ def main():
     Modes2Initiators = {1: RegressionModelSelection, 2: ClassificationModelSelection,
                         3: ClusteringModelSelection, 4: DecompositionModelSelection}
     MODELS = Modes2Models[mode_num]
+    # print(MODELS)
     num2option(MODELS)
     all_models_num = len(MODELS) + 1
     # all_models_num = 0
     print(str(all_models_num) + " - All models above to be trained")
     print("Which model do you want to apply?(Enter the Corresponding Number):")
+    # FIXME(hecan sanyhew1097618435@163.com): how to train all the algorithms at once
+    MODELS.append("all_models")
+    # print(MODELS)
     model_num = limit_num_input(MODELS, SECTION[2], num_input)
     clear_output()
 
