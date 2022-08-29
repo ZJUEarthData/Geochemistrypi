@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 import pandas as pd
 from sklearn.decomposition import PCA
-import matplotlib.pyplot as plt
 import numpy as np
-from utils.base import save_fig
 from global_variable import MODEL_OUTPUT_IMAGE_PATH
-from typing import Optional, Union, List, Dict
+from typing import Optional, Union, Dict
 from ._base import WorkflowBase
 from .func.algo_decomposition._pca import biplot, triplot
 
@@ -21,42 +19,6 @@ class DecompositionWorkflowBase(WorkflowBase):
             pa_name.append(f'Principal Axis {i+1}')
         self.X_reduced = pd.DataFrame(reduced_data)
         self.X_reduced.columns = pa_name
-
-    # class DecompositionWorkflowBase(object):
-#
-#     name = None
-#     common_function = []
-#     special_function = None
-#     X, y = None, None
-#     X_train, X_test, y_train, y_test = None, None, None, None
-#
-#     @classmethod
-#     def show_info(cls):
-#         print("*-*" * 2, cls.name, "is running ...", "*-*" * 2)
-#         print("Expected Functionality:")
-#         function = cls.common_function + cls.special_function
-#         for i in range(len(function)):
-#             print("+ ", function[i])
-#
-#     def __init__(self):
-#         self.model = None
-#         self.naming = None
-#         self.X_reduced = None
-#
-#     def fit(self, X, y=None):
-#         self.model.fit(X)
-#
-#     def transform(self, X):
-#         return self.model.transform(X)
-#
-#     @staticmethod
-#     def data_upload(X, y=None, X_train=None, X_test=None, y_train=None, y_test=None):
-#         DecompositionWorkflowBase.X = X
-#         DecompositionWorkflowBase.y = y
-#         DecompositionWorkflowBase.X_train = X_train
-#         DecompositionWorkflowBase.X_test = X_test
-#         DecompositionWorkflowBase.y_train = y_train
-#         DecompositionWorkflowBase.y_test = y_test
 
 
 class PCADecomposition(DecompositionWorkflowBase):
@@ -113,57 +75,6 @@ class PCADecomposition(DecompositionWorkflowBase):
         print("-----* Explained Variance Ratio *-----")
         print(self.model.explained_variance_ratio_)
 
-    # def _biplot(self, reduced_data: pd.DataFrame, labels: Optional[List[str]] = None) -> None:
-    #     """plot a compositional bi-plot for two principal components
-    #
-    #     Parameters
-    #     ----------
-    #     reduced_data : pd.DataFrame
-    #         Data processed by PCA.
-    #     labels : List[str]
-    #         The type of tag of the samples in the data set.
-    #     """
-    #     print("-----* Compositional Bi-plot *-----")
-    #     plt.figure(figsize=(14, 10))
-    #
-    #     # principal component's weight coefficient
-    #     # it can obtain the expression of principal component in feature space
-    #     n = self.model.components_.shape[1]
-    #
-    #     x = reduced_data[:, 0]  # variable contributions for PC1
-    #     y = reduced_data[:, 1]  # variable contributions for PC2
-    #     scalex = 1.0/(x.max() - x.min())
-    #     scaley = 1.0/(y.max() - y.min())
-    #
-    #     # Draw a data point projection plot that is projected to
-    #     # a two-dimensional plane using normal PCA
-    #     if labels:
-    #         legend = []
-    #         classes = np.unique(labels)
-    #         for i, label in enumerate(classes):
-    #             plt.scatter(x[labels == label] * scalex,
-    #                         y[labels == label] * scaley,
-    #                         linewidth=0.01)
-    #             legend.append("Label: {}".format(label))
-    #         plt.legend(legend)
-    #     else:
-    #         plt.scatter(x * scalex, y * scaley, linewidths=0.01)
-    #
-    #     # plot arrows as the variable contribution,
-    #     # each variable has a score for PC1 and for PC2 respectively
-    #     for i in range(n):
-    #         plt.arrow(0, 0, self.model.components_[0, i], self.model.components_[1, i],
-    #                   color='k', alpha=0.7, linewidth=1, )
-    #         plt.text(self.model.components_[0, i]*1.01, self.model.components_[1, i]*1.01,
-    #                  WorkflowBase.X.columns[i],
-    #                  ha='center', va='center', color='k', fontsize=12)
-    #
-    #     plt.xlabel("$PC1$")
-    #     plt.ylabel("$PC2$")
-    #     plt.title("Compositional Bi-plot")
-    #     plt.grid()
-    #     save_fig(f"Compositional Bi-plot - {self.naming}", MODEL_OUTPUT_IMAGE_PATH)
-
     def _biplot(self, reduced_data, pc_data):
         print("-----* Compositional Bi-plot *-----")
         biplot(reduced_data, pc_data, self.naming, MODEL_OUTPUT_IMAGE_PATH)
@@ -172,7 +83,7 @@ class PCADecomposition(DecompositionWorkflowBase):
         print("-----* Compositional Tri-plot *-----")
         triplot(reduced_data, pc_data, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
-    def special_components(self, **kwargs: Union[Dict, pd.DataFrame, int]) -> None:
+    def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
         self._reduced_data2pd(kwargs['reduced_data'], kwargs['components_num'])
         self._get_principal_components()
         self._get_explained_variance_ratio()
