@@ -14,12 +14,16 @@ def biplot(reduced_data: pd.DataFrame, pc: pd.DataFrame, algorithm_name: str,
     ----------
     reduced_data : pd.DataFrame (n_samples, n_components)
         Data processed by PCA.
+
     pc : pd.DataFrame (n_features, n_components)
         principal components.
+
     algorithm_name : str
         the name of the algorithm
+
     store_path : str
         the local path to store the graph produced
+
     labels : List[str]
         The type of tag of the samples in the data set.
     """
@@ -71,12 +75,16 @@ def triplot(reduced_data: pd.DataFrame, pc: pd.DataFrame, algorithm_name: str,
     ----------
     reduced_data : pd.DataFrame (n_samples, n_components)
         Data processed by PCA.
+
     pc : pd.DataFrame (n_features, n_components)
         principal components.
+
     algorithm_name : str
         the name of the algorithm
+
     store_path : str
         the local path to store the graph produced
+
     labels : List[str]
         The type of tag of the samples in the data set.
     """

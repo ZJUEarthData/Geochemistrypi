@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # import sys
-from model.classification import ClassificationWorkflowBase, SVMClassification, DecisionTreeClassification, RandomForestClassification,XgboostClassification,LogisticRegressionClassification
+from model.classification import ClassificationWorkflowBase, SVMClassification, DecisionTreeClassification,\
+    RandomForestClassification, XgboostClassification, LogisticRegressionClassification
 
 # sys.path.append("..")
 
@@ -27,6 +28,7 @@ class ClassificationModelSelection(object):
             self.clf_workflow = XgboostClassification()
         elif self.model == "Logistic Regression":
             self.clf_workflow = LogisticRegressionClassification()
+
         # common components for every classification algorithm
         self.clf_workflow.show_info()
         self.clf_workflow.fit(X_train, y_train)
