@@ -9,6 +9,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.tree import DecisionTreeRegressor, plot_tree
 from sklearn.ensemble import ExtraTreesRegressor, RandomForestRegressor
+from sklearn.svm import SVR
 from typing import Union, Optional, List, Dict, Callable, Tuple, Any
 from typing import Sequence
 import matplotlib.pyplot as plt
@@ -461,3 +462,66 @@ class RandomForestRegression(RegressionWorkflowBase, BaseEstimator):
         self.plot()
         pass
 
+class SupportVectorRegression(RegressionWorkflowBase, BaseEstimator):
+    name = "Support Vector Machine"
+    special_function = ["Plot SVR Regression"]
+
+    def __init__(self,
+                 kernel='rbf',
+                 degree: int = 3,
+                 gamma='scale',
+                 coef0: float = 0.0,
+                 tol: float = 1e-3,
+                 C: float = 1.0,
+                 epsilon: float = 0.1,
+                 shrinking: bool = True,
+                 cache_size: float = 200,
+                 verbose: bool = False,
+                 max_iter: int = -1,
+                 random_state: int = 42):
+        super().__init__(random_state=42)
+        self.kernel = kernel
+        self.degree = degree
+        self.gamma = gamma
+        self.coef0 = coef0
+        self.tol = tol
+        self.C = C
+        self.epsilon = epsilon
+        self.shrinking = shrinking
+        self.cache_size = cache_size
+        self.verbose = verbose
+        self.max_iter = max_iter
+
+        self.model = SVR(
+            kernel=self.kernel,
+            degree=self.degree,
+            gamma=self.gamma,
+            coef0=self.coef0,
+            tol=self.tol,
+            C=self.C,
+            epsilon=self.epsilon,
+            shrinking=self.shrinking,
+            cache_size=self.cache_size,
+            verbose=self.verbose,
+            max_iter=self.max_iter)
+
+    def Plot_SVR_Regression(self):
+        y = RegressionWorkflowBase().y
+        X = RegressionWorkflowBase().X
+        clf = self.model.fit(X, y)
+        X_train, X_test, y_train, y_test = self.data_split(X, y)
+        y_test_prediction = self.predict(X_test)
+        y_test = np.array(y_test).reshape(1, len(y_test)).flatten()
+        y_test_prediction = y_test_prediction.flatten()
+
+        line_a = y_test.min()
+        line_b = y_test.max()
+        # the lien between a and b.
+        plt.plot([line_a, line_b], [line_a, line_b], '-r', linewidth=1)
+        plt.plot(y_test, y_test_prediction, 'o', color='gold', alpha=0.3)
+        save_fig('Plot_SVR_Regression', MODEL_OUTPUT_IMAGE_PATH)
+
+
+    def special_components(self):
+        self.Plot_SVR_Regression()
+        pass
