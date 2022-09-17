@@ -9,6 +9,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.tree import DecisionTreeRegressor, plot_tree
 from sklearn.ensemble import ExtraTreesRegressor, RandomForestRegressor
+from sklearn.neural_network import MLPRegressor
 from sklearn.svm import SVR
 from typing import Union, Optional, List, Dict, Callable, Tuple, Any
 from typing import Sequence
@@ -525,3 +526,129 @@ class SupportVectorRegression(RegressionWorkflowBase, BaseEstimator):
     def special_components(self):
         self.Plot_SVR_Regression()
         pass
+
+
+
+class DNNRegression(RegressionWorkflowBase, BaseEstimator):
+
+    name = "Deep Neural Networks"
+    special_function = ["Loss Record"]
+
+    def __init__(
+            self,
+            hidden_layer_sizes=(9, 9),
+            activation='relu',
+            solver='adam',
+            alpha=0.0001,
+            batch_size='auto',
+            learning_rate_init=0.001,
+            max_iter=200,
+            shuffle=True,
+            random_state=None,
+            tol=1e-4,
+            verbose=False,
+            warm_start=False,
+            early_stopping=False,
+            validation_fraction=0.1,
+            beta_1=0.9,
+            beta_2=0.999,
+            epsilon=1e-8,
+            n_iter_no_change=10,
+    ):
+
+
+        """
+        :param hidden_layer_sizes:tuple, length = n_layers - 2, default=(100,). The ith element represents the number of neurons in the ith hidden layer.
+        :param activation:{‘identity’, ‘logistic’, ‘tanh’, ‘relu’}, default=’relu’. Activation function for the hidden layer.
+        :param solver:{‘lbfgs’, ‘sgd’, ‘adam’}, default=’adam’. The solver for weight optimization.
+        :param alpha:float, default=0.0001. Strength of the L2 regularization term. The L2 regularization term is divided by the sample size when added to the loss.
+        :param batch_size:int, default=’auto’.  Size of minibatches for stochastic optimizers. If the solver is ‘lbfgs’, the classifier will not use minibatch. When set to “auto”, .batch_size=min(200, n_samples)
+        :param learning_rate:{‘constant’, ‘invscaling’, ‘adaptive’}, default=’constant’. Learning rate schedule for weight updates. Only used when .solver='sgd'.
+        :param learning_rate_init:float, default=0.001. The initial learning rate used. It controls the step-size in updating the weights. Only used when solver=’sgd’ or ‘adam’.
+        :param power_t:float, default=0.5. The exponent for inverse scaling learning rate. It is used in updating effective learning rate when the learning_rate is set to ‘invscaling’. Only used when solver=’sgd’.
+        :param max_iter:int, default=200. Maximum number of iterations.
+        :param shuffle:bool, default=True. Whether to shuffle samples in each iteration. Only used when solver=’sgd’ or ‘adam’.
+        :param random_state:int, RandomState instance, default=None. Determines random number generation for weights and bias initialization, train-test split if early stopping is used, and batch sampling when solver=’sgd’ or ‘adam’.
+        :param tol:float, default=1e-4. Tolerance for the optimization.
+        :param verbose:bool, default=False. Whether to print progress messages to stdout.
+        :param warm_start:bool, default=False.When set to True, reuse the solution of the previous call to fit as initialization, otherwise, just erase the previous solution.
+        :param momentum:float, default=0.9. Momentum for gradient descent update. Should be between 0 and 1. Only used when solver=’sgd’.
+        :param nesterovs_momentum:bool, default=True. Whether to use Nesterov’s momentum. Only used when solver=’sgd’ and momentum > 0.
+        :param early_stopping:bool, default=False. Whether to use early stopping to terminate training when validation score is not improving.
+        :param validation_fraction:float, default=0.1. he proportion of training data to set aside as validation set for early stopping. Must be between 0 and 1. Only used if early_stopping is True.
+        :param beta_1:float, default=0.9. Exponential decay rate for estimates of first moment vector in adam, should be in [0, 1). Only used when solver=’adam’.
+        :param beta_2:float, default=0.999. Exponential decay rate for estimates of second moment vector in adam, should be in [0, 1). Only used when solver=’adam’.
+        :param epsilon:float, default=1e-8. alue for numerical stability in adam. Only used when solver=’adam’.
+        :param n_iter_no_change:int, default=10. Maximum number of epochs to not meet improvement. Only effective when solver=’sgd’ or ‘adam’.
+        :param max_fun:int, default=15000. Only used when solver=’lbfgs’. Maximum number of loss function calls.
+        References
+        ----------------------------------------
+        scikit API:sklearn.neural_network.MLPRegressor
+        https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPRegressor.html#sklearn.neural_network.MLPRegressor
+        """
+        super().__init__(random_state)
+        self.hidden_layer_sizes = hidden_layer_sizes
+        self.activation = activation
+        self.solver = solver
+        self.alpha = alpha
+        self.batch_size = batch_size
+        self.learning_rate_init = learning_rate_init
+        self.max_iter = max_iter
+        self.shuffle = shuffle
+        self.random_state = random_state
+        self.tol = tol
+        self.verbose = verbose
+        self.warm_start = warm_start
+        self.early_stopping = early_stopping
+        self.validation_fraction = validation_fraction
+        self.beta_1 = beta_1
+        self.beta_2 = beta_2
+        self.epsilon = epsilon
+        self.n_iter_no_change = n_iter_no_change
+
+        self.model = MLPRegressor(hidden_layer_sizes=self.hidden_layer_sizes,
+                                   activation=self.activation,
+                                   solver=self.solver,
+                                   alpha=self.alpha,
+                                   batch_size=self.batch_size,
+                                   learning_rate_init=self.learning_rate_init,
+                                   max_iter=self.max_iter,
+                                   shuffle=self.shuffle,
+                                   random_state=self.random_state,
+                                   tol=self.tol,
+                                   verbose=self.verbose,
+                                   warm_start=self.warm_start,
+                                   early_stopping=self.early_stopping,
+                                   validation_fraction=self.validation_fraction,
+                                   beta_1=self.beta_1,
+                                   beta_2=self.beta_2,
+                                   epsilon=self.epsilon,
+                                   n_iter_no_change=self.n_iter_no_change)
+
+        self.naming = DNNRegression.name
+
+    def plot_learning_curve(self):
+        pd.DataFrame(self.model.loss_curve_).plot(title="Loss")
+        plt.show()
+        save_fig("DNN_loss_record", MODEL_OUTPUT_IMAGE_PATH)
+
+    def plot_pred(self):
+        y = RegressionWorkflowBase().y
+        X = RegressionWorkflowBase().X
+        dnn = self.model.fit(X, y)
+        X_train, X_test, y_train, y_test = self.data_split(X, y)
+        y_test_prediction = self.predict(X_test)
+        y_test = np.array(y_test).reshape(1, len(y_test)).flatten()
+        y_test_prediction = y_test_prediction.flatten()
+        plt.plot([i for i in range(len(y_test))], y_test, label='true')
+        plt.plot([i for i in range(len(y_test))], y_test_prediction, label='predict')
+        plt.legend()
+        plt.title('Ground Truth v.s. Prediction')
+        plt.show()
+        save_fig("DNN_predict", MODEL_OUTPUT_IMAGE_PATH)
+
+    def special_components(self):
+        self.plot_learning_curve()
+        self.plot_pred()
+
+
