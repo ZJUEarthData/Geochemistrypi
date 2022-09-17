@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 # import sys
 from model.regression import PolynomialRegression, XgboostRegression, DecisionTreeRegression, ExtraTreeRegression,\
-    RandomForestRegression, RegressionWorkflowBase, SupportVectorRegression
-from data.data_readiness import num_input
+    RandomForestRegression, RegressionWorkflowBase, SupportVectorRegression, DNNRegression
+from data.data_readiness import num_input, float_input, tuple_input
 from global_variable import SECTION
+import pandas as pd
+from typing import Optional
 # sys.path.append("..")
 
 
@@ -13,7 +15,7 @@ class RegressionModelSelection(object):
         self.model = model
         self.reg_workflow = RegressionWorkflowBase()
 
-    def activate(self, X, y):
+    def activate(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None):
         X_train, X_test, y_train, y_test = self.reg_workflow.data_split(X, y)
 
         # model option
@@ -34,6 +36,13 @@ class RegressionModelSelection(object):
             self.reg_workflow = RandomForestRegression()
         elif self.model == "Support Vector Machine":
             self.reg_workflow = SupportVectorRegression()
+        elif self.model == "Deep Neural Networks":
+            print("Please specify the init learning rate of the the neural networks.")
+            learning_rate = float_input(SECTION[2], "@Learning_rate:")
+            print("Please specify the size of hidden layer and the number of neurons in the each hidden layer.")
+            hidden_layer = tuple_input(SECTION[2], "@Hidden_layer_sizes:")
+            self.reg_workflow = DNNRegression(learning_rate_init=learning_rate, hidden_layer_sizes=hidden_layer)
+
         self.reg_workflow.X_train = X_train
         self.reg_workflow.y_train = y_train
 
@@ -44,5 +53,6 @@ class RegressionModelSelection(object):
         self.reg_workflow.score(y_test, y_test_prediction)
         self.reg_workflow.cross_validation(X_train, y_train, cv_num=10)
 
+        self.reg_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
         # special components of different algorithms
         self.reg_workflow.special_components()
