@@ -15,6 +15,12 @@ from global_variable import DATASET_OUTPUT_PATH
 
 
 class ClusteringWorkflowBase(object):
+    """Base class for Cluster.
+
+    Warning: This class should not be used directly.
+    Use derived classes instead.
+    """
+
 
     name = None
     # TODO: build virtualization in 2D, 3D graph and silhouette plot
@@ -274,6 +280,79 @@ class KMeansClustering(ClusteringWorkflowBase):
                             copy_x=self.copy_x,
                             algorithm=self.algorithm)
         self.naming = KMeansClustering.name
+        """
+        
+        Parameters
+        ----------
+        
+        n_clusters : int, default=8
+            The number of clusters to form as well as the number of
+            centroids to generate.
+        
+        init : {'k-means++', 'random'}, callable or array-like of shape \
+                (n_clusters, n_features), default='k-means++'
+            Method for initialization:
+
+            'k-means++' : selects initial cluster centers for k-mean
+            clustering in a smart way to speed up convergence. See section
+            Notes in k_init for more details.
+
+            'random': choose `n_clusters` observations (rows) at random from data
+            for the initial centroids.
+
+            If an array is passed, it should be of shape (n_clusters, n_features)
+            and gives the initial centers.
+
+            If a callable is passed, it should take arguments X, n_clusters and a
+            random state and return an initialization.
+        
+        n_init : int, default=10
+            Number of time the k-means algorithm will be run with different
+            centroid seeds. The final results will be the best output of
+            n_init consecutive runs in terms of inertia.
+            
+        max_iter : int, default=300
+            Maximum number of iterations of the k-means algorithm for a
+            single run.
+            
+        tol : float, default=1e-4
+            Relative tolerance with regards to Frobenius norm of the difference
+            in the cluster centers of two consecutive iterations to declare
+            convergence.
+            
+        verbose : int, default=0
+            Verbosity mode.
+        
+        random_state : int, RandomState instance or None, default=None
+            Determines random number generation for centroid initialization. Use
+            an int to make the randomness deterministic.
+            See :term:`Glossary <random_state>`.
+            
+        copy_x : bool, default=True
+            When pre-computing distances it is more numerically accurate to center
+            the data first. If copy_x is True (default), then the original data is
+            not modified. If False, the original data is modified, and put back
+            before the function returns, but small numerical differences may be
+            introduced by subtracting and then adding the data mean. Note that if
+            the original data is not C-contiguous, a copy will be made even if
+            copy_x is False. If the original data is sparse, but not in CSR format,
+            a copy will be made even if copy_x is False.
+            
+        algorithm : {"auto", "full", "elkan"}, default="auto"
+            K-means algorithm to use. The classical EM-style algorithm is "full".
+            The "elkan" variation is more efficient on data with well-defined
+            clusters, by using the triangle inequality. However it's more memory
+            intensive due to the allocation of an extra array of shape
+            (n_samples, n_clusters).
+
+            For now "auto" (kept for backward compatibility) chooses "elkan" but it
+            might change in the future for a better heuristic.
+
+        References
+        ----------------------------------------
+        Read more in the :ref:`User Guide <k_means>`.
+        https://scikit-learn.org/stable/modules/clustering.html#k-means
+        """
 
     def _get_scores(self):
         print("-----* KMeans Scores *-----")
