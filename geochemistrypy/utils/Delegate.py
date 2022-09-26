@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
+"""
+    refer:-----
+
+"""
 class Decorator_Base:
     def __init__(self, model):
         self.model = model
@@ -67,3 +71,39 @@ class MixinDelegator(object):
             delegate_object = getattr(self, delegate_object_str, None)
             return getattr(delegate_object, called_method)(*args, **kwargs)
         return wrapper
+
+class Microwave:
+  def __init__(self):
+    pass
+
+  def heat_up_food(self):
+    print("Food is being microwaved")
+
+class Dishwasher:
+  def __init__(self):
+    pass
+
+  def wash_dishes(self):
+    print("Dishwasher starting")
+
+
+class Kitchen:
+    def __init__(self):
+        self.microwave = Microwave()
+        self.dishwasher = Dishwasher()
+        self.microwave_methods = [f for f in dir(Microwave) if not f.startswith('_')]
+        self.dishwasher_methods = [f for f in dir(Dishwasher) if not f.startswith('_')]
+
+    def __getattr__(self, func):
+        def method(*args):
+            if func in self.microwave_methods:
+                return getattr(self.microwave, func)(*args)
+            elif func in self.dishwasher_methods:
+                return getattr(self.dishwasher, func)(*args)
+            else:
+                raise AttributeError
+        return method
+
+kitchen = Kitchen()
+kitchen.heat_up_food()
+kitchen.wash_dishes()

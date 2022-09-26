@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from sklearn import metrics
 from sklearn.cluster import KMeans
+from sklearn.cluster import AffinityPropagation
 from sklearn.cluster import DBSCAN
 from sklearn.metrics import silhouette_samples, silhouette_score
 import matplotlib as mpl
@@ -12,17 +13,19 @@ from utils.base import save_data
 from utils.base import save_fig
 from global_variable import MODEL_OUTPUT_IMAGE_PATH
 from global_variable import DATASET_OUTPUT_PATH
+from ._base import WorkflowBase
 
 
-class ClusteringWorkflowBase(object):
+class ClusteringWorkflowBase(WorkflowBase):
     """Base class for Cluster.
 
     Warning: This class should not be used directly.
     Use derived classes instead.
     """
 
+    def __init__(self):
+        super().__init__()
 
-    name = None
     # TODO: build virtualization in 2D, 3D graph and silhouette plot
     common_function = ['Cluster Centers',
                        'Cluster Labels',
@@ -30,24 +33,6 @@ class ClusteringWorkflowBase(object):
                        'Virtualization in 3D graph',
                        'Silhouette Plot']
     special_function = None
-
-    @classmethod
-    def show_info(cls):
-        print("*-*" * 2, cls.name, "is running ...", "*-*" * 2)
-        print("Expected Functionality:")
-        function = cls.common_function + cls.special_function
-        for i in range(len(function)):
-            print("+ ", function[i])
-
-    def __init__(self):
-        self.model = None
-        self.X = None
-        self.naming = None
-
-    def fit(self, X, y=None):
-        # keep y to be in consistent with the framework
-        self.X = X
-        self.model.fit(X)
 
     def get_cluster_centers(self):
         print("-----* Clustering Centers *-----")
@@ -186,6 +171,7 @@ class ClusteringWorkflowBase(object):
             print(np.c_[xx.ravel(), yy.ravel()])
             Z = self.model.predict(np.c_[xx.ravel(), yy.ravel()])
             Z = Z.reshape(xx.shape)
+            print("WSX",type(Z))
             plt.imshow(
                 Z,
                 interpolation="nearest",
@@ -363,6 +349,126 @@ class KMeansClustering(ClusteringWorkflowBase):
     def special_components(self):
         self._get_scores()
 
+class AffinityPropagationClustering(ClusteringWorkflowBase):
+    name = "AffinityPropagation"
+    special_function = []
+
+    def __init__(self,
+                 *,
+                 damping=0.5,
+                 max_iter=200,
+                 convergence_iter=15,
+                 copy=True,
+                 preference=None,
+                 affinity="euclidean",
+                 verbose=False,
+                 random_state=None,):
+
+        super().__init__()
+        self.damping = damping
+        self.max_iter = max_iter
+        self.convergence_iter = convergence_iter
+        self.copy = copy
+        self.verbose = verbose
+        self.preference = preference
+        self.affinity = affinity
+        self.random_state = random_state
+        self.model = AffinityPropagation(damping=self.damping,
+                                         max_iter=self.max_iter,
+                                         convergence_iter=self.convergence_iter,
+                                         copy=self.copy,
+                                         verbose=self.verbose,
+                                         preference=self.preference,
+                                         affinity=self.affinity,
+                                         random_state=self.random_state,
+                                         )
+        self.naming = AffinityPropagationClustering.name
+
+    def _get_scores(self):
+        print("Estimated number of clusters: %d" % n_clusters_)
+        print("Homogeneity: %0.3f" % metrics.homogeneity_score(labels_true, labels))
+        print("Completeness: %0.3f" % metrics.completeness_score(labels_true, labels))
+        print("V-measure: %0.3f" % metrics.v_measure_score(labels_true, labels))
+        print("Adjusted Rand Index: %0.3f" % metrics.adjusted_rand_score(labels_true, labels))
+        print(
+            "Adjusted Mutual Information: %0.3f"
+            % metrics.adjusted_mutual_info_score(labels_true, labels)
+        )
+        print(
+            "Silhouette Coefficient: %0.3f"
+            % metrics.silhouette_score(X, labels, metric="sqeuclidean")
+        )
+
+    def special_components(self):
+        self._get_scores()
+
+from sklearn.datasets import make_blobs
+centers = [[1, 1], [-1, -1], [1, -1]]
+X, labels_true = make_blobs(
+    n_samples=300, centers=centers, cluster_std=0.5, random_state=0
+)
+
+af = AffinityPropagation(preference=-50, random_state=0).fit(X)
+cluster_centers_indices = af.cluster_centers_indices_
+labels = af.labels_
+
+n_clusters_ = len(cluster_centers_indices)
+
+print("Estimated number of clusters: %d" % n_clusters_)
+print("Homogeneity: %0.3f" % metrics.homogeneity_score(labels_true, labels))
+print("Completeness: %0.3f" % metrics.completeness_score(labels_true, labels))
+print("V-measure: %0.3f" % metrics.v_measure_score(labels_true, labels))
+print("Adjusted Rand Index: %0.3f" % metrics.adjusted_rand_score(labels_true, labels))
+print(
+    "Adjusted Mutual Information: %0.3f"
+    % metrics.adjusted_mutual_info_score(labels_true, labels)
+)
+print(
+    "Silhouette Coefficient: %0.3f"
+    % metrics.silhouette_score(X, labels, metric="sqeuclidean")
+)
+
+import matplotlib.pyplot as plt
+from itertools import cycle
+
+plt.close("all")
+plt.figure(1)
+plt.clf()
+
+colors = cycle("bgrcmykbgrcmykbgrcmykbgrcmyk")
+for k, col in zip(range(n_clusters_), colors):
+    class_members = labels == k
+    cluster_center = X[cluster_centers_indices[k]]
+    plt.plot(X[class_members, 0], X[class_members, 1], col + ".")
+    plt.plot(
+        cluster_center[0],
+        cluster_center[1],
+        "o",
+        markerfacecolor=col,
+        markeredgecolor="k",
+        markersize=14,
+    )
+    for x in X[class_members]:
+        plt.plot([cluster_center[0], x[0]], [cluster_center[1], x[1]], col)
+
+plt.title("Estimated number of clusters: %d" % n_clusters_)
+plt.show()
+
+class MeanShiftClustering(ClusteringWorkflowBase):
+    name = "MeanShift"
+    pass
+
+class SpectralClustering(ClusteringWorkflowBase):
+    name = "Spectral"
+    pass
+
+class WardHierarchicalClustering(ClusteringWorkflowBase):
+    name = "WardHierarchical"
+    pass
+
+class AgglomerativeClustering(ClusteringWorkflowBase):
+    name = "Agglomerative"
+    pass
 
 class DBSCANClustering(ClusteringWorkflowBase):
 
@@ -401,3 +507,19 @@ class DBSCANClustering(ClusteringWorkflowBase):
 
     def special_components(self):
         pass
+
+class OPTICSClustering(ClusteringWorkflowBase):
+    name = "OPTICS"
+    pass
+
+class GaussianMixturesClustering(ClusteringWorkflowBase):
+    name = "GaussianMixtures"
+    pass
+
+class BIRCHClusteringClustering(ClusteringWorkflowBase):
+    name = "BIRCHClustering"
+    pass
+
+class BisectingKMeansClustering(ClusteringWorkflowBase):
+    name = "BisectingKMeans"
+    pass
