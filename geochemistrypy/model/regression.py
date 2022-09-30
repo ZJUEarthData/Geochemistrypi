@@ -9,8 +9,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.tree import DecisionTreeRegressor, plot_tree
 from sklearn.ensemble import ExtraTreesRegressor, RandomForestRegressor
-from sklearn.neural_network import MLPRegressor
 from sklearn.svm import SVR
+from sklearn.neural_network import MLPRegressor
 from typing import Union, Optional, List, Dict, Callable, Tuple, Any
 from typing import Sequence
 import matplotlib.pyplot as plt
@@ -18,55 +18,56 @@ import numpy as np
 import pandas as pd
 import xgboost
 from ._base import WorkflowBase
+from .func.algo_regression._polynomial import show_formula
+from .func.algo_regression._dnn import plot_pred
+
+
 # sys.path.append("..")
 
 
 class RegressionWorkflowBase(WorkflowBase):
+    """The base workflow class of regression algorithms."""
+
+    common_function = ['Model Score', 'Cross Validation']
+
     def __init__(self) -> None:
         super().__init__()
-    name = None
-    common_function = ['Model Score', 'Cross Validation']
-    special_function = None
 
-    @classmethod
-    def show_info(cls):
-        print("*-*" * 2, cls.name, "is running ...", "*-*" * 2)
-        print("Expected Functionality:")
-        function = cls.common_function + cls.special_function
-        for i in range(len(function)):
-            print("+ ", function[i])
+    def fit(self, X, y=None):
+        self.model.fit(X, y)
 
+    def predict(self, X):
+        y_predict = self.model.predict(X)
+        return y_predict
 
-    @staticmethod
-    def data_split(X, y, test_size=0.2, random_state=42):
-        RegressionWorkflowBase.X = X  # child class is able to access to the data
-        RegressionWorkflowBase.y = y
-        X_train, X_test, y_train, y_test = train_test_split(RegressionWorkflowBase.X,
-                                                            RegressionWorkflowBase.y,
-                                                            test_size=test_size,
-                                                            random_state=random_state)
-        return X_train, X_test, y_train, y_test
-
-    def fit(self, X_train, y_train):
-        self.model.fit(X_train, y_train)
-
-    def predict(self, X_test):
-        y_test_prediction = self.model.predict(X_test)
-        return y_test_prediction
+    def plot_predict(self, y_test, y_test_predict):
+        y_test = np.array(y_test).reshape(1, len(y_test)).flatten()
+        y_test_predict = np.array(y_test_predict).reshape(1, len(y_test_predict)).flatten()
+        # the lien between a and b.
+        line_a = y_test.min()
+        line_b = y_test.max()
+        # plot figure
+        print("-----* Plot prediction *-----")
+        plt.figure(figsize=(4, 4))
+        plt.plot([line_a, line_b], [line_a, line_b], '-r', linewidth=1)
+        plt.plot(y_test, y_test_predict, 'o', color='gold', alpha=0.3)
+        plt.title('Predicted image')
+        plt.xlabel('y_test')
+        plt.ylabel('y_test_predict')
+        save_fig('Plot Prediction', MODEL_OUTPUT_IMAGE_PATH)
 
     @staticmethod
-    def score(y_test, y_test_prediction):
-        mse = mean_squared_error(y_test, y_test_prediction)
+    def score(y_true, y_predict):
+        mse = mean_squared_error(y_true, y_predict)
         rmse = np.sqrt(mse)
-        mae = mean_absolute_error(y_test, y_test_prediction)
-        r2 = r2_score(y_test, y_test_prediction)
-        evs = explained_variance_score(y_test, y_test_prediction)
+        mae = mean_absolute_error(y_true, y_predict)
+        r2 = r2_score(y_true, y_predict)
+        evs = explained_variance_score(y_true, y_predict)
         print("-----* Model Score *-----")
         print("RMSE score:", rmse)
         print("MAE score:", mae)
         print("R2 score:", r2)
         print("Explained Variance Score:", evs)
-        # return rmse, mae
 
     @staticmethod
     def _display_cross_validation_scores(scores):
@@ -75,7 +76,6 @@ class RegressionWorkflowBase(WorkflowBase):
         print("Standard deviation:", scores.std())
 
     def cross_validation(self, X_train, y_train, cv_num=10):
-        # param_grid = {}
         print("-----* Cross Validation *-----")
         # self.model comes from the subclass of every regression algorithm
         scores = cross_validate(self.model, X_train, y_train,
@@ -90,17 +90,16 @@ class RegressionWorkflowBase(WorkflowBase):
             print('-------------')
         return scores
 
-    # TODO: How to prevent overfitting
+    # TODO(Sany sanyhew1097618435@163.com): How to prevent overfitting
     def is_overfitting():
         pass
 
-    # TODO: Do Hyperparameter Searching
+    # TODO(Sany sanyhew1097618435@163.com): Do Hyperparameter Searching
     def search_best_hyper_parameter():
         pass
 
 
-class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
-
+class PolynomialRegression(RegressionWorkflowBase):
     name = "Polynomial Regression"
     special_function = ["Polynomial Regression Formula"]
 
@@ -114,7 +113,7 @@ class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
                  copy_X: bool = True,
                  n_jobs: Optional[int] = None) -> None:
 
-        super().__init__(random_state=42)
+        super().__init__()
         self.degree = degree
         self.is_include_bias = is_include_bias
         self.interaction_only = interaction_only
@@ -128,9 +127,8 @@ class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
                                       copy_X=self.copy_X,
                                       n_jobs=self.n_jobs)
 
-        self.__features_name = None
-        self.__coefficient = None
-        self.__intercept = None
+        # special attributes
+        self._features_name = None
 
     def poly(self, X_train, X_test):
         poly_features = PolynomialFeatures(degree=self.degree,
@@ -141,92 +139,77 @@ class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
         X_test_poly = poly_features.fit_transform(X_test)
         try:
             # scikit-learn >= 1.0
-            self.__features_name = poly_features.get_feature_names_out()
+            self._features_name = poly_features.get_feature_names_out()
         except AttributeError:
-            self.__features_name = poly_features.get_feature_names()
+            self._features_name = poly_features.get_feature_names()
         return X_train_poly, X_test_poly
 
-    def _show_formula(self):
+    @staticmethod
+    def _show_formula(coef, intercept, features_name):
         print("-----* Polynomial Regression Formula *-----")
-        self.__coefficient = self.model.coef_
-        self.__intercept = self.model.intercept_
-        term = []
-        coef = np.around(self.__coefficient, decimals=3).tolist()[0]
-        for i in range(len(coef)):
-            # the first value stay the same
-            if i == 0:
-                # not append if zero
-                if coef[i] != 0:
-                    temp = str(coef[i]) + self.__features_name[i]
-                    term.append(temp)
-            else:
-                # add plus symbol if positive, maintain if negative, not append if zero
-                if coef[i] > 0:
-                    temp = '+' + str(coef[i]) + self.__features_name[i]
-                    term.append(temp)
-                elif coef[i] < 0:
-                    temp = str(coef[i]) + self.__features_name[i]
-                    term.append(temp)
-        if self.__intercept[0] >= 0:
-            # formula of polynomial regression
-            formula = ''.join(term) + '+' + str(self.__intercept[0])
-        else:
-            formula = ''.join(term) + str(self.__intercept[0])
-        print('y =', formula)
+        show_formula(coef, intercept, features_name)
 
-    def special_components(self):
-        self._show_formula()
+    def special_components(self, **kwargs):
+        self._show_formula(coef=self.model.coef_, intercept=self.model.intercept_, features_name=self._features_name)
 
 
-class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
-    # https://github.com/dmlc/xgboost/blob/master/python-package/xgboost/sklearn.py
+class XgboostRegression(RegressionWorkflowBase):
+    name = "Xgboost"
+    special_function = ['Feature Importance']
 
+    # In fact, it's used for type hint in the original xgboost package.
+    # Hence, we have to copy it here again. Just ignore it
     _SklObjective = Optional[
         Union[
             str, Callable[[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]
         ]
     ]
 
-    name = "Xgboost"
-    special_function = ['Feature Importance']
-
+    # TODO: find out the attributes importance_type effect
     def __init__(
-        self,
-        max_depth: Optional[int] = None,
-        learning_rate: Optional[float] = None,
-        n_estimators: int = 100,
-        verbosity: Optional[int] = None,
-        objective: _SklObjective = None,
-        booster: Optional[str] = None,
-        tree_method: Optional[str] = None,
-        n_jobs: Optional[int] = None,
-        gamma: Optional[float] = None,
-        min_child_weight: Optional[float] = None,
-        max_delta_step: Optional[float] = None,
-        subsample: Optional[float] = None,
-        colsample_bytree: Optional[float] = None,
-        colsample_bylevel: Optional[float] = None,
-        colsample_bynode: Optional[float] = None,
-        reg_alpha: Optional[float] = None,
-        reg_lambda: Optional[float] = None,
-        scale_pos_weight: Optional[float] = None,
-        base_score: Optional[float] = None,
-        random_state: Optional[Union[np.random.RandomState, int]] = None,
-        missing: float = np.nan,
-        num_parallel_tree: Optional[int] = None,
-        monotone_constraints: Optional[Union[Dict[str, int], str]] = None,
-        interaction_constraints: Optional[Union[str, Sequence[Sequence[str]]]] = None,
-        importance_type: Optional[str] = None,
-        gpu_id: Optional[int] = None,
-        validate_parameters: Optional[bool] = None,
-        predictor: Optional[str] = None,
-        enable_categorical: bool = False,
-        eval_metric: Optional[Union[str, List[str], Callable]] = None,
-        early_stopping_rounds: Optional[int] = None,
-        **kwargs: Any
+            self,
+            max_depth: Optional[int] = None,
+            learning_rate: Optional[float] = None,
+            n_estimators: int = 100,
+            verbosity: Optional[int] = None,
+            objective: _SklObjective = None,
+            booster: Optional[str] = None,
+            tree_method: Optional[str] = None,
+            n_jobs: Optional[int] = None,
+            gamma: Optional[float] = None,
+            min_child_weight: Optional[float] = None,
+            max_delta_step: Optional[float] = None,
+            subsample: Optional[float] = None,
+            colsample_bytree: Optional[float] = None,
+            colsample_bylevel: Optional[float] = None,
+            colsample_bynode: Optional[float] = None,
+            reg_alpha: Optional[float] = None,
+            reg_lambda: Optional[float] = None,
+            scale_pos_weight: Optional[float] = None,
+            base_score: Optional[float] = None,
+            random_state: Optional[Union[np.random.RandomState, int]] = None,
+            missing: float = np.nan,
+            num_parallel_tree: Optional[int] = None,
+            monotone_constraints: Optional[Union[Dict[str, int], str]] = None,
+            interaction_constraints: Optional[Union[str, Sequence[Sequence[str]]]] = None,
+            importance_type: Optional[str] = 'gain',
+            gpu_id: Optional[int] = None,
+            validate_parameters: Optional[bool] = None,
+            predictor: Optional[str] = None,
+            enable_categorical: bool = False,
+            eval_metric: Optional[Union[str, List[str], Callable]] = None,
+            early_stopping_rounds: Optional[int] = None,
+            **kwargs: Any
     ) -> None:
 
-        super().__init__(random_state=42)
+        """
+        References
+        ----------
+        Xgboost API for the scikit-learn wrapper:
+        https://github.com/dmlc/xgboost/blob/master/python-package/xgboost/sklearn.py
+        """
+
+        super().__init__()
         self.n_estimators = n_estimators
         self.objective = objective
         self.max_depth = max_depth
@@ -315,11 +298,7 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
         self._feature_importance()
 
 
-class SVM(RegressionWorkflowBase, BaseEstimator):
-    pass
-
-
-class DecisionTreeRegression(RegressionWorkflowBase, BaseEstimator):
+class DecisionTreeRegression(RegressionWorkflowBase):
     name = "Decision Tree"
     special_function = ["Decision Tree Plot"]
 
@@ -335,8 +314,127 @@ class DecisionTreeRegression(RegressionWorkflowBase, BaseEstimator):
                  max_leaf_nodes=None,
                  min_impurity_decrease=0.0,
                  ccp_alpha=0.0
-                 ):
-        super().__init__(random_state=42)
+                 ) -> None:
+        """
+        Parameters
+        ----------
+        criterion : {"squared_error", "friedman_mse", "absolute_error", \
+                "poisson"}, default="squared_error"
+            The function to measure the quality of a split. Supported criteria
+            are "squared_error" for the mean squared error, which is equal to
+            variance reduction as feature selection criterion and minimizes the L2
+            loss using the mean of each terminal node, "friedman_mse", which uses
+            mean squared error with Friedman's improvement score for potential
+            splits, "absolute_error" for the mean absolute error, which minimizes
+            the L1 loss using the median of each terminal node, and "poisson" which
+            uses reduction in Poisson deviance to find splits.
+
+            .. versionadded:: 0.18
+               Mean Absolute Error (MAE) criterion.
+
+            .. versionadded:: 0.24
+                Poisson deviance criterion.
+
+            .. deprecated:: 1.0
+                Criterion "mse" was deprecated in v1.0 and will be removed in
+                version 1.2. Use `criterion="squared_error"` which is equivalent.
+
+            .. deprecated:: 1.0
+                Criterion "mae" was deprecated in v1.0 and will be removed in
+                version 1.2. Use `criterion="absolute_error"` which is equivalent.
+        splitter : {"best", "random"}, default="best"
+            The strategy used to choose the split at each node. Supported
+            strategies are "best" to choose the best split and "random" to choose
+            the best random split.
+        max_depth : int, default=None
+            The maximum depth of the tree. If None, then nodes are expanded until
+            all leaves are pure or until all leaves contain less than
+            min_samples_split samples.
+        min_samples_split : int or float, default=2
+            The minimum number of samples required to split an internal node:
+            - If int, then consider `min_samples_split` as the minimum number.
+            - If float, then `min_samples_split` is a fraction and
+              `ceil(min_samples_split * n_samples)` are the minimum
+              number of samples for each split.
+            .. versionchanged:: 0.18
+               Added float values for fractions.
+        min_samples_leaf : int or float, default=1
+            The minimum number of samples required to be at a leaf node.
+            A split point at any depth will only be considered if it leaves at
+            least ``min_samples_leaf`` training samples in each of the left and
+            right branches.  This may have the effect of smoothing the model,
+            especially in regression.
+            - If int, then consider `min_samples_leaf` as the minimum number.
+            - If float, then `min_samples_leaf` is a fraction and
+              `ceil(min_samples_leaf * n_samples)` are the minimum
+              number of samples for each node.
+            .. versionchanged:: 0.18
+               Added float values for fractions.
+        min_weight_fraction_leaf : float, default=0.0
+            The minimum weighted fraction of the sum total of weights (of all
+            the input samples) required to be at a leaf node. Samples have
+            equal weight when sample_weight is not provided.
+        max_features : int, float or {"auto", "sqrt", "log2"}, default=None
+            The number of features to consider when looking for the best split:
+            - If int, then consider `max_features` features at each split.
+            - If float, then `max_features` is a fraction and
+              `max(1, int(max_features * n_features_in_))` features are considered at each
+              split.
+            - If "auto", then `max_features=n_features`.
+            - If "sqrt", then `max_features=sqrt(n_features)`.
+            - If "log2", then `max_features=log2(n_features)`.
+            - If None, then `max_features=n_features`.
+            .. deprecated:: 1.1
+                The `"auto"` option was deprecated in 1.1 and will be removed
+                in 1.3.
+            Note: the search for a split does not stop until at least one
+            valid partition of the node samples is found, even if it requires to
+            effectively inspect more than ``max_features`` features.
+        random_state : int, RandomState instance or None, default=None
+            Controls the randomness of the estimator. The features are always
+            randomly permuted at each split, even if ``splitter`` is set to
+            ``"best"``. When ``max_features < n_features``, the algorithm will
+            select ``max_features`` at random at each split before finding the best
+            split among them. But the best found split may vary across different
+            runs, even if ``max_features=n_features``. That is the case, if the
+            improvement of the criterion is identical for several splits and one
+            split has to be selected at random. To obtain a deterministic behaviour
+            during fitting, ``random_state`` has to be fixed to an integer.
+            See :term:`Glossary <random_state>` for details.
+        max_leaf_nodes : int, default=None
+            Grow a tree with ``max_leaf_nodes`` in best-first fashion.
+            Best nodes are defined as relative reduction in impurity.
+            If None then unlimited number of leaf nodes.
+        min_impurity_decrease : float, default=0.0
+            A node will be split if this split induces a decrease of the impurity
+            greater than or equal to this value.
+            The weighted impurity decrease equation is the following::
+                N_t / N * (impurity - N_t_R / N_t * right_impurity
+                                    - N_t_L / N_t * left_impurity)
+            where ``N`` is the total number of samples, ``N_t`` is the number of
+            samples at the current node, ``N_t_L`` is the number of samples in the
+            left child, and ``N_t_R`` is the number of samples in the right child.
+            ``N``, ``N_t``, ``N_t_R`` and ``N_t_L`` all refer to the weighted sum,
+            if ``sample_weight`` is passed.
+            .. versionadded:: 0.19
+        ccp_alpha : non-negative float, default=0.0
+            Complexity parameter used for Minimal Cost-Complexity Pruning. The
+            subtree with the largest cost complexity that is smaller than
+            ``ccp_alpha`` will be chosen. By default, no pruning is performed. See
+            :ref:`minimal_cost_complexity_pruning` for details.
+            .. versionadded:: 0.22
+        References
+        ----------
+        [1] https://en.wikipedia.org/wiki/Decision_tree_learning
+        [2] L. Breiman, J. Friedman, R. Olshen, and C. Stone, "Classification
+               and Regression Trees", Wadsworth, Belmont, CA, 1984.
+        [3] T. Hastie, R. Tibshirani and J. Friedman. "Elements of Statistical
+               Learning", Springer, 2009.
+        [4] L. Breiman, and A. Cutler, "Random Forests",
+               https://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm
+        """
+
+        super().__init__()
         self.criteria = criteria,
         self.splitter = splitter,
         self.max_depth = max_depth,
@@ -349,7 +447,17 @@ class DecisionTreeRegression(RegressionWorkflowBase, BaseEstimator):
         self.min_impurity_decrease = min_impurity_decrease,
         self.ccp_alpha = ccp_alpha
 
-        self.model = DecisionTreeRegressor()
+        self.model = DecisionTreeRegressor(criteria=self.criteria,
+                                           splitter=self.splitter,
+                                           max_depth=self.max_depth,
+                                           min_samples_split=self.min_samples_split,
+                                           min_samples_leaf=self.min_samples_leaf,
+                                           min_weight_fraction_leaf=self.min_weight_fraction_leaf,
+                                           max_features=self.max_features,
+                                           random_state=self.random_state,
+                                           max_leaf_nodes=self.max_leaf_nodes,
+                                           min_impurity_decrease=self.min_impurity_decrease,
+                                           ccp_alpha=self.ccp_alpha)
 
     def plot_tree_function(self):
         ###################################################
@@ -367,7 +475,7 @@ class DecisionTreeRegression(RegressionWorkflowBase, BaseEstimator):
         self.plot_tree_function()
 
 
-class ExtraTreeRegression(RegressionWorkflowBase, BaseEstimator):
+class ExtraTreeRegression(RegressionWorkflowBase):
     name = "Extra-Trees"
     special_function = ["Feature Importance"]
 
@@ -378,7 +486,7 @@ class ExtraTreeRegression(RegressionWorkflowBase, BaseEstimator):
                  max_leaf_nodes: int = 20,
                  random_state: int = 42,
                  n_jobs: int = -1):
-        super().__init__(random_state=42)
+        super().__init__()
         self.n_estimators = n_estimator
         self.bootstrap = bootstrap
         self.oob_score = oob_score
@@ -424,7 +532,7 @@ class RandomForestRegression(RegressionWorkflowBase, BaseEstimator):
                  max_leaf_nodes: int = 15,
                  n_jobs: int = -1,
                  random_state: int = 42):
-        super().__init__(random_state=42)
+        super().__init__()
         self.n_estimators = n_estimators
         self.oob_score = oob_score
         self.max_leaf_nodes = max_leaf_nodes
@@ -459,24 +567,79 @@ class RandomForestRegression(RegressionWorkflowBase, BaseEstimator):
         self.plot()
         pass
 
-class SupportVectorRegression(RegressionWorkflowBase, BaseEstimator):
-    name = "Support Vector Machine"
-    special_function = ["Plot SVR Regression"]
 
-    def __init__(self,
-                 kernel='rbf',
-                 degree: int = 3,
-                 gamma='scale',
-                 coef0: float = 0.0,
-                 tol: float = 1e-3,
-                 C: float = 1.0,
-                 epsilon: float = 0.1,
-                 shrinking: bool = True,
-                 cache_size: float = 200,
-                 verbose: bool = False,
-                 max_iter: int = -1,
-                 random_state: int = 42):
-        super().__init__(random_state=42)
+class SupportVectorRegression(RegressionWorkflowBase):
+    name = "Support Vector Machine"
+    special_function = []
+
+    def __init__(
+            self,
+            kernel='rbf',
+            degree: int = 3,
+            gamma='scale',
+            coef0: float = 0.0,
+            tol: float = 1e-3,
+            C: float = 1.0,
+            epsilon: float = 0.1,
+            shrinking: bool = True,
+            cache_size: float = 200,
+            verbose: bool = False,
+            max_iter: int = -1,
+    ) -> None:
+        """
+        Parameters
+        ----------
+        kernel : {'linear', 'poly', 'rbf', 'sigmoid', 'precomputed'} or callable,  \
+            default='rbf'
+             Specifies the kernel type to be used in the algorithm.
+             If none is given, 'rbf' will be used. If a callable is given it is
+             used to precompute the kernel matrix.
+        degree : int, default=3
+            Degree of the polynomial kernel function ('poly').
+            Ignored by all other kernels.
+        gamma : {'scale', 'auto'} or float, default='scale'
+            Kernel coefficient for 'rbf', 'poly' and 'sigmoid'.
+            - if ``gamma='scale'`` (default) is passed then it uses
+              1 / (n_features * X.var()) as value of gamma,
+            - if 'auto', uses 1 / n_features.
+            .. versionchanged:: 0.22
+               The default value of ``gamma`` changed from 'auto' to 'scale'.
+        coef0 : float, default=0.0
+            Independent term in kernel function.
+            It is only significant in 'poly' and 'sigmoid'.
+        tol : float, default=1e-3
+            Tolerance for stopping criterion.
+        C : float, default=1.0
+            Regularization parameter. The strength of the regularization is
+            inversely proportional to C. Must be strictly positive.
+            The penalty is a squared l2 penalty.
+        epsilon : float, default=0.1
+             Epsilon in the epsilon-SVR model. It specifies the epsilon-tube
+             within which no penalty is associated in the training loss function
+             with points predicted within a distance epsilon from the actual
+             value.
+        shrinking : bool, default=True
+            Whether to use the shrinking heuristic.
+            See the :ref:`User Guide <shrinking_svm>`.
+        cache_size : float, default=200
+            Specify the size of the kernel cache (in MB).
+        verbose : bool, default=False
+            Enable verbose output. Note that this setting takes advantage of a
+            per-process runtime setting in libsvm that, if enabled, may not work
+            properly in a multithreaded context.
+        max_iter : int, default=-1
+            Hard limit on iterations within solver, or -1 for no limit.
+        References
+        ----------
+        .. [1] `LIBSVM: A Library for Support Vector Machines
+            <http://www.csie.ntu.edu.tw/~cjlin/papers/libsvm.pdf>`_
+
+        .. [2] `Platt, John (1999). "Probabilistic outputs for support vector
+            machines and comparison to regularizedlikelihood methods."
+            <http://citeseer.ist.psu.edu/viewdoc/summary?doi=10.1.1.41.1639>`_
+        """
+
+        super().__init__()
         self.kernel = kernel
         self.degree = degree
         self.gamma = gamma
@@ -489,40 +652,24 @@ class SupportVectorRegression(RegressionWorkflowBase, BaseEstimator):
         self.verbose = verbose
         self.max_iter = max_iter
 
-        self.model = SVR(
-            kernel=self.kernel,
-            degree=self.degree,
-            gamma=self.gamma,
-            coef0=self.coef0,
-            tol=self.tol,
-            C=self.C,
-            epsilon=self.epsilon,
-            shrinking=self.shrinking,
-            cache_size=self.cache_size,
-            verbose=self.verbose,
-            max_iter=self.max_iter)
+        self.model = SVR(kernel=self.kernel,
+                         degree=self.degree,
+                         gamma=self.gamma,
+                         coef0=self.coef0,
+                         tol=self.tol,
+                         C=self.C,
+                         epsilon=self.epsilon,
+                         shrinking=self.shrinking,
+                         cache_size=self.cache_size,
+                         verbose=self.verbose,
+                         max_iter=self.max_iter)
 
-    def Plot_SVR_Regression(self):
-        y = RegressionWorkflowBase().y
-        X = RegressionWorkflowBase().X
-        clf = self.model.fit(X, y)
-        X_train, X_test, y_train, y_test = self.data_split(X, y)
-        y_test_prediction = self.predict(X_test)
-        y_test = np.array(y_test).reshape(1, len(y_test)).flatten()
-        y_test_prediction = y_test_prediction.flatten()
+        self.naming = SupportVectorRegression.name
 
-        line_a = y_test.min()
-        line_b = y_test.max()
-        # the lien between a and b.
-        plt.plot([line_a, line_b], [line_a, line_b], '-r', linewidth=1)
-        plt.plot(y_test, y_test_prediction, 'o', color='gold', alpha=0.3)
-        save_fig('Plot_SVR_Regression', MODEL_OUTPUT_IMAGE_PATH)
-
+        # special attributes
 
     def special_components(self):
-        self.Plot_SVR_Regression()
         pass
-
 
 
 class DNNRegression(RegressionWorkflowBase, BaseEstimator):
@@ -532,7 +679,7 @@ class DNNRegression(RegressionWorkflowBase, BaseEstimator):
 
     def __init__(
             self,
-            hidden_layer_sizes: tuple = (9, 9),
+            hidden_layer_sizes: tuple = (50, 25, 5),
             activation: List[str] = 'relu',
             solver: List[str] ='adam',
             alpha: float = 0.0001,
@@ -707,7 +854,7 @@ class DNNRegression(RegressionWorkflowBase, BaseEstimator):
         :arxiv:`Kingma, Diederik, and Jimmy Ba (2014)
         "Adam: A method for stochastic optimization." <1412.6980>`
         """
-        super().__init__(random_state)
+        super().__init__()
         self.hidden_layer_sizes = hidden_layer_sizes
         self.activation = activation
         self.solver = solver
@@ -750,24 +897,18 @@ class DNNRegression(RegressionWorkflowBase, BaseEstimator):
 
         self.naming = DNNRegression.name
 
-    def plot_learning_curve(self):
+    def plot_learning_curve(self, algorithm_name: str, store_path):
+        print("-----* Loss Record *-----")
         pd.DataFrame(self.model.loss_curve_).plot(title="Loss")
-        plt.show()
-        save_fig("DNN_loss_record", MODEL_OUTPUT_IMAGE_PATH)
+        save_fig(f'Loss Record - {algorithm_name}', store_path)
 
-    def plot_pred(self):
-        y_test_prediction = self.model.predict(RegressionWorkflowBase.X_test)
-        y_test = np.array(RegressionWorkflowBase.y_test).reshape(1, len(RegressionWorkflowBase.y_test)).flatten()
-        y_test_prediction = y_test_prediction.flatten()
-        plt.plot([i for i in range(len(y_test))], y_test, label='true')
-        plt.plot([i for i in range(len(y_test))], y_test_prediction, label='predict')
-        plt.legend()
-        plt.title('Ground Truth v.s. Prediction')
-        plt.show()
-        save_fig("DNN_predict", MODEL_OUTPUT_IMAGE_PATH)
+    @staticmethod
+    def _plot_pred(y_test_predict: Any, y_test: pd.DataFrame, algorithm_name: str, store_path: str):
+        print("-----* Truth v.s. Prediction *-----")
+        plot_pred(y_test_predict, y_test, algorithm_name)
+        save_fig(f'Ground Truth v.s. Prediction - {algorithm_name}', store_path)
 
-    def special_components(self):
-        self.plot_learning_curve()
-        self.plot_pred()
-
-
+    def special_components(self, **kwargs) -> None:
+        self.plot_learning_curve(self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._plot_pred(y_test_predict=DNNRegression.y_test_predict,
+                        y_test=DNNRegression.y_test, algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)

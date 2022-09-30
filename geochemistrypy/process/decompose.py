@@ -9,6 +9,7 @@ from typing import Optional
 
 
 class DecompositionModelSelection(object):
+    """Simulate the normal way of invoking scikit-learn decomposition algorithms."""
 
     def __init__(self, model: str) -> None:
         self.model = model

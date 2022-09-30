@@ -174,11 +174,14 @@ def np2pd(array, columns_name):
 
 
 
-def float_input(prefix: Optional[str] = None, slogan: Optional[str] = "@Number: ") -> float:
+def float_input(default: float, prefix: Optional[str] = None, slogan: Optional[str] = "@Number: " ) -> float:
     """Get the number of the desired option.
 
     Parameters
     ----------
+    default: float
+         If the user does not enter anything, it is assigned to option.
+
     prefix : str, default=None
         It indicates which section the user currently is in on the UML, which is shown on the command-line console.
 
@@ -195,6 +198,9 @@ def float_input(prefix: Optional[str] = None, slogan: Optional[str] = "@Number: 
         if option.isdigit() or option.replace('.', '').isdigit():
             option = float(option)
             break
+        elif len(option) == 0:
+            option = default
+            break
         else:
             print("Caution: The input is not a positive number. Please input the right number again!")
     return option
@@ -202,11 +208,14 @@ def float_input(prefix: Optional[str] = None, slogan: Optional[str] = "@Number: 
 
 
 
-def tuple_input(prefix: Optional[str] = None, slogan: Optional[str] = None) -> Tuple[int]:
+def tuple_input(default: Tuple[int], prefix: Optional[str] = None, slogan: Optional[str] = None) -> Tuple[int]:
     """Get the tuple of the desired option.
 
     Parameters
     ----------
+    default: Tuple[int]
+         If the user does not enter anything, it is assigned to option.
+
     prefix : str, default=None
         It indicates which section the user currently is in on the UML, which is shown on the command-line console.
 
@@ -224,6 +233,10 @@ def tuple_input(prefix: Optional[str] = None, slogan: Optional[str] = None) -> T
                        'Format: "(**,); (**, **); (**, **, **)", such as "(100,); (50,25); (64, 32, 8)"\n'
                        '--> You want to set 1/2/3 hidden layers with 100/50;25/64;32;8 neurons.\n'
                        f"({prefix}) ➜ {slogan}").strip()
-        option = eval(option)
-        break
+        if len(option) == 0:
+            option = default
+            break
+        else:
+            option = eval(option)
+            break
     return option

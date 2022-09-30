@@ -7,6 +7,7 @@ from model.classification import ClassificationWorkflowBase, SVMClassification, 
 
 
 class ClassificationModelSelection(object):
+    """Simulate the normal way of invoking scikit-learn classification algorithms."""
 
     def __init__(self, model):
         self.model = model
@@ -29,12 +30,15 @@ class ClassificationModelSelection(object):
         elif self.model == "Logistic Regression":
             self.clf_workflow = LogisticRegressionClassification()
 
-        # common components for every classification algorithm
+        # Common components for every classification algorithm
         self.clf_workflow.show_info()
         self.clf_workflow.fit(X_train, y_train)
-        y_test_prediction = self.clf_workflow.predict(X_test)
-        self.clf_workflow.score(y_test, y_test_prediction)
-        self.clf_workflow.confusion_matrix_plot(X_test, y_test, y_test_prediction)
+        y_test_predict = self.clf_workflow.predict(X_test)
+        y_test_predict = self.clf_workflow.np2pd(y_test_predict, y_test.columns)
+        self.clf_workflow.score(y_test, y_test_predict)
+        self.clf_workflow.confusion_matrix_plot(X_test, y_test, y_test_predict)
+        self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test,
+                                      y_train=y_train, y_test=y_test, y_test_predict=y_test_predict)
 
-        # special components of different algorithms
+        # Special components of different algorithms
         self.clf_workflow.special_components()

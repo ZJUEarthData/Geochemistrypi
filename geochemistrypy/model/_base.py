@@ -1,17 +1,24 @@
 # -*- coding: utf-8 -*-
 import pandas as pd
+import numpy as np
 from typing import Optional
 from data.data_readiness import num2option, num_input, limit_num_input, create_sub_data_set, show_data_columns
 from global_variable import SECTION
-from typing import Tuple, List
+from typing import Tuple, List, Union
+from abc import ABCMeta, abstractmethod
+from sklearn.model_selection import train_test_split
 
 
-class WorkflowBase:
+class WorkflowBase(metaclass=ABCMeta):
+    """Base class for all workflow classes in geochemistry π."""
+
+    # Default for child class. They need to be overwritten in child classes.
     name = None
     common_function = []
     special_function = []
     X, y = None, None
     X_train, X_test, y_train, y_test = None, None, None, None
+    y_predict = None
 
     @classmethod
     def show_info(cls) -> None:
@@ -23,26 +30,51 @@ class WorkflowBase:
             print("+ ", function[i])
 
     def __init__(self) -> None:
+        # Default for child class. They need to be overwritten in child classes.
         self.model = None
         self.naming = None
+        self.random_state = 42
 
+    @abstractmethod
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
-        self.model.fit(X)
+        """Placeholder for fit. child classes should implement this method!
+        Parameters
+        ----------
+        X : pd.DataFrame (n_samples, n_features)
+            Training data, where `n_samples` is the number of samples and n_features` is the number of features.
+        y : pd.DataFrame, default=None (n_samples,) or (n_samples, n_targets)
+            Target values。
+        """
+        return None
+
+    def predict(self, X: pd.DataFrame) -> pd.DataFrame:
+        """The interface for the child classes."""
+        return pd.DataFrame()
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        return self.model.transform(X)
+        """The interface for the child classes."""
+        return pd.DataFrame()
+
+    @staticmethod
+    def score(y_true: Union[pd.DataFrame, np.ndarray], y_predict: Union[pd.DataFrame, np.ndarray])\
+            -> Union[int, float]:
+        """The interface for the child classes."""
+        return float()
+
+    @staticmethod
+    def np2pd(array, columns_name):
+        """The type of the data set is transformed from numpy.ndarray to pandas.DataFrame."""
+        return pd.DataFrame(array, columns=columns_name)
 
     @staticmethod
     def choose_dimension_data(data: pd.DataFrame, dimensions: int) -> Tuple[List[int], pd.DataFrame]:
-        """choose a subgroup data from the whole data set to draw 2d or 3d graph.
-
+        """Choose a subgroup data from the whole data set to draw 2d or 3d graph.
         Parameters
         ----------
         data : pd.DataFrame (n_samples, n_features)
             the whole data.
         dimensions : int
             how much dimensions data to keep.
-
         Returns
         -------
         selected_axis_index : list[int]
@@ -74,11 +106,19 @@ class WorkflowBase:
                     X_train: Optional[pd.DataFrame] = None,
                     X_test: Optional[pd.DataFrame] = None,
                     y_train: Optional[pd.DataFrame] = None,
-                    y_test: Optional[pd.DataFrame] = None) -> None:
+                    y_test: Optional[pd.DataFrame] = None,
+                    y_test_predict: Optional[pd.DataFrame] = None) -> None:
+        """This method loads the required data into the base class's attributes."""
         WorkflowBase.X = X
         WorkflowBase.y = y
         WorkflowBase.X_train = X_train
         WorkflowBase.X_test = X_test
         WorkflowBase.y_train = y_train
         WorkflowBase.y_test = y_test
+        WorkflowBase.y_test_predict = y_test_predict
 
+    def data_split(self, X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], test_size: float = 0.2)\
+            -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        """Split arrays or matrices into random train and test subsets."""
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=self.random_state)
+        return X_train, X_test, y_train, y_test

@@ -4,18 +4,17 @@ from model.regression import PolynomialRegression, XgboostRegression, DecisionTr
     RandomForestRegression, RegressionWorkflowBase, SupportVectorRegression, DNNRegression
 from data.data_readiness import num_input, float_input, tuple_input
 from global_variable import SECTION
-import pandas as pd
-from typing import Optional
 # sys.path.append("..")
 
 
 class RegressionModelSelection(object):
+    """Simulate the normal way of invoking scikit-learn regression algorithms."""
 
     def __init__(self, model):
         self.model = model
         self.reg_workflow = RegressionWorkflowBase()
 
-    def activate(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None):
+    def activate(self, X, y):
         X_train, X_test, y_train, y_test = self.reg_workflow.data_split(X, y)
 
         # model option
@@ -38,21 +37,21 @@ class RegressionModelSelection(object):
             self.reg_workflow = SupportVectorRegression()
         elif self.model == "Deep Neural Networks":
             print("Please specify the init learning rate of the the neural networks.")
-            learning_rate = float_input(SECTION[2], "@Learning_rate:")
+            learning_rate = float_input(0.05, SECTION[2], "@Learning_rate:")
             print("Please specify the size of hidden layer and the number of neurons in the each hidden layer.")
-            hidden_layer = tuple_input(SECTION[2], "@Hidden_layer_sizes:")
+            hidden_layer = tuple_input((50, 25, 5), SECTION[2], "@Hidden_layer_sizes:")
             self.reg_workflow = DNNRegression(learning_rate_init=learning_rate, hidden_layer_sizes=hidden_layer)
 
-        self.reg_workflow.X_train = X_train
-        self.reg_workflow.y_train = y_train
-
-        # common components for every regression algorithm
+        # Common components for every regression algorithm
         self.reg_workflow.show_info()
         self.reg_workflow.fit(X_train, y_train)
-        y_test_prediction = self.reg_workflow.predict(X_test)
-        self.reg_workflow.score(y_test, y_test_prediction)
+        y_test_predict = self.reg_workflow.predict(X_test)
+        y_test_predict = self.reg_workflow.np2pd(y_test_predict, y_test.columns)
+        self.reg_workflow.score(y_test, y_test_predict)
         self.reg_workflow.cross_validation(X_train, y_train, cv_num=10)
+        self.reg_workflow.plot_predict(y_test, y_test_predict)
+        self.reg_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test,
+                                      y_train=y_train, y_test=y_test, y_test_predict=y_test_predict)
 
-        self.reg_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
-        # special components of different algorithms
+        # Special components of different algorithms
         self.reg_workflow.special_components()
