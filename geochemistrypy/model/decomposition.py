@@ -145,8 +145,8 @@ class PCADecomposition(DecompositionWorkflowBase):
         self.svd_solver = svd_solver
         self.tol = tol
         self.iterated_power = iterated_power
-        self.n_oversamples = n_oversamples
-        self.power_iteration_normalizer = power_iteration_normalizer
+        # self.n_oversamples = n_oversamples
+        # self.power_iteration_normalizer = power_iteration_normalizer
         self.random_state = random_state
 
         self.model = PCA(n_components=self.n_components,
@@ -155,8 +155,8 @@ class PCADecomposition(DecompositionWorkflowBase):
                          svd_solver=self.svd_solver,
                          tol=self.tol,
                          iterated_power=self.iterated_power,
-                         n_oversamples=self.n_oversamples,
-                         power_iteration_normalizer=self.power_iteration_normalizer,
+                         # n_oversamples=self.n_oversamples,
+                         # power_iteration_normalizer=self.power_iteration_normalizer,
                          random_state=self.random_state)
         self.naming = PCADecomposition.name
 
