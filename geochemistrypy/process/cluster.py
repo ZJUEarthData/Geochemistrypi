@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 # import sys
+import pandas as pd
 from data.data_readiness import num_input
 from model.clustering import KMeansClustering, DBSCANClustering, ClusteringWorkflowBase
 from global_variable import SECTION
+from typing import Optional
 # sys.path.append("..")
 
 
@@ -13,7 +15,7 @@ class ClusteringModelSelection(object):
         self.clt_workflow = ClusteringWorkflowBase()
         self.cluster_num = None
 
-    def activate(self, X, y=None):
+    def activate(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
         if self.model == "KMeans":
             print("Designate the clustering number in advance:")
             self.cluster_num = num_input(SECTION[2])

@@ -32,9 +32,10 @@ class ClusteringWorkflowBase(WorkflowBase):
                        'Silhouette Plot']
 
     def __init__(self):
-        super.__init__()
+        super().__init__()
 
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
+        self.X = X
         self.model.fit(X)
 
     def get_cluster_centers(self) -> None:
