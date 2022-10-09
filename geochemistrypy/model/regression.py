@@ -16,60 +16,42 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xgboost
+from ._base import WorkflowBase
+from .func.algo_regression._polynomial import show_formula
 # sys.path.append("..")
 
 
-class RegressionWorkflowBase(object):
+class RegressionWorkflowBase(WorkflowBase):
+    """The base workflow class of regression algorithms."""
 
-    # Default for child class
-    X = None
-    y = None
-    name = None
     common_function = ['Model Score', 'Cross Validation']
-    special_function = None
 
-    @classmethod
-    def show_info(cls):
-        print("*-*" * 2, cls.name, "is running ...", "*-*" * 2)
-        print("Expected Functionality:")
-        function = cls.common_function + cls.special_function
-        for i in range(len(function)):
-            print("+ ", function[i])
+    def __init__(self) -> None:
+        super().__init__()
 
-    def __init__(self, random_state: int = 42) -> None:
-        self.random_state = random_state
-        self.model = None
-
-    @staticmethod
-    def data_split(X_data, y_data, test_size=0.2, random_state=42):
-        RegressionWorkflowBase.X = X_data  # child class is able to access to the data
-        RegressionWorkflowBase.y = y_data
-        X_train, X_test, y_train, y_test = train_test_split(RegressionWorkflowBase.X,
-                                                            RegressionWorkflowBase.y,
-                                                            test_size=test_size,
-                                                            random_state=random_state)
+    def data_split(self, X, y, test_size=0.2):
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=self.random_state)
         return X_train, X_test, y_train, y_test
 
-    def fit(self, X_train, y_train):
-        self.model.fit(X_train, y_train)
+    def fit(self, X, y=None):
+        self.model.fit(X, y)
 
-    def predict(self, X_test):
-        y_test_prediction = self.model.predict(X_test)
-        return y_test_prediction
+    def predict(self, X):
+        y_predict = self.model.predict(X)
+        return y_predict
 
     @staticmethod
-    def score(y_test, y_test_prediction):
-        mse = mean_squared_error(y_test, y_test_prediction)
+    def score(y_test, y_test_predict):
+        mse = mean_squared_error(y_test, y_test_predict)
         rmse = np.sqrt(mse)
-        mae = mean_absolute_error(y_test, y_test_prediction)
-        r2 = r2_score(y_test, y_test_prediction)
-        evs = explained_variance_score(y_test, y_test_prediction)
+        mae = mean_absolute_error(y_test, y_test_predict)
+        r2 = r2_score(y_test, y_test_predict)
+        evs = explained_variance_score(y_test, y_test_predict)
         print("-----* Model Score *-----")
         print("RMSE score:", rmse)
         print("MAE score:", mae)
         print("R2 score:", r2)
         print("Explained Variance Score:", evs)
-        # return rmse, mae
 
     @staticmethod
     def _display_cross_validation_scores(scores):
@@ -78,7 +60,6 @@ class RegressionWorkflowBase(object):
         print("Standard deviation:", scores.std())
 
     def cross_validation(self, X_train, y_train, cv_num=10):
-        # param_grid = {}
         print("-----* Cross Validation *-----")
         # self.model comes from the subclass of every regression algorithm
         scores = cross_validate(self.model, X_train, y_train,
@@ -93,6 +74,11 @@ class RegressionWorkflowBase(object):
             print('-------------')
         return scores
 
+    @staticmethod
+    def np2pd(array, columns_name):
+        """The type of the data set is transformed from numpy.ndarray to pandas.DataFrame."""
+        return pd.DataFrame(array, columns=columns_name)
+
     # TODO: How to prevent overfitting
     def is_overfitting():
         pass
@@ -102,7 +88,7 @@ class RegressionWorkflowBase(object):
         pass
 
 
-class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
+class PolynomialRegression(RegressionWorkflowBase):
 
     name = "Polynomial Regression"
     special_function = ["Polynomial Regression Formula"]
@@ -117,7 +103,7 @@ class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
                  copy_X: bool = True,
                  n_jobs: Optional[int] = None) -> None:
 
-        super().__init__(random_state=42)
+        super().__init__()
         self.degree = degree
         self.is_include_bias = is_include_bias
         self.interaction_only = interaction_only
@@ -131,9 +117,8 @@ class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
                                       copy_X=self.copy_X,
                                       n_jobs=self.n_jobs)
 
-        self.__features_name = None
-        self.__coefficient = None
-        self.__intercept = None
+        # special attributes
+        self._features_name = None
 
     def poly(self, X_train, X_test):
         poly_features = PolynomialFeatures(degree=self.degree,
@@ -144,41 +129,18 @@ class PolynomialRegression(RegressionWorkflowBase, BaseEstimator):
         X_test_poly = poly_features.fit_transform(X_test)
         try:
             # scikit-learn >= 1.0
-            self.__features_name = poly_features.get_feature_names_out()
+            self._features_name = poly_features.get_feature_names_out()
         except AttributeError:
-            self.__features_name = poly_features.get_feature_names()
+            self._features_name = poly_features.get_feature_names()
         return X_train_poly, X_test_poly
 
-    def _show_formula(self):
+    @staticmethod
+    def _show_formula(coef, intercept, features_name):
         print("-----* Polynomial Regression Formula *-----")
-        self.__coefficient = self.model.coef_
-        self.__intercept = self.model.intercept_
-        term = []
-        coef = np.around(self.__coefficient, decimals=3).tolist()[0]
-        for i in range(len(coef)):
-            # the first value stay the same
-            if i == 0:
-                # not append if zero
-                if coef[i] != 0:
-                    temp = str(coef[i]) + self.__features_name[i]
-                    term.append(temp)
-            else:
-                # add plus symbol if positive, maintain if negative, not append if zero
-                if coef[i] > 0:
-                    temp = '+' + str(coef[i]) + self.__features_name[i]
-                    term.append(temp)
-                elif coef[i] < 0:
-                    temp = str(coef[i]) + self.__features_name[i]
-                    term.append(temp)
-        if self.__intercept[0] >= 0:
-            # formula of polynomial regression
-            formula = ''.join(term) + '+' + str(self.__intercept[0])
-        else:
-            formula = ''.join(term) + str(self.__intercept[0])
-        print('y =', formula)
+        show_formula(coef, intercept, features_name)
 
-    def special_components(self):
-        self._show_formula()
+    def special_components(self, **kwargs):
+        self._show_formula(coef=self.model.coef_, intercept=self.model.intercept_, features_name=self._features_name)
 
 
 class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
@@ -514,6 +476,7 @@ class SupportVectorRegression(RegressionWorkflowBase, BaseEstimator):
         y_test = np.array(y_test).reshape(1, len(y_test)).flatten()
         y_test_prediction = y_test_prediction.flatten()
 
+        plt.figure()
         line_a = y_test.min()
         line_b = y_test.max()
         # the lien between a and b.

@@ -34,15 +34,16 @@ class RegressionModelSelection(object):
             self.reg_workflow = RandomForestRegression()
         elif self.model == "Support Vector Machine":
             self.reg_workflow = SupportVectorRegression()
-        self.reg_workflow.X_train = X_train
-        self.reg_workflow.y_train = y_train
 
         # common components for every regression algorithm
         self.reg_workflow.show_info()
         self.reg_workflow.fit(X_train, y_train)
-        y_test_prediction = self.reg_workflow.predict(X_test)
-        self.reg_workflow.score(y_test, y_test_prediction)
+        y_test_predict = self.reg_workflow.predict(X_test)
+        self.reg_workflow.score(y_test, y_test_predict)
         self.reg_workflow.cross_validation(X_train, y_train, cv_num=10)
+        y_test_predict = self.reg_workflow.np2pd(y_test_predict, y_test.columns)
+        self.reg_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test,
+                                      y_train=y_train, y_test=y_test, y_test_predict=y_test_predict)
 
         # special components of different algorithms
         self.reg_workflow.special_components()
