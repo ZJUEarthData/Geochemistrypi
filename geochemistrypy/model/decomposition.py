@@ -9,9 +9,20 @@ from .func.algo_decomposition._pca import biplot, triplot
 
 
 class DecompositionWorkflowBase(WorkflowBase):
+    """The base workflow class of decomposition algorithms."""
+
     def __init__(self) -> None:
         super().__init__()
+
+        # the extra attributes that decomposition algorithm needs
         self.X_reduced = None
+
+    def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
+        self.model.fit(X)
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        """This method returns the transformed version of the input X"""
+        return self.model.transform(X)
 
     def _reduced_data2pd(self, reduced_data: np.ndarray, components_num: int) -> None:
         pa_name = []

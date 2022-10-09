@@ -4,14 +4,19 @@ from typing import Optional
 from data.data_readiness import num2option, num_input, limit_num_input, create_sub_data_set, show_data_columns
 from global_variable import SECTION
 from typing import Tuple, List
+from abc import ABCMeta, abstractmethod
 
 
-class WorkflowBase:
+class WorkflowBase(metaclass=ABCMeta):
+    """Base class for all workflow classes in geochemistry π."""
+
+    # Default for child class. They need to be overwritten in child classes.
     name = None
     common_function = []
     special_function = []
     X, y = None, None
     X_train, X_test, y_train, y_test = None, None, None, None
+    y_predict = None
 
     @classmethod
     def show_info(cls) -> None:
@@ -23,18 +28,36 @@ class WorkflowBase:
             print("+ ", function[i])
 
     def __init__(self) -> None:
+        # Default for child class. They need to be overwritten in child classes.
         self.model = None
         self.naming = None
+        self.random_state = 42
 
+    @abstractmethod
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
-        self.model.fit(X)
+        """Placeholder for fit. child classes should implement this method!
+
+        Parameters
+        ----------
+        X : pd.DataFrame (n_samples, n_features)
+            Training data, where `n_samples` is the number of samples and n_features` is the number of features.
+
+        y : pd.DataFrame, default=None (n_samples,) or (n_samples, n_targets)
+            Target values。
+        """
+        pass
+
+    def predict(self, X):
+        """The interface for the child classes."""
+        pass
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        return self.model.transform(X)
+        """This method returns the transformed version of the input X"""
+        pass
 
     @staticmethod
     def choose_dimension_data(data: pd.DataFrame, dimensions: int) -> Tuple[List[int], pd.DataFrame]:
-        """choose a subgroup data from the whole data set to draw 2d or 3d graph.
+        """Choose a subgroup data from the whole data set to draw 2d or 3d graph.
 
         Parameters
         ----------
@@ -74,11 +97,18 @@ class WorkflowBase:
                     X_train: Optional[pd.DataFrame] = None,
                     X_test: Optional[pd.DataFrame] = None,
                     y_train: Optional[pd.DataFrame] = None,
-                    y_test: Optional[pd.DataFrame] = None) -> None:
+                    y_test: Optional[pd.DataFrame] = None,
+                    y_test_predict: Optional[pd.DataFrame] = None) -> None:
+        """This method loads the required data into the base class's attributes."""
         WorkflowBase.X = X
         WorkflowBase.y = y
         WorkflowBase.X_train = X_train
         WorkflowBase.X_test = X_test
         WorkflowBase.y_train = y_train
         WorkflowBase.y_test = y_test
+        WorkflowBase.y_test_predict = y_test_predict
+
+    def data_split(self, X, y, test_size=0.2):
+        """The interface for the child classes."""
+        pass
 
