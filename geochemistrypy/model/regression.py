@@ -40,6 +40,22 @@ class RegressionWorkflowBase(WorkflowBase):
         y_predict = self.model.predict(X)
         return y_predict
 
+    def plot_predict(self,y_test,y_test_predict):
+        y_test = np.array(y_test).reshape(1, len(y_test)).flatten()
+        y_test_predict = np.array(y_test_predict).reshape(1, len(y_test_predict)).flatten()
+        # the lien between a and b.
+        line_a = y_test.min()
+        line_b = y_test.max()
+        #plot figure
+        print("-----* Plot prediction *-----")
+        plt.figure(figsize=(4, 4))
+        plt.plot([line_a, line_b], [line_a, line_b], '-r', linewidth=1)
+        plt.plot(y_test, y_test_predict, 'o', color='gold', alpha=0.3)
+        plt.title('Predicted image')
+        plt.xlabel('y_test')
+        plt.ylabel('y_test_predict')
+        save_fig('Plot Prediction', MODEL_OUTPUT_IMAGE_PATH)
+
     @staticmethod
     def score(y_test, y_test_predict):
         mse = mean_squared_error(y_test, y_test_predict)

@@ -42,6 +42,7 @@ class RegressionModelSelection(object):
         self.reg_workflow.score(y_test, y_test_predict)
         self.reg_workflow.cross_validation(X_train, y_train, cv_num=10)
         y_test_predict = self.reg_workflow.np2pd(y_test_predict, y_test.columns)
+        self.reg_workflow.plot_predict(y_test, y_test_predict)
         self.reg_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test,
                                       y_train=y_train, y_test=y_test, y_test_predict=y_test_predict)
 
