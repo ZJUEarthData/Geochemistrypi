@@ -14,7 +14,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 import xgboost
 from sklearn.linear_model import LogisticRegression
-from typing import Union, Optional, List, Dict, Callable, Tuple, Any, Sequence
+from typing import Union, Optional, List, Dict, Callable, Tuple, Any, Sequence, Literal
 from matplotlib.colors import ListedColormap
 # sys.path.append("..")
 
@@ -77,47 +77,125 @@ class SVMClassification(ClassificationWorkflowBase):
 
     def __init__(
             self,
-            C=1.0,
-            kernel='rbf',
-            degree=3,
-            gamma="scale",
-            coef0=0.0,
-            shrinking=True,
-            probability=False,
-            tol=1e-3,
-            cache_size=200,
-            class_weight=None,
-            verbose=False,
-            max_iter=-1,
-            decision_function_shape="ovr",
-            break_ties=False,
-            random_state=None
-    ):
-        ##############################################################
-        #Support vector machine is used to classify the data
-        ##############################################################
+            C: float = 1.0,
+            kernel: Union[str, Callable] = 'rbf',
+            degree: int = 3,
+            gamma: Union[str, float] = "scale",
+            coef0: float = 0.0,
+            shrinking: bool = True,
+            probability: bool = False,
+            tol: float = 1e-3,
+            cache_size: float = 200,
+            class_weight: Optional[dict, str] = None,
+            verbose: bool = False,
+            max_iter: int = -1,
+            decision_function_shape: Literal['ovo', 'ovr'] = "ovr",
+            break_ties: bool = False,
+            random_state: Optional[int] = None
+    ) -> None:
         """
-        :param C:float, default=1.0 Regularization parameter. The strength of the regularization is inversely proportional to C. Must be strictly positive. The penalty is a squared l2 penalty.
-        :param kernel:Specifies the kernel type to be used in the algorithm
-        :param degree:Degree of the polynomial kernel function (‘poly’). Ignored by all other kernels.
-        :param gamma:Kernel coefficient for ‘rbf’, ‘poly’ and ‘sigmoid’.
-        :param coef0:Independent term in kernel function. It is only significant in ‘poly’ and ‘sigmoid’.
-        :param shrinking:Whether to use the shrinking heuristic. See the User Guide
-        :param probability:Whether to enable probability estimates. This must be enabled prior to calling , will slow down that method as it internally uses 5-fold cross-validation, and may be inconsistent with .
-        :param tol:Whether to enable probability estimates. This must be enabled prior to calling , will slow down that method as it internally uses 5-fold cross-validation, and may be inconsistent with .
-        :param cache_size:Specify the size of the kernel cache (in MB).
-        :param class_weight:Set the parameter C of class i to class_weight[i]*C for SVC.
-        :param verbose:Enable verbose output. Note that this setting takes advantage of a per-process runtime setting in libsvm that, if enabled, may not work properly in a multithreaded context.
-        :param max_iter:Hard limit on iterations within solver, or -1 for no limit.
-        :param decision_function_shape:Whether to return a one-vs-rest (‘ovr’) decision function of shape (n_samples, n_classes) as all other classifiers, or the original one-vs-one (‘ovo’) decision function of libsvm which has shape (n_samples, n_classes * (n_classes - 1) / 2). However, note that internally, one-vs-one (‘ovo’) is always used as a multi-class strategy to train models; an ovr matrix is only constructed from the ovo matrix. The parameter is ignored for binary classification.
-        :param break_ties:If true, , and number of classes > 2, predict will break ties according to the confidence values of decision_function; otherwise the first class among the tied classes is returned. Please note that breaking ties comes at a relatively high computational cost compared to a simple predict
-        :param random_state:Controls the pseudo random number generation for shuffling the data for probability estimates. Ignored when is False. Pass an int for reproducible output across multiple function calls. See Glossary.
+        Parameters
+        ----------
+        C : float, default=1.0
+            Regularization parameter. The strength of the regularization is
+            inversely proportional to C. Must be strictly positive. The penalty
+            is a squared l2 penalty.
+
+        kernel : {'linear', 'poly', 'rbf', 'sigmoid', 'precomputed'} or callable,  \
+            default='rbf'
+            Specifies the kernel type to be used in the algorithm.
+            If none is given, 'rbf' will be used. If a callable is given it is
+            used to pre-compute the kernel matrix from data matrices; that matrix
+            should be an array of shape ``(n_samples, n_samples)``.
+
+        degree : int, default=3
+            Degree of the polynomial kernel function ('poly').
+            Ignored by all other kernels.
+
+        gamma : {'scale', 'auto'} or float, default='scale'
+            Kernel coefficient for 'rbf', 'poly' and 'sigmoid'.
+
+            - if ``gamma='scale'`` (default) is passed then it uses
+              1 / (n_features * X.var()) as value of gamma,
+            - if 'auto', uses 1 / n_features.
+
+            .. versionchanged:: 0.22
+               The default value of ``gamma`` changed from 'auto' to 'scale'.
+
+        coef0 : float, default=0.0
+            Independent term in kernel function.
+            It is only significant in 'poly' and 'sigmoid'.
+
+        shrinking : bool, default=True
+            Whether to use the shrinking heuristic.
+            See the :ref:`User Guide <shrinking_svm>`.
+
+        probability : bool, default=False
+            Whether to enable probability estimates. This must be enabled prior
+            to calling `fit`, will slow down that method as it internally uses
+            5-fold cross-validation, and `predict_proba` may be inconsistent with
+            `predict`. Read more in the :ref:`User Guide <scores_probabilities>`.
+
+        tol : float, default=1e-3
+            Tolerance for stopping criterion.
+
+        cache_size : float, default=200
+            Specify the size of the kernel cache (in MB).
+
+        class_weight : dict or 'balanced', default=None
+            Set the parameter C of class i to class_weight[i]*C for
+            SVC. If not given, all classes are supposed to have
+            weight one.
+            The "balanced" mode uses the values of y to automatically adjust
+            weights inversely proportional to class frequencies in the input data
+            as ``n_samples / (n_classes * np.bincount(y))``.
+
+        verbose : bool, default=False
+            Enable verbose output. Note that this setting takes advantage of a
+            per-process runtime setting in libsvm that, if enabled, may not work
+            properly in a multithreaded context.
+
+        max_iter : int, default=-1
+            Hard limit on iterations within solver, or -1 for no limit.
+
+        decision_function_shape : {'ovo', 'ovr'}, default='ovr'
+            Whether to return a one-vs-rest ('ovr') decision function of shape
+            (n_samples, n_classes) as all other classifiers, or the original
+            one-vs-one ('ovo') decision function of libsvm which has shape
+            (n_samples, n_classes * (n_classes - 1) / 2). However, one-vs-one
+            ('ovo') is always used as multi-class strategy. The parameter is
+            ignored for binary classification.
+
+            .. versionchanged:: 0.19
+                decision_function_shape is 'ovr' by default.
+
+            .. versionadded:: 0.17
+               *decision_function_shape='ovr'* is recommended.
+
+            .. versionchanged:: 0.17
+               Deprecated *decision_function_shape='ovo' and None*.
+
+        break_ties : bool, default=False
+            If true, ``decision_function_shape='ovr'``, and number of classes > 2,
+            :term:`predict` will break ties according to the confidence values of
+            :term:`decision_function`; otherwise the first class among the tied
+            classes is returned. Please note that breaking ties comes at a
+            relatively high computational cost compared to a simple predict.
+
+            .. versionadded:: 0.22
+
+        random_state : int, RandomState instance or None, default=None
+            Controls the pseudo random number generation for shuffling the data for
+            probability estimates. Ignored when `probability` is False.
+            Pass an int for reproducible output across multiple function calls.
+            See :term:`Glossary <random_state>`.
 
         References
-        ----------------------------------------
-        API design for machine learning software: experiences from the scikit-learn project.Buitinck, LarLouppe, GillesBlondel, MathieuPedregosa, FabianMueller, AndreasGrise, Olivierculae, VladPrettenhofer, PeterGramfort, AlexandreGrobler, JaquesLayton, RobertVanderplas, JakeJoly, ArnaudHolt, BrianVaroquaux, Gaël
-        http://arxiv.org/abs/1309.0238
+        ----------
+        scikit API:sklearn.svm.SVC
+        https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html?highlight=svc#sklearn.svm.SVC
         """
+
         super().__init__(random_state)
         self.C = C
         self.kernel = kernel
@@ -180,46 +258,158 @@ class SVMClassification(ClassificationWorkflowBase):
 
 
 class DecisionTreeClassification(ClassificationWorkflowBase):
+    """A decision tree classifier"""
 
     name = "Decision Tree"
     special_function = ["Decision Tree Plot"]
 
     def __init__(
             self,
-            criterion='gini',
-            splitter='best',
-            max_depth=3,
-            min_samples_split=2,
-            min_samples_leaf=1,
-            min_weight_fraction_leaf=0.0,
-            max_features=None,
-            random_state=None,
-            max_leaf_nodes=None,
-            min_impurity_decrease=0.0,
-            class_weight=None,
-            ccp_alpha=0.0
-    ):
-        ##############################################################################
-        #Classification of data using machine learning models with decision trees
-        ##############################################################################
+            criterion: str = 'gini',
+            splitter: str = 'best',
+            max_depth: Optional[int] = 3,
+            min_samples_split: Union[int, float] = 2,
+            min_samples_leaf: Union[int, float] = 1,
+            min_weight_fraction_leaf: Union[int, float] = 0.0,
+            max_features: Optional[int, float, str] = None,
+            random_state: Optional[int] = None,
+            max_leaf_nodes: Optional[int] = None,
+            min_impurity_decrease: float = 0.0,
+            class_weight: Optional[dict, list[dict], str] = None,
+            ccp_alpha: float = 0.0
+    ) -> None:
         """
-        :param criterion:The function to measure the quality of a split. Supported criteria are “gini” for the Gini impurity and “log_loss” and “entropy” both for the Shannon information gain
-        :param splitter:The strategy used to choose the split at each node. Supported strategies are “best” to choose the best split and “random” to choose the best random split.
-        :param max_depth:The maximum depth of the tree. If None, then nodes are expanded until all leaves are pure or until all leaves contain less than min_samples_split samples.
-        :param min_samples_split:The minimum number of samples required to split an internal node
-        :param min_samples_leaf:The minimum number of samples required to be at a leaf node. A split point at any depth will only be considered if it leaves at least min_samples_leaf training samples in each of the left and right branches. This may have the effect of smoothing the model, especially in regression.
-        :param min_weight_fraction_leaf:The minimum weighted fraction of the sum total of weights (of all the input samples) required to be at a leaf node. Samples have equal weight when sample_weight is not provided.
-        :param max_features:The number of features to consider when looking for the best split
-        :param random_state:Controls the randomness of the estimator.
-        :param max_leaf_nodes:Grow a tree with max_leaf_nodes in best-first fashion. Best nodes are defined as relative reduction in impurity. If None then unlimited number of leaf nodes.
-        :param min_impurity_decrease:A node will be split if this split induces a decrease of the impurity greater than or equal to this value.
-        :param class_weight:Weights associated with classes in the form {class_label: weight}.
-        :param ccp_alpha:Complexity parameter used for Minimal Cost-Complexity Pruning.
+        Parameters
+        ----------
+        criterion : {"gini", "entropy"}, default="gini"
+            The function to measure the quality of a split. Supported criteria are
+            "gini" for the Gini impurity and "entropy" for the information gain.
+
+        splitter : {"best", "random"}, default="best"
+            The strategy used to choose the split at each node. Supported
+            strategies are "best" to choose the best split and "random" to choose
+            the best random split.
+
+        max_depth : int, default=None
+            The maximum depth of the tree. If None, then nodes are expanded until
+            all leaves are pure or until all leaves contain less than
+            min_samples_split samples.
+
+        min_samples_split : int or float, default=2
+            The minimum number of samples required to split an internal node:
+
+            - If int, then consider `min_samples_split` as the minimum number.
+            - If float, then `min_samples_split` is a fraction and
+              `ceil(min_samples_split * n_samples)` are the minimum
+              number of samples for each split.
+
+            .. versionchanged:: 0.18
+               Added float values for fractions.
+
+        min_samples_leaf : int or float, default=1
+            The minimum number of samples required to be at a leaf node.
+            A split point at any depth will only be considered if it leaves at
+            least ``min_samples_leaf`` training samples in each of the left and
+            right branches.  This may have the effect of smoothing the model,
+            especially in regression.
+
+            - If int, then consider `min_samples_leaf` as the minimum number.
+            - If float, then `min_samples_leaf` is a fraction and
+              `ceil(min_samples_leaf * n_samples)` are the minimum
+              number of samples for each node.
+
+            .. versionchanged:: 0.18
+               Added float values for fractions.
+
+        min_weight_fraction_leaf : float, default=0.0
+            The minimum weighted fraction of the sum total of weights (of all
+            the input samples) required to be at a leaf node. Samples have
+            equal weight when sample_weight is not provided.
+
+        max_features : int, float or {"auto", "sqrt", "log2"}, default=None
+            The number of features to consider when looking for the best split:
+
+                - If int, then consider `max_features` features at each split.
+                - If float, then `max_features` is a fraction and
+                  `int(max_features * n_features)` features are considered at each
+                  split.
+                - If "auto", then `max_features=sqrt(n_features)`.
+                - If "sqrt", then `max_features=sqrt(n_features)`.
+                - If "log2", then `max_features=log2(n_features)`.
+                - If None, then `max_features=n_features`.
+
+            Note: the search for a split does not stop until at least one
+            valid partition of the node samples is found, even if it requires to
+            effectively inspect more than ``max_features`` features.
+
+        random_state : int, RandomState instance or None, default=None
+            Controls the randomness of the estimator. The features are always
+            randomly permuted at each split, even if ``splitter`` is set to
+            ``"best"``. When ``max_features < n_features``, the algorithm will
+            select ``max_features`` at random at each split before finding the best
+            split among them. But the best found split may vary across different
+            runs, even if ``max_features=n_features``. That is the case, if the
+            improvement of the criterion is identical for several splits and one
+            split has to be selected at random. To obtain a deterministic behaviour
+            during fitting, ``random_state`` has to be fixed to an integer.
+            See :term:`Glossary <random_state>` for details.
+
+        max_leaf_nodes : int, default=None
+            Grow a tree with ``max_leaf_nodes`` in best-first fashion.
+            Best nodes are defined as relative reduction in impurity.
+            If None then unlimited number of leaf nodes.
+
+        min_impurity_decrease : float, default=0.0
+            A node will be split if this split induces a decrease of the impurity
+            greater than or equal to this value.
+
+            The weighted impurity decrease equation is the following::
+
+                N_t / N * (impurity - N_t_R / N_t * right_impurity
+                                    - N_t_L / N_t * left_impurity)
+
+            where ``N`` is the total number of samples, ``N_t`` is the number of
+            samples at the current node, ``N_t_L`` is the number of samples in the
+            left child, and ``N_t_R`` is the number of samples in the right child.
+
+            ``N``, ``N_t``, ``N_t_R`` and ``N_t_L`` all refer to the weighted sum,
+            if ``sample_weight`` is passed.
+
+            .. versionadded:: 0.19
+
+        class_weight : dict, list of dict or "balanced", default=None
+            Weights associated with classes in the form ``{class_label: weight}``.
+            If None, all classes are supposed to have weight one. For
+            multi-output problems, a list of dicts can be provided in the same
+            order as the columns of y.
+
+            Note that for multioutput (including multilabel) weights should be
+            defined for each class of every column in its own dict. For example,
+            for four-class multilabel classification weights should be
+            [{0: 1, 1: 1}, {0: 1, 1: 5}, {0: 1, 1: 1}, {0: 1, 1: 1}] instead of
+            [{1:1}, {2:5}, {3:1}, {4:1}].
+
+            The "balanced" mode uses the values of y to automatically adjust
+            weights inversely proportional to class frequencies in the input data
+            as ``n_samples / (n_classes * np.bincount(y))``
+
+            For multi-output, the weights of each column of y will be multiplied.
+
+            Note that these weights will be multiplied with sample_weight (passed
+            through the fit method) if sample_weight is specified.
+
+        ccp_alpha : non-negative float, default=0.0
+            Complexity parameter used for Minimal Cost-Complexity Pruning. The
+            subtree with the largest cost complexity that is smaller than
+            ``ccp_alpha`` will be chosen. By default, no pruning is performed. See
+            :ref:`minimal_cost_complexity_pruning` for details.
+
+            .. versionadded:: 0.22
 
         References
-        ----------------------------------------
-        API design for machine learning software: experiences from the scikit-learn project.Buitinck, LarLouppe, GillesBlondel, MathieuPedregosa, FabianMueller, AndreasGrise, Olivierculae, VladPrettenhofer, PeterGramfort, AlexandreGrobler, JaquesLayton, RobertVanderplas, JakeJoly, ArnaudHolt, BrianVaroquaux, Gaël
-        http://arxiv.org/abs/1309.0238
+        ----------
+        sklearn.tree.DecisionTreeClassifier
+        https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html?highlight=decisiontreeclassifier#sklearn.tree.DecisionTreeClassifier
         """
         super().__init__(random_state)
         self.criterion = criterion
@@ -293,66 +483,205 @@ class RandomForestClassification(ClassificationWorkflowBase):
 
     def __init__(
             self,
-            n_estimators=100,
-            criterion='gini',
-            max_depth=4,
-            min_samples_split=4,
-            min_samples_leaf=1,
-            min_weight_fraction_leaf=0.0,
-            max_features='sqrt',
-            max_leaf_nodes=3,
-            min_impurity_decrease=0.0,
-            bootstrap=True,
-            oob_score=False,
-            n_jobs=-1,
-            random_state=42,
-            verbose=0,
-            warm_start=False,
-            class_weight=None,
-            ccp_alpha=0.0,
-            max_samples=10):
-        ##############################################################
-        # RandomForestRegression is used to classify the data
-        ##############################################################
+            n_estimators: int = 100,
+            criterion: str = 'gini',
+            max_depth: Optional[int] = 4,
+            min_samples_split: Union[int, float] = 4,
+            min_samples_leaf: Union[int, float] = 1,
+            min_weight_fraction_leaf: float = 0.0,
+            max_features: Optional[str, int, float] = 'sqrt',
+            max_leaf_nodes: Optional[int] = 3,
+            min_impurity_decrease: float = 0.0,
+            bootstrap: bool = True,
+            oob_score: bool = False,
+            n_jobs: Optional[int] = -1,
+            random_state: Optional[int] = 42,
+            verbose: int = 0,
+            warm_start: bool = False,
+            class_weight: Optional[str,dict,list[dict]] = None,
+            ccp_alpha: float = 0.0,
+            max_samples: Union[int, float] = 10
+    ) -> None:
         """
-        :param n_estimators:int, default=100.The number of trees in the forest.
-        :param criterion:{“gini”, “entropy”, “log_loss”}, default=”gini”The function to measure the quality of a split.
-        :param max_depthint, default=None.The maximum depth of the tree.
-        :param min_samples_splitint or float, default=2
-                The minimum number of samples required to split an internal node
-        :param min_samples_leafint or float, default=1
-                The minimum number of samples required to be at a leaf node.
-        :param min_weight_fraction_leaffloat, default=0.0
-                The minimum weighted fraction of the sum total of weights (of all the input samples) required to be at a leaf node.
-        :param max_features{“sqrt”, “log2”, None}, int or float, default=”sqrt”
-                The number of features to consider when looking for the best split:
-        :param max_leaf_nodesint, default=None
-                Grow trees with max_leaf_nodes in best-first fashion.
-        :param min_impurity_decreasefloat, default=0.0
-                A node will be split if this split induces a decrease of the impurity greater than or equal to this value.
-        :param bootstrapbool, default=True
-                Whether bootstrap samples are used when building trees.
-        :param oob_scorebool, default=False
-                Whether to use out-of-bag samples to estimate the generalization score.
-        :param n_jobsint, default=None
-                The number of jobs to run in parallel.
-        :param random_stateint, RandomState instance or None, default=None
-                Controls both the randomness of the bootstrapping of the samples used when building trees
-        :param verboseint, default=0
-                Controls the verbosity when fitting and predicting.
-        :param warm_startbool, default=False
-                When set to True, reuse the solution of the previous call to fit and add more estimators to the ensemble, otherwise, just fit a whole new forest. See the Glossary.
-        :param class_weight{“balanced”, “balanced_subsample”}, dict or list of dicts, default=None
-                Weights associated with classes in the form {class_label: weight}.
-        :param ccp_alphanon-negative float, default=0.0
-                Complexity parameter used for Minimal Cost-Complexity Pruning.
-        :param max_samplesint or float, default=None
-                If bootstrap is True, the number of samples to draw from X to train each base estimator.
+        A random forest classifier.
+
+        A random forest is a meta estimator that fits a number of decision tree
+        classifiers on various sub-samples of the dataset and uses averaging to
+        improve the predictive accuracy and control over-fitting.
+        The sub-sample size is controlled with the `max_samples` parameter if
+        `bootstrap=True` (default), otherwise the whole dataset is used to build
+        each tree.
+
+        Read more in the :ref:`User Guide <forest>`.
+
+        Parameters
+        ----------
+        n_estimators : int, default=100
+            The number of trees in the forest.
+
+            .. versionchanged:: 0.22
+               The default value of ``n_estimators`` changed from 10 to 100
+               in 0.22.
+
+        criterion : {"gini", "entropy"}, default="gini"
+            The function to measure the quality of a split. Supported criteria are
+            "gini" for the Gini impurity and "entropy" for the information gain.
+            Note: this parameter is tree-specific.
+
+        max_depth : int, default=None
+            The maximum depth of the tree. If None, then nodes are expanded until
+            all leaves are pure or until all leaves contain less than
+            min_samples_split samples.
+
+        min_samples_split : int or float, default=2
+            The minimum number of samples required to split an internal node:
+
+            - If int, then consider `min_samples_split` as the minimum number.
+            - If float, then `min_samples_split` is a fraction and
+              `ceil(min_samples_split * n_samples)` are the minimum
+              number of samples for each split.
+
+            .. versionchanged:: 0.18
+               Added float values for fractions.
+
+        min_samples_leaf : int or float, default=1
+            The minimum number of samples required to be at a leaf node.
+            A split point at any depth will only be considered if it leaves at
+            least ``min_samples_leaf`` training samples in each of the left and
+            right branches.  This may have the effect of smoothing the model,
+            especially in regression.
+
+            - If int, then consider `min_samples_leaf` as the minimum number.
+            - If float, then `min_samples_leaf` is a fraction and
+              `ceil(min_samples_leaf * n_samples)` are the minimum
+              number of samples for each node.
+
+            .. versionchanged:: 0.18
+               Added float values for fractions.
+
+        min_weight_fraction_leaf : float, default=0.0
+            The minimum weighted fraction of the sum total of weights (of all
+            the input samples) required to be at a leaf node. Samples have
+            equal weight when sample_weight is not provided.
+
+        max_features : {"auto", "sqrt", "log2"}, int or float, default="auto"
+            The number of features to consider when looking for the best split:
+
+            - If int, then consider `max_features` features at each split.
+            - If float, then `max_features` is a fraction and
+              `round(max_features * n_features)` features are considered at each
+              split.
+            - If "auto", then `max_features=sqrt(n_features)`.
+            - If "sqrt", then `max_features=sqrt(n_features)` (same as "auto").
+            - If "log2", then `max_features=log2(n_features)`.
+            - If None, then `max_features=n_features`.
+
+            Note: the search for a split does not stop until at least one
+            valid partition of the node samples is found, even if it requires to
+            effectively inspect more than ``max_features`` features.
+
+        max_leaf_nodes : int, default=None
+            Grow trees with ``max_leaf_nodes`` in best-first fashion.
+            Best nodes are defined as relative reduction in impurity.
+            If None then unlimited number of leaf nodes.
+
+        min_impurity_decrease : float, default=0.0
+            A node will be split if this split induces a decrease of the impurity
+            greater than or equal to this value.
+
+            The weighted impurity decrease equation is the following::
+
+                N_t / N * (impurity - N_t_R / N_t * right_impurity
+                                    - N_t_L / N_t * left_impurity)
+
+            where ``N`` is the total number of samples, ``N_t`` is the number of
+            samples at the current node, ``N_t_L`` is the number of samples in the
+            left child, and ``N_t_R`` is the number of samples in the right child.
+
+            ``N``, ``N_t``, ``N_t_R`` and ``N_t_L`` all refer to the weighted sum,
+            if ``sample_weight`` is passed.
+
+            .. versionadded:: 0.19
+
+        bootstrap : bool, default=True
+            Whether bootstrap samples are used when building trees. If False, the
+            whole dataset is used to build each tree.
+
+        oob_score : bool, default=False
+            Whether to use out-of-bag samples to estimate the generalization score.
+            Only available if bootstrap=True.
+
+        n_jobs : int, default=None
+            The number of jobs to run in parallel. :meth:`fit`, :meth:`predict`,
+            :meth:`decision_path` and :meth:`apply` are all parallelized over the
+            trees. ``None`` means 1 unless in a :obj:`joblib.parallel_backend`
+            context. ``-1`` means using all processors. See :term:`Glossary
+            <n_jobs>` for more details.
+
+        random_state : int, RandomState instance or None, default=None
+            Controls both the randomness of the bootstrapping of the samples used
+            when building trees (if ``bootstrap=True``) and the sampling of the
+            features to consider when looking for the best split at each node
+            (if ``max_features < n_features``).
+            See :term:`Glossary <random_state>` for details.
+
+        verbose : int, default=0
+            Controls the verbosity when fitting and predicting.
+
+        warm_start : bool, default=False
+            When set to ``True``, reuse the solution of the previous call to fit
+            and add more estimators to the ensemble, otherwise, just fit a whole
+            new forest. See :term:`the Glossary <warm_start>`.
+
+        class_weight : {"balanced", "balanced_subsample"}, dict or list of dicts, \
+                default=None
+            Weights associated with classes in the form ``{class_label: weight}``.
+            If not given, all classes are supposed to have weight one. For
+            multi-output problems, a list of dicts can be provided in the same
+            order as the columns of y.
+
+            Note that for multioutput (including multilabel) weights should be
+            defined for each class of every column in its own dict. For example,
+            for four-class multilabel classification weights should be
+            [{0: 1, 1: 1}, {0: 1, 1: 5}, {0: 1, 1: 1}, {0: 1, 1: 1}] instead of
+            [{1:1}, {2:5}, {3:1}, {4:1}].
+
+            The "balanced" mode uses the values of y to automatically adjust
+            weights inversely proportional to class frequencies in the input data
+            as ``n_samples / (n_classes * np.bincount(y))``
+
+            The "balanced_subsample" mode is the same as "balanced" except that
+            weights are computed based on the bootstrap sample for every tree
+            grown.
+
+            For multi-output, the weights of each column of y will be multiplied.
+
+            Note that these weights will be multiplied with sample_weight (passed
+            through the fit method) if sample_weight is specified.
+
+        ccp_alpha : non-negative float, default=0.0
+            Complexity parameter used for Minimal Cost-Complexity Pruning. The
+            subtree with the largest cost complexity that is smaller than
+            ``ccp_alpha`` will be chosen. By default, no pruning is performed. See
+            :ref:`minimal_cost_complexity_pruning` for details.
+
+            .. versionadded:: 0.22
+
+        max_samples : int or float, default=None
+            If bootstrap is True, the number of samples to draw from X
+            to train each base estimator.
+
+            - If None (default), then draw `X.shape[0]` samples.
+            - If int, then draw `max_samples` samples.
+            - If float, then draw `max_samples * X.shape[0]` samples. Thus,
+              `max_samples` should be in the interval `(0.0, 1.0]`.
+
+            .. versionadded:: 0.22
 
         References
-        ----------------------------------------
-        scikit API:sklearn.ensemble.RandomForestClassifier
-        https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html
+        ----------
+        scikit API: sklearn.ensemble.RandomForestClassifier
+        https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html?highlight=randomforestclassifier#sklearn.ensemble.RandomForestClassifier
         """
         super().__init__(random_state)
         self.n_estimators = n_estimators
