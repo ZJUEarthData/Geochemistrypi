@@ -20,6 +20,8 @@ class ClusteringModelSelection(object):
             print("Designate the clustering number in advance:")
             self.cluster_num = num_input(SECTION[2])
             self.clt_workflow = KMeansClustering(n_clusters=self.cluster_num)
+        elif self.model == "":
+            pass
         elif self.model == "DBSCAN":
             # cluster_num = num_input("Designate the clustering number in advance:\n@Number: ")
             self.clt_workflow = DBSCANClustering()

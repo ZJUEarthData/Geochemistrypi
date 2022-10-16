@@ -2,6 +2,7 @@
 import pandas as pd
 from sklearn import metrics
 from sklearn.cluster import KMeans
+from sklearn.cluster import AffinityPropagation
 from sklearn.cluster import DBSCAN
 from sklearn.metrics import silhouette_samples, silhouette_score
 import matplotlib as mpl
@@ -351,6 +352,45 @@ class KMeansClustering(ClusteringWorkflowBase):
 
     def special_components(self):
         self._get_scores()
+
+
+class AffinityPropagationClustering(ClusteringWorkflowBase):
+    name = "AffinityPropagation"
+
+    def __init__(self,
+                 *,
+                 damping=0.5,
+                 max_iter=200,
+                 convergence_iter=15,
+                 copy=True,
+                 preference=None,
+                 affinity="euclidean",
+                 verbose=False,
+                 random_state=None,
+    ):
+
+        super().__init__()
+        self.damping = damping
+        self.max_iter = max_iter
+        self.convergence_iter = convergence_iter
+        self.copy = copy
+        self.verbose = verbose
+        self.preference = preference
+        self.affinity = affinity
+        self.random_state = random_state
+        self.model = AffinityPropagation(damping = self.damping,
+                                         max_iter = self.max_iter,
+                                         convergence_iter = self.convergence_iter,
+                                         copy = self.copy,
+                                         preference=None,
+                                         affinity="euclidean",
+                                         verbose=False,
+                                         random_state=None,
+
+        )
+        self.naming = AffinityPropagationClustering.name
+
+    pass
 
 
 class MeanShiftClustering(ClusteringWorkflowBase):
