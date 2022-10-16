@@ -43,7 +43,7 @@ class RegressionWorkflowBase(WorkflowBase):
     def plot_predict(self,y_test,y_test_predict):
         y_test = np.array(y_test).reshape(1, len(y_test)).flatten()
         y_test_predict = np.array(y_test_predict).reshape(1, len(y_test_predict)).flatten()
-        # the lien between a and b.
+              # the lien between a and b.
         line_a = y_test.min()
         line_b = y_test.max()
         #plot figure
@@ -442,22 +442,84 @@ class RandomForestRegression(RegressionWorkflowBase, BaseEstimator):
 
 class SupportVectorRegression(RegressionWorkflowBase, BaseEstimator):
     name = "Support Vector Machine"
-    special_function = ["Plot SVR Regression"]
+    special_function = []
 
-    def __init__(self,
-                 kernel='rbf',
-                 degree: int = 3,
-                 gamma='scale',
-                 coef0: float = 0.0,
-                 tol: float = 1e-3,
-                 C: float = 1.0,
-                 epsilon: float = 0.1,
-                 shrinking: bool = True,
-                 cache_size: float = 200,
-                 verbose: bool = False,
-                 max_iter: int = -1,
-                 random_state: int = 42):
-        super().__init__(random_state=42)
+    def __init__(
+        self,
+        kernel='rbf',
+        degree: int = 3,
+        gamma='scale',
+        coef0: float = 0.0,
+        tol: float = 1e-3,
+        C: float = 1.0,
+        epsilon: float = 0.1,
+        shrinking: bool = True,
+        cache_size: float = 200,
+        verbose: bool = False,
+        max_iter: int = -1,
+    ) -> None:
+        """
+        Parameters
+        ----------
+        kernel : {'linear', 'poly', 'rbf', 'sigmoid', 'precomputed'} or callable,  \
+            default='rbf'
+             Specifies the kernel type to be used in the algorithm.
+             If none is given, 'rbf' will be used. If a callable is given it is
+             used to precompute the kernel matrix.
+
+        degree : int, default=3
+            Degree of the polynomial kernel function ('poly').
+            Ignored by all other kernels.
+
+        gamma : {'scale', 'auto'} or float, default='scale'
+            Kernel coefficient for 'rbf', 'poly' and 'sigmoid'.
+            - if ``gamma='scale'`` (default) is passed then it uses
+              1 / (n_features * X.var()) as value of gamma,
+            - if 'auto', uses 1 / n_features.
+            .. versionchanged:: 0.22
+               The default value of ``gamma`` changed from 'auto' to 'scale'.
+
+        coef0 : float, default=0.0
+            Independent term in kernel function.
+            It is only significant in 'poly' and 'sigmoid'.
+
+        tol : float, default=1e-3
+            Tolerance for stopping criterion.
+
+        C : float, default=1.0
+            Regularization parameter. The strength of the regularization is
+            inversely proportional to C. Must be strictly positive.
+            The penalty is a squared l2 penalty.
+
+        epsilon : float, default=0.1
+             Epsilon in the epsilon-SVR model. It specifies the epsilon-tube
+             within which no penalty is associated in the training loss function
+             with points predicted within a distance epsilon from the actual
+             value.
+        shrinking : bool, default=True
+            Whether to use the shrinking heuristic.
+            See the :ref:`User Guide <shrinking_svm>`.
+
+        cache_size : float, default=200
+            Specify the size of the kernel cache (in MB).
+
+        verbose : bool, default=False
+            Enable verbose output. Note that this setting takes advantage of a
+            per-process runtime setting in libsvm that, if enabled, may not work
+            properly in a multithreaded context.
+
+        max_iter : int, default=-1
+            Hard limit on iterations within solver, or -1 for no limit.
+
+        References
+    ----------
+    .. [1] `LIBSVM: A Library for Support Vector Machines
+        <http://www.csie.ntu.edu.tw/~cjlin/papers/libsvm.pdf>`_
+    .. [2] `Platt, John (1999). "Probabilistic outputs for support vector
+        machines and comparison to regularizedlikelihood methods."
+        <http://citeseer.ist.psu.edu/viewdoc/summary?doi=10.1.1.41.1639>`_
+        """
+        super().__init__()
         self.kernel = kernel
         self.degree = degree
         self.gamma = gamma
@@ -470,37 +532,20 @@ class SupportVectorRegression(RegressionWorkflowBase, BaseEstimator):
         self.verbose = verbose
         self.max_iter = max_iter
 
-        self.model = SVR(
-            kernel=self.kernel,
-            degree=self.degree,
-            gamma=self.gamma,
-            coef0=self.coef0,
-            tol=self.tol,
-            C=self.C,
-            epsilon=self.epsilon,
-            shrinking=self.shrinking,
-            cache_size=self.cache_size,
-            verbose=self.verbose,
-            max_iter=self.max_iter)
+        self.model = SVR(kernel=self.kernel,
+                        degree=self.degree,
+                        gamma=self.gamma,
+                        coef0=self.coef0,
+                        tol=self.tol,
+                        C=self.C,
+                        epsilon=self.epsilon,
+                        shrinking=self.shrinking,
+                        cache_size=self.cache_size,
+                        verbose=self.verbose,
+                        max_iter=self.max_iter)
 
-    def Plot_SVR_Regression(self):
-        y = RegressionWorkflowBase().y
-        X = RegressionWorkflowBase().X
-        clf = self.model.fit(X, y)
-        X_train, X_test, y_train, y_test = self.data_split(X, y)
-        y_test_prediction = self.predict(X_test)
-        y_test = np.array(y_test).reshape(1, len(y_test)).flatten()
-        y_test_prediction = y_test_prediction.flatten()
+        self.naming = SupportVectorRegression.name
 
-        plt.figure()
-        line_a = y_test.min()
-        line_b = y_test.max()
-        # the lien between a and b.
-        plt.plot([line_a, line_b], [line_a, line_b], '-r', linewidth=1)
-        plt.plot(y_test, y_test_prediction, 'o', color='gold', alpha=0.3)
-        save_fig('Plot_SVR_Regression', MODEL_OUTPUT_IMAGE_PATH)
-
-
+    # special attributes
     def special_components(self):
-        self.Plot_SVR_Regression()
         pass
