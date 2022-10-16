@@ -316,7 +316,132 @@ class DecisionTreeRegression(RegressionWorkflowBase, BaseEstimator):
                  max_leaf_nodes=None,
                  min_impurity_decrease=0.0,
                  ccp_alpha=0.0
-                 ):
+    )->None:
+        """
+        Parameters
+        ----------
+        criterion : {"squared_error", "friedman_mse", "absolute_error", \
+                "poisson"}, default="squared_error"
+            The function to measure the quality of a split. Supported criteria
+            are "squared_error" for the mean squared error, which is equal to
+            variance reduction as feature selection criterion and minimizes the L2
+            loss using the mean of each terminal node, "friedman_mse", which uses
+            mean squared error with Friedman's improvement score for potential
+            splits, "absolute_error" for the mean absolute error, which minimizes
+            the L1 loss using the median of each terminal node, and "poisson" which
+            uses reduction in Poisson deviance to find splits.
+            .. versionadded:: 0.18
+               Mean Absolute Error (MAE) criterion.
+            .. versionadded:: 0.24
+                Poisson deviance criterion.
+            .. deprecated:: 1.0
+                Criterion "mse" was deprecated in v1.0 and will be removed in
+                version 1.2. Use `criterion="squared_error"` which is equivalent.
+            .. deprecated:: 1.0
+                Criterion "mae" was deprecated in v1.0 and will be removed in
+                version 1.2. Use `criterion="absolute_error"` which is equivalent.
+
+        splitter : {"best", "random"}, default="best"
+            The strategy used to choose the split at each node. Supported
+            strategies are "best" to choose the best split and "random" to choose
+            the best random split.
+
+        max_depth : int, default=None
+            The maximum depth of the tree. If None, then nodes are expanded until
+            all leaves are pure or until all leaves contain less than
+            min_samples_split samples.
+
+        min_samples_split : int or float, default=2
+            The minimum number of samples required to split an internal node:
+            - If int, then consider `min_samples_split` as the minimum number.
+            - If float, then `min_samples_split` is a fraction and
+              `ceil(min_samples_split * n_samples)` are the minimum
+              number of samples for each split.
+            .. versionchanged:: 0.18
+               Added float values for fractions.
+
+        min_samples_leaf : int or float, default=1
+            The minimum number of samples required to be at a leaf node.
+            A split point at any depth will only be considered if it leaves at
+            least ``min_samples_leaf`` training samples in each of the left and
+            right branches.  This may have the effect of smoothing the model,
+            especially in regression.
+            - If int, then consider `min_samples_leaf` as the minimum number.
+            - If float, then `min_samples_leaf` is a fraction and
+              `ceil(min_samples_leaf * n_samples)` are the minimum
+              number of samples for each node.
+            .. versionchanged:: 0.18
+               Added float values for fractions.
+
+        min_weight_fraction_leaf : float, default=0.0
+            The minimum weighted fraction of the sum total of weights (of all
+            the input samples) required to be at a leaf node. Samples have
+            equal weight when sample_weight is not provided.
+
+        max_features : int, float or {"auto", "sqrt", "log2"}, default=None
+            The number of features to consider when looking for the best split:
+            - If int, then consider `max_features` features at each split.
+            - If float, then `max_features` is a fraction and
+              `max(1, int(max_features * n_features_in_))` features are considered at each
+              split.
+            - If "auto", then `max_features=n_features`.
+            - If "sqrt", then `max_features=sqrt(n_features)`.
+            - If "log2", then `max_features=log2(n_features)`.
+            - If None, then `max_features=n_features`.
+            .. deprecated:: 1.1
+                The `"auto"` option was deprecated in 1.1 and will be removed
+                in 1.3.
+            Note: the search for a split does not stop until at least one
+            valid partition of the node samples is found, even if it requires to
+            effectively inspect more than ``max_features`` features.
+
+        random_state : int, RandomState instance or None, default=None
+            Controls the randomness of the estimator. The features are always
+            randomly permuted at each split, even if ``splitter`` is set to
+            ``"best"``. When ``max_features < n_features``, the algorithm will
+            select ``max_features`` at random at each split before finding the best
+            split among them. But the best found split may vary across different
+            runs, even if ``max_features=n_features``. That is the case, if the
+            improvement of the criterion is identical for several splits and one
+            split has to be selected at random. To obtain a deterministic behaviour
+            during fitting, ``random_state`` has to be fixed to an integer.
+            See :term:`Glossary <random_state>` for details.
+
+        max_leaf_nodes : int, default=None
+            Grow a tree with ``max_leaf_nodes`` in best-first fashion.
+            Best nodes are defined as relative reduction in impurity.
+            If None then unlimited number of leaf nodes.
+
+        min_impurity_decrease : float, default=0.0
+            A node will be split if this split induces a decrease of the impurity
+            greater than or equal to this value.
+            The weighted impurity decrease equation is the following::
+                N_t / N * (impurity - N_t_R / N_t * right_impurity
+                                    - N_t_L / N_t * left_impurity)
+            where ``N`` is the total number of samples, ``N_t`` is the number of
+            samples at the current node, ``N_t_L`` is the number of samples in the
+            left child, and ``N_t_R`` is the number of samples in the right child.
+            ``N``, ``N_t``, ``N_t_R`` and ``N_t_L`` all refer to the weighted sum,
+            if ``sample_weight`` is passed.
+            .. versionadded:: 0.19
+
+        ccp_alpha : non-negative float, default=0.0
+            Complexity parameter used for Minimal Cost-Complexity Pruning. The
+            subtree with the largest cost complexity that is smaller than
+            ``ccp_alpha`` will be chosen. By default, no pruning is performed. See
+            :ref:`minimal_cost_complexity_pruning` for details.
+            .. versionadded:: 0.22
+
+        References
+        ----------
+        [1] https://en.wikipedia.org/wiki/Decision_tree_learning
+        [2] L. Breiman, J. Friedman, R. Olshen, and C. Stone, "Classification
+               and Regression Trees", Wadsworth, Belmont, CA, 1984.
+        [3] T. Hastie, R. Tibshirani and J. Friedman. "Elements of Statistical
+               Learning", Springer, 2009.
+        [4] L. Breiman, and A. Cutler, "Random Forests",
+               https://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm
+        """
         super().__init__(random_state=42)
         self.criteria = criteria,
         self.splitter = splitter,
@@ -330,7 +455,17 @@ class DecisionTreeRegression(RegressionWorkflowBase, BaseEstimator):
         self.min_impurity_decrease = min_impurity_decrease,
         self.ccp_alpha = ccp_alpha
 
-        self.model = DecisionTreeRegressor()
+        self.model = DecisionTreeRegressor(criteria=self.criteria,
+                                           splitter=self.splitter,
+                                           max_depth=self.max_depth,
+                                           min_samples_split=self.min_samples_split,
+                                           min_samples_leaf=self.min_samples_leaf,
+                                           min_weight_fraction_leaf=self.min_weight_fraction_leaf,
+                                           max_features=self.max_features,
+                                           random_state=self.random_state,
+                                           max_leaf_nodes=self.max_leaf_nodes,
+                                           min_impurity_decrease=self.min_impurity_decrease,
+                                           ccp_alpha=self.ccp_alpha)
 
     def plot_tree_function(self):
         ###################################################
