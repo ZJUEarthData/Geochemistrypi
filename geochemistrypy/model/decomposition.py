@@ -6,6 +6,7 @@ from global_variable import MODEL_OUTPUT_IMAGE_PATH
 from typing import Optional, Union, Dict
 from ._base import WorkflowBase
 from .func.algo_decomposition._pca import biplot, triplot
+from utils.base import save_fig
 
 
 class DecompositionWorkflowBase(WorkflowBase):
@@ -18,13 +19,24 @@ class DecompositionWorkflowBase(WorkflowBase):
         self.X_reduced = None
 
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
+        """Fit the model."""
         self.model.fit(X)
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        """This method returns the transformed version of the input X"""
+        """Apply dimensionality reduction to X."""
         return self.model.transform(X)
 
     def _reduced_data2pd(self, reduced_data: np.ndarray, components_num: int) -> None:
+        """Transform reduced data into the format of pd.DataFrame.
+
+        Parameters
+        ----------
+        reduced_data : np.ndarray
+            The data X after dimension reduction.
+
+        components_num : int
+            The numbers of the principal components.
+        """
         pa_name = []
         for i in range(components_num):
             pa_name.append(f'Principal Axis {i+1}')
@@ -33,7 +45,7 @@ class DecompositionWorkflowBase(WorkflowBase):
 
 
 class PCADecomposition(DecompositionWorkflowBase):
-    """The automation workflow of using PCA algorithm to make insightful products"""
+    """The automation workflow of using PCA algorithm to make insightful products."""
 
     name = 'PCA'
     special_function = ["Principal Components", "Explained Variance Ratio",
@@ -191,13 +203,17 @@ class PCADecomposition(DecompositionWorkflowBase):
         print("-----* Explained Variance Ratio *-----")
         print(self.model.explained_variance_ratio_)
 
-    def _biplot(self, reduced_data: pd.DataFrame, pc_data: pd.DataFrame) -> None:
+    @staticmethod
+    def _biplot(reduced_data: pd.DataFrame, pc_data: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
         print("-----* Compositional Bi-plot *-----")
-        biplot(reduced_data, pc_data, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        biplot(reduced_data, pc_data, algorithm_name)
+        save_fig(f"Compositional Bi-plot - {algorithm_name}", store_path)
 
-    def _triplot(self, reduced_data: pd.DataFrame, pc_data: pd.DataFrame) -> None:
+    @staticmethod
+    def _triplot(reduced_data: pd.DataFrame, pc_data: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
         print("-----* Compositional Tri-plot *-----")
-        triplot(reduced_data, pc_data, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        triplot(reduced_data, pc_data, algorithm_name)
+        save_fig(f"Compositional Tri-plot - {algorithm_name}", store_path)
 
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
         self._reduced_data2pd(kwargs['reduced_data'], kwargs['components_num'])
@@ -209,20 +225,26 @@ class PCADecomposition(DecompositionWorkflowBase):
             # choose two of dimensions to draw
             two_dimen_axis_index, two_dimen_pc_data = self.choose_dimension_data(self.pc_data, 2)
             two_dimen_reduced_data = self.X_reduced.iloc[:, two_dimen_axis_index]
-            self._biplot(reduced_data=two_dimen_reduced_data, pc_data=two_dimen_pc_data)
+            self._biplot(reduced_data=two_dimen_reduced_data, pc_data=two_dimen_pc_data,
+                         algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
+
             # choose three of dimensions to draw
             three_dimen_axis_index, three_dimen_pc_data = self.choose_dimension_data(self.pc_data, 3)
             three_dimen_reduced_data = self.X_reduced.iloc[:, three_dimen_axis_index]
-            self._triplot(reduced_data=three_dimen_reduced_data, pc_data=three_dimen_pc_data)
+            self._triplot(reduced_data=three_dimen_reduced_data, pc_data=three_dimen_pc_data,
+                          algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
         elif kwargs['components_num'] == 3:
             # choose two of dimensions to draw
             two_dimen_axis_index, two_dimen_pc_data = self.choose_dimension_data(self.pc_data, 2)
             two_dimen_reduced_data = self.X_reduced.iloc[:, two_dimen_axis_index]
-            self._biplot(reduced_data=two_dimen_reduced_data, pc_data=two_dimen_pc_data)
+            self._biplot(reduced_data=two_dimen_reduced_data, pc_data=two_dimen_pc_data,
+                         algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
             # no need to choose
-            self._triplot(reduced_data=self.X_reduced, pc_data=self.pc_data)
+            self._triplot(reduced_data=self.X_reduced, pc_data=self.pc_data,
+                          algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
         elif kwargs['components_num'] == 2:
-            self._biplot(reduced_data=self.X_reduced, pc_data=self.pc_data)
+            self._biplot(reduced_data=self.X_reduced, pc_data=self.pc_data,
+                         algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
         else:
             pass
 
