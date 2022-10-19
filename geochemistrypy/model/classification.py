@@ -8,117 +8,210 @@ from sklearn.metrics import classification_report, plot_confusion_matrix, confus
 from utils.base import save_fig
 from global_variable import MODEL_OUTPUT_IMAGE_PATH
 from sklearn.decomposition import PCA
-from sklearn.model_selection import train_test_split
 from sklearn import tree
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 import xgboost
 from sklearn.linear_model import LogisticRegression
-from typing import Union, Optional, List, Dict, Callable, Tuple, Any, Sequence
+from typing import Union, Optional, List, Dict, Callable, Tuple, Any, Sequence, Set
 from matplotlib.colors import ListedColormap
+from ._base import WorkflowBase
+from .func.algo_classification._svm import plot_2d_decision_boundary
 # sys.path.append("..")
 
 
-class ClassificationWorkflowBase(object):
+class ClassificationWorkflowBase(WorkflowBase):
+    """The base workflow class of classification algorithms."""
 
-    X = None
-    y = None
-    name = None
     common_function = ["Model Score", "Confusion Matrix"]
-    special_function = None
 
-    @classmethod
-    def show_info(cls):
-        print("*-*" * 2, cls.name, "is running ...", "*-*" * 2)
-        print("Expected Functionality:")
-        function = cls.common_function + cls.special_function
-        for i in range(len(function)):
-            print("+ ", function[i])
+    def __init__(self) -> None:
+        super().__init__()
 
-    def __init__(self, random_state: int = 42) -> None:
-        self.random_state = random_state
-        self.model = None
-        self.naming = None
+    def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
+        """Fit the model."""
+        self.model.fit(X, y)
+
+    def predict(self, X: pd.DataFrame) -> np.ndarray:
+        """Perform classification on samples in X."""
+        y_predict = self.model.predict(X)
+        return y_predict
 
     @staticmethod
-    def data_split(X_data, y_data, test_size=0.2, random_state=42):
-        ClassificationWorkflowBase.X = X_data
-        ClassificationWorkflowBase.y = y_data
-        X_train, X_test, y_train, y_test = train_test_split(ClassificationWorkflowBase.X,
-                                                            ClassificationWorkflowBase.y,
-                                                            test_size=test_size,
-                                                            random_state=random_state)
-        return X_train, X_test, y_train, y_test
-
-    def fit(self, X_train, y_train):
-        self.model.fit(X_train, y_train)
-
-    def predict(self, X_test):
-        y_test_prediction = self.model.predict(X_test)
-        return y_test_prediction
-
-    @staticmethod
-    def score(y_test, y_test_prediction):
+    def score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> None:
         print("-----* Model Score *-----")
-        print(classification_report(y_test, y_test_prediction))
+        print(classification_report(y_true, y_predict))
 
-    def confusion_matrix_plot(self, X_test, y_test, y_test_prediction):
+    def confusion_matrix_plot(self, X_test: pd.DataFrame, y_test: pd.DataFrame, y_test_prediction: pd.DataFrame) -> None:
         print("-----* Confusion Matrix *-----")
         print(confusion_matrix(y_test, y_test_prediction))
         plt.figure()
         plot_confusion_matrix(self.model, X_test, y_test)
         save_fig(f"Confusion Matrix - {self.naming}", MODEL_OUTPUT_IMAGE_PATH)
 
+    @staticmethod
+    def contour_data(X: pd.DataFrame, trained_model: Any) -> tuple[List[np.ndarray], np.ndarray]:
+        """Build up coordinate matrices as the data of contour plot.
+
+        Parameters
+        ----------
+        X : pd.DataFrame (n_samples, n_components)
+            The complete feature data.
+
+        trained_model : Any
+            Te algorithm model class from sklearn is trained.
+
+        Returns
+        -------
+        matrices : List[np.ndarray]
+            Coordinate matrices.
+
+        labels : np.ndarray
+            Predicted value by the trained model with coordinate data as input data.
+        """
+
+        # build up coordinate matrices from coordinate vectors.
+        xi = [np.arange(X.iloc[:, i].min(), X.iloc[:, i].max(), (X.iloc[:, i].max()-X.iloc[:, i].min())/50)
+              for i in range(X.shape[1])]
+        ndim = len(xi)
+        s0 = (1,) * ndim
+        matrices = [np.asanyarray(x).reshape(s0[:i] + (-1,) + s0[i + 1:]) for i, x in enumerate(xi)]
+        matrices[0].shape = (1, -1) + s0[2:]
+        matrices[1].shape = (-1, 1) + s0[2:]
+        matrices = np.broadcast_arrays(*matrices, subok=True)
+
+        # get the labels of the coordinate matrices through the trained model
+        input_array = np.column_stack((i.ravel() for i in matrices))
+        labels = trained_model.predict(input_array).reshape(matrices[0].shape)
+
+        return matrices, labels
+
 
 class SVMClassification(ClassificationWorkflowBase):
+    """The automation workflow of using SVC algorithm to make insightful products."""
 
     name = "Support Vector Machine"
     special_function = ['Two-dimensional Decision Boundary Diagram']
 
     def __init__(
             self,
-            C=1.0,
-            kernel='rbf',
-            degree=3,
-            gamma="scale",
-            coef0=0.0,
-            shrinking=True,
-            probability=False,
-            tol=1e-3,
-            cache_size=200,
-            class_weight=None,
-            verbose=False,
-            max_iter=-1,
-            decision_function_shape="ovr",
-            break_ties=False,
-            random_state=None
-    ):
-        ##############################################################
-        #Support vector machine is used to classify the data
-        ##############################################################
+            C: float = 1.0,
+            kernel: Set = 'rbf',
+            degree: int = 3,
+            gamma: Set = "scale",
+            coef0: float = 0.0,
+            shrinking: bool = True,
+            probability: bool = False,
+            tol: float = 1e-3,
+            cache_size: float = 200,
+            class_weight: Union[Dict, str] = None,
+            verbose: bool = False,
+            max_iter: int = -1,
+            decision_function_shape: Set = "ovr",
+            break_ties: bool = False,
+            random_state: Optional[int] = None
+    ) -> None:
         """
-        :param C:float, default=1.0 Regularization parameter. The strength of the regularization is inversely proportional to C. Must be strictly positive. The penalty is a squared l2 penalty.
-        :param kernel:Specifies the kernel type to be used in the algorithm
-        :param degree:Degree of the polynomial kernel function (‘poly’). Ignored by all other kernels.
-        :param gamma:Kernel coefficient for ‘rbf’, ‘poly’ and ‘sigmoid’.
-        :param coef0:Independent term in kernel function. It is only significant in ‘poly’ and ‘sigmoid’.
-        :param shrinking:Whether to use the shrinking heuristic. See the User Guide
-        :param probability:Whether to enable probability estimates. This must be enabled prior to calling , will slow down that method as it internally uses 5-fold cross-validation, and may be inconsistent with .
-        :param tol:Whether to enable probability estimates. This must be enabled prior to calling , will slow down that method as it internally uses 5-fold cross-validation, and may be inconsistent with .
-        :param cache_size:Specify the size of the kernel cache (in MB).
-        :param class_weight:Set the parameter C of class i to class_weight[i]*C for SVC.
-        :param verbose:Enable verbose output. Note that this setting takes advantage of a per-process runtime setting in libsvm that, if enabled, may not work properly in a multithreaded context.
-        :param max_iter:Hard limit on iterations within solver, or -1 for no limit.
-        :param decision_function_shape:Whether to return a one-vs-rest (‘ovr’) decision function of shape (n_samples, n_classes) as all other classifiers, or the original one-vs-one (‘ovo’) decision function of libsvm which has shape (n_samples, n_classes * (n_classes - 1) / 2). However, note that internally, one-vs-one (‘ovo’) is always used as a multi-class strategy to train models; an ovr matrix is only constructed from the ovo matrix. The parameter is ignored for binary classification.
-        :param break_ties:If true, , and number of classes > 2, predict will break ties according to the confidence values of decision_function; otherwise the first class among the tied classes is returned. Please note that breaking ties comes at a relatively high computational cost compared to a simple predict
-        :param random_state:Controls the pseudo random number generation for shuffling the data for probability estimates. Ignored when is False. Pass an int for reproducible output across multiple function calls. See Glossary.
+        Parameters
+        ----------
+        C : float, default=1.0
+            Regularization parameter. The strength of the regularization is
+            inversely proportional to C. Must be strictly positive. The penalty
+            is a squared l2 penalty.
+
+        kernel : {'linear', 'poly', 'rbf', 'sigmoid', 'precomputed'} or callable,  \
+            default='rbf'
+            Specifies the kernel type to be used in the algorithm.
+            If none is given, 'rbf' will be used. If a callable is given it is
+            used to pre-compute the kernel matrix from data matrices; that matrix
+            should be an array of shape ``(n_samples, n_samples)``.
+
+        degree : int, default=3
+            Degree of the polynomial kernel function ('poly').
+            Ignored by all other kernels.
+
+        gamma : {'scale', 'auto'} or float, default='scale'
+            Kernel coefficient for 'rbf', 'poly' and 'sigmoid'.
+            - if ``gamma='scale'`` (default) is passed then it uses
+              1 / (n_features * X.var()) as value of gamma,
+            - if 'auto', uses 1 / n_features.
+            .. versionchanged:: 0.22
+               The default value of ``gamma`` changed from 'auto' to 'scale'.
+
+        coef0 : float, default=0.0
+            Independent term in kernel function.
+            It is only significant in 'poly' and 'sigmoid'.
+
+        shrinking : bool, default=True
+            Whether to use the shrinking heuristic.
+            See the :ref:`User Guide <shrinking_svm>`.
+
+        probability : bool, default=False
+            Whether to enable probability estimates. This must be enabled prior
+            to calling `fit`, will slow down that method as it internally uses
+            5-fold cross-validation, and `predict_proba` may be inconsistent with
+            `predict`. Read more in the :ref:`User Guide <scores_probabilities>`.
+
+        tol : float, default=1e-3
+            Tolerance for stopping criterion.
+
+        cache_size : float, default=200
+            Specify the size of the kernel cache (in MB).
+
+        class_weight : dict or 'balanced', default=None
+            Set the parameter C of class i to class_weight[i]*C for
+            SVC. If not given, all classes are supposed to have
+            weight one.
+            The "balanced" mode uses the values of y to automatically adjust
+            weights inversely proportional to class frequencies in the input data
+            as ``n_samples / (n_classes * np.bincount(y))``.
+
+        verbose : bool, default=False
+            Enable verbose output. Note that this setting takes advantage of a
+            per-process runtime setting in libsvm that, if enabled, may not work
+            properly in a multithreaded context.
+
+        max_iter : int, default=-1
+            Hard limit on iterations within solver, or -1 for no limit.
+
+        decision_function_shape : {'ovo', 'ovr'}, default='ovr'
+            Whether to return a one-vs-rest ('ovr') decision function of shape
+            (n_samples, n_classes) as all other classifiers, or the original
+            one-vs-one ('ovo') decision function of libsvm which has shape
+            (n_samples, n_classes * (n_classes - 1) / 2). However, note that
+            internally, one-vs-one ('ovo') is always used as a multi-class strategy
+            to train models; an ovr matrix is only constructed from the ovo matrix.
+            The parameter is ignored for binary classification.
+
+            .. versionchanged:: 0.19
+                decision_function_shape is 'ovr' by default.
+
+            .. versionadded:: 0.17
+               *decision_function_shape='ovr'* is recommended.
+
+            .. versionchanged:: 0.17
+               Deprecated *decision_function_shape='ovo' and None*.
+
+        break_ties : bool, default=False
+            If true, ``decision_function_shape='ovr'``, and number of classes > 2,
+            :term:`predict` will break ties according to the confidence values of
+            :term:`decision_function`; otherwise the first class among the tied
+            classes is returned. Please note that breaking ties comes at a
+            relatively high computational cost compared to a simple predict.
+            .. versionadded:: 0.22
+
+        random_state : int, RandomState instance or None, default=None
+            Controls the pseudo random number generation for shuffling the data for
+            probability estimates. Ignored when `probability` is False.
+            Pass an int for reproducible output across multiple function calls.
+            See :term:`Glossary <random_state>`.
 
         References
-        ----------------------------------------
-        API design for machine learning software: experiences from the scikit-learn project.Buitinck, LarLouppe, GillesBlondel, MathieuPedregosa, FabianMueller, AndreasGrise, Olivierculae, VladPrettenhofer, PeterGramfort, AlexandreGrobler, JaquesLayton, RobertVanderplas, JakeJoly, ArnaudHolt, BrianVaroquaux, Gaël
-        http://arxiv.org/abs/1309.0238
+        ----------
+        scikit API: sklearn.svm.SVC
+        https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html
         """
-        super().__init__(random_state)
+        super().__init__()
         self.C = C
         self.kernel = kernel
         self.degree = degree
@@ -133,7 +226,6 @@ class SVMClassification(ClassificationWorkflowBase):
         self.max_iter = max_iter
         self.decision_function_shape = decision_function_shape
         self.break_ties = break_ties
-        self.random_state = random_state
 
         self.model = SVC(C=self.C,
                          kernel=self.kernel,
@@ -152,8 +244,10 @@ class SVMClassification(ClassificationWorkflowBase):
                          random_state=self.random_state)
         self.naming = SVMClassification.name
 
+    # TODO(Sany sanyhew1097618435@163.com): think about What layout of the graph is more user-friendly.
+    """
     def plot_svc_surface_function(self):
-        """divide the two selected elements and draw an image"""
+        # divide the two selected elements and draw an image
         print("-----* Two-dimensional Decision Surface Boundary Diagram *-----")
         plt.figure()
         y = np.array(ClassificationWorkflowBase().y)
@@ -174,9 +268,29 @@ class SVMClassification(ClassificationWorkflowBase):
         ax.set_xlim(xlim)
         ax.set_ylim(ylim)
         save_fig('SVC Surface Function Plot', MODEL_OUTPUT_IMAGE_PATH)
+    """
 
-    def special_components(self):
-        self.plot_svc_surface_function()
+    @staticmethod
+    def _plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: Any,
+                                   algorithm_name: str, store_path: str, contour_data: Optional[List[np.ndarray]] = None,
+                                   labels: Optional[np.ndarray] = None) -> None:
+        """Plot the decision boundary of the trained model with the testing data set below."""
+        print("-----* Two-dimensional Decision Boundary Diagram *-----")
+        plot_2d_decision_boundary(X, X_test, y_test, trained_model, algorithm_name)
+        save_fig(f'2d Decision Boundary - {algorithm_name}', store_path)
+
+    def special_components(self, **kwargs) -> None:
+        if SVMClassification.X.shape[1] == 2:
+            self._plot_2d_decision_boundary(SVMClassification.X, SVMClassification.X_test, SVMClassification.y_test,
+                                            self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+
+            # TODO(Sany sanyhew1097618435@163.com): Check whether 3d decision boundary makes sense.
+            #  If it does, use the code below.
+            # contour_matrices, labels = self.contour_data(SVMClassification.X, self.model)
+            # two_dimen_axis_index, two_dimen_X = self.choose_dimension_data(SVMClassification.X, 2)
+            # two_dimen_X_test = SVMClassification.X_test.iloc[:, two_dimen_axis_index]
+            # two_dimen_contour_matrices = [contour_matrices[i] for i in two_dimen_axis_index]
+            # self._plot_2d_decision_boundary(two_dimen_X, two_dimen_X_test, SVMClassification.y_test, two_dimen_contour_matrices, labels)
 
 
 class DecisionTreeClassification(ClassificationWorkflowBase):
@@ -221,7 +335,7 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
         API design for machine learning software: experiences from the scikit-learn project.Buitinck, LarLouppe, GillesBlondel, MathieuPedregosa, FabianMueller, AndreasGrise, Olivierculae, VladPrettenhofer, PeterGramfort, AlexandreGrobler, JaquesLayton, RobertVanderplas, JakeJoly, ArnaudHolt, BrianVaroquaux, Gaël
         http://arxiv.org/abs/1309.0238
         """
-        super().__init__(random_state)
+        super().__init__()
         self.criterion = criterion
         self.splitter = splitter
         self.max_depth = max_depth
@@ -354,7 +468,7 @@ class RandomForestClassification(ClassificationWorkflowBase):
         scikit API:sklearn.ensemble.RandomForestClassifier
         https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html
         """
-        super().__init__(random_state)
+        super().__init__()
         self.n_estimators = n_estimators
         self.criterion = criterion
         self.max_depth = max_depth
@@ -496,7 +610,7 @@ class XgboostClassification(ClassificationWorkflowBase):
             early_stopping_rounds: Optional[int] = None,
             **kwargs: Any
     ):
-        super().__init__(random_state=42)
+        super().__init__()
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
         self.objective = objective
@@ -779,7 +893,7 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
         scikit API: sklearn.linear_model.LogisticRegression
         https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
         """
-        super().__init__(random_state)
+        super().__init__()
         self.penalty = penalty
         self.dual = dual
         self.tol = tol
