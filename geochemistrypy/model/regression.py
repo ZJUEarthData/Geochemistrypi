@@ -29,10 +29,6 @@ class RegressionWorkflowBase(WorkflowBase):
     def __init__(self) -> None:
         super().__init__()
 
-    def data_split(self, X, y, test_size=0.2):
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=self.random_state)
-        return X_train, X_test, y_train, y_test
-
     def fit(self, X, y=None):
         self.model.fit(X, y)
 
@@ -41,12 +37,12 @@ class RegressionWorkflowBase(WorkflowBase):
         return y_predict
 
     @staticmethod
-    def score(y_test, y_test_predict):
-        mse = mean_squared_error(y_test, y_test_predict)
+    def score(y_true, y_predict):
+        mse = mean_squared_error(y_true, y_predict)
         rmse = np.sqrt(mse)
-        mae = mean_absolute_error(y_test, y_test_predict)
-        r2 = r2_score(y_test, y_test_predict)
-        evs = explained_variance_score(y_test, y_test_predict)
+        mae = mean_absolute_error(y_true, y_predict)
+        r2 = r2_score(y_true, y_predict)
+        evs = explained_variance_score(y_true, y_predict)
         print("-----* Model Score *-----")
         print("RMSE score:", rmse)
         print("MAE score:", mae)
@@ -74,16 +70,11 @@ class RegressionWorkflowBase(WorkflowBase):
             print('-------------')
         return scores
 
-    @staticmethod
-    def np2pd(array, columns_name):
-        """The type of the data set is transformed from numpy.ndarray to pandas.DataFrame."""
-        return pd.DataFrame(array, columns=columns_name)
-
-    # TODO: How to prevent overfitting
+    # TODO(Sany sanyhew1097618435@163.com): How to prevent overfitting
     def is_overfitting():
         pass
 
-    # TODO: Do Hyperparameter Searching
+    # TODO(Sany sanyhew1097618435@163.com): Do Hyperparameter Searching
     def search_best_hyper_parameter():
         pass
 
@@ -143,18 +134,21 @@ class PolynomialRegression(RegressionWorkflowBase):
         self._show_formula(coef=self.model.coef_, intercept=self.model.intercept_, features_name=self._features_name)
 
 
-class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
-    # https://github.com/dmlc/xgboost/blob/master/python-package/xgboost/sklearn.py
+class XgboostRegression(RegressionWorkflowBase):
 
+    name = "Xgboost"
+    special_function = ['Feature Importance']
+
+    # In fact, it's used for type hint in the original xgboost package.
+    # Hence, we have to copy it here again. Just ignore it
     _SklObjective = Optional[
         Union[
             str, Callable[[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]
         ]
     ]
 
-    name = "Xgboost"
-    special_function = ['Feature Importance']
 
+    # TODO: find out the attributes importance_type effect
     def __init__(
         self,
         max_depth: Optional[int] = None,
@@ -181,7 +175,7 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
         num_parallel_tree: Optional[int] = None,
         monotone_constraints: Optional[Union[Dict[str, int], str]] = None,
         interaction_constraints: Optional[Union[str, Sequence[Sequence[str]]]] = None,
-        importance_type: Optional[str] = None,
+        importance_type: Optional[str] = 'gain',
         gpu_id: Optional[int] = None,
         validate_parameters: Optional[bool] = None,
         predictor: Optional[str] = None,
@@ -191,7 +185,14 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
         **kwargs: Any
     ) -> None:
 
-        super().__init__(random_state=42)
+        """
+        References
+        ----------
+        Xgboost API for the scikit-learn wrapper:
+        https://github.com/dmlc/xgboost/blob/master/python-package/xgboost/sklearn.py
+        """
+
+        super().__init__()
         self.n_estimators = n_estimators
         self.objective = objective
         self.max_depth = max_depth
@@ -280,11 +281,7 @@ class XgboostRegression(RegressionWorkflowBase, BaseEstimator):
         self._feature_importance()
 
 
-class SVM(RegressionWorkflowBase, BaseEstimator):
-    pass
-
-
-class DecisionTreeRegression(RegressionWorkflowBase, BaseEstimator):
+class DecisionTreeRegression(RegressionWorkflowBase):
     name = "Decision Tree"
     special_function = ["Decision Tree Plot"]
 
@@ -301,7 +298,7 @@ class DecisionTreeRegression(RegressionWorkflowBase, BaseEstimator):
                  min_impurity_decrease=0.0,
                  ccp_alpha=0.0
                  ):
-        super().__init__(random_state=42)
+        super().__init__()
         self.criteria = criteria,
         self.splitter = splitter,
         self.max_depth = max_depth,
@@ -332,7 +329,7 @@ class DecisionTreeRegression(RegressionWorkflowBase, BaseEstimator):
         self.plot_tree_function()
 
 
-class ExtraTreeRegression(RegressionWorkflowBase, BaseEstimator):
+class ExtraTreeRegression(RegressionWorkflowBase):
     name = "Extra-Trees"
     special_function = ["Feature Importance"]
 
@@ -343,7 +340,7 @@ class ExtraTreeRegression(RegressionWorkflowBase, BaseEstimator):
                  max_leaf_nodes: int = 20,
                  random_state: int = 42,
                  n_jobs: int = -1):
-        super().__init__(random_state=42)
+        super().__init__()
         self.n_estimators = n_estimator
         self.bootstrap = bootstrap
         self.oob_score = oob_score
@@ -389,7 +386,7 @@ class RandomForestRegression(RegressionWorkflowBase, BaseEstimator):
                  max_leaf_nodes: int = 15,
                  n_jobs: int = -1,
                  random_state: int = 42):
-        super().__init__(random_state=42)
+        super().__init__()
         self.n_estimators = n_estimators
         self.oob_score = oob_score
         self.max_leaf_nodes = max_leaf_nodes
@@ -424,7 +421,8 @@ class RandomForestRegression(RegressionWorkflowBase, BaseEstimator):
         self.plot()
         pass
 
-class SupportVectorRegression(RegressionWorkflowBase, BaseEstimator):
+
+class SupportVectorRegression(RegressionWorkflowBase):
     name = "Support Vector Machine"
     special_function = ["Plot SVR Regression"]
 
@@ -439,9 +437,8 @@ class SupportVectorRegression(RegressionWorkflowBase, BaseEstimator):
                  shrinking: bool = True,
                  cache_size: float = 200,
                  verbose: bool = False,
-                 max_iter: int = -1,
-                 random_state: int = 42):
-        super().__init__(random_state=42)
+                 max_iter: int = -1):
+        super().__init__()
         self.kernel = kernel
         self.degree = degree
         self.gamma = gamma
@@ -483,7 +480,6 @@ class SupportVectorRegression(RegressionWorkflowBase, BaseEstimator):
         plt.plot([line_a, line_b], [line_a, line_b], '-r', linewidth=1)
         plt.plot(y_test, y_test_prediction, 'o', color='gold', alpha=0.3)
         save_fig('Plot_SVR_Regression', MODEL_OUTPUT_IMAGE_PATH)
-
 
     def special_components(self):
         self.Plot_SVR_Regression()

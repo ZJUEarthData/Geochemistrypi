@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 
+
 def show_formula(coef, intercept, features_name):
     term = []
     coef = np.around(coef, decimals=3).tolist()[0]
