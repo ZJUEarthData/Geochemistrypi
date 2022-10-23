@@ -28,10 +28,18 @@ class DecompositionWorkflowBase(WorkflowBase):
 
     def _reduced_data2pd(self, reduced_data: np.ndarray, components_num: int) -> None:
         """Transform reduced data into the format of pd.DataFrame.
+<<<<<<< HEAD
+=======
+
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c
         Parameters
         ----------
         reduced_data : np.ndarray
             The data X after dimension reduction.
+<<<<<<< HEAD
+=======
+
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c
         components_num : int
             The numbers of the principal components.
         """

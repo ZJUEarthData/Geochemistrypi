@@ -16,6 +16,10 @@ def biplot(reduced_data: pd.DataFrame, pc: pd.DataFrame, algorithm_name: str,
         principal components.
     algorithm_name : str
         the name of the algorithm
+<<<<<<< HEAD
+=======
+
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c
     labels : List[str]
         The type of tag of the samples in the data set.
     """
@@ -122,4 +126,8 @@ def triplot(reduced_data: pd.DataFrame, pc: pd.DataFrame, algorithm_name: str,
     ax.set_ylabel(f"{pc.columns[1]}")
     ax.set_zlabel(f"{pc.columns[2]}")
     plt.title(f"Compositional Tri-plot - {algorithm_name}")
+<<<<<<< HEAD
     plt.grid()
+=======
+    plt.grid()
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c

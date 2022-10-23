@@ -12,16 +12,33 @@ def plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.
                               algorithm_name: str, contour_data: Optional[List[np.ndarray]] = None,
                               labels: Optional[np.ndarray] = None):
     """Plot the decision boundary of the trained model with the testing data set below.
+<<<<<<< HEAD
+=======
+
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c
     Parameters
     ----------
     X : pd.DataFrame (n_samples, n_components)
         The complete feature data.
+<<<<<<< HEAD
     X_test : pd.DataFrame (n_samples, n_components)
         The testing feature data.
     y_test : pd.DataFrame (n_samples, n_components)
         The testing target values.
     trained_model : sklearn algorithm model
         The sklearn algorithm model trained with X_train data.
+=======
+
+    X_test : pd.DataFrame (n_samples, n_components)
+        The testing feature data.
+
+    y_test : pd.DataFrame (n_samples, n_components)
+        The testing target values.
+
+    trained_model : sklearn algorithm model
+        The sklearn algorithm model trained with X_train data.
+
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c
     algorithm_name : str
         The name of the algorithm model.
     """
@@ -46,4 +63,8 @@ def plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.
     # Set up the axis name, graph title, storage path
     plt.xlabel(X.columns[0])
     plt.ylabel(X.columns[1])
+<<<<<<< HEAD
     plt.title(f'2d Decision Boundary - {algorithm_name}')
+=======
+    plt.title(f'2d Decision Boundary - {algorithm_name}')
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c
