@@ -7,7 +7,7 @@ import pandas as pd
 
 
 def plot_silhouette_diagram(data: pd.DataFrame, cluster_labels: pd.DataFrame,
-                            cluster_centers_: np.ndarray, n_clusters: int, store_path: str) -> None:
+                            cluster_centers_: np.ndarray, n_clusters: int, algorithm_name: str) -> None:
     """
     Draw the silhouette diagram for analysis.
 
@@ -25,8 +25,8 @@ def plot_silhouette_diagram(data: pd.DataFrame, cluster_labels: pd.DataFrame,
     n_clusters: int
         Number of features seen during fit.
 
-    store_path: str
-        the local path to store the graph produced
+    algorithm_name : str
+        the name of the algorithm
 
     References
     ----------
@@ -125,21 +125,21 @@ def plot_silhouette_diagram(data: pd.DataFrame, cluster_labels: pd.DataFrame,
     ax2.set_title("The visualization of the clustered data.")
     ax2.set_xlabel("Feature space for the 1st feature")
     ax2.set_ylabel("Feature space for the 2nd feature")
-
     plt.suptitle(
-        "Silhouette analysis for KMeans clustering on sample data with n_clusters = %d"
+        f"Silhouette analysis for KMeans clustering on sample data with n_clusters = %d - {algorithm_name}"
         % n_clusters,
         fontsize=14,
         fontweight="bold",
     )
-    save_fig(f"Silhouette Diagram", store_path)
 
 
-def scatter2d(data: pd.DataFrame, cluster_labels: pd.DataFrame, store_path: str) -> None:
+def scatter2d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str) -> None:
     plt.subplot(111)
     plt.scatter(data.iloc[:, 0], data.iloc[:, 1], c = cluster_labels)
-    plt.title("Incorrect Number of Blobs")
-    save_fig(f"Incorrect Number of Blobs", store_path)
+
+    plt.xlabel(f"{data.columns[0]}")
+    plt.ylabel(f"{data.columns[1]}")
+    plt.title(f"Compositional Bi-plot - {algorithm_name}")
 
 def scatter3d() -> None:
     pass

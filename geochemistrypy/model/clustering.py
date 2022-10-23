@@ -17,7 +17,7 @@ from global_variable import DATASET_OUTPUT_PATH
 from typing import Optional, Union, Dict
 from abc import ABCMeta, abstractmethod
 from ._base import WorkflowBase
-from .func.algo_clustering._cluster import plot_silhouette_diagram, scatter2d
+from .func.algo_clustering._cluster import plot_silhouette_diagram, scatter2d, scatter3d
 
 
 class ClusteringWorkflowBase(WorkflowBase):
@@ -165,27 +165,36 @@ class KMeansClustering(ClusteringWorkflowBase):
         print("Calinski Harabasz Score: ", metrics.calinski_harabasz_score(self.X, self.model.labels_))
         print("Silhouette Score: ", metrics.silhouette_score(self.X, self.model.labels_))
 
-    def _plot_silhouette_diagram(self) -> None:
+    @staticmethod
+    def _plot_silhouette_diagram(data: pd.DataFrame, cluster_labels: pd.DataFrame,
+                            cluster_centers_: np.ndarray, n_clusters: int, algorithm_name: str, store_path: str) -> None:
         print("-----* Silhouette Diagram *-----")
-        print(type(self.get_cluster_centers()))
-        plot_silhouette_diagram(self.X, self.X['clustering result'],
-                                self.get_cluster_centers(), self.n_clusters, MODEL_OUTPUT_IMAGE_PATH)
+        plot_silhouette_diagram(data, cluster_labels, cluster_centers_, n_clusters, algorithm_name)
+        save_fig(f"Silhouette Diagram - {algorithm_name}", store_path)
 
-    def _scatter2d(self) -> None:
-        scatter2d(self.X, self.X['clustering result'], MODEL_OUTPUT_IMAGE_PATH)
+    def _scatter2d(self, data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
+        print("-----* Bi-plot *-----")
+        scatter2d(data, cluster_labels, algorithm_name)
+        save_fig(f"Bi-plot - {algorithm_name}", store_path)
+
+    def _scatter3d(self) -> None:
+        print("-----* Tri-plot *-----")
+        scatter3d()
 
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
         self._get_scores()
-        self._plot_silhouette_diagram()
-        self._scatter2d()
+        self._plot_silhouette_diagram(data=self.X, cluster_labels=self.X['clustering result'],
+                                      cluster_centers_=self.get_cluster_centers(), n_clusters=self.n_clusters,
+                                      algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
 
         # Draw graphs when the number of principal components > 3
         if kwargs['components_num'] > 3:
-            pass
+            self._scatter3d()
         elif kwargs['components_num'] == 3:
-            pass
+            self._scatter3d()
         elif kwargs['components_num'] == 2:
-            self._scatter2d()
+            self._scatter2d(data=self.X, cluster_labels=self.X['clustering result'], algorithm_name=self.naming)
+
         else:
             pass
 

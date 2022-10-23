@@ -15,11 +15,14 @@ class ClusteringModelSelection(object):
         self.model = model
         self.clt_workflow = ClusteringWorkflowBase()
         self.cluster_num = None
+        self.components_num = None
 
     def activate(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
         if self.model == "KMeans":
             print("Designate the clustering number in advance:")
             self.cluster_num = num_input(SECTION[2])
+            print("Decide the component numbers to keep:")
+            self.components_num = num_input(SECTION[2])
             self.clt_workflow = KMeansClustering(n_clusters=self.cluster_num)
         elif self.model == "":
             pass
@@ -34,5 +37,5 @@ class ClusteringModelSelection(object):
         self.clt_workflow.get_labels()
 
         # special components of different algorithms
-        self.clt_workflow.special_components()
+        self.clt_workflow.special_components(components_num=self.components_num)
 
