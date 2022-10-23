@@ -17,7 +17,7 @@ from global_variable import DATASET_OUTPUT_PATH
 from typing import Optional, Union, Dict
 from abc import ABCMeta, abstractmethod
 from ._base import WorkflowBase
-from .func.algo_clustering._cluster import plot_silhouette_diagram
+from .func.algo_clustering._cluster import plot_silhouette_diagram, scatter2d
 
 
 class ClusteringWorkflowBase(WorkflowBase):
@@ -47,6 +47,7 @@ class ClusteringWorkflowBase(WorkflowBase):
         self.X['clustering result'] = self.model.labels_
         print(self.X)
         save_data(self.X, f"{self.naming}", DATASET_OUTPUT_PATH)
+
 
 class KMeansClustering(ClusteringWorkflowBase):
 
@@ -170,9 +171,23 @@ class KMeansClustering(ClusteringWorkflowBase):
         plot_silhouette_diagram(self.X, self.X['clustering result'],
                                 self.get_cluster_centers(), self.n_clusters, MODEL_OUTPUT_IMAGE_PATH)
 
+    def _scatter2d(self) -> None:
+        scatter2d(self.X, self.X['clustering result'], MODEL_OUTPUT_IMAGE_PATH)
+
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
         self._get_scores()
         self._plot_silhouette_diagram()
+        self._scatter2d()
+
+        # Draw graphs when the number of principal components > 3
+        if kwargs['components_num'] > 3:
+            pass
+        elif kwargs['components_num'] == 3:
+            pass
+        elif kwargs['components_num'] == 2:
+            self._scatter2d()
+        else:
+            pass
 
 class AffinityPropagationClustering(ClusteringWorkflowBase):
     name = "AffinityPropagation"

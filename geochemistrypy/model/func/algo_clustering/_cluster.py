@@ -13,8 +13,20 @@ def plot_silhouette_diagram(data: pd.DataFrame, cluster_labels: pd.DataFrame,
 
     Parameters
     ----------
+    data: pd.DataFrame (n_samples, n_components)
+        Data for silhouette.
+
+    cluster_labels: pd.DataFrame (n_samples,)
+        Labels of each point.
+
+    cluster_centers_: np.ndarray (n_samples,)
+        Coordinates of cluster centers. If the algorithm stops before fully converging (see tol and max_iter), these will not be consistent with labels_.
+
     n_clusters: int
-        The number of clusters to form as well as the number of centroids to generate.
+        Number of features seen during fit.
+
+    store_path: str
+        the local path to store the graph produced
 
     References
     ----------
@@ -123,6 +135,14 @@ def plot_silhouette_diagram(data: pd.DataFrame, cluster_labels: pd.DataFrame,
     save_fig(f"Silhouette Diagram", store_path)
 
 
+def scatter2d(data: pd.DataFrame, cluster_labels: pd.DataFrame, store_path: str) -> None:
+    plt.subplot(111)
+    plt.scatter(data.iloc[:, 0], data.iloc[:, 1], c = cluster_labels)
+    plt.title("Incorrect Number of Blobs")
+    save_fig(f"Incorrect Number of Blobs", store_path)
+
+def scatter3d() -> None:
+    pass
 """
 
 def plot_2d_graph(self):
