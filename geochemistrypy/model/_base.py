@@ -38,12 +38,18 @@ class WorkflowBase(metaclass=ABCMeta):
     @abstractmethod
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
         """Placeholder for fit. child classes should implement this method!
+<<<<<<< HEAD
+=======
 
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c
         Parameters
         ----------
         X : pd.DataFrame (n_samples, n_features)
             Training data, where `n_samples` is the number of samples and n_features` is the number of features.
+<<<<<<< HEAD
+=======
 
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c
         y : pd.DataFrame, default=None (n_samples,) or (n_samples, n_targets)
             Target values。
         """
@@ -71,14 +77,16 @@ class WorkflowBase(metaclass=ABCMeta):
     @staticmethod
     def choose_dimension_data(data: pd.DataFrame, dimensions: int) -> Tuple[List[int], pd.DataFrame]:
         """Choose a subgroup data from the whole data set to draw 2d or 3d graph.
+<<<<<<< HEAD
+=======
 
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c
         Parameters
         ----------
         data : pd.DataFrame (n_samples, n_features)
             the whole data.
         dimensions : int
             how much dimensions data to keep.
-
         Returns
         -------
         selected_axis_index : list[int]
@@ -120,10 +128,18 @@ class WorkflowBase(metaclass=ABCMeta):
         WorkflowBase.y_train = y_train
         WorkflowBase.y_test = y_test
         WorkflowBase.y_test_predict = y_test_predict
+<<<<<<< HEAD
+=======
 
     def data_split(self, X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], test_size: float = 0.2)\
             -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """Split arrays or matrices into random train and test subsets."""
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=self.random_state)
         return X_train, X_test, y_train, y_test
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c
 
+    def data_split(self, X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], test_size: float = 0.2)\
+            -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        """Split arrays or matrices into random train and test subsets."""
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=self.random_state)
+        return X_train, X_test, y_train, y_test

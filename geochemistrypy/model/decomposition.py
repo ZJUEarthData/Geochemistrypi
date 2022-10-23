@@ -28,12 +28,18 @@ class DecompositionWorkflowBase(WorkflowBase):
 
     def _reduced_data2pd(self, reduced_data: np.ndarray, components_num: int) -> None:
         """Transform reduced data into the format of pd.DataFrame.
+<<<<<<< HEAD
+=======
 
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c
         Parameters
         ----------
         reduced_data : np.ndarray
             The data X after dimension reduction.
+<<<<<<< HEAD
+=======
 
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c
         components_num : int
             The numbers of the principal components.
         """
@@ -69,29 +75,21 @@ class PCADecomposition(DecompositionWorkflowBase):
         n_components : int, float or 'mle', default=None
             Number of components to keep.
             if n_components is not set all components are kept::
-
                 n_components == min(n_samples, n_features)
-
             If ``n_components == 'mle'`` and ``svd_solver == 'full'``, Minka's
             MLE is used to guess the dimension. Use of ``n_components == 'mle'``
             will interpret ``svd_solver == 'auto'`` as ``svd_solver == 'full'``.
-
             If ``0 < n_components < 1`` and ``svd_solver == 'full'``, select the
             number of components such that the amount of variance that needs to be
             explained is greater than the percentage specified by n_components.
-
             If ``svd_solver == 'arpack'``, the number of components must be
             strictly less than the minimum of n_features and n_samples.
-
             Hence, the None case results in::
-
                 n_components == min(n_samples, n_features) - 1
-
         copy : bool, default=True
             If False, data passed to fit are overwritten and running
             fit(X).transform(X) will not yield the expected results,
             use fit_transform(X) instead.
-
         whiten : bool, default=False
             When True (False by default) the `components_` vectors are multiplied
             by the square root of n_samples and then divided by the singular values
@@ -100,7 +98,6 @@ class PCADecomposition(DecompositionWorkflowBase):
             (the relative variance scales of the components) but can sometime
             improve the predictive accuracy of the downstream estimators by
             making their data respect some hard-wired assumptions.
-
         svd_solver : {'auto', 'full', 'arpack', 'randomized'}, default='auto'
             If auto :
                 The solver is selected by a default policy based on `X.shape` and
@@ -118,44 +115,32 @@ class PCADecomposition(DecompositionWorkflowBase):
                 0 < n_components < min(X.shape)
             If randomized :
                 run randomized SVD by the method of Halko et al.
-
             .. versionadded:: 0.18.0
-
         tol : float, default=0.0
             Tolerance for singular values computed by svd_solver == 'arpack'.
             Must be of range [0.0, infinity).
-
             .. versionadded:: 0.18.0
-
         iterated_power : int or 'auto', default='auto'
             Number of iterations for the power method computed by
             svd_solver == 'randomized'.
             Must be of range [0, infinity).
-
             .. versionadded:: 0.18.0
-
         n_oversamples : int, default=10
             This parameter is only relevant when `svd_solver="randomized"`.
             It corresponds to the additional number of random vectors to sample the
             range of `X` so as to ensure proper conditioning. See
             :func:`~sklearn.utils.extmath.randomized_svd` for more details.
-
             .. versionadded:: 1.1
-
         power_iteration_normalizer : {'auto', 'QR', 'LU', 'none'}, default='auto'
             Power iteration normalizer for randomized SVD solver.
             Not used by ARPACK. See :func:`~sklearn.utils.extmath.randomized_svd`
             for more details.
-
             .. versionadded:: 1.1
-
         random_state : int, RandomState instance or None, default=None
             Used when the 'arpack' or 'randomized' solvers are used. Pass an int
             for reproducible results across multiple function calls.
             See :term:`Glossary <random_state>`.
-
             .. versionadded:: 0.18.0
-
         References
         ----------
         scikit API: sklearn.decomposition.PCA
@@ -247,8 +232,3 @@ class PCADecomposition(DecompositionWorkflowBase):
                          algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
         else:
             pass
-
-
-
-
-

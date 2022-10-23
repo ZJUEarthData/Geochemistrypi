@@ -41,4 +41,8 @@ class ClassificationModelSelection(object):
                                       y_train=y_train, y_test=y_test, y_test_predict=y_test_predict)
 
         # Special components of different algorithms
+<<<<<<< HEAD
         self.clf_workflow.special_components()
+=======
+        self.clf_workflow.special_components()
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c

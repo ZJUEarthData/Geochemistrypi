@@ -50,22 +50,35 @@ class ClassificationWorkflowBase(WorkflowBase):
         save_fig(f"Confusion Matrix - {self.naming}", MODEL_OUTPUT_IMAGE_PATH)
 
     @staticmethod
+<<<<<<< HEAD
+    def contour_data(X: pd.DataFrame, trained_model: Any) -> Tuple[List[np.ndarray], np.ndarray]:
+        """Build up coordinate matrices as the data of contour plot.
+=======
     def contour_data(X: pd.DataFrame, trained_model: Any) -> tuple[List[np.ndarray], np.ndarray]:
         """Build up coordinate matrices as the data of contour plot.
 
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c
         Parameters
         ----------
         X : pd.DataFrame (n_samples, n_components)
             The complete feature data.
+<<<<<<< HEAD
+        trained_model : Any
+            Te algorithm model class from sklearn is trained.
+=======
 
         trained_model : Any
             Te algorithm model class from sklearn is trained.
 
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c
         Returns
         -------
         matrices : List[np.ndarray]
             Coordinate matrices.
+<<<<<<< HEAD
+=======
 
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c
         labels : np.ndarray
             Predicted value by the trained model with coordinate data as input data.
         """
@@ -118,18 +131,27 @@ class SVMClassification(ClassificationWorkflowBase):
             Regularization parameter. The strength of the regularization is
             inversely proportional to C. Must be strictly positive. The penalty
             is a squared l2 penalty.
+<<<<<<< HEAD
+=======
 
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c
         kernel : {'linear', 'poly', 'rbf', 'sigmoid', 'precomputed'} or callable,  \
             default='rbf'
             Specifies the kernel type to be used in the algorithm.
             If none is given, 'rbf' will be used. If a callable is given it is
             used to pre-compute the kernel matrix from data matrices; that matrix
             should be an array of shape ``(n_samples, n_samples)``.
+<<<<<<< HEAD
+        degree : int, default=3
+            Degree of the polynomial kernel function ('poly').
+            Ignored by all other kernels.
+=======
 
         degree : int, default=3
             Degree of the polynomial kernel function ('poly').
             Ignored by all other kernels.
 
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c
         gamma : {'scale', 'auto'} or float, default='scale'
             Kernel coefficient for 'rbf', 'poly' and 'sigmoid'.
             - if ``gamma='scale'`` (default) is passed then it uses
@@ -137,6 +159,14 @@ class SVMClassification(ClassificationWorkflowBase):
             - if 'auto', uses 1 / n_features.
             .. versionchanged:: 0.22
                The default value of ``gamma`` changed from 'auto' to 'scale'.
+<<<<<<< HEAD
+        coef0 : float, default=0.0
+            Independent term in kernel function.
+            It is only significant in 'poly' and 'sigmoid'.
+        shrinking : bool, default=True
+            Whether to use the shrinking heuristic.
+            See the :ref:`User Guide <shrinking_svm>`.
+=======
 
         coef0 : float, default=0.0
             Independent term in kernel function.
@@ -146,11 +176,18 @@ class SVMClassification(ClassificationWorkflowBase):
             Whether to use the shrinking heuristic.
             See the :ref:`User Guide <shrinking_svm>`.
 
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c
         probability : bool, default=False
             Whether to enable probability estimates. This must be enabled prior
             to calling `fit`, will slow down that method as it internally uses
             5-fold cross-validation, and `predict_proba` may be inconsistent with
             `predict`. Read more in the :ref:`User Guide <scores_probabilities>`.
+<<<<<<< HEAD
+        tol : float, default=1e-3
+            Tolerance for stopping criterion.
+        cache_size : float, default=200
+            Specify the size of the kernel cache (in MB).
+=======
 
         tol : float, default=1e-3
             Tolerance for stopping criterion.
@@ -158,6 +195,7 @@ class SVMClassification(ClassificationWorkflowBase):
         cache_size : float, default=200
             Specify the size of the kernel cache (in MB).
 
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c
         class_weight : dict or 'balanced', default=None
             Set the parameter C of class i to class_weight[i]*C for
             SVC. If not given, all classes are supposed to have
@@ -165,15 +203,23 @@ class SVMClassification(ClassificationWorkflowBase):
             The "balanced" mode uses the values of y to automatically adjust
             weights inversely proportional to class frequencies in the input data
             as ``n_samples / (n_classes * np.bincount(y))``.
+<<<<<<< HEAD
+=======
 
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c
         verbose : bool, default=False
             Enable verbose output. Note that this setting takes advantage of a
             per-process runtime setting in libsvm that, if enabled, may not work
             properly in a multithreaded context.
+<<<<<<< HEAD
+        max_iter : int, default=-1
+            Hard limit on iterations within solver, or -1 for no limit.
+=======
 
         max_iter : int, default=-1
             Hard limit on iterations within solver, or -1 for no limit.
 
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c
         decision_function_shape : {'ovo', 'ovr'}, default='ovr'
             Whether to return a one-vs-rest ('ovr') decision function of shape
             (n_samples, n_classes) as all other classifiers, or the original
@@ -182,6 +228,14 @@ class SVMClassification(ClassificationWorkflowBase):
             internally, one-vs-one ('ovo') is always used as a multi-class strategy
             to train models; an ovr matrix is only constructed from the ovo matrix.
             The parameter is ignored for binary classification.
+<<<<<<< HEAD
+            .. versionchanged:: 0.19
+                decision_function_shape is 'ovr' by default.
+            .. versionadded:: 0.17
+               *decision_function_shape='ovr'* is recommended.
+            .. versionchanged:: 0.17
+               Deprecated *decision_function_shape='ovo' and None*.
+=======
 
             .. versionchanged:: 0.19
                 decision_function_shape is 'ovr' by default.
@@ -192,6 +246,7 @@ class SVMClassification(ClassificationWorkflowBase):
             .. versionchanged:: 0.17
                Deprecated *decision_function_shape='ovo' and None*.
 
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c
         break_ties : bool, default=False
             If true, ``decision_function_shape='ovr'``, and number of classes > 2,
             :term:`predict` will break ties according to the confidence values of
@@ -199,13 +254,19 @@ class SVMClassification(ClassificationWorkflowBase):
             classes is returned. Please note that breaking ties comes at a
             relatively high computational cost compared to a simple predict.
             .. versionadded:: 0.22
+<<<<<<< HEAD
+=======
 
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c
         random_state : int, RandomState instance or None, default=None
             Controls the pseudo random number generation for shuffling the data for
             probability estimates. Ignored when `probability` is False.
             Pass an int for reproducible output across multiple function calls.
             See :term:`Glossary <random_state>`.
+<<<<<<< HEAD
+=======
 
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c
         References
         ----------
         scikit API: sklearn.svm.SVC
@@ -329,7 +390,6 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
         :param min_impurity_decrease:A node will be split if this split induces a decrease of the impurity greater than or equal to this value.
         :param class_weight:Weights associated with classes in the form {class_label: weight}.
         :param ccp_alpha:Complexity parameter used for Minimal Cost-Complexity Pruning.
-
         References
         ----------------------------------------
         API design for machine learning software: experiences from the scikit-learn project.Buitinck, LarLouppe, GillesBlondel, MathieuPedregosa, FabianMueller, AndreasGrise, Olivierculae, VladPrettenhofer, PeterGramfort, AlexandreGrobler, JaquesLayton, RobertVanderplas, JakeJoly, ArnaudHolt, BrianVaroquaux, Gaël
@@ -462,7 +522,6 @@ class RandomForestClassification(ClassificationWorkflowBase):
                 Complexity parameter used for Minimal Cost-Complexity Pruning.
         :param max_samplesint or float, default=None
                 If bootstrap is True, the number of samples to draw from X to train each base estimator.
-
         References
         ----------------------------------------
         scikit API:sklearn.ensemble.RandomForestClassifier
@@ -749,37 +808,29 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
         ----------
         penalty : {'l1', 'l2', 'elasticnet', 'none'}, default='l2'
             Specify the norm of the penalty:
-
             - `'none'`: no penalty is added;
             - `'l2'`: add a L2 penalty term and it is the default choice;
             - `'l1'`: add a L1 penalty term;
             - `'elasticnet'`: both L1 and L2 penalty terms are added.
-
             .. warning::
                Some penalties may not work with some solvers. See the parameter
                `solver` below, to know the compatibility between the penalty and
                solver.
-
             .. versionadded:: 0.19
                l1 penalty with SAGA solver (allowing 'multinomial' + L1)
-
         dual : bool, default=False
             Dual or primal formulation. Dual formulation is only implemented for
             l2 penalty with liblinear solver. Prefer dual=False when
             n_samples > n_features.
-
         tol : float, default=1e-4
             Tolerance for stopping criteria.
-
         C : float, default=1.0
             Inverse of regularization strength; must be a positive float.
             Like in support vector machines, smaller values specify stronger
             regularization.
-
         fit_intercept : bool, default=True
             Specifies if a constant (a.k.a. bias or intercept) should be
             added to the decision function.
-
         intercept_scaling : float, default=1
             Useful only when the solver 'liblinear' is used
             and self.fit_intercept is set to True. In this case, x becomes
@@ -791,7 +842,6 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
             as all other features.
             To lessen the effect of regularization on synthetic feature weight
             (and therefore on the intercept) intercept_scaling has to be increased.
-
         class_weight : dict or 'balanced', default=None
             Weights associated with classes in the form ``{class_label: weight}``.
             If not given, all classes are supposed to have weight one.
@@ -802,23 +852,18 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
             through the fit method) if sample_weight is specified.
             .. versionadded:: 0.17
                *class_weight='balanced'*
-
         random_state : int, RandomState instance, default=None
             Used when ``solver`` == 'sag', 'saga' or 'liblinear' to shuffle the
             data. See :term:`Glossary <random_state>` for details.
-
         solver : {'newton-cg', 'lbfgs', 'liblinear', 'sag', 'saga'}, \
                 default='lbfgs'
-
             Algorithm to use in the optimization problem. Default is 'lbfgs'.
             To choose a solver, you might want to consider the following aspects:
-
                 - For small datasets, 'liblinear' is a good choice, whereas 'sag'
                   and 'saga' are faster for large ones;
                 - For multiclass problems, only 'newton-cg', 'sag', 'saga' and
                   'lbfgs' handle multinomial loss;
                 - 'liblinear' is limited to one-versus-rest schemes.
-
             .. warning::
                The choice of the algorithm depends on the penalty chosen:
                Supported penalties by solver:
@@ -827,28 +872,23 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
                - 'liblinear'   -   ['l1', 'l2']
                - 'sag'         -   ['l2', 'none']
                - 'saga'        -   ['elasticnet', 'l1', 'l2', 'none']
-
             .. note::
                'sag' and 'saga' fast convergence is only guaranteed on
                features with approximately the same scale. You can
                preprocess the data with a scaler from :mod:`sklearn.preprocessing`.
-
             .. seealso::
                Refer to the User Guide for more information regarding
                :class:`LogisticRegression` and more specifically the
                :ref:`Table <Logistic_regression>`
                summarizing solver/penalty supports.
-
             .. versionadded:: 0.17
                Stochastic Average Gradient descent solver.
             .. versionadded:: 0.19
                SAGA solver.
             .. versionchanged:: 0.22
                 The default solver changed from 'liblinear' to 'lbfgs' in 0.22.
-
         max_iter : int, default=100
             Maximum number of iterations taken for the solvers to converge.
-
         multi_class : {'auto', 'ovr', 'multinomial'}, default='auto'
             If the option chosen is 'ovr', then a binary problem is fit for each
             label. For 'multinomial' the loss minimised is the multinomial loss fit
@@ -860,19 +900,15 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
                Stochastic Average Gradient descent solver for 'multinomial' case.
             .. versionchanged:: 0.22
                 Default changed from 'ovr' to 'auto' in 0.22.
-
         verbose : int, default=0
             For the liblinear and lbfgs solvers set verbose to any positive
             number for verbosity.
-
         warm_start : bool, default=False
             When set to True, reuse the solution of the previous call to fit as
             initialization, otherwise, just erase the previous solution.
             Useless for liblinear solver. See :term:`the Glossary <warm_start>`.
-
             .. versionadded:: 0.17
                *warm_start* to support *lbfgs*, *newton-cg*, *sag*, *saga* solvers.
-
         n_jobs : int, default=None
             Number of CPU cores used when parallelizing over classes if
             multi_class='ovr'". This parameter is ignored when the ``solver`` is
@@ -880,14 +916,12 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
             not. ``None`` means 1 unless in a :obj:`joblib.parallel_backend`
             context. ``-1`` means using all processors.
             See :term:`Glossary <n_jobs>` for more details.
-
         l1_ratio : float, default=None
             The Elastic-Net mixing parameter, with ``0 <= l1_ratio <= 1``. Only
             used if ``penalty='elasticnet'``. Setting ``l1_ratio=0`` is equivalent
             to using ``penalty='l2'``, while setting ``l1_ratio=1`` is equivalent
             to using ``penalty='l1'``. For ``0 < l1_ratio <1``, the penalty is a
             combination of L1 and L2.
-
         References
         ----------
         scikit API: sklearn.linear_model.LogisticRegression

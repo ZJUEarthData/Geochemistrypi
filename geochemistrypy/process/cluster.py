@@ -34,4 +34,3 @@ class ClusteringModelSelection(object):
 
         # special components of different algorithms
         self.clt_workflow.special_components()
-

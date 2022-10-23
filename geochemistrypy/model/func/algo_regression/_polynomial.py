@@ -26,4 +26,8 @@ def show_formula(coef, intercept, features_name):
         formula = ''.join(term) + '+' + str(intercept[0])
     else:
         formula = ''.join(term) + str(intercept[0])
+<<<<<<< HEAD
     print('y =', formula)
+=======
+    print('y =', formula)
+>>>>>>> 8efb9b5fb6c369cd87df691f6477cdb8af4c109c
