@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 import pandas as pd
+import numpy as np
 from typing import Optional
 from data.data_readiness import num2option, num_input, limit_num_input, create_sub_data_set, show_data_columns
 from global_variable import SECTION
-from typing import Tuple, List
+from typing import Tuple, List, Union
 from abc import ABCMeta, abstractmethod
+from sklearn.model_selection import train_test_split
 
 
 class WorkflowBase(metaclass=ABCMeta):
@@ -45,15 +47,26 @@ class WorkflowBase(metaclass=ABCMeta):
         y : pd.DataFrame, default=None (n_samples,) or (n_samples, n_targets)
             Target values。
         """
-        pass
+        return None
 
-    def predict(self, X):
+    def predict(self, X: pd.DataFrame) -> pd.DataFrame:
         """The interface for the child classes."""
-        pass
+        return pd.DataFrame()
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        """This method returns the transformed version of the input X"""
-        pass
+        """The interface for the child classes."""
+        return pd.DataFrame()
+
+    @staticmethod
+    def score(y_true: Union[pd.DataFrame, np.ndarray], y_predict: Union[pd.DataFrame, np.ndarray])\
+            -> Union[int, float]:
+        """The interface for the child classes."""
+        return float()
+
+    @staticmethod
+    def np2pd(array, columns_name):
+        """The type of the data set is transformed from numpy.ndarray to pandas.DataFrame."""
+        return pd.DataFrame(array, columns=columns_name)
 
     @staticmethod
     def choose_dimension_data(data: pd.DataFrame, dimensions: int) -> Tuple[List[int], pd.DataFrame]:
@@ -108,7 +121,9 @@ class WorkflowBase(metaclass=ABCMeta):
         WorkflowBase.y_test = y_test
         WorkflowBase.y_test_predict = y_test_predict
 
-    def data_split(self, X, y, test_size=0.2):
-        """The interface for the child classes."""
-        pass
+    def data_split(self, X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], test_size: float = 0.2)\
+            -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        """Split arrays or matrices into random train and test subsets."""
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=self.random_state)
+        return X_train, X_test, y_train, y_test
 

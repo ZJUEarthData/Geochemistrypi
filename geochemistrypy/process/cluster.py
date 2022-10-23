@@ -9,6 +9,7 @@ from typing import Optional
 
 
 class ClusteringModelSelection(object):
+    """Simulate the normal way of invoking scikit-learn clustering algorithms."""
 
     def __init__(self, model):
         self.model = model

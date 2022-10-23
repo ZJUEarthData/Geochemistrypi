@@ -4,11 +4,12 @@ Geochemistry π is **a Python framework** for data-driven geochemistry discovery
 one-stop shop for **geochemical data analysis** on tabular data. The goal of the Geochemistry π is to create
 a series of user-friendly and extensible products of high automation for the full cycle of geochemistry research.  
 
-In the first phase, it works as a **software** with a command-line interface to automate **data mining** process with
-frequently-used **machine learning algorithms**, which would further lower the barrier for geochemists.
+## First Phase
+It works as a **software** with a command-line interface to automate **data mining** process with
+frequently-used **machine learning algorithms**, which would further lower the threshold for the geochemists.
 
 The highlight is that through choosing **simple number options**, the users are able to implement a completed cycle of data
-mining **without prior knowledge** on numpy, pandas, scikit-learn packages.
+mining **without knowledge of** numpy, pandas, scikit-learn packages.
 
 Its models section, shown as below, provides both **supervised learning** and **unsupervised learning** methods to process the
 users' data, including four types of algorithms, regression, classification, clustering, and dimensional reduction.
@@ -41,7 +42,7 @@ The whole package is under construction and the documentation is progressively e
 + Aixiwake·Janganuer (Ayshuak, Sun Yat-sen University, China)
 + Parnanjan Dutta (Presidency University, Kolkata, India)
 + Xinyu Huang (Tsinghua University, Beijing, China)
-+ Bailun JIANG (EPSI / Lille University, France)
++ Bailun Jiang (EPSI / Lille University, France)
 + Yongkang Chang (Kill-virus, Langzhou University, China)
 + Xin Li (The University of Manchester, United Kingdom)
 + Ke Li（China University of Petroleum, China)
