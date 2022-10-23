@@ -26,7 +26,6 @@ class ClusteringWorkflowBase(WorkflowBase):
     Warning: This class should not be used directly.
     Use derived classes instead.
     """
-    # TODO: build virtualization in 2D, 3D graph and silhouette plot
     common_function = ['Cluster Centers',
                        'Cluster Labels',
                        ]
