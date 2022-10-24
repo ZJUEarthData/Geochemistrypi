@@ -373,32 +373,47 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
         tree.plot_tree(clf, filled=True)
         save_fig('Decision Tree Classification Plot', MODEL_OUTPUT_IMAGE_PATH)
 
-    def decision_surface_plot(self):
-        #############################################################
-        #Plot the decision surfaces of forests of the data
-        #############################################################
-        print("Decision_Surface_Plot", "Drawing Decision Surface Plot")
-        plt.figure()
-        y = np.array(ClassificationWorkflowBase().y)
-        X = np.array(ClassificationWorkflowBase().X)
-        X = PCA(n_components=2).fit_transform(X)
-        self.model.fit(X,y)
-        x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
-        y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
-        xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.02), np.arange(y_min, y_max, 0.02))
-        Z = self.model.predict(np.c_[xx.ravel(), yy.ravel()])
-        Z = Z.reshape(xx.shape)
-        plt.contour(xx, yy, Z, colors="k", levels=[-1, 0, 1], alpha=0.5, linestyles=["--", "-", "--"], s=2)
-        plt.contourf(xx, yy, Z, cmap=plt.cm.RdYlBu, alpha=0.5)
-        plt.scatter(X[:, 0], X[:, 1],c=y,cmap=ListedColormap(['#FF0000', '#0000FF']),alpha=0.6,s=20)
-        plt.suptitle("Decision Surface Plot ", fontsize=12)
-        plt.axis("tight")
-        plt.tight_layout(h_pad=0.2, w_pad=0.2, pad=2.5)
-        save_fig('Decision Surface Plot', MODEL_OUTPUT_IMAGE_PATH)
+    '''
+       def decision_surface_plot(self):
+           #############################################################
+           #Plot the decision surfaces of forests of the data
+           #############################################################
+           print("Decision_Surface_Plot", "Drawing Decision Surface Plot")
+           plt.figure()
+           y = np.array(ClassificationWorkflowBase().y)
+           X = np.array(ClassificationWorkflowBase().X)
+           X = PCA(n_components=2).fit_transform(X)
+           self.model.fit(X,y)
+           x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
+           y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
+           xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.02), np.arange(y_min, y_max, 0.02))
+           Z = self.model.predict(np.c_[xx.ravel(), yy.ravel()])
+           Z = Z.reshape(xx.shape)
+           plt.contour(xx, yy, Z, colors="k", levels=[-1, 0, 1], alpha=0.5, linestyles=["--", "-", "--"], s=2)
+           plt.contourf(xx, yy, Z, cmap=plt.cm.RdYlBu, alpha=0.5)
+           plt.scatter(X[:, 0], X[:, 1],c=y,cmap=ListedColormap(['#FF0000', '#0000FF']),alpha=0.6,s=20)
+           plt.suptitle("Decision Surface Plot ", fontsize=12)
+           plt.axis("tight")
+           plt.tight_layout(h_pad=0.2, w_pad=0.2, pad=2.5)
+           save_fig('Decision Surface Plot', MODEL_OUTPUT_IMAGE_PATH)
+       '''
 
-    def special_components(self):
+    @staticmethod
+    def dt_plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: Any,
+                                     algorithm_name: str, store_path: str,
+                                     contour_data: Optional[List[np.ndarray]] = None,
+                                     labels: Optional[np.ndarray] = None) -> None:
+        """Plot the decision boundary of the trained model with the testing data set below."""
+        print("-----* Two-dimensional Decision Boundary Diagram *-----")
+        plot_2d_decision_boundary(X, X_test, y_test, trained_model, algorithm_name)
+        save_fig(f'2d Decision Boundary - {algorithm_name}', store_path)
+
+    def special_components(self, **kwargs) -> None:
         self.plot_tree_function()
-        self.decision_surface_plot()
+        if DecisionTreeClassification.X.shape[1] == 2:
+            self.dt_plot_2d_decision_boundary(DecisionTreeClassification.X, DecisionTreeClassification.X_test,
+                                              DecisionTreeClassification.y_test,
+                                              self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
 
 class RandomForestClassification(ClassificationWorkflowBase):
@@ -532,34 +547,49 @@ class RandomForestClassification(ClassificationWorkflowBase):
         tree.plot_tree(self.model.estimators_[0])
         save_fig("RandomForest_tree", MODEL_OUTPUT_IMAGE_PATH)
 
-    def decision_surfaces_plot(self):
-        #############################################################
-        #Plot the decision surfaces of forests of the data
-        #############################################################
-        print("-----* Decision Surfaces Plot *-----")
-        plt.figure()
-        y = np.array(ClassificationWorkflowBase().y)
-        X = np.array(ClassificationWorkflowBase().X)
-        X = PCA(n_components=2).fit_transform(X)
-        self.model.fit(X,y)
-        x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
-        y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
-        xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.02), np.arange(y_min, y_max, 0.02))
-        estimator_alpha = 1.0 / len(self.model.estimators_)
-        for tree in self.model.estimators_:
-            Z = tree.predict(np.c_[xx.ravel(), yy.ravel()])
-            Z = Z.reshape(xx.shape)
-            plt.contourf(xx, yy, Z, alpha=estimator_alpha, cmap=plt.cm.RdYlBu)
-        plt.scatter(X[:, 0], X[:, 1], c=y, cmap=ListedColormap(['#FF0000', '#0000FF']),alpha=0.6, s=20)
-        plt.suptitle("Decision Surfaces Plot ", fontsize=12)
-        plt.axis("tight")
-        plt.tight_layout(h_pad=0.2, w_pad=0.2, pad=2.5)
-        save_fig('Decision Surfaces Plot - RandomForest', MODEL_OUTPUT_IMAGE_PATH)
+    '''
+       def decision_surfaces_plot(self):
+           #############################################################
+           #Plot the decision surfaces of forests of the data
+           #############################################################
+           print("-----* Decision Surfaces Plot *-----")
+           plt.figure()
+           y = np.array(ClassificationWorkflowBase().y)
+           X = np.array(ClassificationWorkflowBase().X)
+           X = PCA(n_components=2).fit_transform(X)
+           self.model.fit(X,y)
+           x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
+           y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
+           xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.02), np.arange(y_min, y_max, 0.02))
+           estimator_alpha = 1.0 / len(self.model.estimators_)
+           for tree in self.model.estimators_:
+               Z = tree.predict(np.c_[xx.ravel(), yy.ravel()])
+               Z = Z.reshape(xx.shape)
+               plt.contourf(xx, yy, Z, alpha=estimator_alpha, cmap=plt.cm.RdYlBu)
+           plt.scatter(X[:, 0], X[:, 1], c=y, cmap=ListedColormap(['#FF0000', '#0000FF']),alpha=0.6, s=20)
+           plt.suptitle("Decision Surfaces Plot ", fontsize=12)
+           plt.axis("tight")
+           plt.tight_layout(h_pad=0.2, w_pad=0.2, pad=2.5)
+           save_fig('Decision Surfaces Plot - RandomForest', MODEL_OUTPUT_IMAGE_PATH)
+           '''
+
+    @staticmethod
+    def _plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: Any,
+                                   algorithm_name: str, store_path: str,
+                                   contour_data: Optional[List[np.ndarray]] = None,
+                                   labels: Optional[np.ndarray] = None) -> None:
+        """Plot the decision boundary of the trained model with the testing data set below."""
+        print("-----* Two-dimensional Decision Boundary Diagram *-----")
+        plot_2d_decision_boundary(X, X_test, y_test, trained_model, algorithm_name)
+        save_fig(f'2d Decision Boundary - {algorithm_name}', store_path)
 
     def special_components(self):
         self.feature_importances()
         self.plot()
-        self.decision_surfaces_plot()
+        if RandomForestClassification.X.shape[1] == 2:
+            self._plot_2d_decision_boundary(RandomForestClassification.X, RandomForestClassification.X_test,
+                                            RandomForestClassification.y_test,
+                                            self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
 
 class XgboostClassification(ClassificationWorkflowBase):
