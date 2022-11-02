@@ -8,6 +8,7 @@ from global_variable import SECTION
 
 
 class RegressionModelSelection(object):
+    """Simulate the normal way of invoking scikit-learn regression algorithms."""
 
     def __init__(self, model):
         self.model = model
@@ -35,15 +36,16 @@ class RegressionModelSelection(object):
         elif self.model == "Support Vector Machine":
             self.reg_workflow = SupportVectorRegression()
 
-        # common components for every regression algorithm
+        # Common components for every regression algorithm
         self.reg_workflow.show_info()
         self.reg_workflow.fit(X_train, y_train)
         y_test_predict = self.reg_workflow.predict(X_test)
+        y_test_predict = self.reg_workflow.np2pd(y_test_predict, y_test.columns)
         self.reg_workflow.score(y_test, y_test_predict)
         self.reg_workflow.cross_validation(X_train, y_train, cv_num=10)
-        y_test_predict = self.reg_workflow.np2pd(y_test_predict, y_test.columns)
+        self.reg_workflow.plot_predict(y_test, y_test_predict)
         self.reg_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test,
                                       y_train=y_train, y_test=y_test, y_test_predict=y_test_predict)
 
-        # special components of different algorithms
+        # Special components of different algorithms
         self.reg_workflow.special_components()
