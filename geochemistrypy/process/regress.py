@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # import sys
 from model.regression import PolynomialRegression, XgboostRegression, DecisionTreeRegression, ExtraTreeRegression,\
-    RandomForestRegression, RegressionWorkflowBase, SupportVectorRegression
-from data.data_readiness import num_input
+    RandomForestRegression, RegressionWorkflowBase, SupportVectorRegression, DNNRegression
+from data.data_readiness import num_input, float_input, tuple_input
 from global_variable import SECTION
 # sys.path.append("..")
 
@@ -35,6 +35,12 @@ class RegressionModelSelection(object):
             self.reg_workflow = RandomForestRegression()
         elif self.model == "Support Vector Machine":
             self.reg_workflow = SupportVectorRegression()
+        elif self.model == "Deep Neural Networks":
+            print("Please specify the init learning rate of the the neural networks.")
+            learning_rate = float_input(0.05, SECTION[2], "@Learning_rate:")
+            print("Please specify the size of hidden layer and the number of neurons in the each hidden layer.")
+            hidden_layer = tuple_input((50, 25, 5), SECTION[2], "@Hidden_layer_sizes:")
+            self.reg_workflow = DNNRegression(learning_rate_init=learning_rate, hidden_layer_sizes=hidden_layer)
 
         # Common components for every regression algorithm
         self.reg_workflow.show_info()

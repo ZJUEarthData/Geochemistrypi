@@ -122,7 +122,7 @@ class WorkflowBase(metaclass=ABCMeta):
         WorkflowBase.y_test_predict = y_test_predict
 
     def data_split(self, X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], test_size: float = 0.2)\
-            -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+            -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """Split arrays or matrices into random train and test subsets."""
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=self.random_state)
         return X_train, X_test, y_train, y_test

@@ -50,7 +50,7 @@ class ClassificationWorkflowBase(WorkflowBase):
         save_fig(f"Confusion Matrix - {self.naming}", MODEL_OUTPUT_IMAGE_PATH)
 
     @staticmethod
-    def contour_data(X: pd.DataFrame, trained_model: Any) -> tuple[List[np.ndarray], np.ndarray]:
+    def contour_data(X: pd.DataFrame, trained_model: Any) -> Tuple[List[np.ndarray], np.ndarray]:
         """Build up coordinate matrices as the data of contour plot.
 
         Parameters
