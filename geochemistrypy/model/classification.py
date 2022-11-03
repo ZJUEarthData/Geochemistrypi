@@ -104,7 +104,7 @@ class SVMClassification(ClassificationWorkflowBase):
             probability: bool = False,
             tol: float = 1e-3,
             cache_size: float = 200,
-            class_weight: Optional[dict, str] = None,
+            class_weight: Union[dict, str, None] = None,
             verbose: bool = False,
             max_iter: int = -1,
             decision_function_shape: Literal['ovo', 'ovr'] = "ovr",
@@ -311,11 +311,11 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
             min_samples_split: Union[int, float] = 2,
             min_samples_leaf: Union[int, float] = 1,
             min_weight_fraction_leaf: Union[int, float] = 0.0,
-            max_features: Optional[int, float, str] = None,
+            max_features: Union[int, float, str, None] = None,
             random_state: Optional[int] = None,
             max_leaf_nodes: Optional[int] = None,
             min_impurity_decrease: float = 0.0,
-            class_weight: Optional[dict, list[dict], str] = None,
+            class_weight: Union[dict, list[dict], str, None] = None,
             ccp_alpha: float = 0.0
     ) -> None:
         """
@@ -529,7 +529,7 @@ class RandomForestClassification(ClassificationWorkflowBase):
             min_samples_split: Union[int, float] = 4,
             min_samples_leaf: Union[int, float] = 1,
             min_weight_fraction_leaf: float = 0.0,
-            max_features: Optional[str, int, float] = 'sqrt',
+            max_features: Union[str, int, float] = 'sqrt',
             max_leaf_nodes: Optional[int] = 3,
             min_impurity_decrease: float = 0.0,
             bootstrap: bool = True,
@@ -538,7 +538,7 @@ class RandomForestClassification(ClassificationWorkflowBase):
             random_state: Optional[int] = 42,
             verbose: int = 0,
             warm_start: bool = False,
-            class_weight: Optional[str,dict,list[dict]] = None,
+            class_weight: Union[str, dict, list[dict], None] = None,
             ccp_alpha: float = 0.0,
             max_samples: Union[int, float] = 10
     ) -> None:

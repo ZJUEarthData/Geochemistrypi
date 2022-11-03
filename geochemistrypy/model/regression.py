@@ -165,7 +165,6 @@ class XgboostRegression(RegressionWorkflowBase):
         ]
     ]
 
-
     # TODO: find out the attributes importance_type effect
     def __init__(
         self,
