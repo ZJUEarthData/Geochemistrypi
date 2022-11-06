@@ -775,6 +775,7 @@ class RandomForestClassification(ClassificationWorkflowBase):
                                             class_weight=self.class_weight,
                                             ccp_alpha=self.ccp_alpha,
                                             max_samples=self.max_samples)
+        self.naming = RandomForestClassification.name
 
     def feature_importances(self):
         ###################################################
