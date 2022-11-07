@@ -12,6 +12,7 @@ from utils.base import save_data
 from utils.base import save_fig
 from global_variable import MODEL_OUTPUT_IMAGE_PATH
 from global_variable import DATASET_OUTPUT_PATH
+from .func.algo_clustering._dbscan import DBSCAN_Plot_2D
 
 
 class ClusteringWorkflowBase(object):
@@ -36,11 +37,14 @@ class ClusteringWorkflowBase(object):
     def __init__(self):
         self.model = None
         self.X = None
+        self.np_X = None
         self.naming = None
 
-    def fit(self, X, y=None):
+
+    def fit(self,np_X, X,y=None):
         # keep y to be in consistent with the framework
         self.X = X
+        self.np_X = np_X
         self.model.fit(X)
 
     def get_cluster_centers(self):
@@ -54,7 +58,7 @@ class ClusteringWorkflowBase(object):
         save_data(self.X, f"{self.naming}", DATASET_OUTPUT_PATH)
 
 
-    def plot_silhouette_diagram(self, n_clusters: int = 0, ):
+    def plot_silhouette_diagram(self, n_clusters: int = 0):
         """Draw the silhouette diagram for analysis.
 
         Parameters
@@ -73,6 +77,7 @@ class ClusteringWorkflowBase(object):
         """
         print("")
         print("-----* Silhouette Analysis *-----")
+
         # Create a subplot with 1 row and 2 columns
         fig, (ax1, ax2) = plt.subplots(1, 2)
         fig.set_size_inches(18, 7)
@@ -161,9 +166,9 @@ class ClusteringWorkflowBase(object):
     def plot_2d_graph(self):
         print("")
         print("-----* 2D Scatter Plot *-----")
+
         # Get name
         namelist = self.X.columns.values.tolist()
-
         fig = plt.figure()
         ax1 = fig.add_subplot(111)
         ax1.set_title('2D Scatter Plot')
@@ -288,7 +293,7 @@ class KMeansClustering(ClusteringWorkflowBase):
 class DBSCANClustering(ClusteringWorkflowBase):
 
     name = "DBSCAN"
-    special_function = []
+    special_function = ["DBSCAN_result_plot","DBSCAN_OUTPUT_EXCEL"]
 
     def __init__(self,
                  eps=0.5,
@@ -310,15 +315,19 @@ class DBSCANClustering(ClusteringWorkflowBase):
         self.leaf_size = leaf_size
         self.p = p
         self.n_jobs = n_jobs
-
         self.model = DBSCAN(eps=self.eps,
-                            min_samples=self.min_samples,
-                            metric=self.metric,
-                            metric_params=self.min_samples,
-                            algorithm=self.algorithm,
-                            leaf_size=self.leaf_size,
-                            p=self.p,
-                            n_jobs=self.n_jobs)
+                            min_samples=self.min_samples)
+        self.naming = DBSCANClustering.name
 
-    def special_components(self):
-        pass
+    def DATA_Prepare(self) -> None:
+        db = self.model.fit(self.np_X)
+        return db
+
+    def Plot_DBSCAN(self, db) -> None:
+        print("-------** Plot_DBSCAN_2D **----------")
+        DBSCAN_Plot_2D(self.np_X, db.labels_, db, MODEL_OUTPUT_IMAGE_PATH )
+
+
+    def special_components(self) -> None:
+        db = self.DATA_Prepare()
+        self.Plot_DBSCAN(db=db)
