@@ -15,9 +15,6 @@ from typing import Optional, Union, Dict
 from abc import ABCMeta, abstractmethod
 
 
-
-
-
 class ClusteringWorkflowBase(WorkflowBase):
     """Base class for Cluster.
 
@@ -62,32 +59,9 @@ class KMeansClustering(ClusteringWorkflowBase):
                  random_state=None,
                  copy_x=True,
                  algorithm="auto"):
-
-        super().__init__()
-        self.n_clusters = n_clusters
-        self.init = init
-        self.max_iter = max_iter
-        self.tol = tol
-        self.n_init = n_init
-        self.verbose = verbose
-        self.random_state = random_state
-        self.copy_x = copy_x
-        self.algorithm = algorithm
-        self.model = KMeans(n_clusters=self.n_clusters,
-                            init=self.init,
-                            n_init=self.n_init,
-                            max_iter=self.max_iter,
-                            tol=self.tol,
-                            verbose=self.verbose,
-                            random_state=self.random_state,
-                            copy_x=self.copy_x,
-                            algorithm=self.algorithm)
-        self.naming = KMeansClustering.name
         """
-
         Parameters
         ----------
-
         n_clusters : int, default=8
             The number of clusters to form as well as the number of
             centroids to generate.
@@ -157,6 +131,27 @@ class KMeansClustering(ClusteringWorkflowBase):
         https://scikit-learn.org/stable/modules/clustering.html#k-means
         """
 
+        super().__init__()
+        self.n_clusters = n_clusters
+        self.init = init
+        self.max_iter = max_iter
+        self.tol = tol
+        self.n_init = n_init
+        self.verbose = verbose
+        self.random_state = random_state
+        self.copy_x = copy_x
+        self.algorithm = algorithm
+        self.model = KMeans(n_clusters=self.n_clusters,
+                            init=self.init,
+                            n_init=self.n_init,
+                            max_iter=self.max_iter,
+                            tol=self.tol,
+                            verbose=self.verbose,
+                            random_state=self.random_state,
+                            copy_x=self.copy_x,
+                            algorithm=self.algorithm)
+        self.naming = KMeansClustering.name
+
     def _get_scores(self):
         print("-----* KMeans Scores *-----")
         print("Inertia Score: ", self.model.inertia_)
@@ -183,7 +178,6 @@ class KMeansClustering(ClusteringWorkflowBase):
         self._plot_silhouette_diagram(data=self.X, cluster_labels=self.X['clustering result'],
                                       cluster_centers_=self.get_cluster_centers(), n_clusters=self.n_clusters,
                                       algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
-        print("hsfkjdhfsakjfhsakjfh",kwargs['components_num'])
         # Draw graphs when the number of principal components > 3
         if kwargs['components_num'] > 3:
             self._scatter3d()
@@ -194,6 +188,7 @@ class KMeansClustering(ClusteringWorkflowBase):
 
         else:
             pass
+
 
 class DBSCANClustering(ClusteringWorkflowBase):
 
@@ -210,6 +205,42 @@ class DBSCANClustering(ClusteringWorkflowBase):
                  p=None,
                  n_jobs=None,
                  ):
+        """
+        Parameters
+        ----------
+        eps : float, default=0.5
+        The maximum distance between two samples for one to be considered as in the neighborhood of the other. This is not a maximum bound on the distances of points within a cluster. This is the most important DBSCAN parameter to choose appropriately for your data set and distance function.
+
+        min_samples : int, default=5
+        The number of samples (or total weight) in a neighborhood for a point to be considered as a core point. This includes the point itself.
+
+        metric : str, or callable, default=’euclidean’
+        The metric to use when calculating distance between instances in a feature array. If metric is a string or callable, it must be one of the options allowed by sklearn.metrics.pairwise_distances for its metric parameter. If metric is “precomputed”, X is assumed to be a distance matrix and must be square. X may be a sparse graph, in which case only “nonzero” elements may be considered neighbors for DBSCAN.
+
+        New in version 0.17: metric precomputed to accept precomputed sparse matrix.
+
+        metric_params : dict, default=None
+        Additional keyword arguments for the metric function.
+
+        New in version 0.19.
+
+        algorithm : {‘auto’, ‘ball_tree’, ‘kd_tree’, ‘brute’}, default=’auto’
+        The algorithm to be used by the NearestNeighbors module to compute pointwise distances and find nearest neighbors. See NearestNeighbors module documentation for details.
+
+        leaf_size : int, default=30
+        Leaf size passed to BallTree or cKDTree. This can affect the speed of the construction and query, as well as the memory required to store the tree. The optimal value depends on the nature of the problem.
+
+        p : float, default=None
+        The power of the Minkowski metric to be used to calculate distance between points. If None, then p=2 (equivalent to the Euclidean distance).
+
+        n_jobs : int, default=None
+        The number of parallel jobs to run. None means 1 unless in a joblib.parallel_backend context. -1 means using all processors. See Glossary for more details.
+
+        References
+        ----------------------------------------
+        Read more in the :ref:`User Guide <dbscan>`.
+        https://scikit-learn.org/stable/modules/clustering.html#dbscan
+        """
 
         super().__init__()
         self.eps = eps
@@ -229,50 +260,12 @@ class DBSCANClustering(ClusteringWorkflowBase):
                             p=self.p,
                             n_jobs=self.n_jobs)
         self.naming = DBSCANClustering.name
-        """
 
-        Parameters
-        ----------
-        
-        eps : float, default=0.5
-        The maximum distance between two samples for one to be considered as in the neighborhood of the other. This is not a maximum bound on the distances of points within a cluster. This is the most important DBSCAN parameter to choose appropriately for your data set and distance function.
-        
-        min_samples : int, default=5
-        The number of samples (or total weight) in a neighborhood for a point to be considered as a core point. This includes the point itself.
-        
-        metric : str, or callable, default=’euclidean’
-        The metric to use when calculating distance between instances in a feature array. If metric is a string or callable, it must be one of the options allowed by sklearn.metrics.pairwise_distances for its metric parameter. If metric is “precomputed”, X is assumed to be a distance matrix and must be square. X may be a sparse graph, in which case only “nonzero” elements may be considered neighbors for DBSCAN.
-        
-        New in version 0.17: metric precomputed to accept precomputed sparse matrix.
-        
-        metric_params : dict, default=None
-        Additional keyword arguments for the metric function.
-        
-        New in version 0.19.
-        
-        algorithm : {‘auto’, ‘ball_tree’, ‘kd_tree’, ‘brute’}, default=’auto’
-        The algorithm to be used by the NearestNeighbors module to compute pointwise distances and find nearest neighbors. See NearestNeighbors module documentation for details.
-        
-        leaf_size : int, default=30
-        Leaf size passed to BallTree or cKDTree. This can affect the speed of the construction and query, as well as the memory required to store the tree. The optimal value depends on the nature of the problem.
-        
-        p : float, default=None
-        The power of the Minkowski metric to be used to calculate distance between points. If None, then p=2 (equivalent to the Euclidean distance).
-        
-        n_jobs : int, default=None
-        The number of parallel jobs to run. None means 1 unless in a joblib.parallel_backend context. -1 means using all processors. See Glossary for more details.
-        
-        References
-        ----------------------------------------
-        Read more in the :ref:`User Guide <dbscan>`.
-        https://scikit-learn.org/stable/modules/clustering.html#dbscan
-        """
     @staticmethod
     def clustering_result_plot(X: pd.DataFrame, trained_model: any, algorithm_name: str, store_path: str) -> None:
         print("-------** dbscan_clustering_result_2d_plot **----------")
         dbscan_result_plot(X, trained_model, algorithm_name)
         save_fig(f'Plot - {algorithm_name} - 2D', store_path)
-
 
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
         self.clustering_result_plot(self.X, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
