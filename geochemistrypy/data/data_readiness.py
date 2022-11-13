@@ -4,7 +4,7 @@ import re
 import openpyxl.utils.exceptions
 from global_variable import DATASET_PATH
 import pandas as pd
-from typing import Optional, List
+from typing import Optional, List, Tuple
 # from utils.exceptions import InvalidFileError
 
 
@@ -171,3 +171,72 @@ def limit_num_input(option_list: List[str], prefix: str, input_func: num_input) 
 
 def np2pd(array, columns_name):
     return pd.DataFrame(array, columns=columns_name)
+
+
+
+def float_input(default: float, prefix: Optional[str] = None, slogan: Optional[str] = "@Number: " ) -> float:
+    """Get the number of the desired option.
+
+    Parameters
+    ----------
+    default: float
+         If the user does not enter anything, it is assigned to option.
+
+    prefix : str, default=None
+        It indicates which section the user currently is in on the UML, which is shown on the command-line console.
+
+    slogan : str, default="@Number: "
+        It acts like the first parameter of input function in Python, which output the hint.
+
+    Returns
+    -------
+    option: float or int
+        An option number.
+    """
+    while True:
+        option = input(f"({prefix}) ➜ {slogan}").strip()
+        if option.isdigit() or option.replace('.', '').isdigit():
+            option = float(option)
+            break
+        elif len(option) == 0:
+            option = default
+            break
+        else:
+            print("Caution: The input is not a positive number. Please input the right number again!")
+    return option
+
+
+
+
+def tuple_input(default: Tuple[int], prefix: Optional[str] = None, slogan: Optional[str] = None) -> Tuple[int]:
+    """Get the tuple of the desired option.
+
+    Parameters
+    ----------
+    default: Tuple[int]
+         If the user does not enter anything, it is assigned to option.
+
+    prefix : str, default=None
+        It indicates which section the user currently is in on the UML, which is shown on the command-line console.
+
+    slogan : str, default=None
+        It acts like the first parameter of input function in Python, which output the hint.
+
+    Returns
+    -------
+    option: tuple
+        A numeric tuple.
+    """
+    while True:
+        option = input('Select the sizes of hidden layer you want to process.\n'
+                       'Input format:\n'
+                       'Format: "(**,); (**, **); (**, **, **)", such as "(100,); (50,25); (64, 32, 8)"\n'
+                       '--> You want to set 1/2/3 hidden layers with 100/50;25/64;32;8 neurons.\n'
+                       f"({prefix}) ➜ {slogan}").strip()
+        if len(option) == 0:
+             option = default
+             break
+        else:
+             option = eval(option)
+             break
+    return option
