@@ -20,6 +20,7 @@ import xgboost
 from ._base import WorkflowBase
 from .func.algo_regression._polynomial import show_formula
 from .func.algo_regression._dnn import plot_pred
+from .func.algo_regression._linear import show_formula, plot_2d_graph, plot_3d_graph
 # sys.path.append("..")
 
 
@@ -1264,3 +1265,111 @@ class DNNRegression(RegressionWorkflowBase, BaseEstimator):
         self.plot_learning_curve(self.naming, MODEL_OUTPUT_IMAGE_PATH)
         self._plot_pred(y_test_predict=DNNRegression.y_test_predict,
                         y_test=DNNRegression.y_test, algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
+
+
+class LinearRegression2(RegressionWorkflowBase):
+
+    name = "Linear Regression"
+    special_function = ["Linear Regression Formula", "Two/Three-dimensional Linear Regression Image"]
+
+    def __init__(
+            self,
+            fit_intercept: bool = True,
+            normalize: bool = False,
+            copy_X: bool = True,
+            n_jobs: Optional[int] = None
+    ) -> None:
+        """
+        Parameters
+        ----------
+        fit_intercept : bool, default=True
+            Whether to calculate the intercept for this model. If set
+            to False, no intercept will be used in calculations
+            (i.e. data is expected to be centered).
+        normalize : bool, default=False
+            This parameter is ignored when ``fit_intercept`` is set to False.
+            If True, the regressors X will be normalized before regression by
+            subtracting the mean and dividing by the l2-norm.
+            If you wish to standardize, please use
+                            :class:`~sklearn.preprocessing.StandardScaler` before calling ``fit``
+            on an estimator with ``normalize=False``.
+            .. deprecated:: 1.0
+               `normalize` was deprecated in version 1.0 and will be
+               removed in 1.2.
+        copy_X : bool, default=True
+                        If True, X will be copied; else, it may be overwritten.
+        n_jobs : int, default=None
+            The number of jobs to use for the computation. This will only provide
+            speedup in case of sufficiently large problems, that is if firstly
+                            `n_targets > 1` and secondly `X` is sparse or if `positive` is set
+            to `True`. ``None`` means 1 unless in a
+            :obj:`joblib.parallel_backend` context. ``-1`` means using all
+            processors. See :term:`Glossary <n_jobs>` for more details.
+        positive : bool, default=False
+                        When set to ``True``, forces the coefficients to be positive. This
+            option is only supported for dense arrays.
+            .. versionadded:: 0.24
+
+        References
+        ----------
+        scikit API: sklearn.linear_model.LinearRegression
+        https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html?highlight=linearregression
+        """
+        super().__init__()
+        self.fit_intercept = fit_intercept
+        self.normalize = normalize
+        self.copy_X = copy_X
+        self.n_jobs = n_jobs
+
+        self.model = LinearRegression(fit_intercept=self.fit_intercept,
+                                      copy_X=self.copy_X,
+                                      normalize=self.normalize,
+                                      n_jobs=self.n_jobs)
+        self.naming = LinearRegression2.name
+
+    @staticmethod
+    def _show_formula(coef, intercept, columns_name):
+        print("-----* Linear Regression Formula *-----")
+        show_formula(coef, intercept, columns_name)
+
+    @staticmethod
+    def _plot_2d_graph(feature_data: pd.DataFrame, target_data: pd.DataFrame, algorithm_name: str,
+                       store_path: str):
+        print("-----* Plot 2D Graph *-----")
+        plot_2d_graph(feature_data, target_data)
+        save_fig(f"2D Scatter Graph - {algorithm_name}", store_path)
+
+    @staticmethod
+    def _plot_3d_graph(feature_data: pd.DataFrame, target_data: pd.DataFrame, algorithm_name: str,
+                       store_path: str):
+        print("-----* Plot 3D Graph *-----")
+        plot_3d_graph(feature_data, target_data)
+        save_fig(f"3D Scatter Graph - {algorithm_name}", store_path)
+
+    def special_components(self, **kwargs):
+        self._show_formula(coef=self.model.coef_, intercept=self.model.intercept_,
+                           columns_name=LinearRegression2.X.columns)
+
+        columns_num = LinearRegression2.X.shape[1]
+        if kwargs['n_dimen'] == 2:
+            if columns_num > 1:
+                # choose one of dimensions to draw
+                two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(LinearRegression2.X, 1)
+                self._plot_2d_graph(feature_data=two_dimen_data, target_data=LinearRegression2.y,
+                                    algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
+            elif columns_num == 1:
+                # no need to choose
+                self._plot_2d_graph(feature_data=LinearRegression2.X, target_data=LinearRegression2.y,
+                                    algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
+        elif kwargs['n_dimen'] == 3:
+            if columns_num > 2:
+                # choose two of dimensions to draw
+                three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(LinearRegression2.X, 2)
+                self._plot_3d_graph(feature_data=three_dimen_data, target_data=LinearRegression2.y,
+                                    algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
+            elif columns_num == 2:
+                # no need to choose
+                self._plot_3d_graph(feature_data=LinearRegression2.X, target_data=LinearRegression2.y,
+                                    algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
+        else:
+            pass
