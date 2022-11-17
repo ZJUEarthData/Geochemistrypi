@@ -2,240 +2,46 @@
 from sklearn import metrics
 from sklearn.cluster import KMeans
 from sklearn.cluster import DBSCAN
-from sklearn.metrics import silhouette_samples, silhouette_score
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-# from matplotlib.ticker import FixedLocator, FixedFormatter
 import numpy as np
+import pandas as pd
+from sklearn.cluster import AffinityPropagation
 from utils.base import save_data
 from utils.base import save_fig
 from global_variable import MODEL_OUTPUT_IMAGE_PATH
 from global_variable import DATASET_OUTPUT_PATH
+from ._base import WorkflowBase
+from .func.algo_clustering._cluster import plot_silhouette_diagram, scatter2d, scatter3d, dbscan_result_plot
+from typing import Optional, Union, Dict
+from abc import ABCMeta, abstractmethod
 
 
-class ClusteringWorkflowBase(object):
+class ClusteringWorkflowBase(WorkflowBase):
+    """Base class for Cluster.
 
-    name = None
-    # TODO: build virtualization in 2D, 3D graph and silhouette plot
+    Warning: This class should not be used directly.
+    Use derived classes instead.
+    """
     common_function = ['Cluster Centers',
                        'Cluster Labels',
-                       'Virtualization in 2D graph',
-                       'Virtualization in 3D graph',
-                       'Silhouette Plot']
-    special_function = None
-
-    @classmethod
-    def show_info(cls):
-        print("*-*" * 2, cls.name, "is running ...", "*-*" * 2)
-        print("Expected Functionality:")
-        function = cls.common_function + cls.special_function
-        for i in range(len(function)):
-            print("+ ", function[i])
+                       ]
 
     def __init__(self):
-        self.model = None
-        self.X = None
-        self.naming = None
+        super().__init__()
 
-    def fit(self, X, y=None):
-        # keep y to be in consistent with the framework
+    def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
         self.X = X
         self.model.fit(X)
 
-    def get_cluster_centers(self):
+    def get_cluster_centers(self) -> np.ndarray:
         print("-----* Clustering Centers *-----")
-        print(self.model.cluster_centers_)
+        print(getattr(self.model, 'cluster_centers_', 'This class don not have cluster_centers_'))
+        return getattr(self.model, 'cluster_centers_', 'This class don not have cluster_centers_')
 
     def get_labels(self):
         print("-----* Clustering Labels *-----")
         self.X['clustering result'] = self.model.labels_
         print(self.X)
         save_data(self.X, f"{self.naming}", DATASET_OUTPUT_PATH)
-
-
-    def plot_silhouette_diagram(self, n_clusters: int = 0, ):
-        """Draw the silhouette diagram for analysis.
-
-        Parameters
-        ----------
-        n_clusters: int
-            The number of clusters to form as well as the number of centroids to generate.
-
-        References
-        ----------
-        Silhouette analysis can be used to study the separation distance between the resulting clusters.
-        The silhouette plot displays a measure of how close each point in one cluster is to other points in the
-        neighboring clusters and thus provides a way to assess parameters like number of clusters visually.
-        This measure has a range of [-1, 1].
-
-        https://scikit-learn.org/stable/auto_examples/cluster/plot_kmeans_silhouette_analysis.html
-        """
-        print("")
-        print("-----* Silhouette Analysis *-----")
-        # Create a subplot with 1 row and 2 columns
-        fig, (ax1, ax2) = plt.subplots(1, 2)
-        fig.set_size_inches(18, 7)
-
-        # The 1st subplot is the silhouette plot
-        # The silhouette coefficient can range from -1, 1 but in this example all
-        # lie within [-0.1, 1]
-        ax1.set_xlim([-0.1, 1])
-        # The (n_clusters+1)*10 is for inserting blank space between silhouette
-        # plots of individual clusters, to demarcate them clearly.
-
-        # I hope the type of self.X = <class 'pandas.core.frame.DataFrame'>
-        ax1.set_ylim([0, len(self.X) + (n_clusters + 1) * 10])
-
-        # For example:cluster_labels = [4 4 1 ... 0 0 0]
-        cluster_labels = self.X['clustering result']
-
-        # The silhouette_score gives the average value for all the samples.
-        # This gives a perspective into the density and separation of the formed
-        # clusters
-        silhouette_avg = silhouette_score(self.X, cluster_labels)
-        print("For n_clusters =", n_clusters, "The average silhouette_score is :", silhouette_avg)
-
-        # Compute the silhouette scores for each sample
-        sample_silhouette_values = silhouette_samples(self.X, cluster_labels)
-
-        y_lower = 10
-        for i in range(n_clusters):
-            # Aggregate the silhouette scores for samples belonging to
-            # cluster i, and sort them
-            ith_cluster_silhouette_values = \
-                sample_silhouette_values[cluster_labels == i]
-
-            ith_cluster_silhouette_values.sort()
-
-            size_cluster_i = ith_cluster_silhouette_values.shape[0]
-            y_upper = y_lower + size_cluster_i
-
-            color = cm.nipy_spectral(float(i) / n_clusters)
-            ax1.fill_betweenx(np.arange(y_lower, y_upper),
-                              0, ith_cluster_silhouette_values,
-                              facecolor=color, edgecolor=color, alpha=0.7)
-
-            # Label the silhouette plots with their cluster numbers at the middle
-            ax1.text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
-
-            # Compute the new y_lower for next plot
-            y_lower = y_upper + 10  # 10 for the 0 samples
-
-        ax1.set_title("The silhouette plot for the various clusters.")
-        ax1.set_xlabel("The silhouette coefficient values")
-        ax1.set_ylabel("Cluster label")
-
-        # The vertical line for average silhouette score of all the values
-        ax1.axvline(x=silhouette_avg, color="red", linestyle="--")
-
-        ax1.set_yticks([])  # Clear the yaxis labels / ticks
-        ax1.set_xticks([-0.1, 0, 0.2, 0.4, 0.6, 0.8, 1])
-
-        # 2nd Plot showing the actual clusters formed
-        colors = cm.nipy_spectral(cluster_labels.astype(float) / n_clusters)
-        ax2.scatter(self.X.iloc[:, [0]], self.X.iloc[:, [1]], marker='.', s=30, lw=0, alpha=0.7,
-                    c=colors, edgecolor='k')
-
-        # Labeling the clusters
-        centers = self.model.cluster_centers_
-        # Draw white circles at cluster centers
-        ax2.scatter(centers[:, 0], centers[:, 1], marker='o',
-                    c="white", alpha=1, s=200, edgecolor='k')
-
-        for i, c in enumerate(centers):
-            ax2.scatter(c[0], c[1], marker='$%d$' % i, alpha=1,
-                        s=50, edgecolor='k')
-
-        ax2.set_title("The visualization of the clustered data.")
-        ax2.set_xlabel("Feature space for the 1st feature")
-        ax2.set_ylabel("Feature space for the 2nd feature")
-
-        plt.suptitle(("Silhouette analysis for KMeans clustering on sample data "
-                      "with n_clusters = %d" % n_clusters),
-                     fontsize=14, fontweight='bold')
-
-        print("Successfully graph the Silhouette Diagram.")
-        save_fig(f"Silhouette Diagram - {self.naming}", MODEL_OUTPUT_IMAGE_PATH)
-
-    def plot_2d_graph(self):
-        print("")
-        print("-----* 2D Scatter Plot *-----")
-        # Get name
-        namelist = self.X.columns.values.tolist()
-
-        fig = plt.figure()
-        ax1 = fig.add_subplot(111)
-        ax1.set_title('2D Scatter Plot')
-        plt.xlabel(namelist[0])
-        plt.ylabel(namelist[1])
-
-        # Step size of the mesh. Decrease to increase the quality of the VQ.
-        if len(namelist) == 3:
-            h = 0.02  # point in the mesh [x_min, x_max]x[y_min, y_max].
-            x_min, x_max = self.X[namelist[0]].min() - 1, self.X[namelist[0]].max() + 1
-            y_min, y_max = self.X[namelist[1]].min() - 1, self.X[namelist[1]].max() + 1
-            xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
-
-            print(np.c_[xx.ravel(), yy.ravel()])
-            Z = self.model.predict(np.c_[xx.ravel(), yy.ravel()])
-            Z = Z.reshape(xx.shape)
-            plt.imshow(
-                Z,
-                interpolation="nearest",
-                extent=(xx.min(), xx.max(), yy.min(), yy.max()),
-                cmap=plt.cm.Paired,
-                aspect="auto",
-                origin="lower",
-            )
-
-        plt.plot(self.X[namelist[0]], self.X[namelist[1]], "k.", markersize=2)
-        # has wrong
-        # c=self.X['clustering result'], marker='o', cmap=plt.cm.Paired)
-
-        # Plot the centroids as a white X
-        plt.scatter(
-            self.model.cluster_centers_[:, [0]],
-            self.model.cluster_centers_[:, [1]],
-            marker="x",
-            s=169,
-            linewidths=3,
-            color="w",
-            zorder=10,
-        )
-        plt.xlabel(namelist[0])
-        plt.ylabel(namelist[1])
-        ax1.scatter(self.X.iloc[:, [0]], self.X.iloc[:, [1]], c=self.X['clustering result'],
-                    marker='o', cmap=plt.cm.Paired)
-        ax1.scatter(self.model.cluster_centers_[:, [0]], self.model.cluster_centers_[:, [1]],
-                    c=list(set(self.X['clustering result'])), marker='o', cmap=plt.cm.Paired, s=60)
-
-        # plt.legend('x1')
-        save_fig(f"Scatter Plot - {self.naming}", MODEL_OUTPUT_IMAGE_PATH)
-
-    def plot_3d_graph(self):
-        print("")
-        print("-----* Plot 3d Graph *-----")
-        nameList = self.X.columns.values.tolist()
-        fig = plt.figure(figsize=(12, 6), facecolor='w')
-        plt.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.9)
-
-        ax = fig.add_subplot(121, projection='3d')
-        ax.scatter(self.X.iloc[:, [0]], self.X.iloc[:, [1]], self.X.iloc[:, [2]], alpha=0.3, c="#FF0000", s=6)
-        plt.title('3D Scatter Plot')
-        ax.set_xlabel(nameList[0])
-        ax.set_ylabel(nameList[1])
-        ax.set_zlabel(nameList[1])
-        plt.grid(True)
-
-        ax2 = fig.add_subplot(122, projection='3d')
-        ax2.scatter(self.X.iloc[:, [0]], self.X.iloc[:, [1]], self.X.iloc[:, [2]],
-                    c=self.X['clustering result'], s=6, cmap=plt.cm.Paired, edgecolors='none')
-        ax2.set_xlabel(nameList[0])
-        ax2.set_ylabel(nameList[1])
-        ax2.set_zlabel(nameList[1])
-        plt.grid(True)
-        save_fig(f"Plot 3d Graph - {self.naming}", MODEL_OUTPUT_IMAGE_PATH)
 
 
 class KMeansClustering(ClusteringWorkflowBase):
@@ -253,6 +59,77 @@ class KMeansClustering(ClusteringWorkflowBase):
                  random_state=None,
                  copy_x=True,
                  algorithm="auto"):
+        """
+        Parameters
+        ----------
+        n_clusters : int, default=8
+            The number of clusters to form as well as the number of
+            centroids to generate.
+
+        init : {'k-means++', 'random'}, callable or array-like of shape \
+                (n_clusters, n_features), default='k-means++'
+            Method for initialization:
+
+            'k-means++' : selects initial cluster centers for k-mean
+            clustering in a smart way to speed up convergence. See section
+            Notes in k_init for more details.
+
+            'random': choose `n_clusters` observations (rows) at random from data
+            for the initial centroids.
+
+            If an array is passed, it should be of shape (n_clusters, n_features)
+            and gives the initial centers.
+
+            If a callable is passed, it should take arguments X, n_clusters and a
+            random state and return an initialization.
+
+        n_init : int, default=10
+            Number of time the k-means algorithm will be run with different
+            centroid seeds. The final results will be the best output of
+            n_init consecutive runs in terms of inertia.
+
+        max_iter : int, default=300
+            Maximum number of iterations of the k-means algorithm for a
+            single run.
+
+        tol : float, default=1e-4
+            Relative tolerance with regards to Frobenius norm of the difference
+            in the cluster centers of two consecutive iterations to declare
+            convergence.
+
+        verbose : int, default=0
+            Verbosity mode.
+
+        random_state : int, RandomState instance or None, default=None
+            Determines random number generation for centroid initialization. Use
+            an int to make the randomness deterministic.
+            See :term:`Glossary <random_state>`.
+
+        copy_x : bool, default=True
+            When pre-computing distances it is more numerically accurate to center
+            the data first. If copy_x is True (default), then the original data is
+            not modified. If False, the original data is modified, and put back
+            before the function returns, but small numerical differences may be
+            introduced by subtracting and then adding the data mean. Note that if
+            the original data is not C-contiguous, a copy will be made even if
+            copy_x is False. If the original data is sparse, but not in CSR format,
+            a copy will be made even if copy_x is False.
+
+        algorithm : {"auto", "full", "elkan"}, default="auto"
+            K-means algorithm to use. The classical EM-style algorithm is "full".
+            The "elkan" variation is more efficient on data with well-defined
+            clusters, by using the triangle inequality. However it's more memory
+            intensive due to the allocation of an extra array of shape
+            (n_samples, n_clusters).
+
+            For now "auto" (kept for backward compatibility) chooses "elkan" but it
+            might change in the future for a better heuristic.
+
+        References
+        ----------------------------------------
+        Read more in the :ref:`User Guide <k_means>`.
+        https://scikit-learn.org/stable/modules/clustering.html#k-means
+        """
 
         super().__init__()
         self.n_clusters = n_clusters
@@ -281,14 +158,42 @@ class KMeansClustering(ClusteringWorkflowBase):
         print("Calinski Harabasz Score: ", metrics.calinski_harabasz_score(self.X, self.model.labels_))
         print("Silhouette Score: ", metrics.silhouette_score(self.X, self.model.labels_))
 
-    def special_components(self):
+    @staticmethod
+    def _plot_silhouette_diagram(data: pd.DataFrame, cluster_labels: pd.DataFrame,cluster_centers_: np.ndarray, n_clusters: int, algorithm_name: str, store_path: str) -> None:
+        print("-----* Silhouette Diagram *-----")
+        plot_silhouette_diagram(data, cluster_labels, cluster_centers_, n_clusters, algorithm_name)
+        save_fig(f"Silhouette Diagram - {algorithm_name}", store_path)
+
+    def _scatter2d(self, data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
+        print("-----* Bi-plot *-----")
+        scatter2d(data, cluster_labels, algorithm_name)
+        save_fig(f"Bi-plot - {algorithm_name}", store_path)
+
+    def _scatter3d(self) -> None:
+        print("-----* Tri-plot *-----")
+        scatter3d()
+
+    def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
         self._get_scores()
+        self._plot_silhouette_diagram(data=self.X, cluster_labels=self.X['clustering result'],
+                                      cluster_centers_=self.get_cluster_centers(), n_clusters=self.n_clusters,
+                                      algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
+        # Draw graphs when the number of principal components > 3
+        if kwargs['components_num'] > 3:
+            self._scatter3d()
+        elif kwargs['components_num'] == 3:
+            self._scatter3d()
+        elif kwargs['components_num'] == 2:
+            self._scatter2d(data=self.X, cluster_labels=self.X['clustering result'], algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
+
+        else:
+            pass
 
 
 class DBSCANClustering(ClusteringWorkflowBase):
 
     name = "DBSCAN"
-    special_function = []
+    special_function = ['Virtualization of result in 2D graph']
 
     def __init__(self,
                  eps=0.5,
@@ -300,6 +205,42 @@ class DBSCANClustering(ClusteringWorkflowBase):
                  p=None,
                  n_jobs=None,
                  ):
+        """
+        Parameters
+        ----------
+        eps : float, default=0.5
+        The maximum distance between two samples for one to be considered as in the neighborhood of the other. This is not a maximum bound on the distances of points within a cluster. This is the most important DBSCAN parameter to choose appropriately for your data set and distance function.
+
+        min_samples : int, default=5
+        The number of samples (or total weight) in a neighborhood for a point to be considered as a core point. This includes the point itself.
+
+        metric : str, or callable, default=’euclidean’
+        The metric to use when calculating distance between instances in a feature array. If metric is a string or callable, it must be one of the options allowed by sklearn.metrics.pairwise_distances for its metric parameter. If metric is “precomputed”, X is assumed to be a distance matrix and must be square. X may be a sparse graph, in which case only “nonzero” elements may be considered neighbors for DBSCAN.
+
+        New in version 0.17: metric precomputed to accept precomputed sparse matrix.
+
+        metric_params : dict, default=None
+        Additional keyword arguments for the metric function.
+
+        New in version 0.19.
+
+        algorithm : {‘auto’, ‘ball_tree’, ‘kd_tree’, ‘brute’}, default=’auto’
+        The algorithm to be used by the NearestNeighbors module to compute pointwise distances and find nearest neighbors. See NearestNeighbors module documentation for details.
+
+        leaf_size : int, default=30
+        Leaf size passed to BallTree or cKDTree. This can affect the speed of the construction and query, as well as the memory required to store the tree. The optimal value depends on the nature of the problem.
+
+        p : float, default=None
+        The power of the Minkowski metric to be used to calculate distance between points. If None, then p=2 (equivalent to the Euclidean distance).
+
+        n_jobs : int, default=None
+        The number of parallel jobs to run. None means 1 unless in a joblib.parallel_backend context. -1 means using all processors. See Glossary for more details.
+
+        References
+        ----------------------------------------
+        Read more in the :ref:`User Guide <dbscan>`.
+        https://scikit-learn.org/stable/modules/clustering.html#dbscan
+        """
 
         super().__init__()
         self.eps = eps
@@ -310,15 +251,103 @@ class DBSCANClustering(ClusteringWorkflowBase):
         self.leaf_size = leaf_size
         self.p = p
         self.n_jobs = n_jobs
-
         self.model = DBSCAN(eps=self.eps,
                             min_samples=self.min_samples,
                             metric=self.metric,
-                            metric_params=self.min_samples,
+                            metric_params=self.metric_params,
                             algorithm=self.algorithm,
                             leaf_size=self.leaf_size,
                             p=self.p,
                             n_jobs=self.n_jobs)
+        self.naming = DBSCANClustering.name
 
-    def special_components(self):
-        pass
+    @staticmethod
+    def clustering_result_plot(X: pd.DataFrame, trained_model: any, algorithm_name: str, store_path: str) -> None:
+        print("-------** dbscan_clustering_result_2d_plot **----------")
+        dbscan_result_plot(X, trained_model, algorithm_name)
+        save_fig(f'Plot - {algorithm_name} - 2D', store_path)
+
+    def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
+        self.clustering_result_plot(self.X, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+
+
+class AffinityPropagationClustering(ClusteringWorkflowBase):
+    name = "AffinityPropagation"
+
+    def __init__(self,
+                 *,
+                 damping=0.5,
+                 max_iter=200,
+                 convergence_iter=15,
+                 copy=True,
+                 preference=None,
+                 affinity="euclidean",
+                 verbose=False,
+                 random_state=None,
+    ):
+
+        super().__init__()
+        self.damping = damping
+        self.max_iter = max_iter
+        self.convergence_iter = convergence_iter
+        self.copy = copy
+        self.verbose = verbose
+        self.preference = preference
+        self.affinity = affinity
+        self.random_state = random_state
+        self.model = AffinityPropagation(damping = self.damping,
+                                         max_iter = self.max_iter,
+                                         convergence_iter = self.convergence_iter,
+                                         copy = self.copy,
+                                         preference=None,
+                                         affinity="euclidean",
+                                         verbose=False,
+                                         random_state=None,
+
+        )
+        self.naming = AffinityPropagationClustering.name
+
+    pass
+
+
+class MeanShiftClustering(ClusteringWorkflowBase):
+    name = "MeanShift"
+    pass
+
+
+class SpectralClustering(ClusteringWorkflowBase):
+    name = "Spectral"
+    pass
+
+
+class WardHierarchicalClustering(ClusteringWorkflowBase):
+    name = "WardHierarchical"
+    pass
+
+
+class AgglomerativeClustering(ClusteringWorkflowBase):
+    name = "Agglomerative"
+    pass
+
+
+
+
+
+class OPTICSClustering(ClusteringWorkflowBase):
+    name = "OPTICS"
+    pass
+
+
+class GaussianMixturesClustering(ClusteringWorkflowBase):
+    name = "GaussianMixtures"
+    pass
+
+
+class BIRCHClusteringClustering(ClusteringWorkflowBase):
+    name = "BIRCHClustering"
+    pass
+
+
+class BisectingKMeansClustering(ClusteringWorkflowBase):
+    name = "BisectingKMeans"
+    pass
