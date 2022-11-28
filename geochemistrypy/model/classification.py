@@ -17,6 +17,9 @@ from typing import Union, Optional, List, Dict, Callable, Tuple, Any, Sequence, 
 from matplotlib.colors import ListedColormap
 from ._base import WorkflowBase
 from .func.algo_classification._svm import plot_2d_decision_boundary
+from .func.algo_classification._xgboost import feature_importance_map, feature_importance_value, feature_weights_histograms
+from .func.algo_classification._decision_tree import decision_tree_plot
+from .func.algo_classification._logistic import logistic_importance_plot
 # sys.path.append("..")
 
 
@@ -477,17 +480,13 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
                                             ccp_alpha=self.ccp_alpha)
         self.naming = DecisionTreeClassification.name
 
-    def plot_tree_function(self):
+    def plot_tree_function(self, data: pd.DataFrame, trained_model: any, algorithm_name: str, store_path: str) -> None:
         ###################################################
         #Drawing decision tree diagrams
         ###################################################
         print("-----* Decision Tree Plot *-----")
-        plt.figure()
-        y = ClassificationWorkflowBase().y
-        X = ClassificationWorkflowBase().X
-        clf = self.model.fit(X,y)
-        tree.plot_tree(clf, filled=True)
-        save_fig('Decision Tree Classification Plot', MODEL_OUTPUT_IMAGE_PATH)
+        decision_tree_plot(data, trained_model, algorithm_name)
+        save_fig('Decision Tree Classification Plot', store_path)
 
     '''
        def decision_surface_plot(self):
@@ -525,7 +524,7 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
         save_fig(f'2d Decision Boundary - {algorithm_name}', store_path)
 
     def special_components(self, **kwargs) -> None:
-        self.plot_tree_function()
+        self.plot_tree_function(ClassificationWorkflowBase, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         if DecisionTreeClassification.X.shape[1] == 2:
             self.dt_plot_2d_decision_boundary(DecisionTreeClassification.X, DecisionTreeClassification.X_test,
                                               DecisionTreeClassification.y_test,
@@ -971,22 +970,19 @@ class XgboostClassification(ClassificationWorkflowBase):
             )
         self.naming = XgboostClassification.name
 
-    def _feature_importance(self):
-        print("-----* Feature Importance *-----")
-        columns_name = ClassificationWorkflowBase.X.columns
-        # print the feature importance value orderly
-        for feature_name, score in zip(list(columns_name), self.model.feature_importances_):
-            print(feature_name, ":", score)
+    @staticmethod
+    def feature_importance_series(data: pd.DataFrame, trained_model: any, algorithm_name: str, store_path: str) -> None:
+        print("-----* # print the feature importance value orderly *-----")
+        feature_importance_value(data, trained_model, algorithm_name)
+        print('---'*100)
+        feature_weights_histograms(data, trained_model, algorithm_name)
+        save_fig("xgboost_feature_weights_histograms_plot", MODEL_OUTPUT_IMAGE_PATH)
+        print('---'*100)
+        feature_importance_map(data, trained_model, algorithm_name)
+        save_fig("xgboost_feature_importance_map_plot", MODEL_OUTPUT_IMAGE_PATH)
 
-        # histograms present feature weights for XGBoost predictions
-        plt.figure(figsize=(16, 8))
-        plt.bar(range(len(columns_name)), self.model.feature_importances_, tick_label=columns_name)
-        save_fig("xgboost_feature_importance", MODEL_OUTPUT_IMAGE_PATH)
-
-        # feature importance map ranked by importance
-        plt.rcParams["figure.figsize"] = (14, 8)
-        xgboost.plot_importance(self.model)
-        save_fig("xgboost_feature_importance_score", MODEL_OUTPUT_IMAGE_PATH)
+    def special_components(self, **kwargs) -> None:
+        self.feature_importance_series(ClassificationWorkflowBase.X, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
     # def plot(self):
     # TODO(solve the problem of failed to execute WindowsPath('dot'), make sure the Graphviz executables are on your systems' PATH
@@ -1002,10 +998,6 @@ class XgboostClassification(ClassificationWorkflowBase):
     #     # }
     #     # xgboost.to_graphviz(self.model, condition_node_params = node_params)
     #     save_fig('plot_xgboost_tree', MODEL_OUTPUT_IMAGE_PATH)
-
-    def special_components(self):
-        self._feature_importance()
-        # self.plot()
 
 
 class LogisticRegressionClassification(ClassificationWorkflowBase):
@@ -1218,34 +1210,11 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
 
         self.naming = LogisticRegressionClassification.name
 
-    def feature_importance(self):
-        columns_name = ClassificationWorkflowBase.X.columns
-
+    def feature_importance(self, data: pd.DataFrame, trained_model: any, algorithm_name: str, store_path: str) -> None:
         # print the feature coefficient value orderly
         print("-----* Feature Importance *-----")
-        for feature_name, score in zip(list(columns_name), self.model.coef_.flatten()):
-            print(feature_name, ":", score)
+        logistic_importance_plot(data, trained_model, algorithm_name)
+        save_fig("LogisticRegression_feature_importance", store_path)
 
-        # feature importance map ranked by coefficient
-        coef_lr = pd.DataFrame({
-            'var': columns_name,
-            'coef': self.model.coef_.flatten()
-        })
-        index_sort = np.abs(coef_lr['coef']).sort_values().index
-        coef_lr_sort = coef_lr.loc[index_sort, :]
-
-        # Horizontal column chart plot
-        fig, ax = plt.subplots(figsize=(14,8))
-        x, y = coef_lr_sort['var'], coef_lr_sort['coef']
-        rects = plt.barh(x, y, color='dodgerblue')
-        plt.grid(linestyle="-.", axis='y', alpha=0.4)
-        plt.tight_layout()
-
-        # Add data labels
-        for rect in rects:
-            w = rect.get_width()
-            ax.text(w, rect.get_y() + rect.get_height() / 2, '%.2f' % w, ha='left', va='center')
-        save_fig("LogisticRegression_feature_importance", MODEL_OUTPUT_IMAGE_PATH)
-
-    def special_components(self):
-        self.feature_importance()
+    def special_components(self) -> None:
+        self.feature_importance(ClassificationWorkflowBase, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
