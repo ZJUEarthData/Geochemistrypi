@@ -978,7 +978,7 @@ class XgboostClassification(ClassificationWorkflowBase):
         feature_weights_histograms(data, trained_model, algorithm_name)
         save_fig("xgboost_feature_weights_histograms_plot", MODEL_OUTPUT_IMAGE_PATH)
         print('---'*100)
-        feature_importance_map(data, trained_model, algorithm_name)
+        feature_importance_map(trained_model, algorithm_name)
         save_fig("xgboost_feature_importance_map_plot", MODEL_OUTPUT_IMAGE_PATH)
 
     def special_components(self, **kwargs) -> None:
