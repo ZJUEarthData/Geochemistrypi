@@ -10,7 +10,8 @@ from utils.base import save_fig
 from global_variable import MODEL_OUTPUT_IMAGE_PATH
 from global_variable import DATASET_OUTPUT_PATH
 from ._base import WorkflowBase
-from .func.algo_clustering._cluster import plot_silhouette_diagram, scatter2d, scatter3d, dbscan_result_plot
+from .func.algo_clustering._cluster import plot_silhouette_diagram, scatter2d, scatter3d
+from .func.algo_clustering._dbscan import dbscan_result_plot
 from typing import Optional, Union, Dict
 from abc import ABCMeta, abstractmethod
 
