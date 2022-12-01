@@ -21,7 +21,7 @@ from sklearn.inspection import permutation_importance
 from ._base import WorkflowBase
 from .func.algo_regression._polynomial import show_formula
 from .func.algo_regression._dnn import plot_pred
-from .func.algo_regression._xgboost import feature_importance, histograms_feature_weights, permutation_importance_
+from .func.algo_regression._xgboost import feature_importance
 from .func.algo_regression._linear import show_formula, plot_2d_graph, plot_3d_graph
 # sys.path.append("..")
 
@@ -439,24 +439,13 @@ class XgboostRegression(RegressionWorkflowBase):
             eval_metric=self.eval_metric,
             early_stopping_rounds=self.early_stopping_rounds)
 
-    def _feature_importance(self, store_path: str):
-        print("-----* Feature Importance *-----")
-        feature_importance(RegressionWorkflowBase.X, self.model)
-        save_fig("xgb_feature_importance", store_path)
+    def _feature_importance(self):
+        # print("-----* Feature Importance *-----")
+        feature_importance(RegressionWorkflowBase.X, RegressionWorkflowBase.X_test, \
+                           RegressionWorkflowBase.y_test, self.model)
 
-    def _histograms_feature_weights(self, store_path: str):
-        histograms_feature_weights(RegressionWorkflowBase.X, self.model)
-        save_fig("xgb_feature_importance_score", store_path)
-
-    def _permutation_importance(self, store_path: str):
-        permutation_importance_(RegressionWorkflowBase.X, RegressionWorkflowBase.X_test, RegressionWorkflowBase.y_test, self.model)
-        save_fig("xgb_feature_importance_T", store_path)
-
-    def special_components(self, **kwargs):
-        self._feature_importance(store_path=MODEL_OUTPUT_IMAGE_PATH)
-        self._feature_importance(store_path=MODEL_OUTPUT_IMAGE_PATH)
-        self._permutation_importance(store_path=MODEL_OUTPUT_IMAGE_PATH)
-
+    def special_components(self):
+        self._feature_importance()
 
 
 class DecisionTreeRegression(RegressionWorkflowBase):
