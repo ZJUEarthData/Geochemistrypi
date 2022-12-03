@@ -21,6 +21,7 @@ from sklearn.inspection import permutation_importance
 from ._base import WorkflowBase
 from .func.algo_regression._polynomial import show_formula
 from .func.algo_regression._dnn import plot_pred
+from .func.algo_regression._rf import feature_importance__
 from .func.algo_regression._xgboost import feature_importance, histograms_feature_weights, permutation_importance_
 from .func.algo_regression._linear import show_formula, plot_2d_graph, plot_3d_graph
 # sys.path.append("..")
@@ -1047,27 +1048,15 @@ class RandomForestRegression(RegressionWorkflowBase, BaseEstimator):
                                            n_jobs=self.n_jobs,
                                            random_state=self.random_state)
 
-    def feature_importances(self):
+    def _feature_importances(self, store_path: str):
         print("-----* Feature Importance *-----")
-        importances_values = self.model.feature_importances_
-        importances = pd.DataFrame(importances_values, columns=["importance"])
-        feature_data = pd.DataFrame(self.X_train.columns, columns=["feature"])
-        importance = pd.concat([feature_data, importances], axis=1)
+        feature_importance__(RegressionWorkflowBase.X, RegressionWorkflowBase.X_test,\
+                             RegressionWorkflowBase.y_test, self.model)
+        save_fig("RandomForest_feature_importance", store_path)
 
-        importance = importance.sort_values(["importance"], ascending=True)
-        importance["importance"] = (importance["importance"]).astype(float)
-        importance = importance.sort_values(["importance"])
-        importance.set_index('feature', inplace=True)
-        importance.plot.barh(color='r', alpha=0.7, rot=0, figsize=(8, 8))
-        save_fig("RandomForestRegression_feature_importance", MODEL_OUTPUT_IMAGE_PATH)
+    def special_components(self, **kwargs):
+        self._feature_importances(store_path=MODEL_OUTPUT_IMAGE_PATH)
 
-    def plot(self):
-        pass
-
-    def special_components(self):
-        self.feature_importances()
-        self.plot()
-        pass
 
 
 class SupportVectorRegression(RegressionWorkflowBase):
