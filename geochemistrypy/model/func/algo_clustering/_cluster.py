@@ -133,7 +133,7 @@ def plot_silhouette_diagram(data: pd.DataFrame, cluster_labels: pd.DataFrame,
     )
 
 def scatter2d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str) -> None:
-    plt.close()
+    plt.figure()
     plt.subplot(111)
     plt.scatter(data.iloc[:, 0], data.iloc[:, 1], c = cluster_labels)
 
@@ -145,7 +145,7 @@ def scatter2d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: 
 def scatter3d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str) -> None:
     print("")
     print("-----* Plot 3d Graph *-----")
-    plt.close()
+    plt.figure()
     namelist = data.columns.values.tolist()
     fig = plt.figure(figsize=(12, 6), facecolor='w')
     plt.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.9)
@@ -164,6 +164,7 @@ def scatter3d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: 
     ax2.set_ylabel(namelist[1])
     ax2.set_zlabel(namelist[1])
     plt.grid(True)
-    plt.title(f"Compositional Tri-plot - {algorithm_name}")
+    ax.set_title(f"Base Data Tri-plot - {algorithm_name}")
+    ax2.set_title(f"Cluster Data Tri-plot - {algorithm_name}")
 
 
