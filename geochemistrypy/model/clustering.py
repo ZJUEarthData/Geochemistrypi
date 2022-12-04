@@ -277,7 +277,7 @@ class DBSCANClustering(ClusteringWorkflowBase):
     @staticmethod
     def clustering_result_plot(X: pd.DataFrame, trained_model: any, algorithm_name: str, store_path: str) -> None:
         print("-------** dbscan_clustering_result_2d_plot **----------")
-        dbscan_result_plot(X, trained_model, algorithm_name)
+        #dbscan_result_plot(X, trained_model, algorithm_name)
         save_fig(f'Plot - {algorithm_name} - 2D', store_path)
 
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
