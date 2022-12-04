@@ -1500,25 +1500,26 @@ class LinearRegression2(RegressionWorkflowBase):
                            columns_name=LinearRegression2.X.columns)
 
         columns_num = LinearRegression2.X.shape[1]
-        if kwargs['n_dimen'] == 2:
-            if columns_num > 1:
-                # choose one of dimensions to draw
-                two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(LinearRegression2.X, 1)
-                self._plot_2d_graph(feature_data=two_dimen_data, target_data=LinearRegression2.y,
-                                    algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
-            elif columns_num == 1:
-                # no need to choose
-                self._plot_2d_graph(feature_data=LinearRegression2.X, target_data=LinearRegression2.y,
-                                    algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
-        elif kwargs['n_dimen'] == 3:
-            if columns_num > 2:
-                # choose two of dimensions to draw
-                three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(LinearRegression2.X, 2)
-                self._plot_3d_graph(feature_data=three_dimen_data, target_data=LinearRegression2.y,
-                                    algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
-            elif columns_num == 2:
-                # no need to choose
-                self._plot_3d_graph(feature_data=LinearRegression2.X, target_data=LinearRegression2.y,
-                                    algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
+        if columns_num > 2:
+            # choose two of dimensions to draw
+            three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(LinearRegression2.X, 2)
+            self._plot_3d_graph(feature_data=three_dimen_data, target_data=LinearRegression2.y,
+                                algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
+            # choose one of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(LinearRegression2.X, 1)
+            self._plot_2d_graph(feature_data=two_dimen_data, target_data=LinearRegression2.y,
+                                algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
+        elif columns_num == 2:
+            # choose one of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(LinearRegression2.X, 1)
+            self._plot_2d_graph(feature_data=two_dimen_data, target_data=LinearRegression2.y,
+                                algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
+            # no need to choose
+            self._plot_3d_graph(feature_data=LinearRegression2.X, target_data=LinearRegression2.y,
+                                algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
+        elif columns_num == 1:
+            # no need to choose
+            self._plot_2d_graph(feature_data=LinearRegression2.X, target_data=LinearRegression2.y,
+                                algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
         else:
             pass

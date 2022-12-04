@@ -13,7 +13,6 @@ class RegressionModelSelection(object):
     def __init__(self, model):
         self.model = model
         self.reg_workflow = RegressionWorkflowBase()
-        self.n_dimen = None
 
     def activate(self, X, y):
         X_train, X_test, y_train, y_test = self.reg_workflow.data_split(X, y)
@@ -43,8 +42,6 @@ class RegressionModelSelection(object):
             hidden_layer = tuple_input((50, 25, 5), SECTION[2], "@Hidden_layer_sizes:")
             self.reg_workflow = DNNRegression(learning_rate_init=learning_rate, hidden_layer_sizes=hidden_layer)
         elif self.model == "Linear Regression":
-            print("Please decide the dimensions to plot")
-            self.n_dimen = num_input(SECTION[3])
             self.reg_workflow = LinearRegression2()
 
         # Common components for every regression algorithm
@@ -59,4 +56,4 @@ class RegressionModelSelection(object):
                                       y_train=y_train, y_test=y_test, y_test_predict=y_test_predict)
 
         # Special components of different algorithms
-        self.reg_workflow.special_components(n_dimen=self.n_dimen)
+        self.reg_workflow.special_components()
