@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import pandas as pd
 from sklearn import metrics
 from sklearn.cluster import KMeans
 from sklearn.cluster import DBSCAN
@@ -33,6 +34,7 @@ class ClusteringWorkflowBase(WorkflowBase):
         self.X = X
         self.model.fit(X)
 
+    # TODO(Samson 1057266013@qq.com): This function might need to be rethought.
     def get_cluster_centers(self) -> np.ndarray:
         print("-----* Clustering Centers *-----")
         print(getattr(self.model, 'cluster_centers_', 'This class don not have cluster_centers_'))
@@ -59,8 +61,10 @@ class KMeansClustering(ClusteringWorkflowBase):
                  verbose=0,
                  random_state=None,
                  copy_x=True,
-                 algorithm="auto"):
+                 algorithm="auto"
+    ) -> None:
         """
+
         Parameters
         ----------
         n_clusters : int, default=8
@@ -151,6 +155,7 @@ class KMeansClustering(ClusteringWorkflowBase):
                             random_state=self.random_state,
                             copy_x=self.copy_x,
                             algorithm=self.algorithm)
+
         self.naming = KMeansClustering.name
 
     def _get_scores(self):
@@ -160,33 +165,41 @@ class KMeansClustering(ClusteringWorkflowBase):
         print("Silhouette Score: ", metrics.silhouette_score(self.X, self.model.labels_))
 
     @staticmethod
-    def _plot_silhouette_diagram(data: pd.DataFrame, cluster_labels: pd.DataFrame,cluster_centers_: np.ndarray, n_clusters: int, algorithm_name: str, store_path: str) -> None:
+    def _plot_silhouette_diagram(data: pd.DataFrame, cluster_labels: pd.DataFrame, cluster_centers_: np.ndarray,
+                                 n_clusters: int, algorithm_name: str, store_path: str) -> None:
         print("-----* Silhouette Diagram *-----")
         plot_silhouette_diagram(data, cluster_labels, cluster_centers_, n_clusters, algorithm_name)
         save_fig(f"Silhouette Diagram - {algorithm_name}", store_path)
 
-    def _scatter2d(self, data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
+    @staticmethod
+    def _scatter2d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
         print("-----* Bi-plot *-----")
         scatter2d(data, cluster_labels, algorithm_name)
         save_fig(f"Bi-plot - {algorithm_name}", store_path)
 
-    def _scatter3d(self) -> None:
+    @staticmethod
+    def _scatter3d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
         print("-----* Tri-plot *-----")
-        scatter3d()
+        scatter3d(data, cluster_labels, algorithm_name)
+        save_fig(f"Tri-plot - {algorithm_name}", store_path)
 
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
+        components_num = self.X.shape[1] - 1
+
         self._get_scores()
         self._plot_silhouette_diagram(data=self.X, cluster_labels=self.X['clustering result'],
                                       cluster_centers_=self.get_cluster_centers(), n_clusters=self.n_clusters,
                                       algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
         # Draw graphs when the number of principal components > 3
-        if kwargs['components_num'] > 3:
-            self._scatter3d()
-        elif kwargs['components_num'] == 3:
-            self._scatter3d()
-        elif kwargs['components_num'] == 2:
-            self._scatter2d(data=self.X, cluster_labels=self.X['clustering result'], algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
-
+        if components_num > 3:
+            self._scatter3d(data=self.X, cluster_labels=self.X['clustering result'], algorithm_name=self.naming,
+                            store_path=MODEL_OUTPUT_IMAGE_PATH)
+        elif components_num == 3:
+            self._scatter3d(data=self.X, cluster_labels=self.X['clustering result'], algorithm_name=self.naming,
+                            store_path=MODEL_OUTPUT_IMAGE_PATH)
+        elif components_num == 2:
+            self._scatter2d(data=self.X, cluster_labels=self.X['clustering result'], algorithm_name=self.naming,
+                            store_path=MODEL_OUTPUT_IMAGE_PATH)
         else:
             pass
 
