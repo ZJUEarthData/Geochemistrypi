@@ -17,9 +17,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xgboost
+from sklearn.inspection import permutation_importance
 from ._base import WorkflowBase
 from .func.algo_regression._polynomial import show_formula
 from .func.algo_regression._dnn import plot_pred
+from .func.algo_regression._xgboost import feature_importance
+from .func.algo_regression._linear import show_formula, plot_2d_graph, plot_3d_graph
 # sys.path.append("..")
 
 
@@ -34,21 +37,17 @@ class RegressionWorkflowBase(WorkflowBase):
     def fit(self, X, y=None):
         self.model.fit(X, y)
 
+
+
     def predict(self, X):
         y_predict = self.model.predict(X)
         return y_predict
 
     def plot_predict(self,y_test,y_test_predict):
-        y_test = np.array(y_test).reshape(1, len(y_test)).flatten()
-        y_test_predict = np.array(y_test_predict).reshape(1, len(y_test_predict)).flatten()
-              # the lien between a and b.
-        line_a = y_test.min()
-        line_b = y_test.max()
-        #plot figure
         print("-----* Plot prediction *-----")
         plt.figure(figsize=(4, 4))
-        plt.plot([line_a, line_b], [line_a, line_b], '-r', linewidth=1)
-        plt.plot(y_test, y_test_predict, 'o', color='gold', alpha=0.3)
+        plt.scatter(y_test, y_test_predict, color='gold', alpha=0.3)
+        plt.plot([y_test.min(), y_test.max()], [y_test_predict.min(),y_test_predict.max()], '-r', linewidth=1)
         plt.title('Predicted image')
         plt.xlabel('y_test')
         plt.ylabel('y_test_predict')
@@ -89,12 +88,13 @@ class RegressionWorkflowBase(WorkflowBase):
         return scores
 
     # TODO(Sany sanyhew1097618435@163.com): How to prevent overfitting
-    def is_overfitting():
+    def is_overfitting(self):
         pass
 
     # TODO(Sany sanyhew1097618435@163.com): Do Hyperparameter Searching
-    def search_best_hyper_parameter():
+    def search_best_hyper_parameter(self):
         pass
+
 
 
 class PolynomialRegression(RegressionWorkflowBase):
@@ -126,6 +126,7 @@ class PolynomialRegression(RegressionWorkflowBase):
                                       copy_X=self.copy_X,
                                       n_jobs=self.n_jobs)
 
+
         # special attributes
         self._features_name = None
 
@@ -153,6 +154,7 @@ class PolynomialRegression(RegressionWorkflowBase):
 
 
 class XgboostRegression(RegressionWorkflowBase):
+    # Implementation of the scikit-learn API for XGBoost regression.
 
     name = "Xgboost"
     special_function = ['Feature Importance']
@@ -167,46 +169,206 @@ class XgboostRegression(RegressionWorkflowBase):
 
     # TODO: find out the attributes importance_type effect
     def __init__(
-        self,
-        max_depth: Optional[int] = None,
-        learning_rate: Optional[float] = None,
-        n_estimators: int = 100,
-        verbosity: Optional[int] = None,
-        objective: _SklObjective = None,
-        booster: Optional[str] = None,
-        tree_method: Optional[str] = None,
-        n_jobs: Optional[int] = None,
-        gamma: Optional[float] = None,
-        min_child_weight: Optional[float] = None,
-        max_delta_step: Optional[float] = None,
-        subsample: Optional[float] = None,
-        colsample_bytree: Optional[float] = None,
-        colsample_bylevel: Optional[float] = None,
-        colsample_bynode: Optional[float] = None,
-        reg_alpha: Optional[float] = None,
-        reg_lambda: Optional[float] = None,
-        scale_pos_weight: Optional[float] = None,
-        base_score: Optional[float] = None,
-        random_state: Optional[Union[np.random.RandomState, int]] = None,
-        missing: float = np.nan,
-        num_parallel_tree: Optional[int] = None,
-        monotone_constraints: Optional[Union[Dict[str, int], str]] = None,
-        interaction_constraints: Optional[Union[str, Sequence[Sequence[str]]]] = None,
-        importance_type: Optional[str] = 'gain',
-        gpu_id: Optional[int] = None,
-        validate_parameters: Optional[bool] = None,
-        predictor: Optional[str] = None,
-        enable_categorical: bool = False,
-        eval_metric: Optional[Union[str, List[str], Callable]] = None,
-        early_stopping_rounds: Optional[int] = None,
-        **kwargs: Any
-    ) -> None:
-
+                self,
+                max_depth: Optional[int] = 6,
+                learning_rate: Optional[float] = 0.3,
+                n_estimators: int = 100,
+                verbosity: Optional[int] = 1,
+                objective: _SklObjective = None,
+                booster: Optional[str] = None,
+                tree_method: Optional[str] = 'auto',
+                n_jobs: Optional[int] = None,
+                gamma: Optional[float] = 0,
+                min_child_weight: Optional[float] = None,
+                max_delta_step: Optional[float] = 0,
+                subsample: Optional[float] = 1,
+                colsample_bytree: Optional[float] = 1,
+                colsample_bylevel: Optional[float] = 1,
+                colsample_bynode: Optional[float] = 1,
+                reg_alpha: Optional[float] = 0,
+                reg_lambda: Optional[float] = 1,
+                scale_pos_weight: Optional[float] = 1,
+                base_score: Optional[float] = None,
+                random_state: Optional[Union[np.random.RandomState, int]] = None,
+                missing: float = np.nan,
+                num_parallel_tree: Optional[int] = 1,
+                monotone_constraints: Optional[Union[Dict[str, int], str]] = None,
+                interaction_constraints: Optional[Union[str, Sequence[Sequence[str]]]] = None,
+                importance_type: Optional[str] = 'gain',
+                gpu_id: Optional[int] = None,
+                validate_parameters: Optional[bool] = None,
+                predictor: Optional[str] = None,
+                enable_categorical: bool = False,
+                eval_metric: Optional[Union[str, List[str], Callable]] = None,
+                early_stopping_rounds: Optional[int] = None,
+                **kwargs: Any) -> None:
         """
+        Parameters
+        ----------
+        max_depth [default=6]
+            Maximum depth of a tree. Increasing this value will make the model more complex and more likely to overfit.
+            0 indicates no limit on depth. Beware that XGBoost aggressively consumes memory when training a deep tree.
+            exact tree method requires non-zero value.
+            range: [0,∞]
+
+        learning_rate [default=0.3]
+            Step size shrinkage used in update to prevents overfitting.
+            After each boosting step, we can directly get the weights of new features,
+            and eta shrinks the feature weights to make the boosting process more conservative.
+            range: [0,1]
+
+        n_estimators : int
+        Number of gradient boosted trees.  Equivalent to number of boosting rounds.
+
+
+
+        objective : {SklObjective}
+            Specify the learning task and the corresponding learning objective or
+            a custom objective function to be used (see note below).
+
+        verbosity [default=1]
+            Verbosity of printing messages. Valid values are 0 (silent), 1 (warning), 2 (info), 3 (debug).
+            Sometimes XGBoost tries to change configurations based on heuristics,
+            which is displayed as warning message.
+            If there’s unexpected behaviour, please try to increase value of verbosity.
+
+        booster [default= gbtree ]
+            Which booster to use. Can be gbtree, gblinear or dart;
+            gbtree and dart use tree based models while gblinear uses linear functions.
+
+        tree_method string [default= auto]
+            The tree construction algorithm used in XGBoost. See description in the reference paper and Tree Methods.
+            XGBoost supports approx, hist and gpu_hist for distributed training. Experimental support for external memory is available for approx and gpu_hist.
+            Choices: auto, exact, approx, hist, gpu_hist, this is a combination of commonly used updaters. For other updaters like refresh, set the parameter updater directly.
+                auto: Use heuristic to choose the fastest method.
+                    For small dataset, exact greedy (exact) will be used.
+                    For larger dataset, approximate algorithm (approx) will be chosen. It’s recommended to try hist and gpu_hist for higher performance with large dataset. (gpu_hist)has support for external memory.
+                    Because old behavior is always use exact greedy in single machine, user will get a message when approximate algorithm is chosen to notify this choice.
+                exact: Exact greedy algorithm. Enumerates all split candidates.
+                approx: Approximate greedy algorithm using quantile sketch and gradient histogram.
+                hist: Faster histogram optimized approximate greedy algorithm.
+                gpu_hist: GPU implementation of hist algorithm.
+
+        n_jobs : Optional[int]
+            Number of parallel threads used to run xgboost.  When used with other
+            Scikit-Learn algorithms like grid search, you may choose which algorithm to
+            parallelize and balance the threads.  Creating thread contention will
+            significantly slow down both algorithms.
+
+        gamma [default=0, alias: min_split_loss]
+            Minimum loss reduction required to make a further partition on a leaf node of the tree.
+            The larger gamma is, the more conservative the algorithm will be.
+            range: [0,∞]
+
+        min_child_weight [default=1]
+            Minimum sum of instance weight (hessian) needed in a child.
+            If the tree partition step results in a leaf node with the sum of instance weight less than min_child_weight,
+            then the building process will give up further partitioning. In linear regression task,
+            this simply corresponds to minimum number of instances needed to be in each node.
+            The larger min_child_weight is, the more conservative the algorithm will be.
+            range: [0,∞]
+
+        max_delta_step [default=0]
+            Maximum delta step we allow each leaf output to be.
+            If the value is set to 0, it means there is no constraint.
+            If it is set to a positive value, it can help making the update step more conservative.
+            Usually this parameter is not needed, but it might help in logistic regression
+            when class is extremely imbalanced. Set it to value of 1-10 might help control the update.
+            range: [0,∞]
+
+        subsample [default=1]
+            Subsample ratio of the training instances.
+            Setting it to 0.5 means that XGBoost would randomly sample half of the training data prior to growing trees.
+            and this will prevent overfitting.
+            Subsampling will occur once in every boosting iteration.
+            range: (0,1]
+
+        colsample_bytree [default=1]
+            colsample_bytree is the subsample ratio of columns when constructing each tree.
+            Subsampling occurs once for every tree constructed.
+
+        colsample_bylevel [default=1]
+            colsample_bylevel is the subsample ratio of columns for each level.
+            Subsampling occurs once for every new depth level reached in a tree.
+            Columns are subsampled from the set of columns chosen for the current tree.
+
+        colsample_bynode [default=1]
+            colsample_bynode is the subsample ratio of columns for each node (split).
+            Subsampling occurs once every time a new split is evaluated.
+            Columns are subsampled from the set of columns chosen for the current level.
+
+        reg_alpha [default=0]
+            L1 regularization term on weights.
+            Increasing this value will make model more conservative.
+
+        reg_lambda [default=1, alias: reg_lambda]
+            L2 regularization term on weights.
+            Increasing this value will make model more conservative.
+
+        scale_pos_weight [default=1]
+            Control the balance of positive and negative weights, useful for unbalanced classes.
+
+        predictor, [default= auto]
+            The type of predictor algorithm to use.
+            Provides the same results but allows the use of GPU or CPU.
+                auto: Configure predictor based on heuristics.
+                cpu_predictor: Multicore CPU prediction algorithm.
+                gpu_predictor: Prediction using GPU. Used when tree_method is gpu_hist.
+                    When predictor is set to default value auto, the gpu_hist tree method is able to provide GPU based prediction
+                    without copying training data to GPU memory. If gpu_predictor is explicitly specified,
+                    then all data is copied into GPU, only recommended for performing prediction tasks.
+
+        base_score : Optional[float]
+            The initial prediction score of all instances, global bias.
+
+        random_state : Optional[Union[numpy.random.RandomState, int]]
+            Random number seed.
+            .. note::
+
+               Using gblinear booster with shotgun updater is nondeterministic as
+               it uses Hogwild algorithm.
+
+        missing : float, default np.nan
+        Value in the data which needs to be present as a missing value.
+
+        num_parallel_tree: Optional[int]
+            Used for boosting random forest.
+
+        monotone_constraints : Optional[Union[Dict[str, int], str]]
+            Constraint of variable monotonicity.  See :doc:`tutorial </tutorials/monotonic>`
+            for more information.
+
+        interaction_constraints : Optional[Union[str, List[Tuple[str]]]]
+            Constraints for interaction representing permitted interactions.  The
+            constraints must be specified in the form of a nested list, e.g. ``[[0, 1], [2,
+            3, 4]]``, where each inner list is a group of indices of features that are
+            allowed to interact with each other.  See :doc:`tutorial
+            </tutorials/feature_interaction_constraint>` for more information
+
+        importance_type: Optional[str]
+            The feature importance type for the feature_importances\\_ property:
+
+            * For tree model, it's either "gain", "weight", "cover", "total_gain" or
+              "total_cover".
+            * For linear model, only "weight" is defined and it's the normalized coefficients
+              without bias.
+
+        gpu_id : Optional[int]
+            Device ordinal.
+
+        validate_parameters : Optional[bool]
+            Give warnings for unknown parameter.
+
+        eval_metric : Optional[Union[str, List[str], Callable]]
+
+        early_stopping_rounds : Optional[int]
+
         References
         ----------
-        Xgboost API for the scikit-learn wrapper:
-        https://github.com/dmlc/xgboost/blob/master/python-package/xgboost/sklearn.py
+        [1] https://xgboost.readthedocs.io/en/stable/parameter.html#
+
+        [2] Xgboost API for the scikit-learn wrapper:
+            https://github.com/dmlc/xgboost/blob/master/python-package/xgboost/sklearn.py
         """
 
         super().__init__()
@@ -278,21 +440,9 @@ class XgboostRegression(RegressionWorkflowBase):
             early_stopping_rounds=self.early_stopping_rounds)
 
     def _feature_importance(self):
-        print("-----* Feature Importance *-----")
-        columns_name = RegressionWorkflowBase.X.columns
-        # print the feature importance value orderly
-        for feature_name, score in zip(list(columns_name), self.model.feature_importances_):
-            print(feature_name, ":", score)
-
-        # histograms present feature weights for XGBoost predictions
-        plt.figure(figsize=(40, 6))
-        plt.bar(range(len(columns_name)), self.model.feature_importances_, tick_label=columns_name)
-        save_fig("xgb_feature_importance", MODEL_OUTPUT_IMAGE_PATH)
-
-        # feature importance map ranked by importance
-        plt.rcParams["figure.figsize"] = (14, 8)
-        xgboost.plot_importance(self.model)
-        save_fig("xgb_feature_importance_score", MODEL_OUTPUT_IMAGE_PATH)
+        # print("-----* Feature Importance *-----")
+        feature_importance(RegressionWorkflowBase.X, RegressionWorkflowBase.X_test, \
+                           RegressionWorkflowBase.y_test, self.model)
 
     def special_components(self):
         self._feature_importance()
@@ -1264,3 +1414,111 @@ class DNNRegression(RegressionWorkflowBase, BaseEstimator):
         self.plot_learning_curve(self.naming, MODEL_OUTPUT_IMAGE_PATH)
         self._plot_pred(y_test_predict=DNNRegression.y_test_predict,
                         y_test=DNNRegression.y_test, algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
+
+
+class LinearRegression2(RegressionWorkflowBase):
+
+    name = "Linear Regression"
+    special_function = ["Linear Regression Formula", "Two/Three-dimensional Linear Regression Image"]
+
+    def __init__(
+            self,
+            fit_intercept: bool = True,
+            normalize: bool = False,
+            copy_X: bool = True,
+            n_jobs: Optional[int] = None
+    ) -> None:
+        """
+        Parameters
+        ----------
+        fit_intercept : bool, default=True
+            Whether to calculate the intercept for this model. If set
+            to False, no intercept will be used in calculations
+            (i.e. data is expected to be centered).
+        normalize : bool, default=False
+            This parameter is ignored when ``fit_intercept`` is set to False.
+            If True, the regressors X will be normalized before regression by
+            subtracting the mean and dividing by the l2-norm.
+            If you wish to standardize, please use
+                            :class:`~sklearn.preprocessing.StandardScaler` before calling ``fit``
+            on an estimator with ``normalize=False``.
+            .. deprecated:: 1.0
+               `normalize` was deprecated in version 1.0 and will be
+               removed in 1.2.
+        copy_X : bool, default=True
+                        If True, X will be copied; else, it may be overwritten.
+        n_jobs : int, default=None
+            The number of jobs to use for the computation. This will only provide
+            speedup in case of sufficiently large problems, that is if firstly
+                            `n_targets > 1` and secondly `X` is sparse or if `positive` is set
+            to `True`. ``None`` means 1 unless in a
+            :obj:`joblib.parallel_backend` context. ``-1`` means using all
+            processors. See :term:`Glossary <n_jobs>` for more details.
+        positive : bool, default=False
+                        When set to ``True``, forces the coefficients to be positive. This
+            option is only supported for dense arrays.
+            .. versionadded:: 0.24
+
+        References
+        ----------
+        scikit API: sklearn.linear_model.LinearRegression
+        https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html?highlight=linearregression
+        """
+        super().__init__()
+        self.fit_intercept = fit_intercept
+        self.normalize = normalize
+        self.copy_X = copy_X
+        self.n_jobs = n_jobs
+
+        self.model = LinearRegression(fit_intercept=self.fit_intercept,
+                                      copy_X=self.copy_X,
+                                      normalize=self.normalize,
+                                      n_jobs=self.n_jobs)
+        self.naming = LinearRegression2.name
+
+    @staticmethod
+    def _show_formula(coef, intercept, columns_name):
+        print("-----* Linear Regression Formula *-----")
+        show_formula(coef, intercept, columns_name)
+
+    @staticmethod
+    def _plot_2d_graph(feature_data: pd.DataFrame, target_data: pd.DataFrame, algorithm_name: str,
+                       store_path: str):
+        print("-----* Plot 2D Graph *-----")
+        plot_2d_graph(feature_data, target_data)
+        save_fig(f"2D Scatter Graph - {algorithm_name}", store_path)
+
+    @staticmethod
+    def _plot_3d_graph(feature_data: pd.DataFrame, target_data: pd.DataFrame, algorithm_name: str,
+                       store_path: str):
+        print("-----* Plot 3D Graph *-----")
+        plot_3d_graph(feature_data, target_data)
+        save_fig(f"3D Scatter Graph - {algorithm_name}", store_path)
+
+    def special_components(self, **kwargs):
+        self._show_formula(coef=self.model.coef_, intercept=self.model.intercept_,
+                           columns_name=LinearRegression2.X.columns)
+
+        columns_num = LinearRegression2.X.shape[1]
+        if kwargs['n_dimen'] == 2:
+            if columns_num > 1:
+                # choose one of dimensions to draw
+                two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(LinearRegression2.X, 1)
+                self._plot_2d_graph(feature_data=two_dimen_data, target_data=LinearRegression2.y,
+                                    algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
+            elif columns_num == 1:
+                # no need to choose
+                self._plot_2d_graph(feature_data=LinearRegression2.X, target_data=LinearRegression2.y,
+                                    algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
+        elif kwargs['n_dimen'] == 3:
+            if columns_num > 2:
+                # choose two of dimensions to draw
+                three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(LinearRegression2.X, 2)
+                self._plot_3d_graph(feature_data=three_dimen_data, target_data=LinearRegression2.y,
+                                    algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
+            elif columns_num == 2:
+                # no need to choose
+                self._plot_3d_graph(feature_data=LinearRegression2.X, target_data=LinearRegression2.y,
+                                    algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
+        else:
+            pass

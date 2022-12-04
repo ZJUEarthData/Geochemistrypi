@@ -132,26 +132,67 @@ def plot_silhouette_diagram(data: pd.DataFrame, cluster_labels: pd.DataFrame,
         fontweight="bold",
     )
 
+def plot_2d_graph(self):
+    print("")
+    print("-----* 2D Scatter Plot *-----")
+    # Get name
+    namelist = self.X.columns.values.tolist()
 
-def scatter2d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str) -> None:
-    plt.close()
-    plt.subplot(111)
-    plt.scatter(data.iloc[:, 0], data.iloc[:, 1], c = cluster_labels)
+    fig = plt.figure()
+    ax1 = fig.add_subplot(111)
+    ax1.set_title('2D Scatter Plot')
+    plt.xlabel(namelist[0])
+    plt.ylabel(namelist[1])
 
-    plt.xlabel(f"{data.columns[0]}")
-    plt.ylabel(f"{data.columns[1]}")
-    plt.title(f"Compositional Bi-plot - {algorithm_name}")
+    # Step size of the mesh. Decrease to increase the quality of the VQ.
+    if len(namelist) == 3:
+        h = 0.02  # point in the mesh [x_min, x_max]x[y_min, y_max].
+        x_min, x_max = self.X[namelist[0]].min() - 1, self.X[namelist[0]].max() + 1
+        y_min, y_max = self.X[namelist[1]].min() - 1, self.X[namelist[1]].max() + 1
+        xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
+
+        print(np.c_[xx.ravel(), yy.ravel()])
+        Z = self.model.predict(np.c_[xx.ravel(), yy.ravel()])
+        Z = Z.reshape(xx.shape)
+        plt.imshow(
+            Z,
+            interpolation="nearest",
+            extent=(xx.min(), xx.max(), yy.min(), yy.max()),
+            cmap=plt.cm.Paired,
+            aspect="auto",
+            origin="lower",
+        )
+
+    plt.plot(self.X[namelist[0]], self.X[namelist[1]], "k.", markersize=2)
+    # has wrong
+    # c=self.X['clustering result'], marker='o', cmap=plt.cm.Paired)
+
+    # Plot the centroids as a white X
+    plt.scatter(
+        self.model.cluster_centers_[:, [0]],
+        self.model.cluster_centers_[:, [1]],
+        marker="x",
+        s=169,
+        linewidths=3,
+        color="w",
+        zorder=10,
+    )
+    plt.xlabel(namelist[0])
+    plt.ylabel(namelist[1])
+    ax1.scatter(self.X.iloc[:, [0]], self.X.iloc[:, [1]], c=self.X['clustering result'],
+                marker='o', cmap=plt.cm.Paired)
+    ax1.scatter(self.model.cluster_centers_[:, [0]], self.model.cluster_centers_[:, [1]],
+                c=list(set(self.X['clustering result'])), marker='o', cmap=plt.cm.Paired, s=60)
+
+    # plt.legend('x1')
+    save_fig(f"Scatter Plot - {self.naming}", MODEL_OUTPUT_IMAGE_PATH)
 
 
-def scatter3d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str) -> None:
+def plot_3d_graph(self):
     print("")
     print("-----* Plot 3d Graph *-----")
-    plt.close()
-    namelist = data.columns.values.tolist()
-    fig = plt.figure(figsize=(12, 6), facecolor='w')
-    plt.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.9)
+    nameList = self.X.columns.values.tolist()
 
-    ax = fig.add_subplot(121, projection='3d')
     ax.scatter(data.iloc[:, [0]], data.iloc[:, [1]], data.iloc[:, [2]], alpha=0.3, c="#FF0000", s=6)
     ax.set_xlabel(namelist[0])
     ax.set_ylabel(namelist[1])
@@ -166,4 +207,5 @@ def scatter3d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: 
     ax2.set_zlabel(namelist[1])
     plt.grid(True)
     plt.title(f"Compositional Tri-plot - {algorithm_name}")
+
 

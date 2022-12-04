@@ -3,12 +3,9 @@ import pandas as pd
 from sklearn import metrics
 from sklearn.cluster import KMeans
 from sklearn.cluster import DBSCAN
-from sklearn.metrics import silhouette_samples, silhouette_score
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-# from matplotlib.ticker import FixedLocator, FixedFormatter
 import numpy as np
+import pandas as pd
+from sklearn.cluster import AffinityPropagation
 from utils.base import save_data
 from utils.base import save_fig
 from global_variable import MODEL_OUTPUT_IMAGE_PATH
@@ -16,6 +13,8 @@ from global_variable import DATASET_OUTPUT_PATH
 from ._base import WorkflowBase
 from .func.algo_clustering._cluster import plot_silhouette_diagram, scatter2d, scatter3d
 from typing import Optional, Union, Dict
+from abc import ABCMeta, abstractmethod
+
 
 class ClusteringWorkflowBase(WorkflowBase):
     """Base class for Cluster.
@@ -47,7 +46,6 @@ class ClusteringWorkflowBase(WorkflowBase):
         save_data(self.X, f"{self.naming}", DATASET_OUTPUT_PATH)
 
 
-
 class KMeansClustering(ClusteringWorkflowBase):
 
     name = "KMeans"
@@ -68,7 +66,6 @@ class KMeansClustering(ClusteringWorkflowBase):
 
         Parameters
         ----------
-
         n_clusters : int, default=8
             The number of clusters to form as well as the number of
             centroids to generate.
@@ -209,7 +206,7 @@ class KMeansClustering(ClusteringWorkflowBase):
 class DBSCANClustering(ClusteringWorkflowBase):
 
     name = "DBSCAN"
-    special_function = []
+    special_function = ['Virtualization of result in 2D graph']
 
     def __init__(self,
                  eps=0.5,
@@ -221,6 +218,42 @@ class DBSCANClustering(ClusteringWorkflowBase):
                  p=None,
                  n_jobs=None,
                  ):
+        """
+        Parameters
+        ----------
+        eps : float, default=0.5
+        The maximum distance between two samples for one to be considered as in the neighborhood of the other. This is not a maximum bound on the distances of points within a cluster. This is the most important DBSCAN parameter to choose appropriately for your data set and distance function.
+
+        min_samples : int, default=5
+        The number of samples (or total weight) in a neighborhood for a point to be considered as a core point. This includes the point itself.
+
+        metric : str, or callable, default=’euclidean’
+        The metric to use when calculating distance between instances in a feature array. If metric is a string or callable, it must be one of the options allowed by sklearn.metrics.pairwise_distances for its metric parameter. If metric is “precomputed”, X is assumed to be a distance matrix and must be square. X may be a sparse graph, in which case only “nonzero” elements may be considered neighbors for DBSCAN.
+
+        New in version 0.17: metric precomputed to accept precomputed sparse matrix.
+
+        metric_params : dict, default=None
+        Additional keyword arguments for the metric function.
+
+        New in version 0.19.
+
+        algorithm : {‘auto’, ‘ball_tree’, ‘kd_tree’, ‘brute’}, default=’auto’
+        The algorithm to be used by the NearestNeighbors module to compute pointwise distances and find nearest neighbors. See NearestNeighbors module documentation for details.
+
+        leaf_size : int, default=30
+        Leaf size passed to BallTree or cKDTree. This can affect the speed of the construction and query, as well as the memory required to store the tree. The optimal value depends on the nature of the problem.
+
+        p : float, default=None
+        The power of the Minkowski metric to be used to calculate distance between points. If None, then p=2 (equivalent to the Euclidean distance).
+
+        n_jobs : int, default=None
+        The number of parallel jobs to run. None means 1 unless in a joblib.parallel_backend context. -1 means using all processors. See Glossary for more details.
+
+        References
+        ----------------------------------------
+        Read more in the :ref:`User Guide <dbscan>`.
+        https://scikit-learn.org/stable/modules/clustering.html#dbscan
+        """
 
         super().__init__()
         self.eps = eps
@@ -231,15 +264,103 @@ class DBSCANClustering(ClusteringWorkflowBase):
         self.leaf_size = leaf_size
         self.p = p
         self.n_jobs = n_jobs
-
         self.model = DBSCAN(eps=self.eps,
                             min_samples=self.min_samples,
                             metric=self.metric,
-                            metric_params=self.min_samples,
+                            metric_params=self.metric_params,
                             algorithm=self.algorithm,
                             leaf_size=self.leaf_size,
                             p=self.p,
                             n_jobs=self.n_jobs)
+        self.naming = DBSCANClustering.name
 
-    def special_components(self):
-        pass
+    @staticmethod
+    def clustering_result_plot(X: pd.DataFrame, trained_model: any, algorithm_name: str, store_path: str) -> None:
+        print("-------** dbscan_clustering_result_2d_plot **----------")
+        dbscan_result_plot(X, trained_model, algorithm_name)
+        save_fig(f'Plot - {algorithm_name} - 2D', store_path)
+
+    def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
+        self.clustering_result_plot(self.X, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+
+
+class AffinityPropagationClustering(ClusteringWorkflowBase):
+    name = "AffinityPropagation"
+
+    def __init__(self,
+                 *,
+                 damping=0.5,
+                 max_iter=200,
+                 convergence_iter=15,
+                 copy=True,
+                 preference=None,
+                 affinity="euclidean",
+                 verbose=False,
+                 random_state=None,
+    ):
+
+        super().__init__()
+        self.damping = damping
+        self.max_iter = max_iter
+        self.convergence_iter = convergence_iter
+        self.copy = copy
+        self.verbose = verbose
+        self.preference = preference
+        self.affinity = affinity
+        self.random_state = random_state
+        self.model = AffinityPropagation(damping = self.damping,
+                                         max_iter = self.max_iter,
+                                         convergence_iter = self.convergence_iter,
+                                         copy = self.copy,
+                                         preference=None,
+                                         affinity="euclidean",
+                                         verbose=False,
+                                         random_state=None,
+
+        )
+        self.naming = AffinityPropagationClustering.name
+
+    pass
+
+
+class MeanShiftClustering(ClusteringWorkflowBase):
+    name = "MeanShift"
+    pass
+
+
+class SpectralClustering(ClusteringWorkflowBase):
+    name = "Spectral"
+    pass
+
+
+class WardHierarchicalClustering(ClusteringWorkflowBase):
+    name = "WardHierarchical"
+    pass
+
+
+class AgglomerativeClustering(ClusteringWorkflowBase):
+    name = "Agglomerative"
+    pass
+
+
+
+
+
+class OPTICSClustering(ClusteringWorkflowBase):
+    name = "OPTICS"
+    pass
+
+
+class GaussianMixturesClustering(ClusteringWorkflowBase):
+    name = "GaussianMixtures"
+    pass
+
+
+class BIRCHClusteringClustering(ClusteringWorkflowBase):
+    name = "BIRCHClustering"
+    pass
+
+
+class BisectingKMeansClustering(ClusteringWorkflowBase):
+    name = "BisectingKMeans"
+    pass
