@@ -13,6 +13,7 @@ class ClusteringModelSelection(object):
         self.model = model
         self.clt_workflow = ClusteringWorkflowBase()
         self.cluster_num = None
+        self.components_num = None
 
     def activate(self, X, y=None):
         if self.model == "KMeans":
@@ -28,10 +29,6 @@ class ClusteringModelSelection(object):
         self.clt_workflow.fit(X)
         self.clt_workflow.get_cluster_centers()
         self.clt_workflow.get_labels()
-        self.clt_workflow.plot_silhouette_diagram(self.cluster_num)
-        self.clt_workflow.plot_2d_graph()
-        self.clt_workflow.plot_3d_graph()
 
         # special components of different algorithms
         self.clt_workflow.special_components()
-
