@@ -5,6 +5,8 @@ from data.data_readiness import num_input
 from model.clustering import KMeansClustering, DBSCANClustering, ClusteringWorkflowBase
 from global_variable import SECTION
 from typing import Optional
+
+
 # sys.path.append("..")
 
 
@@ -15,14 +17,11 @@ class ClusteringModelSelection(object):
         self.model = model
         self.clt_workflow = ClusteringWorkflowBase()
         self.cluster_num = None
-        self.components_num = None
 
     def activate(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
         if self.model == "KMeans":
             print("Designate the clustering number in advance:")
             self.cluster_num = num_input(SECTION[2])
-            print("Decide the component numbers to keep:")
-            self.components_num = num_input(SECTION[2])
             self.clt_workflow = KMeansClustering(n_clusters=self.cluster_num)
         elif self.model == "DBSCAN":
             # cluster_num = num_input("Designate the clustering number in advance:\n@Number: ")
@@ -36,7 +35,7 @@ class ClusteringModelSelection(object):
         self.clt_workflow.get_cluster_centers()
         self.clt_workflow.get_labels()
 
-
         # special components of different algorithms
-        self.clt_workflow.special_components(components_num=self.components_num)
+        self.clt_workflow.special_components()
+
 
