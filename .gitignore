@@ -21,6 +21,7 @@ test.log
 
 # Bytecode
 __pycache__
+*.pyc
 
 # pytest
 .pytest_cache

@@ -8,7 +8,7 @@ from typing import Any, Optional, List
 #  delete the parameters 'contour_data' and 'labels'.
 
 
-def plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: Any,
+def plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object,
                               algorithm_name: str, contour_data: Optional[List[np.ndarray]] = None,
                               labels: Optional[np.ndarray] = None):
     """Plot the decision boundary of the trained model with the testing data set below.

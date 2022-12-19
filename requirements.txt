@@ -9,3 +9,5 @@ statsmodels~=0.13.2
 geopandas~=0.10.2
 scipy~=1.5.4
 graphviz~=0.20
+multipledispatch~=0.6.0
+FLAML~=1.0.14

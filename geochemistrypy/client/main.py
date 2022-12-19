@@ -211,12 +211,23 @@ def main():
     all_models_num = len(MODELS) + 1
     # all_models_num = 0
     print(str(all_models_num) + " - All models above to be trained")
-    print("Which model do you want to apply?(Enter the Corresponding Number):")
+    print("Which model do you want to apply?(Enter the Corresponding Number)")
     # FIXME(hecan sanyhew1097618435@163.com): how to train all the algorithms at once
     MODELS.append("all_models")
     # print(MODELS)
     model_num = limit_num_input(MODELS, SECTION[2], num_input)
     clear_output()
+
+    # Auto-training
+    is_automl = False
+    if mode_num == 1 or mode_num == 2:
+        print("Do you want to employ automated machine learning with respect to this algorithm?"
+              "(Enter the Corresponding Number):")
+        num2option(OPTION)
+        automl_num = limit_num_input(OPTION, SECTION[2], num_input)
+        if automl_num == 1:
+            is_automl = True
+        clear_output()
 
     # Model trained selection
     logger.debug("Model Training")
@@ -224,7 +235,10 @@ def main():
         # run the designated model
         model = MODELS[model_num - 1]
         run = Modes2Initiators[mode_num](model)
-        run.activate(X, y)
+        if not is_automl:
+            run.activate(X, y)
+        else:
+            run.activate(X, y, is_automl)
     else:
         # gain all models result in the specific mode
         for i in range(len(MODELS)):

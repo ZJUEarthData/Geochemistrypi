@@ -18,7 +18,7 @@ class WorkflowBase(metaclass=ABCMeta):
     special_function = []
     X, y = None, None
     X_train, X_test, y_train, y_test = None, None, None, None
-    y_predict = None
+    y_test_predict = None
 
     @classmethod
     def show_info(cls) -> None:
@@ -33,6 +33,7 @@ class WorkflowBase(metaclass=ABCMeta):
         # Default for child class. They need to be overwritten in child classes.
         self.model = None
         self.naming = None
+        self.automl = None
         self.random_state = 42
 
     @abstractmethod
@@ -122,7 +123,7 @@ class WorkflowBase(metaclass=ABCMeta):
         WorkflowBase.y_test_predict = y_test_predict
 
     def data_split(self, X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], test_size: float = 0.2)\
-            -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+            -> Tuple[pd.DataFrame, pd.DataFrame, Union[pd.DataFrame, pd.Series], Union[pd.DataFrame, pd.Series]]:
         """Split arrays or matrices into random train and test subsets."""
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=self.random_state)
         return X_train, X_test, y_train, y_test

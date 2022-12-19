@@ -7,19 +7,20 @@ from sklearn.svm import SVC
 from sklearn.metrics import classification_report, plot_confusion_matrix, confusion_matrix
 from utils.base import save_fig
 from global_variable import MODEL_OUTPUT_IMAGE_PATH
-from sklearn.decomposition import PCA
 from sklearn import tree
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 import xgboost
 from sklearn.linear_model import LogisticRegression
 from typing import Union, Optional, List, Dict, Callable, Tuple, Any, Sequence, Set, Literal
-from matplotlib.colors import ListedColormap
+from multipledispatch import dispatch
+from flaml import AutoML
 from ._base import WorkflowBase
 from .func.algo_classification._svm import plot_2d_decision_boundary
 from .func.algo_classification._xgboost import feature_importance_map, feature_importance_value, feature_weights_histograms
 from .func.algo_classification._decision_tree import decision_tree_plot
 from .func.algo_classification._logistic import logistic_importance_plot
+from .func.algo_classification._rf import feature_importances
 # sys.path.append("..")
 
 
@@ -31,26 +32,54 @@ class ClassificationWorkflowBase(WorkflowBase):
     def __init__(self) -> None:
         super().__init__()
 
+    @dispatch(object, object)
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
-        """Fit the model."""
+        """Fit the model by Scikit-learn framework."""
         self.model.fit(X, y)
 
+    @dispatch(object, object, bool)
+    def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None, is_automl: bool = False) -> None:
+        """Fit the model by FLAML framework."""
+        self.automl = AutoML()
+        if y.shape[1] == 1:  # FLAML's data format validation mechanism
+            y = y.squeeze()  # Convert a single dataFrame column into a series
+        self.automl.fit(X_train=X, y_train=y, **self.settings)
+
+    @dispatch(object)
     def predict(self, X: pd.DataFrame) -> np.ndarray:
-        """Perform classification on samples in X."""
+        """Perform classification on samples in X by Scikit-learn framework."""
         y_predict = self.model.predict(X)
         return y_predict
 
+    @dispatch(object, bool)
+    def predict(self, X: pd.DataFrame, is_automl: bool = False) -> np.ndarray:
+        """Perform classification on samples in X by FLAML framework."""
+        y_predict = self.automl.predict(X)
+        return y_predict
+
+    @property
+    def settings(self) -> Dict:
+        """The configuration to implement AutoML by FLAML framework."""
+        return dict()
+
+    @property
+    def auto_model(self) -> object:
+        """Get AutoML trained model by FLAML framework."""
+        return self.automl.model.estimator
+
     @staticmethod
-    def score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> None:
+    def _score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> None:
         print("-----* Model Score *-----")
         print(classification_report(y_true, y_predict))
 
-    def confusion_matrix_plot(self, X_test: pd.DataFrame, y_test: pd.DataFrame, y_test_prediction: pd.DataFrame) -> None:
+    @staticmethod
+    def _confusion_matrix_plot(X_test: pd.DataFrame, y_test: pd.DataFrame, y_test_predict: pd.DataFrame,
+                               trained_model: object, algorithm_name: str, store_path: str) -> None:
         print("-----* Confusion Matrix *-----")
-        print(confusion_matrix(y_test, y_test_prediction))
+        print(confusion_matrix(y_test, y_test_predict))
         plt.figure()
-        plot_confusion_matrix(self.model, X_test, y_test)
-        save_fig(f"Confusion Matrix - {self.naming}", MODEL_OUTPUT_IMAGE_PATH)
+        plot_confusion_matrix(trained_model, X_test, y_test)
+        save_fig(f"Confusion Matrix - {algorithm_name}", store_path)
 
     @staticmethod
     def contour_data(X: pd.DataFrame, trained_model: Any) -> Tuple[List[np.ndarray], np.ndarray]:
@@ -88,6 +117,22 @@ class ClassificationWorkflowBase(WorkflowBase):
         labels = trained_model.predict(input_array).reshape(matrices[0].shape)
 
         return matrices, labels
+
+    @dispatch()
+    def common_components(self) -> None:
+        """Invoke all common application functions for classification algorithms by Scikit-learn framework."""
+        self._score(ClassificationWorkflowBase.y_test, ClassificationWorkflowBase.y_test_predict)
+        self._confusion_matrix_plot(ClassificationWorkflowBase.X_test, ClassificationWorkflowBase.y_test,
+                                    ClassificationWorkflowBase.y_test_predict, self.model, self.naming,
+                                    MODEL_OUTPUT_IMAGE_PATH)
+
+    @dispatch(bool)
+    def common_components(self, is_automl: bool) -> None:
+        """Invoke all common application functions for classification algorithms by FLAML framework."""
+        self._score(ClassificationWorkflowBase.y_test, ClassificationWorkflowBase.y_test_predict)
+        self._confusion_matrix_plot(ClassificationWorkflowBase.X_test, ClassificationWorkflowBase.y_test,
+                                    ClassificationWorkflowBase.y_test_predict, self.auto_model, self.naming,
+                                    MODEL_OUTPUT_IMAGE_PATH)
 
 
 class SVMClassification(ClassificationWorkflowBase):
@@ -532,6 +577,8 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
 
 
 class RandomForestClassification(ClassificationWorkflowBase):
+    """The automation workflow of using Random Forest algorithm to make insightful products."""
+
     name = "Random Forest"
     special_function = ['Feature Importance', "Random Forest's Tree Plot", "Drawing Decision Surfaces Plot"]
 
@@ -776,75 +823,61 @@ class RandomForestClassification(ClassificationWorkflowBase):
                                             max_samples=self.max_samples)
         self.naming = RandomForestClassification.name
 
-    def feature_importances(self):
-        ###################################################
-        # Drawing feature importances barh diagram
-        ###################################################
-        print("-----* Feature Importance *-----")
-        importances_values = self.model.feature_importances_
-        importances = pd.DataFrame(importances_values, columns=["importance"])
-        feature_data = pd.DataFrame(self.X_train.columns, columns=["feature"])
-        importance = pd.concat([feature_data, importances], axis=1)
-
-        importance = importance.sort_values(["importance"], ascending=True)
-        importance["importance"] = (importance["importance"]).astype(float)
-        importance = importance.sort_values(["importance"])
-        importance.set_index('feature', inplace=True)
-        importance.plot.barh(color='r', alpha=0.7, rot=0, figsize=(8, 8))
-        save_fig("RandomForest_feature_importance", MODEL_OUTPUT_IMAGE_PATH)
-
-    def plot(self):
-        ###################################################
-        # Drawing diagrams of the first decision tree of forest
-        ###################################################
-        print("-----* Random Forest's Tree Plot *-----")
-        plt.figure()
-        tree.plot_tree(self.model.estimators_[0])
-        save_fig("RandomForest_tree", MODEL_OUTPUT_IMAGE_PATH)
-
-    '''
-       def decision_surfaces_plot(self):
-           #############################################################
-           #Plot the decision surfaces of forests of the data
-           #############################################################
-           print("-----* Decision Surfaces Plot *-----")
-           plt.figure()
-           y = np.array(ClassificationWorkflowBase().y)
-           X = np.array(ClassificationWorkflowBase().X)
-           X = PCA(n_components=2).fit_transform(X)
-           self.model.fit(X,y)
-           x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
-           y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
-           xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.02), np.arange(y_min, y_max, 0.02))
-           estimator_alpha = 1.0 / len(self.model.estimators_)
-           for tree in self.model.estimators_:
-               Z = tree.predict(np.c_[xx.ravel(), yy.ravel()])
-               Z = Z.reshape(xx.shape)
-               plt.contourf(xx, yy, Z, alpha=estimator_alpha, cmap=plt.cm.RdYlBu)
-           plt.scatter(X[:, 0], X[:, 1], c=y, cmap=ListedColormap(['#FF0000', '#0000FF']),alpha=0.6, s=20)
-           plt.suptitle("Decision Surfaces Plot ", fontsize=12)
-           plt.axis("tight")
-           plt.tight_layout(h_pad=0.2, w_pad=0.2, pad=2.5)
-           save_fig('Decision Surfaces Plot - RandomForest', MODEL_OUTPUT_IMAGE_PATH)
-           '''
+    @property
+    def settings(self) -> Dict:
+        """The configuration to implement AutoML by FLAML framework."""
+        configuration = {
+            "time_budget": 10,  # total running time in seconds
+            "metric": 'accuracy',
+            "estimator_list": ['rf'],  # list of ML learners
+            "task": 'classification',  # task type
+            # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
+            # "log_training_metric": True,  # whether to log training metric
+        }
+        return configuration
 
     @staticmethod
-    def _plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: Any,
-                                   algorithm_name: str, store_path: str,
-                                   contour_data: Optional[List[np.ndarray]] = None,
-                                   labels: Optional[np.ndarray] = None) -> None:
+    def _feature_importances(X_train: pd.DataFrame, trained_model: object, algorithm_name: str, store_path: str) -> None:
+        """Draw the feature importance bar diagram."""
+        print("-----* Feature Importance *-----")
+        feature_importances(X_train, trained_model)
+        save_fig(f"Feature Importance - {algorithm_name}", store_path)
+
+    @staticmethod
+    def _tree_plot(trained_model: object, algorithm_name: str, store_path: str) -> None:
+        """Draw a diagram of the first decision tree of the forest."""
+        print("-----* Random Forest's Tree Plot *-----")
+        plt.figure()
+        tree.plot_tree(trained_model.estimators_[0])
+        save_fig(f"First Decision Tree - {algorithm_name}", store_path)
+
+    @staticmethod
+    def _plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object,
+                                   algorithm_name: str, store_path: str) -> None:
         """Plot the decision boundary of the trained model with the testing data set below."""
         print("-----* Two-dimensional Decision Boundary Diagram *-----")
         plot_2d_decision_boundary(X, X_test, y_test, trained_model, algorithm_name)
-        save_fig(f'2d Decision Boundary - {algorithm_name}', store_path)
+        save_fig(f'2D Decision Boundary - {algorithm_name}', store_path)
 
-    def special_components(self):
-        self.feature_importances()
-        self.plot()
+    @dispatch()
+    def special_components(self, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        self._feature_importances(RandomForestClassification.X_train, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._tree_plot(self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         if RandomForestClassification.X.shape[1] == 2:
             self._plot_2d_decision_boundary(RandomForestClassification.X, RandomForestClassification.X_test,
-                                            RandomForestClassification.y_test,
-                                            self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+                                            RandomForestClassification.y_test, self.model, self.naming,
+                                            MODEL_OUTPUT_IMAGE_PATH)
+
+    @dispatch(bool)
+    def special_components(self, is_automl: bool = False, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by FLAML framework."""
+        self._feature_importances(RandomForestClassification.X_train, self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._tree_plot(self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        if RandomForestClassification.X.shape[1] == 2:
+            self._plot_2d_decision_boundary(RandomForestClassification.X, RandomForestClassification.X_test,
+                                            RandomForestClassification.y_test, self.auto_model, self.naming,
+                                            MODEL_OUTPUT_IMAGE_PATH)
 
 
 class XgboostClassification(ClassificationWorkflowBase):
