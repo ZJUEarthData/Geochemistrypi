@@ -3,7 +3,7 @@
 from global_variable import MODEL_OUTPUT_IMAGE_PATH
 from utils.base import save_fig
 from sklearn.base import BaseEstimator
-from sklearn.model_selection import train_test_split, cross_validate
+from sklearn.model_selection import cross_validate
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, explained_variance_score
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
@@ -17,13 +17,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xgboost
-from sklearn.inspection import permutation_importance
+from multipledispatch import dispatch
+from flaml import AutoML
 from ._base import WorkflowBase
 from .func.algo_regression._polynomial import show_formula
 from .func.algo_regression._dnn import plot_pred
 from .func.algo_regression._rf import feature_importance__
 from .func.algo_regression._xgboost import feature_importance, histograms_feature_weights, permutation_importance_
 from .func.algo_regression._linear import show_formula, plot_2d_graph, plot_3d_graph
+from .func.algo_regression._extra_tree import feature_importances
 # sys.path.append("..")
 
 
@@ -35,16 +37,41 @@ class RegressionWorkflowBase(WorkflowBase):
     def __init__(self) -> None:
         super().__init__()
 
-    def fit(self, X, y=None):
+    @dispatch(object, object)
+    def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
+        """Fit the model by Scikit-learn framework."""
         self.model.fit(X, y)
 
+    @dispatch(object, object, bool)
+    def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None, is_automl: bool = False) -> None:
+        """Fit the model by FLAML framework."""
+        self.automl = AutoML()
+        if y.shape[1] == 1:  # FLAML's data format validation mechanism
+            y = y.squeeze()  # Convert a single dataFrame column into a series
+        self.automl.fit(X_train=X, y_train=y, **self.settings)
 
-
-    def predict(self, X):
+    @dispatch(object)
+    def predict(self, X: pd.DataFrame) -> np.ndarray:
         y_predict = self.model.predict(X)
         return y_predict
 
-    def plot_predict(self,y_test,y_test_predict):
+    @dispatch(object, bool)
+    def predict(self, X: pd.DataFrame, is_automl: bool = False) -> np.ndarray:
+        """Perform classification on samples in X by FLAML framework."""
+        y_predict = self.automl.predict(X)
+        return y_predict
+
+    @property
+    def settings(self) -> Dict:
+        """The configuration to implement AutoML by FLAML framework."""
+        return dict()
+
+    @property
+    def auto_model(self) -> object:
+        """Get AutoML trained model by FLAML framework."""
+        return self.automl.model.estimator
+
+    def _plot_predict(self, y_test, y_test_predict):
         print("-----* Plot prediction *-----")
         plt.figure(figsize=(4, 4))
         plt.scatter(y_test, y_test_predict, color='gold', alpha=0.3)
@@ -55,7 +82,7 @@ class RegressionWorkflowBase(WorkflowBase):
         save_fig('Plot Prediction', MODEL_OUTPUT_IMAGE_PATH)
 
     @staticmethod
-    def score(y_true, y_predict):
+    def _score(y_true, y_predict):
         mse = mean_squared_error(y_true, y_predict)
         rmse = np.sqrt(mse)
         mae = mean_absolute_error(y_true, y_predict)
@@ -73,10 +100,10 @@ class RegressionWorkflowBase(WorkflowBase):
         print("Mean:", scores.mean())
         print("Standard deviation:", scores.std())
 
-    def cross_validation(self, X_train, y_train, cv_num=10):
+    def _cross_validation(self, trained_model, X_train, y_train, cv_num=10):
         print("-----* Cross Validation *-----")
         # self.model comes from the subclass of every regression algorithm
-        scores = cross_validate(self.model, X_train, y_train,
+        scores = cross_validate(trained_model, X_train, y_train,
                                 scoring=('neg_root_mean_squared_error',
                                          'neg_mean_absolute_error',
                                          'r2',
@@ -92,10 +119,19 @@ class RegressionWorkflowBase(WorkflowBase):
     def is_overfitting(self):
         pass
 
-    # TODO(Sany sanyhew1097618435@163.com): Do Hyperparameter Searching
-    def search_best_hyper_parameter(self):
-        pass
+    @dispatch()
+    def common_components(self) -> None:
+        """Invoke all common application functions for classification algorithms by Scikit-learn framework."""
+        self._score(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict)
+        self._cross_validation(self.model, RegressionWorkflowBase.X_train, RegressionWorkflowBase.y_train, 10)
+        self._plot_predict(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict)
 
+    @dispatch(bool)
+    def common_components(self, is_automl: bool) -> None:
+        """Invoke all common application functions for classification algorithms by FLAML framework."""
+        self._score(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict)
+        self._cross_validation(self.auto_model, RegressionWorkflowBase.X_train, RegressionWorkflowBase.y_train, 10)
+        self._plot_predict(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict)
 
 
 class PolynomialRegression(RegressionWorkflowBase):
@@ -648,7 +684,7 @@ class DecisionTreeRegression(RegressionWorkflowBase):
 
 
 class ExtraTreeRegression(RegressionWorkflowBase):
-    """An extra-trees regressor"""
+    """The automation workflow of using Extra Tree algorithm to make insightful products."""
     
     name = "Extra-Trees"
     special_function = ["Feature Importance"]
@@ -660,7 +696,7 @@ class ExtraTreeRegression(RegressionWorkflowBase):
                  max_leaf_nodes: int = 20,
                  random_state: int = 42,
                  n_jobs: int = -1
-    ):
+    ) -> None:
         """
         Parameters
         ----------
@@ -836,29 +872,41 @@ class ExtraTreeRegression(RegressionWorkflowBase):
                                          max_leaf_nodes=self.max_leaf_nodes,
                                          random_state=self.random_state,
                                          n_jobs=self.n_jobs)
+        self.naming = ExtraTreeRegression.name
 
-    def feature_importances(self):
-        importances_values = self.model.feature_importances_
-        importances = pd.DataFrame(importances_values, columns=["importance"])
-        feature_data = pd.DataFrame(self.X_train.columns, columns=["feature"])
-        importance = pd.concat([feature_data, importances], axis=1)
+    @property
+    def settings(self) -> Dict:
+        """The configuration to implement AutoML by FLAML framework."""
+        configuration = {
+            "time_budget": 10,  # total running time in seconds
+            "metric": 'r2',
+            "estimator_list": ['extra_tree'],  # list of ML learners
+            "task": 'regression',  # task type
+            # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
+            # "log_training_metric": True,  # whether to log training metric
+        }
+        return configuration
 
-        importance = importance.sort_values(["importance"], ascending=True)
-        importance["importance"] = (importance["importance"]).astype(float)
-        importance = importance.sort_values(["importance"])
-        importance.set_index('feature', inplace=True)
-        importance.plot.barh(color='r', alpha=0.7, rot=0, figsize=(8, 8))
-        save_fig("ExtraTreeRegression_feature_importance", MODEL_OUTPUT_IMAGE_PATH)
-
-    def extratree(self):
-        pass
-
-    def special_components(self):
-        self.feature_importances()
-        pass
+    @staticmethod
+    def _feature_importances(X_train: pd.DataFrame, trained_model: object, algorithm_name: str, store_path: str) -> None:
+        """Draw the feature importance bar diagram."""
+        print("-----* Feature Importance *-----")
+        feature_importances(X_train, trained_model)
+        save_fig(f"Feature Importance - {algorithm_name}", store_path)
 
 
-class RandomForestRegression(RegressionWorkflowBase, BaseEstimator):
+    @dispatch()
+    def special_components(self, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        self._feature_importances(ExtraTreeRegression.X_train, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+
+    @dispatch(bool)
+    def special_components(self, is_automl: bool = False, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by FLAML framework."""
+        self._feature_importances(ExtraTreeRegression.X_train, self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+
+
+class RandomForestRegression(RegressionWorkflowBase):
     """A random forest regressor"""
 
     name = "Random Forest"
@@ -870,7 +918,7 @@ class RandomForestRegression(RegressionWorkflowBase, BaseEstimator):
                  max_leaf_nodes: int = 15,
                  n_jobs: int = -1,
                  random_state: int = 42
-    ) ->None:
+    ) -> None:
         """
         Parameters
         ----------
@@ -1056,6 +1104,7 @@ class RandomForestRegression(RegressionWorkflowBase, BaseEstimator):
 
     def special_components(self, **kwargs):
         self._feature_importances(store_path=MODEL_OUTPUT_IMAGE_PATH)
+
 
 class SupportVectorRegression(RegressionWorkflowBase):
     name = "Support Vector Machine"

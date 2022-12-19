@@ -4,20 +4,24 @@ from model.regression import PolynomialRegression, XgboostRegression, DecisionTr
     RandomForestRegression, RegressionWorkflowBase, SupportVectorRegression, DNNRegression, LinearRegression2
 from data.data_readiness import num_input, float_input, tuple_input
 from global_variable import SECTION
+from multipledispatch import dispatch
 # sys.path.append("..")
 
 
 class RegressionModelSelection(object):
-    """Simulate the normal way of invoking scikit-learn regression algorithms."""
+    """Simulate the normal way of training regression algorithms."""
 
     def __init__(self, model):
         self.model = model
         self.reg_workflow = RegressionWorkflowBase()
 
+    @dispatch(object, object)
     def activate(self, X, y):
+        """Train by Scikit-learn framework."""
+
         X_train, X_test, y_train, y_test = self.reg_workflow.data_split(X, y)
 
-        # model option
+        # Model option
         if self.model == "Polynomial Regression":
             print("Please specify the maximal degree of the polynomial features.")
             poly_degree = num_input(SECTION[2], "@Degree:")
@@ -44,16 +48,60 @@ class RegressionModelSelection(object):
         elif self.model == "Linear Regression":
             self.reg_workflow = LinearRegression2()
 
-        # Common components for every regression algorithm
         self.reg_workflow.show_info()
+
+        # Use Scikit-learn style API to process input data
         self.reg_workflow.fit(X_train, y_train)
         y_test_predict = self.reg_workflow.predict(X_test)
         y_test_predict = self.reg_workflow.np2pd(y_test_predict, y_test.columns)
-        self.reg_workflow.score(y_test, y_test_predict)
-        self.reg_workflow.cross_validation(X_train, y_train, cv_num=10)
-        self.reg_workflow.plot_predict(y_test, y_test_predict)
         self.reg_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test,
                                       y_train=y_train, y_test=y_test, y_test_predict=y_test_predict)
 
+        # Common components for every regression algorithm
+        self.reg_workflow.common_components()
+
         # Special components of different algorithms
         self.reg_workflow.special_components()
+
+    @dispatch(object, object, bool)
+    def activate(self, X, y, is_automl):
+        """Train by FLAML framework."""
+
+        X_train, X_test, y_train, y_test = self.reg_workflow.data_split(X, y)
+
+        # Model option
+        if self.model == "Polynomial Regression":
+            # TODO(Sany sanyhew1097618435@163.com): Find the proper way for polynomial regression
+            print("Please specify the maximal degree of the polynomial features.")
+            poly_degree = num_input(SECTION[2], "@Degree:")
+            self.reg_workflow = PolynomialRegression(degree=poly_degree)
+            X_train, X_test = self.reg_workflow.poly(X_train, X_test)
+        elif self.model == "Xgboost":
+            self.reg_workflow = XgboostRegression()
+        elif self.model == "Decision Tree":
+            self.reg_workflow = DecisionTreeRegression()
+        elif self.model == "Extra-Trees":
+            self.reg_workflow = ExtraTreeRegression()
+        elif self.model == "Random Forest":
+            self.reg_workflow = RandomForestRegression()
+        elif self.model == "Support Vector Machine":
+            self.reg_workflow = SupportVectorRegression()
+        elif self.model == "Deep Neural Networks":
+            self.reg_workflow = DNNRegression()
+        elif self.model == "Linear Regression":
+            self.reg_workflow = LinearRegression2()
+
+        self.reg_workflow.show_info()
+
+        # Use Scikit-learn style API to process input data
+        self.reg_workflow.fit(X_train, y_train, is_automl)
+        y_test_predict = self.reg_workflow.predict(X_test, is_automl)
+        y_test_predict = self.reg_workflow.np2pd(y_test_predict, y_test.columns)
+        self.reg_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test,
+                                      y_train=y_train, y_test=y_test, y_test_predict=y_test_predict)
+
+        # Common components for every regression algorithm
+        self.reg_workflow.common_components(is_automl)
+
+        # Special components of different algorithms
+        self.reg_workflow.special_components(is_automl)
