@@ -31,7 +31,6 @@ The whole package is under construction and the documentation is progressively e
 + Yang Lyu (Daisy, Zhejiang University, China)
 + Jianming Zhao (Jamie, Jilin University, Changchun, China)
 + Jianhao Sun (Jin, China University of Geosciences，Wuhan, China)
-+ Qiuhao Zhao (Brad, Zhejiang University, China)
 + Shengxin Wang (Samson, Lanzhou University, China)
 
 **Members**:
@@ -41,11 +40,10 @@ The whole package is under construction and the documentation is progressively e
 + Kaixin Zheng (Hayne, Sun Yat-sen University, China)
 + Aixiwake·Janganuer (Ayshuak, Sun Yat-sen University, China)
 + Parnanjan Dutta (Presidency University, Kolkata, India)
-+ Xinyu Huang (Tsinghua University, Beijing, China)
 + Bailun Jiang (EPSI / Lille University, France)
 + Yongkang Chang (Kill-virus, Langzhou University, China)
 + Xin Li (The University of Manchester, United Kingdom)
-+ Ke Li（China University of Petroleum, China)
++ Xirui Zhu (Rae, University of York, United Kingdom)
 
 ## Join Us :)
 **The recruitment of research interns is ongoing !!!**
@@ -67,7 +65,7 @@ basic software engineering techniques like OOP developing, and cooperation tools
 
 **Current Working Pattern:**
 + Online working and cooperation
-+ Two weeks per working cycle -> One online meeting per working cycle
++ Three weeks per working cycle -> One online meeting per working cycle
 
 Even if you are not familiar with topics above, but if you are interested in and have plenty of time to do it.
 That's enough. We have a full-developed training system to help you, as a newbie of data mining or Python developer,
@@ -95,5 +93,6 @@ Technical record videos are on Bilibili and Youtube synchronously while other me
 
 
 ## Contributors
++ Qiuhao Zhao (Brad, Zhejiang University, China)
 + Anzhou Li (Andrian, Zhejiang University, China) 
 + Xunxin Liu (Tante, China University of Geosciences, Wuhan, China)

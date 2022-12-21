@@ -36,6 +36,9 @@ class RegressionWorkflowBase(WorkflowBase):
 
     def __init__(self) -> None:
         super().__init__()
+        # These two attributes are used for the customized models of FLAML framework
+        self.customized = False
+        self.customized_name = None
 
     @dispatch(object, object)
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
@@ -46,6 +49,8 @@ class RegressionWorkflowBase(WorkflowBase):
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None, is_automl: bool = False) -> None:
         """Fit the model by FLAML framework."""
         self.automl = AutoML()
+        if self.customized:  # When the model is not built-in in FLAML framwork
+            self.automl.add_learner(self.customized_name, self.customization)
         if y.shape[1] == 1:  # FLAML's data format validation mechanism
             y = y.squeeze()  # Convert a single dataFrame column into a series
         self.automl.fit(X_train=X, y_train=y, **self.settings)
@@ -71,15 +76,21 @@ class RegressionWorkflowBase(WorkflowBase):
         """Get AutoML trained model by FLAML framework."""
         return self.automl.model.estimator
 
-    def _plot_predict(self, y_test, y_test_predict):
-        print("-----* Plot prediction *-----")
+    @property
+    def customization(self) -> object:
+        """The customized model of FLAML framework."""
+        return object
+
+    @staticmethod
+    def _plot_predict(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
+        print("-----* Plot Prediction *-----")
         plt.figure(figsize=(4, 4))
         plt.scatter(y_test, y_test_predict, color='gold', alpha=0.3)
         plt.plot([y_test.min(), y_test.max()], [y_test_predict.min(),y_test_predict.max()], '-r', linewidth=1)
         plt.title('Predicted image')
         plt.xlabel('y_test')
         plt.ylabel('y_test_predict')
-        save_fig('Plot Prediction', MODEL_OUTPUT_IMAGE_PATH)
+        save_fig(f'Plot Prediction - {algorithm_name}', store_path)
 
     @staticmethod
     def _score(y_true, y_predict):
@@ -124,14 +135,16 @@ class RegressionWorkflowBase(WorkflowBase):
         """Invoke all common application functions for classification algorithms by Scikit-learn framework."""
         self._score(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict)
         self._cross_validation(self.model, RegressionWorkflowBase.X_train, RegressionWorkflowBase.y_train, 10)
-        self._plot_predict(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict)
+        self._plot_predict(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict,
+                           self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
     @dispatch(bool)
     def common_components(self, is_automl: bool) -> None:
         """Invoke all common application functions for classification algorithms by FLAML framework."""
         self._score(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict)
         self._cross_validation(self.auto_model, RegressionWorkflowBase.X_train, RegressionWorkflowBase.y_train, 10)
-        self._plot_predict(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict)
+        self._plot_predict(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict,
+                           self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
 
 class PolynomialRegression(RegressionWorkflowBase):
@@ -894,7 +907,6 @@ class ExtraTreeRegression(RegressionWorkflowBase):
         feature_importances(X_train, trained_model)
         save_fig(f"Feature Importance - {algorithm_name}", store_path)
 
-
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
@@ -1106,7 +1118,9 @@ class RandomForestRegression(RegressionWorkflowBase):
         self._feature_importances(store_path=MODEL_OUTPUT_IMAGE_PATH)
 
 
-class SupportVectorRegression(RegressionWorkflowBase):
+class SVMRegression(RegressionWorkflowBase):
+    """The automation workflow of using SVR algorithm to make insightful products."""
+
     name = "Support Vector Machine"
     special_function = []
 
@@ -1212,11 +1226,56 @@ class SupportVectorRegression(RegressionWorkflowBase):
                         verbose=self.verbose,
                         max_iter=self.max_iter)
 
-        self.naming = SupportVectorRegression.name
+        self.naming = SVMRegression.name
+        self.customized = True
+        self.customized_name = 'SVR'
 
-        # special attributes
+    @property
+    def settings(self) -> Dict:
+        """The configuration of SVR to implement AutoML by FLAML framework."""
+        configuration = {
+            "time_budget": 10,  # total running time in seconds
+            "metric": 'r2',
+            "estimator_list": [self.customized_name],  # list of ML learners
+            "task": 'regression',  # task type
+            # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
+            # "log_training_metric": True,  # whether to log training metric
+        }
+        return configuration
 
-    def special_components(self):
+    @property
+    def customization(self) -> object:
+        """The customized SVR of FLAML framework."""
+        from flaml.model import SKLearnEstimator
+        from flaml import tune
+        from flaml.data import REGRESSION
+        from sklearn.svm import SVR
+
+        class MySVMRegression(SKLearnEstimator):
+            def __init__(self, task='regression', n_jobs=None, **config):
+                super().__init__(task, **config)
+                if task in REGRESSION:
+                    self.estimator_class = SVR
+
+            @classmethod
+            def search_space(cls, data_size, task):
+                space = {
+                    'C': {'domain': tune.uniform(lower=1, upper=data_size[0]),
+                          'init_value': 1,
+                          'low_cost_init_value': 1}
+                }
+                return space
+
+        return MySVMRegression
+
+    @dispatch()
+    def special_components(self, **kwargs):
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        pass
+
+    @dispatch(bool)
+    def special_components(self, is_automl: bool, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by FLAML framework."""
         pass
 
 

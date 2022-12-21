@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # import sys
 from model.regression import PolynomialRegression, XgboostRegression, DecisionTreeRegression, ExtraTreeRegression,\
-    RandomForestRegression, RegressionWorkflowBase, SupportVectorRegression, DNNRegression, LinearRegression2
+    RandomForestRegression, RegressionWorkflowBase, SVMRegression, DNNRegression, LinearRegression2
 from data.data_readiness import num_input, float_input, tuple_input
 from global_variable import SECTION
 from multipledispatch import dispatch
@@ -38,7 +38,7 @@ class RegressionModelSelection(object):
         elif self.model == "Random Forest":
             self.reg_workflow = RandomForestRegression()
         elif self.model == "Support Vector Machine":
-            self.reg_workflow = SupportVectorRegression()
+            self.reg_workflow = SVMRegression()
         elif self.model == "Deep Neural Networks":
             print("Please specify the init learning rate of the the neural networks.")
             learning_rate = float_input(0.05, SECTION[2], "@Learning_rate:")
@@ -85,7 +85,7 @@ class RegressionModelSelection(object):
         elif self.model == "Random Forest":
             self.reg_workflow = RandomForestRegression()
         elif self.model == "Support Vector Machine":
-            self.reg_workflow = SupportVectorRegression()
+            self.reg_workflow = SVMRegression()
         elif self.model == "Deep Neural Networks":
             self.reg_workflow = DNNRegression()
         elif self.model == "Linear Regression":
