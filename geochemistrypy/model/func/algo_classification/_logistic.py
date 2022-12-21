@@ -21,16 +21,16 @@ def logistic_importance_plot(data: pd.DataFrame, trained_model: any, algorithm_n
     ----------
     Logistic regression, despite its name, is a linear model for classification rather than regression.
     Logistic regression is also known in the literature as logit regression, maximum-entropy classific
-    ation (MaxEnt) or the log-linear classifier. In this model, the probabilities describing the possibl
-    e outcomes of a single trial are modeled using a logistic function.
+    ation (MaxEnt) or the log-linear classifier. In this model, the probabilities describing the possible
+    outcomes of a single trial are modeled using a logistic function.
 
     https://scikit-learn.org/stable/modules/linear_model.html/logistic-regression
     """
-    columns_name = data.X.columns
+    columns_name = data.columns
     for feature_name, score in zip(list(columns_name), trained_model.coef_.flatten()):
         print(feature_name, ":", score)
 
-        # feature importance map ranked by coefficient
+    # feature importance map ranked by coefficient
     coef_lr = pd.DataFrame({
         'var': columns_name,
         'coef': trained_model.coef_.flatten()

@@ -584,12 +584,10 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
                                             ccp_alpha=self.ccp_alpha)
         self.naming = DecisionTreeClassification.name
 
-    def plot_tree_function(self, data: pd.DataFrame, trained_model: any, algorithm_name: str, store_path: str) -> None:
-        ###################################################
+    def plot_tree_function(self, cls: object, trained_model: any, algorithm_name: str, store_path: str) -> None:
         #Drawing decision tree diagrams
-        ###################################################
         print("-----* Decision Tree Plot *-----")
-        decision_tree_plot(data, trained_model, algorithm_name)
+        decision_tree_plot(cls, trained_model, algorithm_name)
         save_fig('Decision Tree Classification Plot', store_path)
 
     '''
@@ -1064,14 +1062,12 @@ class XgboostClassification(ClassificationWorkflowBase):
 
     @staticmethod
     def feature_importance_series(data: pd.DataFrame, trained_model: any, algorithm_name: str, store_path: str) -> None:
-        print("-----* # print the feature importance value orderly *-----")
-        feature_importance_value(data, trained_model, algorithm_name)
-        print('---'*100)
+        print("-----* print the feature importance value orderly *-----")
+        feature_importance_value(data, trained_model)
         feature_weights_histograms(data, trained_model, algorithm_name)
-        save_fig("xgboost_feature_weights_histograms_plot", MODEL_OUTPUT_IMAGE_PATH)
-        print('---'*100)
+        save_fig("xgboost_feature_weights_histograms_plot", store_path)
         feature_importance_map(trained_model, algorithm_name)
-        save_fig("xgboost_feature_importance_map_plot", MODEL_OUTPUT_IMAGE_PATH)
+        save_fig("xgboost_feature_importance_map_plot", store_path)
 
     def special_components(self, **kwargs) -> None:
         self.feature_importance_series(ClassificationWorkflowBase.X, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
@@ -1309,4 +1305,4 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
         save_fig("LogisticRegression_feature_importance", store_path)
 
     def special_components(self) -> None:
-        self.feature_importance(ClassificationWorkflowBase, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self.feature_importance(ClassificationWorkflowBase.X, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)

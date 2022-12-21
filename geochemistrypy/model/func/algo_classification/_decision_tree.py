@@ -1,8 +1,7 @@
 import matplotlib.pyplot as plt
-import pandas as pd
 from sklearn import tree
 
-def decision_tree_plot(data: pd.DataFrame, trained_model: any, algorithm_name: str) -> None:
+def decision_tree_plot(cls: object, trained_model: any, algorithm_name: str) -> None:
     """
     Draw the  for analysis.
 
@@ -23,8 +22,8 @@ def decision_tree_plot(data: pd.DataFrame, trained_model: any, algorithm_name: s
 
     """
     plt.figure()
-    y = data.y
-    X = data.X
+    y = cls.y
+    X = cls.X
     clf = trained_model.fit(X,y)
     tree.plot_tree(clf, filled=True)
     plt.title(f'{algorithm_name} - tree - plot')
