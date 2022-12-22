@@ -938,6 +938,8 @@ class RandomForestClassification(ClassificationWorkflowBase):
 
 
 class XgboostClassification(ClassificationWorkflowBase):
+    """The automation workflow of using Xgboost algorithm to make insightful products."""
+
     # https: // xgboost.readthedocs.io / en / stable / python / python_api.html  # module-xgboost.sklearn
     _SklObjective = Optional[
         Union[
@@ -1060,8 +1062,21 @@ class XgboostClassification(ClassificationWorkflowBase):
             )
         self.naming = XgboostClassification.name
 
+    @property
+    def settings(self) -> Dict:
+        """The configuration to implement AutoML by FLAML framework."""
+        configuration = {
+            "time_budget": 10,  # total running time in seconds
+            "metric": 'accuracy',
+            "estimator_list": ['xgboost'],  # list of ML learners
+            "task": 'classification',  # task type
+            # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
+            # "log_training_metric": True,  # whether to log training metric
+        }
+        return configuration
+
     @staticmethod
-    def feature_importance_series(data: pd.DataFrame, trained_model: any, algorithm_name: str, store_path: str) -> None:
+    def _feature_importance_series(data: pd.DataFrame, trained_model: any, algorithm_name: str, store_path: str) -> None:
         print("-----* print the feature importance value orderly *-----")
         feature_importance_value(data, trained_model)
         feature_weights_histograms(data, trained_model, algorithm_name)
@@ -1069,8 +1084,17 @@ class XgboostClassification(ClassificationWorkflowBase):
         feature_importance_map(trained_model, algorithm_name)
         save_fig("xgboost_feature_importance_map_plot", store_path)
 
+    @dispatch()
     def special_components(self, **kwargs) -> None:
-        self.feature_importance_series(ClassificationWorkflowBase.X, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        self._feature_importance_series(ClassificationWorkflowBase.X, self.model,
+                                        self.naming, MODEL_OUTPUT_IMAGE_PATH)
+
+    @dispatch(bool)
+    def special_components(self, is_automl: bool = False, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by FLAML framework."""
+        self._feature_importance_series(ClassificationWorkflowBase.X, self.auto_model,
+                                        self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
     # def plot(self):
     # TODO(solve the problem of failed to execute WindowsPath('dot'), make sure the Graphviz executables are on your systems' PATH
@@ -1089,6 +1113,8 @@ class XgboostClassification(ClassificationWorkflowBase):
 
 
 class LogisticRegressionClassification(ClassificationWorkflowBase):
+    """The automation workflow of using Logistic Regression algorithm to make insightful products."""
+
     name = "Logistic Regression"
     special_function = ['Feature Importance']
 
@@ -1298,11 +1324,31 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
 
         self.naming = LogisticRegressionClassification.name
 
-    def feature_importance(self, data: pd.DataFrame, trained_model: any, algorithm_name: str, store_path: str) -> None:
-        # print the feature coefficient value orderly
+    @property
+    def settings(self) -> Dict:
+        """The configuration to implement AutoML by FLAML framework."""
+        configuration = {
+            "time_budget": 10,  # total running time in seconds
+            "metric": 'accuracy',
+            "estimator_list": ['lrl2'],  # list of ML learners
+            "task": 'classification',  # task type
+            # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
+            # "log_training_metric": True,  # whether to log training metric
+        }
+        return configuration
+
+    def _feature_importance(self, data: pd.DataFrame, trained_model: any, algorithm_name: str, store_path: str) -> None:
+        """Print the feature coefficient value orderly."""
         print("-----* Feature Importance *-----")
         logistic_importance_plot(data, trained_model, algorithm_name)
         save_fig("LogisticRegression_feature_importance", store_path)
 
-    def special_components(self) -> None:
-        self.feature_importance(ClassificationWorkflowBase.X, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+    @dispatch()
+    def special_components(self, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        self._feature_importance(ClassificationWorkflowBase.X, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+
+    @dispatch(bool)
+    def special_components(self, is_automl: bool = False, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by FLAML framework."""
+        self._feature_importance(ClassificationWorkflowBase.X, self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
