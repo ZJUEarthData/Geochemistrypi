@@ -57,6 +57,7 @@ class RegressionWorkflowBase(WorkflowBase):
 
     @dispatch(object)
     def predict(self, X: pd.DataFrame) -> np.ndarray:
+        """Perform classification on samples in X by Scikit-learn framework."""
         y_predict = self.model.predict(X)
         return y_predict
 
@@ -176,9 +177,8 @@ class PolynomialRegression(RegressionWorkflowBase):
                                       copy_X=self.copy_X,
                                       n_jobs=self.n_jobs)
 
-
-        # special attributes
         self._features_name = None
+        self.naming = PolynomialRegression.name
 
     def poly(self, X_train, X_test):
         poly_features = PolynomialFeatures(degree=self.degree,

@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.svm import SVC
-from sklearn.metrics import classification_report, plot_confusion_matrix, confusion_matrix
+from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
 from utils.base import save_fig
 from global_variable import MODEL_OUTPUT_IMAGE_PATH
 from sklearn import tree
@@ -86,9 +86,11 @@ class ClassificationWorkflowBase(WorkflowBase):
     def _confusion_matrix_plot(X_test: pd.DataFrame, y_test: pd.DataFrame, y_test_predict: pd.DataFrame,
                                trained_model: object, algorithm_name: str, store_path: str) -> None:
         print("-----* Confusion Matrix *-----")
-        print(confusion_matrix(y_test, y_test_predict))
+        cm = confusion_matrix(y_test, y_test_predict)
+        print(cm)
         plt.figure()
-        plot_confusion_matrix(trained_model, X_test, y_test)
+        disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=trained_model.classes_)
+        disp.plot()
         save_fig(f"Confusion Matrix - {algorithm_name}", store_path)
 
     @staticmethod

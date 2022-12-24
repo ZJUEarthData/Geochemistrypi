@@ -42,7 +42,6 @@ The whole package is under construction and the documentation is progressively e
 + Parnanjan Dutta (Presidency University, Kolkata, India)
 + Bailun Jiang (EPSI / Lille University, France)
 + Yongkang Chang (Kill-virus, Langzhou University, China)
-+ Xin Li (The University of Manchester, United Kingdom)
 + Xirui Zhu (Rae, University of York, United Kingdom)
 
 ## Join Us :)
@@ -96,3 +95,4 @@ Technical record videos are on Bilibili and Youtube synchronously while other me
 + Qiuhao Zhao (Brad, Zhejiang University, China)
 + Anzhou Li (Andrian, Zhejiang University, China) 
 + Xunxin Liu (Tante, China University of Geosciences, Wuhan, China)
++ Xin Li (The University of Manchester, United Kingdom)

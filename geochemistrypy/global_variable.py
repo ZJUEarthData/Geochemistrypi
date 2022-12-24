@@ -33,9 +33,11 @@ TEST_DATA_OPTION = ['Data For Regression', 'Data For Classification',
 MODE_OPTION = ['Regression', 'Classification', 'Clustering', 'Dimensional Reduction']
 
 # The model provided to use
-REGRESSION_MODELS = ['Polynomial Regression', 'Xgboost', 'Extra-Trees', 'Decision Tree', 'Random Forest', 'Support Vector Machine', 'Deep Neural Networks', 'Linear Regression']
-CLASSIFICATION_MODELS = ['Support Vector Machine', 'Decision Tree', 'Random Forest', 'Xgboost', 'Logistic Regression']
+REGRESSION_MODELS = ['Linear Regression', 'Polynomial Regression', 'Support Vector Machine', 'Decision Tree',
+                     'Random Forest', 'Extra-Trees', 'Xgboost', 'Deep Neural Networks']
+CLASSIFICATION_MODELS = ['Logistic Regression', 'Support Vector Machine', 'Decision Tree', 'Random Forest', 'Xgboost']
 CLUSTERING_MODELS = ['KMeans', 'DBSCAN']
 DECOMPOSITION_MODELS = ['Principal Component Analysis']
+NON_AUTOML_MODELS = ['Linear Regression', 'Polynomial Regression']
 
 IMPUTING_STRATEGY = ['Mean', 'Median', 'Most Frequent']

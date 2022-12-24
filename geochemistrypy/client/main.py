@@ -4,7 +4,7 @@ import os
 from global_variable import OPTION, SECTION, IMPUTING_STRATEGY, MODE_OPTION, REGRESSION_MODELS,\
     CLASSIFICATION_MODELS, CLUSTERING_MODELS, DECOMPOSITION_MODELS, WORKING_PATH, DATA_OPTION,\
     TEST_DATA_OPTION, MODEL_OUTPUT_IMAGE_PATH, STATISTIC_IMAGE_PATH, DATASET_OUTPUT_PATH,\
-    GEO_IMAGE_PATH, MAP_IMAGE_PATH, DATASET_PATH
+    GEO_IMAGE_PATH, MAP_IMAGE_PATH, DATASET_PATH, NON_AUTOML_MODELS
 from data.data_readiness import read_data, show_data_columns, num2option, create_sub_data_set, basic_info, np2pd, \
     num_input, limit_num_input
 from data.imputation import imputer
@@ -206,7 +206,6 @@ def main():
     Modes2Initiators = {1: RegressionModelSelection, 2: ClassificationModelSelection,
                         3: ClusteringModelSelection, 4: DecompositionModelSelection}
     MODELS = Modes2Models[mode_num]
-    # print(MODELS)
     num2option(MODELS)
     all_models_num = len(MODELS) + 1
     # all_models_num = 0
@@ -214,26 +213,27 @@ def main():
     print("Which model do you want to apply?(Enter the Corresponding Number)")
     # FIXME(hecan sanyhew1097618435@163.com): how to train all the algorithms at once
     MODELS.append("all_models")
-    # print(MODELS)
     model_num = limit_num_input(MODELS, SECTION[2], num_input)
     clear_output()
 
-    # Auto-training
+    # AutoML-training
     is_automl = False
+    model = MODELS[model_num - 1]
     if mode_num == 1 or mode_num == 2:
-        print("Do you want to employ automated machine learning with respect to this algorithm?"
-              "(Enter the Corresponding Number):")
-        num2option(OPTION)
-        automl_num = limit_num_input(OPTION, SECTION[2], num_input)
-        if automl_num == 1:
-            is_automl = True
-        clear_output()
+        if model not in NON_AUTOML_MODELS:
+            print("Do you want to employ automated machine learning with respect to this algorithm?"
+                  "(Enter the Corresponding Number):")
+            num2option(OPTION)
+            automl_num = limit_num_input(OPTION, SECTION[2], num_input)
+            if automl_num == 1:
+                is_automl = True
+            clear_output()
 
     # Model trained selection
     logger.debug("Model Training")
     if model_num != all_models_num:
         # run the designated model
-        model = MODELS[model_num - 1]
+        # model = MODELS[model_num - 1]
         run = Modes2Initiators[mode_num](model)
         if not is_automl:
             run.activate(X, y)
