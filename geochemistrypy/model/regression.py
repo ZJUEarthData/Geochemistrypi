@@ -2,9 +2,6 @@
 # import sys
 from global_variable import MODEL_OUTPUT_IMAGE_PATH
 from utils.base import save_fig
-from sklearn.base import BaseEstimator
-from sklearn.model_selection import cross_validate
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, explained_variance_score
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.tree import DecisionTreeRegressor, plot_tree
@@ -20,8 +17,8 @@ import xgboost
 from multipledispatch import dispatch
 from flaml import AutoML
 from ._base import WorkflowBase
+from .func.algo_regression._common import plot_predicted_value_evaluation, plot_true_vs_predicted, score, cross_validation
 from .func.algo_regression._polynomial import show_formula
-from .func.algo_regression._dnn import plot_pred
 from .func.algo_regression._rf import feature_importance__
 from .func.algo_regression._xgboost import feature_importance, histograms_feature_weights, permutation_importance_
 from .func.algo_regression._linear import show_formula, plot_2d_graph, plot_3d_graph
@@ -83,49 +80,26 @@ class RegressionWorkflowBase(WorkflowBase):
         return object
 
     @staticmethod
-    def _plot_predict(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
-        print("-----* Plot Prediction *-----")
-        plt.figure(figsize=(4, 4))
-        plt.scatter(y_test, y_test_predict, color='gold', alpha=0.3)
-        plt.plot([y_test.min(), y_test.max()], [y_test_predict.min(),y_test_predict.max()], '-r', linewidth=1)
-        plt.title('Predicted image')
-        plt.xlabel('y_test')
-        plt.ylabel('y_test_predict')
-        save_fig(f'Plot Prediction - {algorithm_name}', store_path)
+    def _plot_predicted_value_evaluation(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
+        print("-----* Predicted Value Evaluation *-----")
+        plot_predicted_value_evaluation(y_test, y_test_predict)
+        save_fig(f'Predicted Value Evaluation - {algorithm_name}', store_path)
 
     @staticmethod
-    def _score(y_true, y_predict):
-        mse = mean_squared_error(y_true, y_predict)
-        rmse = np.sqrt(mse)
-        mae = mean_absolute_error(y_true, y_predict)
-        r2 = r2_score(y_true, y_predict)
-        evs = explained_variance_score(y_true, y_predict)
+    def _plot_true_vs_predicted(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
+        print("-----* True Value vs. Predicted Value *-----")
+        plot_true_vs_predicted(y_test_predict, y_test, algorithm_name)
+        save_fig(f'True Value vs. Predicted Value - {algorithm_name}', store_path)
+
+    @staticmethod
+    def _score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> None:
         print("-----* Model Score *-----")
-        print("RMSE score:", rmse)
-        print("MAE score:", mae)
-        print("R2 score:", r2)
-        print("Explained Variance Score:", evs)
+        score(y_true, y_predict)
 
     @staticmethod
-    def _display_cross_validation_scores(scores):
-        print("Scores:", scores)
-        print("Mean:", scores.mean())
-        print("Standard deviation:", scores.std())
-
-    def _cross_validation(self, trained_model, X_train, y_train, cv_num=10):
+    def _cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, cv_num: int = 10) -> None:
         print("-----* Cross Validation *-----")
-        # self.model comes from the subclass of every regression algorithm
-        scores = cross_validate(trained_model, X_train, y_train,
-                                scoring=('neg_root_mean_squared_error',
-                                         'neg_mean_absolute_error',
-                                         'r2',
-                                         'explained_variance'),
-                                cv=cv_num)
-        for key, values in scores.items():
-            print("*", key.upper(), "*")
-            self._display_cross_validation_scores(values)
-            print('-------------')
-        return scores
+        cross_validation(trained_model, X_train, y_train, cv_num=cv_num)
 
     # TODO(Sany sanyhew1097618435@163.com): How to prevent overfitting
     def is_overfitting(self):
@@ -136,16 +110,22 @@ class RegressionWorkflowBase(WorkflowBase):
         """Invoke all common application functions for classification algorithms by Scikit-learn framework."""
         self._score(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict)
         self._cross_validation(self.model, RegressionWorkflowBase.X_train, RegressionWorkflowBase.y_train, 10)
-        self._plot_predict(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict,
-                           self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._plot_predicted_value_evaluation(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict,
+                                              self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._plot_true_vs_predicted(y_test_predict=RegressionWorkflowBase.y_test_predict,
+                                     y_test=RegressionWorkflowBase.y_test, algorithm_name=self.naming,
+                                     store_path=MODEL_OUTPUT_IMAGE_PATH)
 
     @dispatch(bool)
     def common_components(self, is_automl: bool) -> None:
         """Invoke all common application functions for classification algorithms by FLAML framework."""
         self._score(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict)
         self._cross_validation(self.auto_model, RegressionWorkflowBase.X_train, RegressionWorkflowBase.y_train, 10)
-        self._plot_predict(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict,
-                           self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._plot_predicted_value_evaluation(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict,
+                                              self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._plot_true_vs_predicted(y_test_predict=RegressionWorkflowBase.y_test_predict,
+                                     y_test=RegressionWorkflowBase.y_test, algorithm_name=self.naming,
+                                     store_path=MODEL_OUTPUT_IMAGE_PATH)
 
 
 class PolynomialRegression(RegressionWorkflowBase):
@@ -204,7 +184,7 @@ class PolynomialRegression(RegressionWorkflowBase):
 
 
 class XgboostRegression(RegressionWorkflowBase):
-    # Implementation of the scikit-learn API for XGBoost regression.
+    """The automation workflow of using Xgboost algorithm to make insightful products."""
 
     name = "Xgboost"
     special_function = ['Feature Importance']
@@ -456,56 +436,84 @@ class XgboostRegression(RegressionWorkflowBase):
         if kwargs:
             self.kwargs = kwargs
 
-        self.model = xgboost.XGBRegressor(
-            n_estimators=self.n_estimators,
-            objective=self.objective,
-            max_depth=self.max_depth,
-            learning_rate=self.learning_rate,
-            verbosity=self.verbosity,
-            booster=self.booster,
-            tree_method=self.tree_method,
-            gamma=self.gamma,
-            min_child_weight=self.min_child_weight,
-            max_delta_step=self.max_delta_step,
-            subsample=self.subsample,
-            colsample_bytree=self.colsample_bytree,
-            colsample_bylevel=self.colsample_bylevel,
-            colsample_bynode=self.colsample_bynode,
-            reg_alpha=self.reg_alpha,
-            reg_lambda=self.reg_lambda,
-            scale_pos_weight=self.scale_pos_weight,
-            base_score=self.base_score,
-            missing=self.missing,
-            num_parallel_tree=self.num_parallel_tree,
-            random_state=self.random_state,
-            n_jobs=self.n_jobs,
-            monotone_constraints=self.monotone_constraints,
-            interaction_constraints=self.interaction_constraints,
-            importance_type=self.importance_type,
-            gpu_id=self.gpu_id,
-            validate_parameters=self.validate_parameters,
-            predictor=self.predictor,
-            enable_categorical=self.enable_categorical,
-            eval_metric=self.eval_metric,
-            early_stopping_rounds=self.early_stopping_rounds)
+        self.model = xgboost.XGBRegressor(n_estimators=self.n_estimators,
+                                          objective=self.objective,
+                                          max_depth=self.max_depth,
+                                          learning_rate=self.learning_rate,
+                                          verbosity=self.verbosity,
+                                          booster=self.booster,
+                                          tree_method=self.tree_method,
+                                          gamma=self.gamma,
+                                          min_child_weight=self.min_child_weight,
+                                          max_delta_step=self.max_delta_step,
+                                          subsample=self.subsample,
+                                          colsample_bytree=self.colsample_bytree,
+                                          colsample_bylevel=self.colsample_bylevel,
+                                          colsample_bynode=self.colsample_bynode,
+                                          reg_alpha=self.reg_alpha,
+                                          reg_lambda=self.reg_lambda,
+                                          scale_pos_weight=self.scale_pos_weight,
+                                          base_score=self.base_score,
+                                          missing=self.missing,
+                                          num_parallel_tree=self.num_parallel_tree,
+                                          random_state=self.random_state,
+                                          n_jobs=self.n_jobs,
+                                          monotone_constraints=self.monotone_constraints,
+                                          interaction_constraints=self.interaction_constraints,
+                                          importance_type=self.importance_type,
+                                          gpu_id=self.gpu_id,
+                                          validate_parameters=self.validate_parameters,
+                                          predictor=self.predictor,
+                                          enable_categorical=self.enable_categorical,
+                                          eval_metric=self.eval_metric,
+                                          early_stopping_rounds=self.early_stopping_rounds)
+        self.naming = XgboostRegression.name
 
-    def _feature_importance(self, store_path: str):
+    @property
+    def settings(self) -> Dict:
+        """The configuration to implement AutoML by FLAML framework."""
+        configuration = {
+            "time_budget": 10,  # total running time in seconds
+            "metric": 'r2',
+            "estimator_list": ['xgboost'],  # list of ML learners
+            "task": 'regression',  # task type
+            # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
+            # "log_training_metric": True,  # whether to log training metric
+        }
+        return configuration
+
+    @staticmethod
+    def _feature_importance(X: pd.DataFrame, trained_model: object, algorithm_name: str, store_path: str) -> None:
         print("-----* Feature Importance *-----")
-        feature_importance(RegressionWorkflowBase.X, self.model)
-        save_fig("Xgboost_feature_importance", store_path)
+        feature_importance(X, trained_model)
+        save_fig(f"Feature Importance - {algorithm_name}", store_path)
 
-    def _histograms_feature_weights(self, store_path: str):
-        histograms_feature_weights(RegressionWorkflowBase.X, self.model)
-        save_fig("Xgboost_feature_importance_score", store_path)
+    @staticmethod
+    def _histograms_feature_weights(X: pd.DataFrame, trained_model: object, algorithm_name: str, store_path: str) -> None:
+        histograms_feature_weights(X, trained_model)
+        save_fig(f"Feature Importance Score - {algorithm_name}", store_path)
 
-    def _permutation_importance(self, store_path: str):
-        permutation_importance_(RegressionWorkflowBase.X, RegressionWorkflowBase.X_test, RegressionWorkflowBase.y_test, self.model)
-        save_fig("Xgboost_feature_importance_T", store_path)
+    @staticmethod
+    def _permutation_importance(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object,
+                                algorithm_name: str, store_path: str) -> None:
+        permutation_importance_(X, X_test, y_test, trained_model)
+        save_fig(f"Xgboost Feature Importance - {algorithm_name}", store_path)
 
-    def special_components(self, **kwargs):
-        self._feature_importance(store_path=MODEL_OUTPUT_IMAGE_PATH)
-        self._histograms_feature_weights(store_path=MODEL_OUTPUT_IMAGE_PATH)
-        self._permutation_importance(store_path=MODEL_OUTPUT_IMAGE_PATH)
+    @dispatch()
+    def special_components(self, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        self._feature_importance(XgboostRegression.X, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._histograms_feature_weights(XgboostRegression.X, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._permutation_importance(XgboostRegression.X, XgboostRegression.X_test, XgboostRegression.y_test,
+                                     self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+
+    @dispatch(bool)
+    def special_components(self, is_automl: bool = False, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by FLAML framework."""
+        self._feature_importance(XgboostRegression.X, self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._histograms_feature_weights(XgboostRegression.X, self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._permutation_importance(XgboostRegression.X, XgboostRegression.X_test, XgboostRegression.y_test,
+                                     self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
 
 class DecisionTreeRegression(RegressionWorkflowBase):
@@ -919,7 +927,7 @@ class ExtraTreeRegression(RegressionWorkflowBase):
 
 
 class RandomForestRegression(RegressionWorkflowBase):
-    """A random forest regressor"""
+    """The automation workflow of using Random Forest algorithm to make insightful products."""
 
     name = "Random Forest"
     special_function = ["Feature Importance"]
@@ -1107,15 +1115,41 @@ class RandomForestRegression(RegressionWorkflowBase):
                                            max_leaf_nodes=self.max_leaf_nodes,
                                            n_jobs=self.n_jobs,
                                            random_state=self.random_state)
+        self.naming = RandomForestRegression.name
 
-    def _feature_importances(self, store_path: str):
+    @property
+    def settings(self) -> Dict:
+        """The configuration to implement AutoML by FLAML framework."""
+        configuration = {
+            "time_budget": 10,  # total running time in seconds
+            "metric": 'r2',
+            "estimator_list": ['rf'],  # list of ML learners
+            "task": 'regression',  # task type
+            # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
+            # "log_training_metric": True,  # whether to log training metric
+        }
+        return configuration
+
+    @staticmethod
+    def _feature_importances(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame,
+                             trained_model: object, algorithm_name: str, store_path: str) -> None:
         print("-----* Feature Importance *-----")
-        feature_importance__(RegressionWorkflowBase.X, RegressionWorkflowBase.X_test,\
-                             RegressionWorkflowBase.y_test, self.model)
-        save_fig("RandomForest_feature_importance", store_path)
+        feature_importance__(X, X_test, y_test, trained_model)
+        save_fig(f"Feature Importance - {algorithm_name}", store_path)
 
-    def special_components(self, **kwargs):
-        self._feature_importances(store_path=MODEL_OUTPUT_IMAGE_PATH)
+    @dispatch()
+    def special_components(self, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        self._feature_importances(RandomForestRegression.X, RandomForestRegression.X_test,
+                                  RandomForestRegression.y_test, self.model, self.naming,
+                                  MODEL_OUTPUT_IMAGE_PATH)
+
+    @dispatch(bool)
+    def special_components(self, is_automl: bool = False, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by FLAML framework."""
+        self._feature_importances(RandomForestRegression.X, RandomForestRegression.X_test,
+                                  RandomForestRegression.y_test, self.auto_model, self.naming,
+                                  MODEL_OUTPUT_IMAGE_PATH)
 
 
 class SVMRegression(RegressionWorkflowBase):
@@ -1279,7 +1313,7 @@ class SVMRegression(RegressionWorkflowBase):
         pass
 
 
-class DNNRegression(RegressionWorkflowBase, BaseEstimator):
+class DNNRegression(RegressionWorkflowBase):
 
     name = "Deep Neural Networks"
     special_function = ["Loss Record"]
@@ -1509,16 +1543,8 @@ class DNNRegression(RegressionWorkflowBase, BaseEstimator):
         pd.DataFrame(self.model.loss_curve_).plot(title="Loss")
         save_fig(f'Loss Record - {algorithm_name}', store_path)
 
-    @staticmethod
-    def _plot_pred(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, algorithm_name: str, store_path: str):
-        print("-----* Truth v.s. Prediction *-----")
-        plot_pred(y_test_predict, y_test, algorithm_name)
-        save_fig(f'Ground Truth v.s. Prediction - {algorithm_name}', store_path)
-
     def special_components(self, **kwargs) -> None:
         self.plot_learning_curve(self.naming, MODEL_OUTPUT_IMAGE_PATH)
-        self._plot_pred(y_test_predict=DNNRegression.y_test_predict,
-                        y_test=DNNRegression.y_test, algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
 
 
 class LinearRegression2(RegressionWorkflowBase):
