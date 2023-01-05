@@ -15,6 +15,9 @@ STATISTIC_IMAGE_PATH = os.path.join(WORKING_PATH, "images", "statistic")
 MAP_IMAGE_PATH = os.path.join(WORKING_PATH, "images", "map")
 GEO_IMAGE_PATH = os.path.join(WORKING_PATH, "images", "geochemistry")
 
+# the directory where the trained model saved
+MODEL_PATH = os.path.join(WORKING_PATH, "trained_models")
+
 # create the directories if they didn't exist yet
 # os.makedirs(DATASET_PATH, exist_ok=True)
 # os.makedirs(MODEL_OUTPUT_IMAGE_PATH, exist_ok=True)
@@ -22,6 +25,7 @@ GEO_IMAGE_PATH = os.path.join(WORKING_PATH, "images", "geochemistry")
 # os.makedirs(DATASET_OUTPUT_PATH, exist_ok=True)
 # os.makedirs(MAP_IMAGE_PATH, exist_ok=True)
 # os.makedirs(GEO_IMAGE_PATH, exist_ok=True)
+# os.makedirs(MODEL_PATH, exist_ok=True)
 
 # Tell which section the user is currently in on the UML
 SECTION = ['User', 'Data', 'Model', 'Plot']
@@ -39,5 +43,6 @@ CLASSIFICATION_MODELS = ['Logistic Regression', 'Support Vector Machine', 'Decis
 CLUSTERING_MODELS = ['KMeans', 'DBSCAN']
 DECOMPOSITION_MODELS = ['Principal Component Analysis']
 NON_AUTOML_MODELS = ['Linear Regression', 'Polynomial Regression']
+RAY_FLAML = ['Deep Neural Networks']
 
 IMPUTING_STRATEGY = ['Mean', 'Median', 'Most Frequent']

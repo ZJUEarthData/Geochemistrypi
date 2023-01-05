@@ -1,12 +1,17 @@
 # -*- coding: utf-8 -*-
+import os
 import pandas as pd
 import numpy as np
+import joblib
+import pickle
 from typing import Optional
 from data.data_readiness import num2option, num_input, limit_num_input, create_sub_data_set, show_data_columns
-from global_variable import SECTION
+from global_variable import SECTION, MODEL_PATH
 from typing import Tuple, List, Union
 from abc import ABCMeta, abstractmethod
 from sklearn.model_selection import train_test_split
+from multipledispatch import dispatch
+from datetime import date
 
 
 class WorkflowBase(metaclass=ABCMeta):
@@ -34,6 +39,7 @@ class WorkflowBase(metaclass=ABCMeta):
         self.model = None
         self.naming = None
         self.automl = None
+        self.ray_best_model = None
         self.random_state = 42
 
     @abstractmethod
@@ -106,7 +112,7 @@ class WorkflowBase(metaclass=ABCMeta):
         return selected_axis_index, selected_axis_data
 
     @staticmethod
-    def data_upload(X: pd.DataFrame,
+    def data_upload(X: Optional[pd.DataFrame] = None,
                     y: Optional[pd.DataFrame] = None,
                     X_train: Optional[pd.DataFrame] = None,
                     X_test: Optional[pd.DataFrame] = None,
@@ -114,13 +120,20 @@ class WorkflowBase(metaclass=ABCMeta):
                     y_test: Optional[pd.DataFrame] = None,
                     y_test_predict: Optional[pd.DataFrame] = None) -> None:
         """This method loads the required data into the base class's attributes."""
-        WorkflowBase.X = X
-        WorkflowBase.y = y
-        WorkflowBase.X_train = X_train
-        WorkflowBase.X_test = X_test
-        WorkflowBase.y_train = y_train
-        WorkflowBase.y_test = y_test
-        WorkflowBase.y_test_predict = y_test_predict
+        if X is not None:
+            WorkflowBase.X = X
+        if y is not None:
+            WorkflowBase.y = y
+        if X_train is not None:
+            WorkflowBase.X_train = X_train
+        if X_test is not None:
+            WorkflowBase.X_test = X_test
+        if y_train is not None:
+            WorkflowBase.y_train = y_train
+        if y_test is not None:
+            WorkflowBase.y_test = y_test
+        if y_test_predict is not None:
+            WorkflowBase.y_test_predict = y_test_predict
 
     def data_split(self, X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], test_size: float = 0.2)\
             -> Tuple[pd.DataFrame, pd.DataFrame, Union[pd.DataFrame, pd.Series], Union[pd.DataFrame, pd.Series]]:
@@ -128,3 +141,39 @@ class WorkflowBase(metaclass=ABCMeta):
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=self.random_state)
         return X_train, X_test, y_train, y_test
 
+    @dispatch()
+    def save_model(self) -> None:
+        """Persist the model for future use after training the model with Scikit-learn framework."""
+        print("-----* Model Persistence *-----")
+        filename = f"{'_'.join(self.naming.split())}_{date.today()}"
+        pickle_filename = filename + ".pkl"
+        pickle_path = os.path.join(MODEL_PATH, pickle_filename)
+        joblib_filename = filename + ".joblib"
+        joblib_path = os.path.join(MODEL_PATH, joblib_filename)
+        with open(pickle_path, 'wb') as fp:
+            pickle.dump(self.model, fp)
+        print(f"Successfully store the trained model '{self.naming}' in '{pickle_filename}' in {MODEL_PATH}.")
+        with open(joblib_path, 'wb') as fj:
+            joblib.dump(self.model, fj)
+        print(f"Successfully store the trained model '{self.naming}' in '{joblib_filename}' in {MODEL_PATH}.")
+
+    @dispatch(bool)
+    def save_model(self, is_automl: bool) -> None:
+        """Persist the model for future use after training the model with FLAML framework."""
+        print("-----* Model Persistence *-----")
+        filename = f"{'_'.join(self.naming.split())}_{date.today()}"
+        pickle_filename = filename + ".pkl"
+        pickle_path = os.path.join(MODEL_PATH, pickle_filename)
+        joblib_filename = filename + ".joblib"
+        joblib_path = os.path.join(MODEL_PATH, joblib_filename)
+        with open(pickle_path, 'wb') as fp:
+            pickle.dump(self.auto_model, fp)
+        print(f"Successfully store the trained model '{self.naming}' in '{pickle_filename}' in {MODEL_PATH}.")
+        with open(joblib_path, 'wb') as fj:
+            joblib.dump(self.auto_model, fj)
+        print(f"Successfully store the trained model '{self.naming}' in '{joblib_filename}' in {MODEL_PATH}.")
+
+        # Use to check whether the trained model is saved well
+        # with open(pickle_path, 'rb') as t:
+        #     a = pickle.load(t)
+        #     print(a)

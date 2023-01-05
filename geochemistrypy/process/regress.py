@@ -20,6 +20,7 @@ class RegressionModelSelection(object):
         """Train by Scikit-learn framework."""
 
         X_train, X_test, y_train, y_test = self.reg_workflow.data_split(X, y)
+        self.reg_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
 
         # Model option
         if self.model == "Polynomial Regression":
@@ -54,8 +55,7 @@ class RegressionModelSelection(object):
         self.reg_workflow.fit(X_train, y_train)
         y_test_predict = self.reg_workflow.predict(X_test)
         y_test_predict = self.reg_workflow.np2pd(y_test_predict, y_test.columns)
-        self.reg_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test,
-                                      y_train=y_train, y_test=y_test, y_test_predict=y_test_predict)
+        self.reg_workflow.data_upload(y_test_predict=y_test_predict)
 
         # Common components for every regression algorithm
         self.reg_workflow.common_components()
@@ -63,11 +63,15 @@ class RegressionModelSelection(object):
         # Special components of different algorithms
         self.reg_workflow.special_components()
 
+        # Save the trained model
+        self.reg_workflow.save_model()
+
     @dispatch(object, object, bool)
     def activate(self, X, y, is_automl):
-        """Train by FLAML framework."""
+        """Train by FLAML framework + RAY framework."""
 
         X_train, X_test, y_train, y_test = self.reg_workflow.data_split(X, y)
+        self.reg_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
 
         # Model option
         if self.model == "Polynomial Regression":
@@ -97,11 +101,13 @@ class RegressionModelSelection(object):
         self.reg_workflow.fit(X_train, y_train, is_automl)
         y_test_predict = self.reg_workflow.predict(X_test, is_automl)
         y_test_predict = self.reg_workflow.np2pd(y_test_predict, y_test.columns)
-        self.reg_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test,
-                                      y_train=y_train, y_test=y_test, y_test_predict=y_test_predict)
+        self.reg_workflow.data_upload(y_test_predict=y_test_predict)
 
         # Common components for every regression algorithm
         self.reg_workflow.common_components(is_automl)
 
         # Special components of different algorithms
         self.reg_workflow.special_components(is_automl)
+
+        # Save the trained model
+        self.reg_workflow.save_model(is_automl)

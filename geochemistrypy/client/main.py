@@ -4,7 +4,7 @@ import os
 from global_variable import OPTION, SECTION, IMPUTING_STRATEGY, MODE_OPTION, REGRESSION_MODELS,\
     CLASSIFICATION_MODELS, CLUSTERING_MODELS, DECOMPOSITION_MODELS, WORKING_PATH, DATA_OPTION,\
     TEST_DATA_OPTION, MODEL_OUTPUT_IMAGE_PATH, STATISTIC_IMAGE_PATH, DATASET_OUTPUT_PATH,\
-    GEO_IMAGE_PATH, MAP_IMAGE_PATH, DATASET_PATH, NON_AUTOML_MODELS
+    GEO_IMAGE_PATH, MAP_IMAGE_PATH, DATASET_PATH, MODEL_PATH, NON_AUTOML_MODELS
 from data.data_readiness import read_data, show_data_columns, num2option, create_sub_data_set, basic_info, np2pd, \
     num_input, limit_num_input
 from data.imputation import imputer
@@ -26,6 +26,7 @@ os.makedirs(STATISTIC_IMAGE_PATH, exist_ok=True)
 os.makedirs(DATASET_OUTPUT_PATH, exist_ok=True)
 os.makedirs(MAP_IMAGE_PATH, exist_ok=True)
 os.makedirs(GEO_IMAGE_PATH, exist_ok=True)
+os.makedirs(MODEL_PATH, exist_ok=True)
 
 
 def main():

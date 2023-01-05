@@ -30,3 +30,6 @@ class DecompositionModelSelection(object):
 
         # special components of different algorithms
         self.dcp_workflow.special_components(components_num=self.components_num, reduced_data=X_reduced)
+
+        # Save the trained model
+        self.dcp_workflow.save_model()

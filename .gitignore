@@ -4,8 +4,11 @@
 # all produced graphs in png format under the directory images
 **/images
 
-# all produced data set under directory output
+# all produced data set under the directory output
 **/output
+
+# all saved trained model under the directory trained model
+**/trained_models
 
 # log
 test.log

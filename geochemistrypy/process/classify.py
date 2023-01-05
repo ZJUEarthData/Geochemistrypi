@@ -46,6 +46,9 @@ class ClassificationModelSelection(object):
         # Special components of different algorithms
         self.clf_workflow.special_components()
 
+        # Save the trained model
+        self.clf_workflow.save_model()
+
     @dispatch(object, object, bool)
     def activate(self, X, y, is_automl):
         """Train by FLAML framework."""
@@ -78,3 +81,6 @@ class ClassificationModelSelection(object):
 
         # Special components of different algorithms
         self.clf_workflow.special_components(is_automl)
+
+        # Save the trained model
+        self.clf_workflow.save_model(is_automl)

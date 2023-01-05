@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.svm import SVC
-from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import classification_report
 from utils.base import save_fig
 from global_variable import MODEL_OUTPUT_IMAGE_PATH
 from sklearn import tree
@@ -16,6 +16,7 @@ from typing import Union, Optional, List, Dict, Callable, Tuple, Any, Sequence, 
 from multipledispatch import dispatch
 from flaml import AutoML
 from ._base import WorkflowBase
+from .func.algo_classification._common import confusion_matrix_plot, contour_data
 from .func.algo_classification._svm import plot_2d_decision_boundary
 from .func.algo_classification._xgboost import feature_importance_map, feature_importance_value, feature_weights_histograms
 from .func.algo_classification._decision_tree import decision_tree_plot
@@ -45,7 +46,7 @@ class ClassificationWorkflowBase(WorkflowBase):
         """Fit the model by FLAML framework."""
         self.automl = AutoML()
         if self.customized:  # When the model is not built-in in FLAML framwork
-            self.automl.add_learner(self.customized_name, self.customization)
+            self.automl.add_learner(learner_name=self.customized_name, learner_class=self.customization)
         if y.shape[1] == 1:  # FLAML's data format validation mechanism
             y = y.squeeze()  # Convert a single dataFrame column into a series
         self.automl.fit(X_train=X, y_train=y, **self.settings)
@@ -83,68 +84,30 @@ class ClassificationWorkflowBase(WorkflowBase):
         print(classification_report(y_true, y_predict))
 
     @staticmethod
-    def _confusion_matrix_plot(X_test: pd.DataFrame, y_test: pd.DataFrame, y_test_predict: pd.DataFrame,
+    def _confusion_matrix_plot(y_test: pd.DataFrame, y_test_predict: pd.DataFrame,
                                trained_model: object, algorithm_name: str, store_path: str) -> None:
         print("-----* Confusion Matrix *-----")
-        cm = confusion_matrix(y_test, y_test_predict)
-        print(cm)
-        plt.figure()
-        disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=trained_model.classes_)
-        disp.plot()
+        confusion_matrix_plot(y_test, y_test_predict, trained_model)
         save_fig(f"Confusion Matrix - {algorithm_name}", store_path)
 
     @staticmethod
-    def contour_data(X: pd.DataFrame, trained_model: Any) -> Tuple[List[np.ndarray], np.ndarray]:
-        """Build up coordinate matrices as the data of contour plot.
-
-        Parameters
-        ----------
-        X : pd.DataFrame (n_samples, n_components)
-            The complete feature data.
-
-        trained_model : Any
-            Te algorithm model class from sklearn is trained.
-
-        Returns
-        -------
-        matrices : List[np.ndarray]
-            Coordinate matrices.
-
-        labels : np.ndarray
-            Predicted value by the trained model with coordinate data as input data.
-        """
-
-        # build up coordinate matrices from coordinate vectors.
-        xi = [np.arange(X.iloc[:, i].min(), X.iloc[:, i].max(), (X.iloc[:, i].max()-X.iloc[:, i].min())/50)
-              for i in range(X.shape[1])]
-        ndim = len(xi)
-        s0 = (1,) * ndim
-        matrices = [np.asanyarray(x).reshape(s0[:i] + (-1,) + s0[i + 1:]) for i, x in enumerate(xi)]
-        matrices[0].shape = (1, -1) + s0[2:]
-        matrices[1].shape = (-1, 1) + s0[2:]
-        matrices = np.broadcast_arrays(*matrices, subok=True)
-
-        # get the labels of the coordinate matrices through the trained model
-        input_array = np.column_stack((i.ravel() for i in matrices))
-        labels = trained_model.predict(input_array).reshape(matrices[0].shape)
-
-        return matrices, labels
+    def _contour_data(X: pd.DataFrame, trained_model: Any) -> Tuple[List[np.ndarray], np.ndarray]:
+        """Build up coordinate matrices as the data of contour plot."""
+        return contour_data(X, trained_model)
 
     @dispatch()
     def common_components(self) -> None:
         """Invoke all common application functions for classification algorithms by Scikit-learn framework."""
         self._score(ClassificationWorkflowBase.y_test, ClassificationWorkflowBase.y_test_predict)
-        self._confusion_matrix_plot(ClassificationWorkflowBase.X_test, ClassificationWorkflowBase.y_test,
-                                    ClassificationWorkflowBase.y_test_predict, self.model, self.naming,
-                                    MODEL_OUTPUT_IMAGE_PATH)
+        self._confusion_matrix_plot(ClassificationWorkflowBase.y_test, ClassificationWorkflowBase.y_test_predict,
+                                    self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
     @dispatch(bool)
     def common_components(self, is_automl: bool) -> None:
         """Invoke all common application functions for classification algorithms by FLAML framework."""
         self._score(ClassificationWorkflowBase.y_test, ClassificationWorkflowBase.y_test_predict)
-        self._confusion_matrix_plot(ClassificationWorkflowBase.X_test, ClassificationWorkflowBase.y_test,
-                                    ClassificationWorkflowBase.y_test_predict, self.auto_model, self.naming,
-                                    MODEL_OUTPUT_IMAGE_PATH)
+        self._confusion_matrix_plot(ClassificationWorkflowBase.y_test, ClassificationWorkflowBase.y_test_predict,
+                                    self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
 
 class SVMClassification(ClassificationWorkflowBase):
@@ -1079,24 +1042,22 @@ class XgboostClassification(ClassificationWorkflowBase):
 
     @staticmethod
     def _feature_importance_series(data: pd.DataFrame, trained_model: any, algorithm_name: str, store_path: str) -> None:
-        print("-----* print the feature importance value orderly *-----")
+        print("-----* Feature Importance *-----")
         feature_importance_value(data, trained_model)
         feature_weights_histograms(data, trained_model, algorithm_name)
-        save_fig("xgboost_feature_weights_histograms_plot", store_path)
+        save_fig(f"Feature Weights - Histograms Plot - {algorithm_name}", store_path)
         feature_importance_map(trained_model, algorithm_name)
-        save_fig("xgboost_feature_importance_map_plot", store_path)
+        save_fig(f"Feature Importance Map Plot - {algorithm_name}", store_path)
 
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        self._feature_importance_series(ClassificationWorkflowBase.X, self.model,
-                                        self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._feature_importance_series(XgboostClassification.X, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        self._feature_importance_series(ClassificationWorkflowBase.X, self.auto_model,
-                                        self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._feature_importance_series(XgboostClassification.X, self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
     # def plot(self):
     # TODO(solve the problem of failed to execute WindowsPath('dot'), make sure the Graphviz executables are on your systems' PATH

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # import sys
-from global_variable import MODEL_OUTPUT_IMAGE_PATH
+from global_variable import MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
 from utils.base import save_fig
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
@@ -44,13 +44,19 @@ class RegressionWorkflowBase(WorkflowBase):
 
     @dispatch(object, object, bool)
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None, is_automl: bool = False) -> None:
-        """Fit the model by FLAML framework."""
-        self.automl = AutoML()
-        if self.customized:  # When the model is not built-in in FLAML framwork
-            self.automl.add_learner(self.customized_name, self.customization)
-        if y.shape[1] == 1:  # FLAML's data format validation mechanism
-            y = y.squeeze()  # Convert a single dataFrame column into a series
-        self.automl.fit(X_train=X, y_train=y, **self.settings)
+        """Fit the model by FLAML framework and RAY framework."""
+        if self.naming not in RAY_FLAML:
+            self.automl = AutoML()
+            if self.customized:  # When the model is not built-in in FLAML framwork, use FLAML customization.
+                self.automl.add_learner(learner_name=self.customized_name, learner_class=self.customization)
+            if y.shape[1] == 1:  # FLAML's data format validation mechanism
+                y = y.squeeze()  # Convert a single dataFrame column into a series
+            self.automl.fit(X_train=X, y_train=y, **self.settings)
+        else:
+            # When the model is not built-in in FLAML framework, use RAY + FLAML customization.
+            self.ray_tune(RegressionWorkflowBase.X_train, RegressionWorkflowBase.X_test,
+                          RegressionWorkflowBase.y_train, RegressionWorkflowBase.y_test)
+            self.ray_best_model.fit(X, y)
 
     @dispatch(object)
     def predict(self, X: pd.DataFrame) -> np.ndarray:
@@ -60,9 +66,21 @@ class RegressionWorkflowBase(WorkflowBase):
 
     @dispatch(object, bool)
     def predict(self, X: pd.DataFrame, is_automl: bool = False) -> np.ndarray:
-        """Perform classification on samples in X by FLAML framework."""
-        y_predict = self.automl.predict(X)
-        return y_predict
+        """Perform classification on samples in X by FLAML framework and RAY framework."""
+        if self.naming not in RAY_FLAML:
+            y_predict = self.automl.predict(X)
+            return y_predict
+        else:
+            y_predict = self.ray_best_model.predict(X)
+            return y_predict
+
+    @property
+    def auto_model(self) -> object:
+        """Get AutoML trained model by FLAML framework and RAY framework."""
+        if self.naming not in RAY_FLAML:
+            return self.automl.model.estimator
+        else:
+            return self.ray_best_model
 
     @property
     def settings(self) -> Dict:
@@ -70,13 +88,12 @@ class RegressionWorkflowBase(WorkflowBase):
         return dict()
 
     @property
-    def auto_model(self) -> object:
-        """Get AutoML trained model by FLAML framework."""
-        return self.automl.model.estimator
-
-    @property
     def customization(self) -> object:
         """The customized model of FLAML framework."""
+        return object
+
+    def ray_tune(self, X_train, X_test, y_train, y_test) -> object:
+        """The customized model of FLAML framework and RAY framework."""
         return object
 
     @staticmethod
@@ -1538,13 +1555,90 @@ class DNNRegression(RegressionWorkflowBase):
 
         self.naming = DNNRegression.name
 
-    def plot_learning_curve(self, algorithm_name: str, store_path):
+    def ray_tune(self, X_train: pd.DataFrame, X_test: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame) -> None:
+        """The customized DNN of the combinations of Ray, FLAML and Scikit-learn framework."""
+
+        from ray import tune
+        from ray.air import session
+        from ray.tune.search import ConcurrencyLimiter
+        from ray.tune.search.flaml import BlendSearch
+        from sklearn.metrics import mean_squared_error
+
+        def customized_model(l1: int, l2: int, l3: int, batch: int) -> object:
+            """The customized model by Scikit-learn framework."""
+            return MLPRegressor(hidden_layer_sizes=(l1, l2, l3), batch_size=batch)
+
+        def evaluate(l1: int, l2: int, l3: int, batch: int) -> float:
+            """The evaluation function by simulating a long-running ML experiment
+             to get the model's performance at every epoch."""
+            regr = customized_model(l1, l2, l3, batch)
+            regr.fit(X_train, y_train)
+            y_pred = regr.predict(X_test)
+            mse = mean_squared_error(y_test, y_pred)
+            rmse = np.sqrt(mse)  # Use RMSE score
+            return rmse
+
+        def objective(config: Dict) -> None:
+            """Objective function takes a Tune config, evaluates the score of your experiment in a training loop,
+             and uses session.report to report the score back to Tune."""
+            for step in range(config["steps"]):
+                score = evaluate(config["l1"], config["l2"], config["l3"], config["batch"])
+                session.report({"iterations": step, "mean_loss": score})
+
+        # Search space: The critical assumption is that the optimal hyper-parameters live within this space.
+        search_config = {
+            "l1": tune.randint(1, 20),
+            "l2": tune.randint(1, 30),
+            "l3": tune.randint(1, 20),
+            "batch": tune.randint(20, 100)
+        }
+
+        # Define the time budget in seconds.
+        time_budget_s = 30
+
+        # Integrate with FLAML's BlendSearch to implement hyper-parameters optimization .
+        algo = BlendSearch(
+            metric="mean_loss",
+            mode="min",
+            space=search_config)
+        algo.set_search_properties(config={"time_budget_s": time_budget_s})
+        algo = ConcurrencyLimiter(algo, max_concurrent=4)
+
+        # Use Ray Tune to  run the experiment to "min"imize the “mean_loss” of the "objective"
+        # by searching "search_config" via "algo", "num_samples" times.
+        tuner = tune.Tuner(
+            objective,
+            tune_config=tune.TuneConfig(
+                metric="mean_loss",
+                mode="min",
+                search_alg=algo,
+                num_samples=-1,
+                time_budget_s=time_budget_s,
+            ),
+            param_space={"steps": 100},
+        )
+        results = tuner.fit()
+
+        # The hyper-parameters found to minimize the mean loss of the defined objective and the corresponding model.
+        best_result = results.get_best_result(metric='mean_loss', mode='min')
+        self.ray_best_model = customized_model(best_result.config['l1'], best_result.config['l2'],
+                                               best_result.config['l3'], best_result.config['batch'])
+
+    @staticmethod
+    def _plot_learning_curve(trained_model: object, algorithm_name: str, store_path) -> None:
         print("-----* Loss Record *-----")
-        pd.DataFrame(self.model.loss_curve_).plot(title="Loss")
+        pd.DataFrame(trained_model.loss_curve_).plot(title="Loss")
         save_fig(f'Loss Record - {algorithm_name}', store_path)
 
+    @dispatch()
     def special_components(self, **kwargs) -> None:
-        self.plot_learning_curve(self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        self._plot_learning_curve(self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+
+    @dispatch(bool)
+    def special_components(self, is_automl: bool, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by FLAML framework."""
+        self._plot_learning_curve(self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
 
 class LinearRegression2(RegressionWorkflowBase):
