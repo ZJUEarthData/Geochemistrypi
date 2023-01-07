@@ -13,7 +13,7 @@ from plot.statistic_plot import basic_statistic, correlation_plot, distribution_
     ratio_null_vs_filled
 # from plot.statistic_plot import is_imputed
 from plot.map_plot import map_projected
-from utils.base import clear_output, log
+from utils.base import clear_output, log, show_warning
 from process.regress import RegressionModelSelection
 from process.classify import ClassificationModelSelection
 from process.cluster import ClusteringModelSelection
@@ -34,6 +34,9 @@ def main():
     print("....... Initializing .......")
     logger = log(WORKING_PATH, "test.log")
     logger.info("Geochemistry Py - User Behaviour Testing Demo")
+
+    # If the argument is False, hide all Python level warnings.
+    show_warning(True)
 
     # Read the data
     logger.debug("Data Uploaded")

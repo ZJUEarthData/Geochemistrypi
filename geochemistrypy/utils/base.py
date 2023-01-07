@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 import logging
 
 
-def clear_output():
+def clear_output() -> None:
     # TODO(sany hecan@mail2.sysu.edu.cn): Incite exception capture mechanism
     flag = input("(Press Enter key to move forward.)")
     if flag == '':
@@ -58,3 +58,13 @@ def log(log_path, log_name):
                         filemode="w")
     logger = logging.getLogger()
     return logger
+
+
+def show_warning(is_show: bool = True) -> None:
+    """Overriding Python's default filter to control whether to display warning information."""
+    import sys
+    if not is_show:
+        if not sys.warnoptions:
+            import os
+            os.environ["PYTHONWARNINGS"] = "ignore"
+            #os.environ["PYTHONWARNINGS"] = "default"
