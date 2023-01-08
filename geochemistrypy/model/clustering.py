@@ -173,31 +173,32 @@ class KMeansClustering(ClusteringWorkflowBase):
 
     @staticmethod
     def _scatter2d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
-        print("-----* Bi-plot *-----")
+        print("-----* Cluster Two-Dimensional Diagram *-----")
         scatter2d(data, cluster_labels, algorithm_name)
-        save_fig(f"Bi-plot - {algorithm_name}", store_path)
+        save_fig(f"Cluster Two-Dimensional Diagram - {algorithm_name}", store_path)
 
     @staticmethod
     def _scatter3d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
-        print("-----* Tri-plot *-----")
+        print("-----* Cluster Three-Dimensional Diagram *-----")
         scatter3d(data, cluster_labels, algorithm_name)
-        save_fig(f"Tri-plot - {algorithm_name}", store_path)
+        save_fig(f"Cluster Three-Dimensional Diagram - {algorithm_name}", store_path)
 
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
-        components_num = self.X.shape[1] - 1
+        """
+            The components_num Represents the dimension of the data.
+            We subtract 1 because the label takes up a column.
+        """
+        data_dimension = self.X.shape[1] - 1
 
         self._get_scores()
         self._plot_silhouette_diagram(data=self.X, cluster_labels=self.X['clustering result'],
                                       cluster_centers_=self.get_cluster_centers(), n_clusters=self.n_clusters,
                                       algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
         # Draw graphs when the number of principal components > 3
-        if components_num > 3:
+        if data_dimension >= 3:
             self._scatter3d(data=self.X, cluster_labels=self.X['clustering result'], algorithm_name=self.naming,
                             store_path=MODEL_OUTPUT_IMAGE_PATH)
-        elif components_num == 3:
-            self._scatter3d(data=self.X, cluster_labels=self.X['clustering result'], algorithm_name=self.naming,
-                            store_path=MODEL_OUTPUT_IMAGE_PATH)
-        elif components_num == 2:
+        elif data_dimension == 2:
             self._scatter2d(data=self.X, cluster_labels=self.X['clustering result'], algorithm_name=self.naming,
                             store_path=MODEL_OUTPUT_IMAGE_PATH)
         else:
