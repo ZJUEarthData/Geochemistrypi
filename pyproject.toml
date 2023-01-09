@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "geochemistrypy"
+name = "geochemistrypi"
 version = "0.0.1"
 authors = [
   { name="Can He", email="sanyhew1097618435@163.com" },
@@ -19,6 +19,31 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
+dependencies = [
+    "typer>=0.7.0",
+    "pandas",
+    "numpy",
+    "ray",
+    "flaml",
+    "scikit-learn",
+    "xgboost",
+    "matplotlib",
+    "seaborn",
+    "multipledispatch",
+    "geopandas",
+    "statsmodels",
+    "scipy",
+    "openpyxl"
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest"
+]
+
 [project.urls]
 "Homepage" = "https://github.com/ZJUEarthData/geochemistrypy"
 "Bug Tracker" = "https://github.com/ZJUEarthData/geochemistrypy/issues"
+
+[project.scripts]
+geochemistrypi = "geochemistrypi.cli:app"

@@ -5,7 +5,7 @@ one-stop shop for **geochemical data analysis** on tabular data. The goal of the
 a series of user-friendly and extensible products of high automation for the full cycle of geochemistry research.  
 
 ## First Phase
-It works as a **software** with a command-line interface to automate **data mining** process with
+It works as a **software application** with a command-line interface (CLI) to automate **data mining** process with
 frequently-used **machine learning algorithms**, which would further lower the threshold for the geochemists.
 
 The highlight is that through choosing **simple number options**, the users are able to implement a completed cycle of data
