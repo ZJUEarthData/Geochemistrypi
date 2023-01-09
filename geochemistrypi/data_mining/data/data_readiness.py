@@ -93,8 +93,40 @@ def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
                                        '--> you want to deal with the columns 1, 2, 3, 7, 10, 11, 12, 13 \n'
                                        'Format 2: "xx", such as "7" --> you want to deal with the columns 7 \n'
                                        '@input: ')
-    # column name
-    sub_data_set_columns_selected = select_columns(sub_data_set_columns_range)
+    
+    while True:
+      try:
+          # column name
+          sub_data_set_columns_selected = select_columns(sub_data_set_columns_range)
+          judge = False
+      except SyntaxError as err:
+          print(err)
+          print("Warning: Please use English input method editor.")
+          judge = True
+          sub_data_set_columns_range = input('@input: ')
+      except NameError as err:
+          print(err)
+          print("Warning: Please follow the rules and re-enter.")
+          judge = True
+          sub_data_set_columns_range = input('@input: ')
+      except UnicodeDecodeError as err:
+          print(err)
+          print("Warning: Please use English input method editor.")
+          judge = True
+          sub_data_set_columns_range = input('@input: ')
+      except IndexError as err:
+          print(err)
+          print("Warning: Please follow the rules and re-enter.")
+          judge = True
+          sub_data_set_columns_range = input('@input: ')
+      except TypeError as err:
+          print(err)
+          print("Warning: Please follow the rules and re-enter.")
+          judge = True
+          sub_data_set_columns_range = input('@input: ')
+      if judge == False:
+          break
+          
     # select designated column
     sub_data_set = data.iloc[:, sub_data_set_columns_selected]
     show_data_columns(sub_data_set.columns, sub_data_set_columns_selected)
