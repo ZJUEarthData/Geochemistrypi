@@ -18,7 +18,8 @@ from flaml import AutoML
 from ._base import WorkflowBase
 from .func.algo_classification._common import confusion_matrix_plot, contour_data
 from .func.algo_classification._svm import plot_2d_decision_boundary
-from .func.algo_classification._xgboost import feature_importance_map, feature_importance_value, feature_weights_histograms
+from .func.algo_classification._xgboost import feature_importance_map, feature_importance_value, \
+    feature_weights_histograms
 from .func.algo_classification._decision_tree import decision_tree_plot
 from .func.algo_classification._logistic import logistic_importance_plot
 from .func.algo_classification._rf import feature_importances
@@ -236,7 +237,7 @@ class SVMClassification(ClassificationWorkflowBase):
         scikit API: sklearn.svm.SVC
         https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html
         """
-        
+
         super().__init__()
         self.C = C
         self.kernel = kernel
@@ -338,11 +339,12 @@ class SVMClassification(ClassificationWorkflowBase):
 
     @staticmethod
     def _plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: Any,
-                                   algorithm_name: str, store_path: str, contour_data: Optional[List[np.ndarray]] = None,
+                                   image_config: dict, algorithm_name: str, store_path: str,
+                                   contour_data: Optional[List[np.ndarray]] = None,
                                    labels: Optional[np.ndarray] = None) -> None:
         """Plot the decision boundary of the trained model with the testing data set below."""
         print("-----* Two-dimensional Decision Boundary Diagram *-----")
-        plot_2d_decision_boundary(X, X_test, y_test, trained_model, algorithm_name)
+        plot_2d_decision_boundary(X, X_test, y_test, trained_model, image_config, algorithm_name)
         save_fig(f'2D Decision Boundary - {algorithm_name}', store_path)
 
     @dispatch()
@@ -350,7 +352,7 @@ class SVMClassification(ClassificationWorkflowBase):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         if SVMClassification.X.shape[1] == 2:
             self._plot_2d_decision_boundary(SVMClassification.X, SVMClassification.X_test, SVMClassification.y_test,
-                                            self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+                                            self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
             # TODO(Sany sanyhew1097618435@163.com): Check whether 3d decision boundary makes sense.
             #  If it does, use the code below.
@@ -549,7 +551,7 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
         self.naming = DecisionTreeClassification.name
 
     def plot_tree_function(self, cls: object, trained_model: any, algorithm_name: str, store_path: str) -> None:
-        #Drawing decision tree diagrams
+        # Drawing decision tree diagrams
         print("-----* Decision Tree Plot *-----")
         decision_tree_plot(cls, trained_model, algorithm_name)
         save_fig('Decision Tree Classification Plot', store_path)
@@ -858,7 +860,8 @@ class RandomForestClassification(ClassificationWorkflowBase):
         return configuration
 
     @staticmethod
-    def _feature_importances(X_train: pd.DataFrame, trained_model: object, algorithm_name: str, store_path: str) -> None:
+    def _feature_importances(X_train: pd.DataFrame, trained_model: object, algorithm_name: str,
+                             store_path: str) -> None:
         """Draw the feature importance bar diagram."""
         print("-----* Feature Importance *-----")
         feature_importances(X_train, trained_model)
@@ -893,7 +896,8 @@ class RandomForestClassification(ClassificationWorkflowBase):
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        self._feature_importances(RandomForestClassification.X_train, self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._feature_importances(RandomForestClassification.X_train, self.auto_model, self.naming,
+                                  MODEL_OUTPUT_IMAGE_PATH)
         self._tree_plot(self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         if RandomForestClassification.X.shape[1] == 2:
             self._plot_2d_decision_boundary(RandomForestClassification.X, RandomForestClassification.X_test,
@@ -1023,7 +1027,7 @@ class XgboostClassification(ClassificationWorkflowBase):
             enable_categorical=self.enable_categorical,
             eval_metric=self.eval_metric,
             early_stopping_rounds=self.early_stopping_rounds,
-            )
+        )
         self.naming = XgboostClassification.name
 
     @property
@@ -1040,7 +1044,8 @@ class XgboostClassification(ClassificationWorkflowBase):
         return configuration
 
     @staticmethod
-    def _feature_importance_series(data: pd.DataFrame, trained_model: any, algorithm_name: str, store_path: str) -> None:
+    def _feature_importance_series(data: pd.DataFrame, trained_model: any, algorithm_name: str,
+                                   store_path: str) -> None:
         print("-----* Feature Importance *-----")
         feature_importance_value(data, trained_model)
         feature_weights_histograms(data, trained_model, algorithm_name)
@@ -1081,22 +1086,22 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
     special_function = ['Feature Importance']
 
     def __init__(
-         self,
-         penalty: str = 'l2',
-         dual: bool = False,
-         tol: float = 0.0001,
-         C: float = 1.0,
-         fit_intercept: bool = True,
-         intercept_scaling: float = 1,
-         class_weight: Optional[Union[Dict, str]] = None,
-         random_state: Optional[int] = None,
-         solver: str = 'lbfgs',
-         max_iter: int = 100,
-         multi_class: str = 'auto',
-         verbose: int = 0,
-         warm_start: bool = False,
-         n_jobs: int = None,
-         l1_ratio: float = None
+            self,
+            penalty: str = 'l2',
+            dual: bool = False,
+            tol: float = 0.0001,
+            C: float = 1.0,
+            fit_intercept: bool = True,
+            intercept_scaling: float = 1,
+            class_weight: Optional[Union[Dict, str]] = None,
+            random_state: Optional[int] = None,
+            solver: str = 'lbfgs',
+            max_iter: int = 100,
+            multi_class: str = 'auto',
+            verbose: int = 0,
+            warm_start: bool = False,
+            n_jobs: int = None,
+            l1_ratio: float = None
     ) -> None:
         """
         Parameters
@@ -1282,7 +1287,7 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
             verbose=self.verbose,
             warm_start=self.warm_start,
             l1_ratio=self.l1_ratio,
-            )
+        )
 
         self.naming = LogisticRegressionClassification.name
 

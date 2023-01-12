@@ -275,13 +275,13 @@ class DBSCANClustering(ClusteringWorkflowBase):
         self.naming = DBSCANClustering.name
 
     @staticmethod
-    def clustering_result_plot(X: pd.DataFrame, trained_model: any, algorithm_name: str, store_path: str) -> None:
+    def clustering_result_plot(X: pd.DataFrame, trained_model: any, algorithm_name: str, imag_config: dict, store_path: str) -> None:
         print("-------** dbscan_clustering_result_2d_plot **----------")
-        dbscan_result_plot(X, trained_model, algorithm_name)
+        dbscan_result_plot(X, trained_model, imag_config, algorithm_name)
         save_fig(f'Plot - {algorithm_name} - 2D', store_path)
 
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
-        self.clustering_result_plot(self.X, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self.clustering_result_plot(X=self.X, trained_model=self.model, algorithm_name=self.naming, imag_config=self.image_config, store_path=MODEL_OUTPUT_IMAGE_PATH)
 
 
 class AffinityPropagationClustering(ClusteringWorkflowBase):
