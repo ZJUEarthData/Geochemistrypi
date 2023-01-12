@@ -9,8 +9,8 @@ from typing import Optional, List
 
 
 def plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object,
-                              algorithm_name: str, contour_data: Optional[List[np.ndarray]] = None,
-                              labels: Optional[np.ndarray] = None):
+                              image_config: dict, algorithm_name: str, contour_data: Optional[List[np.ndarray]] = None,
+                              labels: Optional[np.ndarray] = None) -> None:
     """Plot the decision boundary of the trained model with the testing data set below.
 
     Parameters
@@ -39,16 +39,40 @@ def plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.
     labels = trained_model.predict(input_array).reshape(x0.shape)
 
     # Use the code below when the dimensions of X are greater than 2
-    # x0, x1 = contour_data
 
-    # Set up the canvas
-    plt.figure()
+    # create drawing canvas
+    fig, ax = plt.subplots(figsize=(image_config['width'], image_config['height']),dpi=image_config['dpi'])
 
-    # Draw the contour plot and the scatter plot
-    plt.contourf(x0, x1, labels, alpha=0.1)
-    plt.scatter(X_test.iloc[:, 0], X_test.iloc[:, 1], c=np.array(y_test), alpha=1)
 
-    # Set up the axis name, graph title, storage path
-    plt.xlabel(X.columns[0])
-    plt.ylabel(X.columns[1])
-    plt.title(f'2d Decision Boundary - {algorithm_name}')
+    # draw the main content
+    ax.contourf(x0, x1, labels, cmap=image_config['cmap2'], alpha=image_config['alpha1'])
+    ax.scatter(X_test.iloc[:, 0], X_test.iloc[:, 1], c=np.array(y_test), alpha=image_config['alpha2'],
+               marker=image_config['marker_angle'], cmap=image_config['cmap'])
+
+    # automatically optimize picture layout structure
+    fig.tight_layout()
+    xmin, xmax = ax.get_xlim()
+    ymin, ymax = ax.get_ylim()
+    x_adjustment = (xmax - xmin) * 0.01
+    y_adjustment = (ymax - ymin) * 0.01
+    ax.axis([xmin - x_adjustment, xmax + x_adjustment, ymin - y_adjustment, ymax + y_adjustment])
+
+
+    # convert the font of the axes
+    ax.set_xlabel(X.columns[0])
+    ax.set_ylabel(X.columns[1])
+    plt.tick_params(labelsize=image_config['labelsize'])  # adjust the font size of the axis label
+    plt.setp(ax.get_xticklabels(), rotation=image_config['xrotation'], ha=image_config['xha'],
+             rotation_mode="anchor")  # axis label rotation Angle
+    plt.setp(ax.get_yticklabels(), rotation=image_config['rot'], ha=image_config['yha'],
+             rotation_mode="anchor")  # axis label rotation Angle
+    x1_label = ax.get_xticklabels()  # adjust the axis label font
+    [x1_label_temp.set_fontname(image_config['axislabelfont']) for x1_label_temp in x1_label]
+    y1_label = ax.get_yticklabels()
+    [y1_label_temp.set_fontname(image_config['axislabelfont']) for y1_label_temp in y1_label]
+
+    ax.set_title(label=image_config['title_label'],
+                 fontdict={"size": image_config['title_size'], "color": image_config['title_color'],
+                           "family": image_config['title_font']}, loc=image_config['title_location'],
+                 pad=image_config['title_pad'])
+

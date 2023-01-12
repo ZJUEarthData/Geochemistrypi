@@ -42,6 +42,53 @@ class WorkflowBase(metaclass=ABCMeta):
         self.ray_best_model = None
         self.random_state = 42
 
+    @property
+    def image_config(self):
+        return {
+            # Picture layout
+            'width': 16,  # number of subgraph rows
+            'height': 9,  # number of subgraph columns
+            'dpi': 360,  # resolution
+            # Main content
+            'cmap': 'coolwarm_r',  # color setting
+            'cmap2': 'Wistia',
+            'marker_angle': '^',  # point type
+            'marker_circle': 'o',  # point type
+            'edgecolor': 'w',  # point edge color
+            'markersize1': 18,  # point size
+            'markersize2': 6,
+            'alpha1': 0.4,  # point transparency
+            'alpha2': 0.95,
+            'linestyle': '-',
+            # Convert the font of the axes
+            'labelsize': 5,  # the font size of the axis label
+            'xrotation': 0,  # x axis label rotation Angle
+            'xha': 'center',  # x axis 'ha'
+            'rot': 90,  # y axis label rotation Angle
+            'yha': 'center',  # y axis 'ha'
+            'axislabelfont': 'Times New Roman',  # axis label font
+            # Picture title adjustment
+            'title_label': self.naming,  # picture name
+            'title_size': 15,  # title font size
+            'title_color': 'k',
+            'title_location': 'center',
+            'title_font': "Times New Roman",
+            'title_pad': 2,
+            # Tree parameter
+            'max_depth': None,  # The maximum depth of the representation
+            'feature_names': None,  # Names of each of the features
+            'class_names': ["class" + str(i) for i in range(1, 1000)],  # Names of each of the target classes in ascending numerical order
+            'label': 'all',  # Whether to show informative labels for impurity, etc
+            'filled': True,  # color filling
+            'impurity': True,  # When set to True, show the impurity at each node
+            'node_ids': None,  # When set to True, show the ID number on each node
+            'proportion': False,  # When set to True, change the display of ‘values’ and/or ‘samples’ to be proportions and percentages respectively
+            'rounded': True,  # When set to True, draw node boxes with rounded corners and use Helvetica fonts instead of Times-Roman
+            'precision': 3,  # Number of digits of precision for floating point in the values of impurity, threshold and value attributes of each node
+            'ax': None,  # axes to plot to.
+            'fontsize': None  # size of text font
+        }
+
     @abstractmethod
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
         """Placeholder for fit. child classes should implement this method!
