@@ -532,18 +532,21 @@ class XgboostRegression(RegressionWorkflowBase):
 
 
 class DecisionTreeRegression(RegressionWorkflowBase):
+    """The automation workflow of using Extra Tree algorithm to make insightful products."""
+
     name = "Decision Tree"
     special_function = ["Decision Tree Plot"]
 
     def __init__(self,
-                 criteria='gini',
+                 # criteria='gini',
+                 criterion='squared_error',
                  splitter='best',
-                 max_depth=3,
+                 max_depth=None,
                  min_samples_split=2,
                  min_samples_leaf=1,
                  min_weight_fraction_leaf=0.0,
                  max_features=None,
-                 random_state=None,
+                 # random_state=None,
                  max_leaf_nodes=None,
                  min_impurity_decrease=0.0,
                  ccp_alpha=0.0
@@ -679,7 +682,7 @@ class DecisionTreeRegression(RegressionWorkflowBase):
         """
 
         super().__init__()
-        self.criteria = criteria,
+        self.criterion = criterion,
         self.splitter = splitter,
         self.max_depth = max_depth,
         self.min_samples_split = min_samples_split,
@@ -691,7 +694,8 @@ class DecisionTreeRegression(RegressionWorkflowBase):
         self.min_impurity_decrease = min_impurity_decrease,
         self.ccp_alpha = ccp_alpha
 
-        self.model = DecisionTreeRegressor(criteria=self.criteria,
+        self.model = DecisionTreeRegressor(
+                                           criterion=self.criterion,
                                            splitter=self.splitter,
                                            max_depth=self.max_depth,
                                            min_samples_split=self.min_samples_split,
@@ -701,7 +705,9 @@ class DecisionTreeRegression(RegressionWorkflowBase):
                                            random_state=self.random_state,
                                            max_leaf_nodes=self.max_leaf_nodes,
                                            min_impurity_decrease=self.min_impurity_decrease,
-                                           ccp_alpha=self.ccp_alpha)
+                                           ccp_alpha=self.ccp_alpha
+        )
+        self.naming = DecisionTreeRegression.name
 
     def plot_tree_function(self):
         ###################################################
@@ -715,8 +721,16 @@ class DecisionTreeRegression(RegressionWorkflowBase):
         plot_tree(clf, filled=True)
         save_fig('plot_decision_tree_regression', MODEL_OUTPUT_IMAGE_PATH)
 
+    @dispatch()
     def special_components(self):
-        self.plot_tree_function()
+        # self.plot_tree_function()
+        pass
+
+    @dispatch(bool)
+    def special_components(self, is_automl: bool = False, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by FLAML framework."""
+        # self.plot_tree_function()
+        pass
 
 
 class ExtraTreeRegression(RegressionWorkflowBase):

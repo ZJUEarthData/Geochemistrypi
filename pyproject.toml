@@ -20,20 +20,22 @@ classifiers = [
 ]
 
 dependencies = [
-    "typer>=0.7.0",
+    "typer",
     "pandas",
     "numpy",
     "ray",
     "flaml",
     "scikit-learn",
     "xgboost",
-    "matplotlib",
     "seaborn",
     "multipledispatch",
-    "geopandas",
     "statsmodels",
     "scipy",
-    "openpyxl"
+    "openpyxl",
+    "pyogrio>=0.4.2",        # required to draw world map
+    "geopandas>=0.10.2",     # required to draw world map
+    "threadpoolctl>=3.1.0",  # required to draw 3d plot for KMeans
+    "matplotlib>=3.5.2"      # required to draw 3d plot for KMeans
 ]
 
 [project.optional-dependencies]

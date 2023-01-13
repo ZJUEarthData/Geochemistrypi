@@ -2,14 +2,18 @@
 import os
 from matplotlib import pyplot as plt
 import logging
+import platform
 
 
 def clear_output() -> None:
     # TODO(sany hecan@mail2.sysu.edu.cn): Incite exception capture mechanism
     flag = input("(Press Enter key to move forward.)")
+    my_os = platform.system()
     if flag == '':
-        #os.system('clear')#for Linux
-        os.system('cls')#for Window
+        if my_os == "Windows":
+            os.system('cls')    # for Window
+        else:
+            os.system('clear')  # for Linux and MacOS
 
 
 def save_fig(fig_name, image_path, tight_layout=True):

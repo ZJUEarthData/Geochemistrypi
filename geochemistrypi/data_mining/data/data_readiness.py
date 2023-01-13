@@ -100,27 +100,22 @@ def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
           sub_data_set_columns_selected = select_columns(sub_data_set_columns_range)
           judge = False
       except SyntaxError as err:
-          print(err)
           print("Warning: Please use English input method editor.")
           judge = True
           sub_data_set_columns_range = input('@input: ')
       except NameError as err:
-          print(err)
           print("Warning: Please follow the rules and re-enter.")
           judge = True
           sub_data_set_columns_range = input('@input: ')
       except UnicodeDecodeError as err:
-          print(err)
           print("Warning: Please use English input method editor.")
           judge = True
           sub_data_set_columns_range = input('@input: ')
       except IndexError as err:
-          print(err)
           print("Warning: Please follow the rules and re-enter.")
           judge = True
           sub_data_set_columns_range = input('@input: ')
       except TypeError as err:
-          print(err)
           print("Warning: Please follow the rules and re-enter.")
           judge = True
           sub_data_set_columns_range = input('@input: ')

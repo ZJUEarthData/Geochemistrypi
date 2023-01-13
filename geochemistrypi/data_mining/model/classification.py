@@ -367,7 +367,7 @@ class SVMClassification(ClassificationWorkflowBase):
         """Invoke all special application functions for this algorithms by FLAML framework."""
         if SVMClassification.X.shape[1] == 2:
             self._plot_2d_decision_boundary(SVMClassification.X, SVMClassification.X_test, SVMClassification.y_test,
-                                            self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+                                            self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
 
 class DecisionTreeClassification(ClassificationWorkflowBase):
