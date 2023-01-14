@@ -383,7 +383,7 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
             max_depth: Optional[int] = 3,
             min_samples_split: Union[int, float] = 2,
             min_samples_leaf: Union[int, float] = 1,
-            min_weight_fraction_leaf: Union[int, float] = 0.0,
+            min_weight_fraction_leaf: float = 0.0,
             max_features: Union[int, float, str, None] = None,
             random_state: Optional[int] = None,
             max_leaf_nodes: Optional[int] = None,

@@ -538,18 +538,17 @@ class DecisionTreeRegression(RegressionWorkflowBase):
     special_function = ["Decision Tree Plot"]
 
     def __init__(self,
-                 # criteria='gini',
-                 criterion='squared_error',
-                 splitter='best',
-                 max_depth=None,
-                 min_samples_split=2,
-                 min_samples_leaf=1,
-                 min_weight_fraction_leaf=0.0,
-                 max_features=None,
-                 # random_state=None,
-                 max_leaf_nodes=None,
-                 min_impurity_decrease=0.0,
-                 ccp_alpha=0.0
+                 criterion: str = 'squared_error',
+                 splitter: str = 'best',
+                 max_depth: Optional[int] = None,
+                 min_samples_split: Union[int, float] = 2,
+                 min_samples_leaf: Union[int, float] = 1,
+                 min_weight_fraction_leaf: float = 0.0,
+                 max_features: Union[int, float, str, None] = None,
+                 random_state: Optional[int] = None,
+                 max_leaf_nodes: Optional[int] = None,
+                 min_impurity_decrease: float = 0.0,
+                 ccp_alpha: float = 0.0
     ) -> None:
         """
         Parameters
@@ -684,7 +683,12 @@ class DecisionTreeRegression(RegressionWorkflowBase):
         super().__init__()
         self.criterion = criterion,
         self.splitter = splitter,
+        # FIXME (Sany sanyhew1097618435@163.com): figure out why data type changes after assignment.
+        # print("max_depth before: ", max_depth)
+        # print("max_depth before type: ", type(max_depth))
         self.max_depth = max_depth,
+        # print("max_depth after: ", self.max_depth)
+        # print("max_depth after type: ", type(self.max_depth))
         self.min_samples_split = min_samples_split,
         self.min_samples_leaf = min_samples_leaf,
         self.min_weight_fraction_leaf = min_weight_fraction_leaf,
@@ -695,16 +699,16 @@ class DecisionTreeRegression(RegressionWorkflowBase):
         self.ccp_alpha = ccp_alpha
 
         self.model = DecisionTreeRegressor(
-                                           criterion=self.criterion,
-                                           splitter=self.splitter,
-                                           max_depth=self.max_depth,
-                                           min_samples_split=self.min_samples_split,
-                                           min_samples_leaf=self.min_samples_leaf,
-                                           min_weight_fraction_leaf=self.min_weight_fraction_leaf,
-                                           max_features=self.max_features,
-                                           random_state=self.random_state,
-                                           max_leaf_nodes=self.max_leaf_nodes,
-                                           min_impurity_decrease=self.min_impurity_decrease,
+                                           criterion=self.criterion[0],
+                                           splitter=self.splitter[0],
+                                           max_depth=self.max_depth[0],
+                                           min_samples_split=self.min_samples_split[0],
+                                           min_samples_leaf=self.min_samples_leaf[0],
+                                           min_weight_fraction_leaf=self.min_weight_fraction_leaf[0],
+                                           max_features=self.max_features[0],
+                                           random_state=self.random_state[0],
+                                           max_leaf_nodes=self.max_leaf_nodes[0],
+                                           min_impurity_decrease=self.min_impurity_decrease[0],
                                            ccp_alpha=self.ccp_alpha
         )
         self.naming = DecisionTreeRegression.name
@@ -723,14 +727,14 @@ class DecisionTreeRegression(RegressionWorkflowBase):
 
     @dispatch()
     def special_components(self):
-        # self.plot_tree_function()
-        pass
+        self.plot_tree_function()
+        
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        # self.plot_tree_function()
-        pass
+        self.plot_tree_function()
+        
 
 
 class ExtraTreeRegression(RegressionWorkflowBase):
