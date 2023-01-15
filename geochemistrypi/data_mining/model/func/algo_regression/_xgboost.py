@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 from sklearn.inspection import permutation_importance
 
 
-def feature_importance(X: pd.DataFrame, trained_model: object) -> None:
+def feature_importance(X: pd.DataFrame, trained_model: object, image_config: dict) -> None:
     """Plot the Feature Importance.
 
     Parameters
@@ -22,11 +22,11 @@ def feature_importance(X: pd.DataFrame, trained_model: object) -> None:
     # print the feature importance value orderly
     for feature_name, score in zip(list(columns_name), trained_model.feature_importances_):
         print(feature_name, ":", score)
-    plt.figure(figsize=(40, 6))
+    plt.figure(figsize=(image_config['width'], image_config['height']),dpi=image_config['dpi'])
     plt.bar(range(len(columns_name)), trained_model.feature_importances_, tick_label=columns_name)
 
 
-def histograms_feature_weights(X: pd.DataFrame, trained_model: object) -> None:
+def histograms_feature_weights(X: pd.DataFrame, trained_model: object, image_config: dict) -> None:
     """Plot the Feature Importance, histograms present feature weights for XGBoost predictions.
 
     Parameters
@@ -39,11 +39,11 @@ def histograms_feature_weights(X: pd.DataFrame, trained_model: object) -> None:
     """
 
     columns_name = X.columns
-    plt.rcParams["figure.figsize"] = (10, 8)
+    plt.rcParams["figure.figsize"] = (image_config['width'], image_config['height'])
     xgboost.plot_importance(trained_model)
 
 
-def permutation_importance_(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object) -> None:
+def permutation_importance_(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, image_config: dict) -> None:
     """Plot the permutation Importance.
 
     Parameters
@@ -62,7 +62,7 @@ def permutation_importance_(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.Da
     """
 
     columns_name = X.columns
-    plt.figure(figsize=(10, 8))
+    plt.figure(figsize=(image_config['width'], image_config['height']),dpi=image_config['dpi'])
     result = permutation_importance(trained_model, X_test,
                                     y_test, n_repeats=10,
                                     random_state=42, n_jobs=2)

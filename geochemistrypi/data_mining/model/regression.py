@@ -498,37 +498,37 @@ class XgboostRegression(RegressionWorkflowBase):
         return configuration
 
     @staticmethod
-    def _feature_importance(X: pd.DataFrame, trained_model: object, algorithm_name: str, store_path: str) -> None:
+    def _feature_importance(X: pd.DataFrame, trained_model: object, image_config: dict, algorithm_name: str, store_path: str) -> None:
         print("-----* Feature Importance *-----")
-        feature_importance(X, trained_model)
+        feature_importance(X, trained_model, image_config)
         save_fig(f"Feature Importance - {algorithm_name}", store_path)
 
     @staticmethod
-    def _histograms_feature_weights(X: pd.DataFrame, trained_model: object, algorithm_name: str, store_path: str) -> None:
-        histograms_feature_weights(X, trained_model)
+    def _histograms_feature_weights(X: pd.DataFrame, trained_model: object, image_config: dict, algorithm_name: str, store_path: str) -> None:
+        histograms_feature_weights(X, trained_model,image_config)
         save_fig(f"Feature Importance Score - {algorithm_name}", store_path)
 
     @staticmethod
     def _permutation_importance(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object,
-                                algorithm_name: str, store_path: str) -> None:
-        permutation_importance_(X, X_test, y_test, trained_model)
+                                image_config: dict, algorithm_name: str, store_path: str) -> None:
+        permutation_importance_(X, X_test, y_test, trained_model, image_config)
         save_fig(f"Xgboost Feature Importance - {algorithm_name}", store_path)
 
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        self._feature_importance(XgboostRegression.X, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
-        self._histograms_feature_weights(XgboostRegression.X, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._feature_importance(XgboostRegression.X, self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._histograms_feature_weights(XgboostRegression.X, self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         self._permutation_importance(XgboostRegression.X, XgboostRegression.X_test, XgboostRegression.y_test,
-                                     self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+                                     self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        self._feature_importance(XgboostRegression.X, self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
-        self._histograms_feature_weights(XgboostRegression.X, self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._feature_importance(XgboostRegression.X, self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._histograms_feature_weights(XgboostRegression.X, self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         self._permutation_importance(XgboostRegression.X, XgboostRegression.X_test, XgboostRegression.y_test,
-                                     self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+                                     self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
 
 class DecisionTreeRegression(RegressionWorkflowBase):
