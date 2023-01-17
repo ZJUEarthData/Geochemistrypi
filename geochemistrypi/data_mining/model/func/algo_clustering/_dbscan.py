@@ -30,7 +30,7 @@ def dbscan_result_plot(data: pd.DataFrame, trained_model: any, image_config: dic
     core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
     core_samples_mask[db.core_sample_indices_] = True
     n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
-    print("Estimated number of clusters: %d\n" % n_clusters_)
+    print("Estimated number of clusters: %d" % n_clusters_)
     unique_labels = set(labels)
 
     # create drawing canvas

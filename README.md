@@ -9,10 +9,12 @@ It works as a **software application** with a command-line interface (CLI) to au
 frequently-used **machine learning algorithms**, which would further lower the threshold for the geochemists.
 
 The highlight is that through choosing **simple number options**, the users are able to implement a completed cycle of data
-mining **without knowledge of** numpy, pandas, scikit-learn packages.
+mining **without knowledge of** SciPy, NumPy, Pandas, Scikit-learn, FLAML, Ray packages.
 
-Its models section, shown as below, provides both **supervised learning** and **unsupervised learning** methods to process the
-users' data, including four types of algorithms, regression, classification, clustering, and dimensional reduction.
+Its models section, shown as below, provides both **supervised learning** and **unsupervised learning** methods from
+Scikit-learn framework to process the users' data, including four types of algorithms, regression, classification,
+clustering, and dimensional reduction. Combined with FLAML and Ray framework, it allows the users to run
+AutoML easily on the built-in supervised learning algorithms in our framework.
 
 The activity diagram of the Geochemistry π Version 1.0.0:
 

@@ -20,22 +20,24 @@ classifiers = [
 ]
 
 dependencies = [
-    "typer",
-    "pandas",
-    "numpy",
-    "ray",
-    "flaml",
-    "scikit-learn",
-    "xgboost",
-    "seaborn",
-    "multipledispatch",
-    "statsmodels",
+    "typer==0.7.0",
+    "ray==2.2.0",
+    "ray[tune]",
+    "optuna",
+    "scikit-learn==1.1.3",
+    "seaborn==0.11.0",
+    "multipledispatch==0.6.0",
+    "statsmodels==0.13.2",
     "scipy",
-    "openpyxl",
-    "pyogrio>=0.4.2",        # required to draw world map
-    "geopandas>=0.10.2",     # required to draw world map
-    "threadpoolctl>=3.1.0",  # required to draw 3d plot for KMeans
-    "matplotlib>=3.5.2"      # required to draw 3d plot for KMeans
+    "openpyxl==3.0.10",
+    "pandas==1.5.2",
+    "flaml==1.0.14",         # required to run Xgboost + FLMAL
+    "numpy==1.21.6",         # required to run Xgboost + FLMAL
+    "xgboost==1.3.1",        # required to run Xgboost + FLAML
+    "pyogrio==0.4.2",        # required to draw world map
+    "geopandas==0.10.2",     # required to draw world map
+    "threadpoolctl==3.1.0",  # required to draw 3d plot for KMeans
+    "matplotlib==3.5.2"      # required to draw 3d plot for KMeans
 ]
 
 [project.optional-dependencies]
@@ -44,8 +46,8 @@ test = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/ZJUEarthData/geochemistrypy"
-"Bug Tracker" = "https://github.com/ZJUEarthData/geochemistrypy/issues"
+"Homepage" = "https://github.com/ZJUEarthData/geochemistrypi"
+"Bug Tracker" = "https://github.com/ZJUEarthData/geochemistrypi/issues"
 
 [project.scripts]
 geochemistrypi = "geochemistrypi.cli:app"
