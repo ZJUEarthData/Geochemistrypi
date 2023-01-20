@@ -131,6 +131,7 @@ def plot_silhouette_diagram(data: pd.DataFrame, cluster_labels: pd.DataFrame,
         fontweight="bold",
     )
 
+
 def scatter2d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str) -> None:
     plt.figure()
     plt.subplot(111)
@@ -142,8 +143,6 @@ def scatter2d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: 
 
 
 def scatter3d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str) -> None:
-    print("")
-    print("-----* Plot 3d Graph *-----")
     plt.figure()
     namelist = data.columns.values.tolist()
     fig = plt.figure(figsize=(12, 6), facecolor='w')

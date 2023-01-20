@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from ..model.regression import PolynomialRegression, XgboostRegression, DecisionTreeRegression, ExtraTreeRegression,\
     RandomForestRegression, RegressionWorkflowBase, SVMRegression, DNNRegression, LinearRegression2
-from ..data.data_readiness import num_input, float_input, tuple_input
+from ..data.data_readiness import num_input, float_input, tuple_input, limit_num_input
 from ..global_variable import SECTION
 from multipledispatch import dispatch
 
@@ -39,11 +39,15 @@ class RegressionModelSelection(object):
         elif self.model == "Support Vector Machine":
             self.reg_workflow = SVMRegression()
         elif self.model == "Deep Neural Networks":
-            print("Please specify the init learning rate of the the neural networks.")
-            learning_rate = float_input(0.05, SECTION[2], "@Learning_rate:")
+            print("Learning Rate: It controls the step-size in updating the weights.")
+            print("Please specify the initial learning rate of the the neural networks, such as 0.001.")
+            learning_rate = float_input(0.05, SECTION[2], "@Learning Rate: ")
+            print("Hidden Layer Sizes: The ith element represents the number of neurons in the ith hidden layer.")
             print("Please specify the size of hidden layer and the number of neurons in the each hidden layer.")
-            hidden_layer = tuple_input((50, 25, 5), SECTION[2], "@Hidden_layer_sizes:")
-            self.reg_workflow = DNNRegression(learning_rate_init=learning_rate, hidden_layer_sizes=hidden_layer)
+            hidden_layer = tuple_input((50, 25, 5), SECTION[2], "@Hidden Layer Sizes: ")
+            # batch_size = limit_num_input()
+            self.reg_workflow = DNNRegression(learning_rate_init=learning_rate,
+                                              hidden_layer_sizes=hidden_layer)
         elif self.model == "Linear Regression":
             self.reg_workflow = LinearRegression2()
 

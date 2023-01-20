@@ -95,32 +95,32 @@ def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
                                        '@input: ')
     
     while True:
-      try:
-          # column name
-          sub_data_set_columns_selected = select_columns(sub_data_set_columns_range)
-          judge = False
-      except SyntaxError as err:
-          print("Warning: Please use English input method editor.")
-          judge = True
-          sub_data_set_columns_range = input('@input: ')
-      except NameError as err:
-          print("Warning: Please follow the rules and re-enter.")
-          judge = True
-          sub_data_set_columns_range = input('@input: ')
-      except UnicodeDecodeError as err:
-          print("Warning: Please use English input method editor.")
-          judge = True
-          sub_data_set_columns_range = input('@input: ')
-      except IndexError as err:
-          print("Warning: Please follow the rules and re-enter.")
-          judge = True
-          sub_data_set_columns_range = input('@input: ')
-      except TypeError as err:
-          print("Warning: Please follow the rules and re-enter.")
-          judge = True
-          sub_data_set_columns_range = input('@input: ')
-      if judge == False:
-          break
+        try:
+            # column name
+            sub_data_set_columns_selected = select_columns(sub_data_set_columns_range)
+            judge = False
+        except SyntaxError:
+            print("Warning: Please use English input method editor.")
+            judge = True
+            sub_data_set_columns_range = input('@input: ')
+        except NameError:
+            print("Warning: Please follow the rules and re-enter.")
+            judge = True
+            sub_data_set_columns_range = input('@input: ')
+        except UnicodeDecodeError:
+            print("Warning: Please use English input method editor.")
+            judge = True
+            sub_data_set_columns_range = input('@input: ')
+        except IndexError:
+            print("Warning: Please follow the rules and re-enter.")
+            judge = True
+            sub_data_set_columns_range = input('@input: ')
+        except TypeError:
+            print("Warning: Please follow the rules and re-enter.")
+            judge = True
+            sub_data_set_columns_range = input('@input: ')
+        if judge == False:
+            break
           
     # select designated column
     sub_data_set = data.iloc[:, sub_data_set_columns_selected]
@@ -198,8 +198,7 @@ def np2pd(array, columns_name):
     return pd.DataFrame(array, columns=columns_name)
 
 
-
-def float_input(default: float, prefix: Optional[str] = None, slogan: Optional[str] = "@Number: " ) -> float:
+def float_input(default: float, prefix: Optional[str] = None, slogan: Optional[str] = "@Number: ") -> float:
     """Get the number of the desired option.
 
     Parameters
@@ -231,6 +230,12 @@ def float_input(default: float, prefix: Optional[str] = None, slogan: Optional[s
     return option
 
 
+def str_input(option_list: List[str], prefix: Optional[str] = None) -> str:
+    # TODO (Sany sanyhew1097618435@163,com): Test this function and add the docstring.
+    num2option(option_list)
+    option_num = limit_num_input(option_list, prefix, num_input)
+    option = option_list[option_num-1]
+    return option
 
 
 def tuple_input(default: Tuple[int], prefix: Optional[str] = None, slogan: Optional[str] = None) -> Tuple[int]:
@@ -253,10 +258,16 @@ def tuple_input(default: Tuple[int], prefix: Optional[str] = None, slogan: Optio
         A numeric tuple.
     """
     while True:
-        option = input('Select the sizes of hidden layer you want to process.\n'
+        option = input('Determine the architecture of the deep neural network.\n'
                        'Input format:\n'
-                       'Format: "(**,); (**, **); (**, **, **)", such as "(100,); (50,25); (64, 32, 8)"\n'
-                       '--> You want to set 1/2/3 hidden layers with 100/50;25/64;32;8 neurons.\n'
+                       'Format 1: "(**,)", such as "(100,)"\n'
+                       '--> You want to set one hidden layer with 100 neurons for the deep neural network.\n'
+                       'Format 2: "(**, **)", such as "(50,25)"\n'
+                       '--> You want to set two hidden layers in order with 50 neurons and 25 neurons respectively'
+                       ' for the deep neural network.\n'
+                       'Format 3: "(**, **, **)", such as "(64, 32, 8)"\n'
+                       '--> You want to set three hidden layers in order 64 neurons, 32 neurons and 8 neurons'
+                       ' respectively for the deep neural network.\n'
                        f"({prefix}) ➜ {slogan}").strip()
         if len(option) == 0:
              option = default

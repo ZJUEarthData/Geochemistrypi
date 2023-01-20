@@ -33,7 +33,7 @@ def pipeline(file_name: str) -> None:
     logger.info("Geochemistry Py - User Behaviour Testing Demo")
 
     # If the argument is False, hide all Python level warnings.
-    show_warning(True)
+    show_warning(False)
 
     # Read the data
     logger.debug("Data Uploaded")
