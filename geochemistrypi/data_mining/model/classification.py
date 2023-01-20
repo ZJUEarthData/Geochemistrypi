@@ -345,7 +345,7 @@ class SVMClassification(ClassificationWorkflowBase):
         """Plot the decision boundary of the trained model with the testing data set below."""
         print("-----* Two-dimensional Decision Boundary Diagram *-----")
         plot_2d_decision_boundary(X, X_test, y_test, trained_model, image_config, algorithm_name)
-        save_fig(f'2D Decision Boundary - {algorithm_name}', store_path)
+        save_fig(f'Classification - {algorithm_name} - Decision Boundary', store_path)
 
     @dispatch()
     def special_components(self, **kwargs) -> None:
@@ -550,11 +550,13 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
                                             ccp_alpha=self.ccp_alpha)
         self.naming = DecisionTreeClassification.name
 
-    def plot_tree_function(self, cls: object, trained_model: any, algorithm_name: str, store_path: str) -> None:
+    def plot_tree_function(self, trained_model: object, image_config: dict, algorithm_name: str, store_path: str) -> None:
+        ###################################################
         # Drawing decision tree diagrams
+        ###################################################
         print("-----* Decision Tree Plot *-----")
-        decision_tree_plot(cls, trained_model, algorithm_name)
-        save_fig('Decision Tree Classification Plot', store_path)
+        decision_tree_plot(trained_model, image_config)
+        save_fig(f"Classification - {algorithm_name} - Tree Graph", store_path)
 
     '''
        def decision_surface_plot(self):
@@ -582,21 +584,21 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
        '''
 
     @staticmethod
-    def dt_plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: Any,
-                                     algorithm_name: str, store_path: str,
-                                     contour_data: Optional[List[np.ndarray]] = None,
-                                     labels: Optional[np.ndarray] = None) -> None:
+    def _plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: Any,
+                                   image_config: dict, algorithm_name: str, store_path: str,
+                                   contour_data: Optional[List[np.ndarray]] = None,
+                                   labels: Optional[np.ndarray] = None) -> None:
         """Plot the decision boundary of the trained model with the testing data set below."""
         print("-----* Two-dimensional Decision Boundary Diagram *-----")
-        plot_2d_decision_boundary(X, X_test, y_test, trained_model, algorithm_name)
-        save_fig(f'2d Decision Boundary - {algorithm_name}', store_path)
+        plot_2d_decision_boundary(X, X_test, y_test, trained_model, image_config, algorithm_name)
+        save_fig(f'Classification - {algorithm_name} - Decision Boundary', store_path)
 
     def special_components(self, **kwargs) -> None:
-        self.plot_tree_function(ClassificationWorkflowBase, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self.plot_tree_function(self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         if DecisionTreeClassification.X.shape[1] == 2:
-            self.dt_plot_2d_decision_boundary(DecisionTreeClassification.X, DecisionTreeClassification.X_test,
+            self._plot_2d_decision_boundary(DecisionTreeClassification.X, DecisionTreeClassification.X_test,
                                               DecisionTreeClassification.y_test,
-                                              self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+                                              self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
 
 class RandomForestClassification(ClassificationWorkflowBase):
@@ -868,29 +870,28 @@ class RandomForestClassification(ClassificationWorkflowBase):
         save_fig(f"Feature Importance - {algorithm_name}", store_path)
 
     @staticmethod
-    def _tree_plot(trained_model: object, algorithm_name: str, store_path: str) -> None:
+    def _tree_plot(trained_model: object, image_config: dict, algorithm_name: str, store_path: str) -> None:
         """Draw a diagram of the first decision tree of the forest."""
         print("-----* Random Forest's Tree Plot *-----")
-        plt.figure()
-        tree.plot_tree(trained_model.estimators_[0])
-        save_fig(f"First Decision Tree - {algorithm_name}", store_path)
+        decision_tree_plot(trained_model.estimators_[0], image_config)
+        save_fig(f"Classification - {algorithm_name} - Tree Graph", store_path)
 
     @staticmethod
     def _plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object,
-                                   algorithm_name: str, store_path: str) -> None:
+                                   image_config: dict, algorithm_name: str, store_path: str) -> None:
         """Plot the decision boundary of the trained model with the testing data set below."""
         print("-----* Two-dimensional Decision Boundary Diagram *-----")
-        plot_2d_decision_boundary(X, X_test, y_test, trained_model, algorithm_name)
-        save_fig(f'2D Decision Boundary - {algorithm_name}', store_path)
+        plot_2d_decision_boundary(X, X_test, y_test, trained_model, image_config, algorithm_name)
+        save_fig(f"Classification - {algorithm_name} - Decision Boundary", store_path)
 
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         self._feature_importances(RandomForestClassification.X_train, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
-        self._tree_plot(self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._tree_plot(self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         if RandomForestClassification.X.shape[1] == 2:
             self._plot_2d_decision_boundary(RandomForestClassification.X, RandomForestClassification.X_test,
-                                            RandomForestClassification.y_test, self.model, self.naming,
+                                            RandomForestClassification.y_test, self.model, self.image_config, self.naming,
                                             MODEL_OUTPUT_IMAGE_PATH)
 
     @dispatch(bool)
@@ -898,10 +899,10 @@ class RandomForestClassification(ClassificationWorkflowBase):
         """Invoke all special application functions for this algorithms by FLAML framework."""
         self._feature_importances(RandomForestClassification.X_train, self.auto_model, self.naming,
                                   MODEL_OUTPUT_IMAGE_PATH)
-        self._tree_plot(self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._tree_plot(self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         if RandomForestClassification.X.shape[1] == 2:
             self._plot_2d_decision_boundary(RandomForestClassification.X, RandomForestClassification.X_test,
-                                            RandomForestClassification.y_test, self.auto_model, self.naming,
+                                            RandomForestClassification.y_test, self.auto_model, self.image_config, self.naming,
                                             MODEL_OUTPUT_IMAGE_PATH)
 
 
@@ -1044,24 +1045,24 @@ class XgboostClassification(ClassificationWorkflowBase):
         return configuration
 
     @staticmethod
-    def _feature_importance_series(data: pd.DataFrame, trained_model: any, algorithm_name: str,
+    def _feature_importance_series(data: pd.DataFrame, trained_model: any, algorithm_name: str, image_config: dict,
                                    store_path: str) -> None:
         print("-----* Feature Importance *-----")
         feature_importance_value(data, trained_model)
-        feature_weights_histograms(data, trained_model, algorithm_name)
-        save_fig(f"Feature Weights - Histograms Plot - {algorithm_name}", store_path)
-        feature_importance_map(trained_model, algorithm_name)
-        save_fig(f"Feature Importance Map Plot - {algorithm_name}", store_path)
+        feature_weights_histograms(trained_model, image_config, algorithm_name)
+        save_fig(f"Classification - {algorithm_name} - Feature Weights Histograms Plot", store_path)
+        feature_importance_map(trained_model, image_config,algorithm_name)
+        save_fig(f"Classification - {algorithm_name} - Feature Importance Map Plot", store_path)
 
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        self._feature_importance_series(XgboostClassification.X, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._feature_importance_series(self.X, self.model, self.naming, self.image_config, MODEL_OUTPUT_IMAGE_PATH)
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        self._feature_importance_series(XgboostClassification.X, self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._feature_importance_series(XgboostClassification.X, self.auto_model, self.naming, self.image_config, MODEL_OUTPUT_IMAGE_PATH)
 
     # def plot(self):
     # TODO(solve the problem of failed to execute WindowsPath('dot'), make sure the Graphviz executables are on your systems' PATH

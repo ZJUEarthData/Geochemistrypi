@@ -22,6 +22,7 @@ from .func.algo_regression._rf import feature_importance__
 from .func.algo_regression._xgboost import feature_importance, histograms_feature_weights, permutation_importance_
 from .func.algo_regression._linear import show_formula, plot_2d_graph, plot_3d_graph
 from .func.algo_regression._extra_tree import feature_importances
+from .func.algo_regression._decision_tree import decision_tree_plot
 
 
 class RegressionWorkflowBase(WorkflowBase):
@@ -34,6 +35,7 @@ class RegressionWorkflowBase(WorkflowBase):
         # These two attributes are used for the customized models of FLAML framework
         self.customized = False
         self.customized_name = None
+        self.image_config = None
 
     @dispatch(object, object)
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
@@ -506,13 +508,13 @@ class XgboostRegression(RegressionWorkflowBase):
     @staticmethod
     def _histograms_feature_weights(X: pd.DataFrame, trained_model: object, image_config: dict, algorithm_name: str, store_path: str) -> None:
         histograms_feature_weights(X, trained_model,image_config)
-        save_fig(f"Feature Importance Score - {algorithm_name}", store_path)
+        save_fig(f"Regression - {algorithm_name} - Feature Importance Score", store_path)
 
     @staticmethod
     def _permutation_importance(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object,
                                 image_config: dict, algorithm_name: str, store_path: str) -> None:
         permutation_importance_(X, X_test, y_test, trained_model, image_config)
-        save_fig(f"Xgboost Feature Importance - {algorithm_name}", store_path)
+        save_fig(f"Regression - {algorithm_name} - Xgboost Feature Importance", store_path)
 
     @dispatch()
     def special_components(self, **kwargs) -> None:
@@ -713,27 +715,23 @@ class DecisionTreeRegression(RegressionWorkflowBase):
         )
         self.naming = DecisionTreeRegression.name
 
-    def plot_tree_function(self):
+    def _plot_tree_function(self, trained_model: object, image_config: dict, algorithm_name: str, store_path: str) -> None:
         ###################################################
         # Drawing decision tree diagrams
         ###################################################
         print("-----* Decision Tree Plot *-----")
-        y = RegressionWorkflowBase().y
-        X = RegressionWorkflowBase().X
-        clf = self.model.fit(X, y)
-        plt.figure()
-        plot_tree(clf, filled=True)
-        save_fig('plot_decision_tree_regression', MODEL_OUTPUT_IMAGE_PATH)
+        decision_tree_plot(trained_model, image_config)
+        save_fig(f"Regression - {algorithm_name} - Tree Graph", store_path)
 
     @dispatch()
     def special_components(self):
-        self.plot_tree_function()
+        self._plot_tree_function(self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        self.plot_tree_function()
+        self._plot_tree_function()
         
 
 
@@ -1168,7 +1166,7 @@ class RandomForestRegression(RegressionWorkflowBase):
                              trained_model: object, algorithm_name: str, store_path: str) -> None:
         print("-----* Feature Importance *-----")
         feature_importance__(X, X_test, y_test, trained_model)
-        save_fig(f"Feature Importance - {algorithm_name}", store_path)
+        save_fig(f"Regression - {algorithm_name} - Feature Importance", store_path)
 
     @dispatch()
     def special_components(self, **kwargs) -> None:
