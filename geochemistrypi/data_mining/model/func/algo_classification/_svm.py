@@ -42,7 +42,7 @@ def plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.
 
     # create drawing canvas
     fig, ax = plt.subplots(figsize=(image_config['width'], image_config['height']),dpi=image_config['dpi'])
-
+    ax.patch.set_facecolor('cornsilk')
 
     # draw the main content
     ax.contourf(x0, x1, labels, cmap=image_config['cmap2'], alpha=image_config['alpha1'])
@@ -57,15 +57,14 @@ def plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.
     y_adjustment = (ymax - ymin) * 0.01
     ax.axis([xmin - x_adjustment, xmax + x_adjustment, ymin - y_adjustment, ymax + y_adjustment])
 
-
     # convert the font of the axes
     ax.set_xlabel(X.columns[0])
     ax.set_ylabel(X.columns[1])
     plt.tick_params(labelsize=image_config['labelsize'])  # adjust the font size of the axis label
-    plt.setp(ax.get_xticklabels(), rotation=image_config['xrotation'], ha=image_config['xha'],
-             rotation_mode="anchor")  # axis label rotation Angle
-    plt.setp(ax.get_yticklabels(), rotation=image_config['rot'], ha=image_config['yha'],
-             rotation_mode="anchor")  # axis label rotation Angle
+    # plt.setp(ax.get_xticklabels(), rotation=image_config['xrotation'], ha=image_config['xha'],
+    #          rotation_mode="anchor")  # axis label rotation Angle
+    # plt.setp(ax.get_yticklabels(), rotation=image_config['rot'], ha=image_config['yha'],
+    #          rotation_mode="anchor")  # axis label rotation Angle
     x1_label = ax.get_xticklabels()  # adjust the axis label font
     [x1_label_temp.set_fontname(image_config['axislabelfont']) for x1_label_temp in x1_label]
     y1_label = ax.get_yticklabels()

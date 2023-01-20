@@ -60,6 +60,12 @@ class WorkflowBase(metaclass=ABCMeta):
             'alpha1': 0.4,  # point transparency
             'alpha2': 0.95,
             'linestyle': '-',
+            # bar
+            'bar_x': range(len(self.X.columns)),  # the sequence of horizontal coordinates of the bar
+            'bar_height': None,  # the height(s) of the bars
+            'bar_label': self.X.columns,  # The label on the X-axis
+            'bar_width': 0.3,  # the width(s) of the bars
+            'bottom': 0,  # the y coordinate(s) of the bars bases
             # Convert the font of the axes
             'labelsize': 5,  # the font size of the axis label
             'xrotation': 0,  # x axis label rotation Angle
