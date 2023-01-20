@@ -35,7 +35,6 @@ class RegressionWorkflowBase(WorkflowBase):
         # These two attributes are used for the customized models of FLAML framework
         self.customized = False
         self.customized_name = None
-        self.image_config = None
 
     @dispatch(object, object)
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
@@ -716,24 +715,22 @@ class DecisionTreeRegression(RegressionWorkflowBase):
         self.naming = DecisionTreeRegression.name
 
     def _plot_tree_function(self, trained_model: object, image_config: dict, algorithm_name: str, store_path: str) -> None:
-        ###################################################
-        # Drawing decision tree diagrams
-        ###################################################
+        """Drawing decision tree diagrams."""
         print("-----* Decision Tree Plot *-----")
         decision_tree_plot(trained_model, image_config)
         save_fig(f"Regression - {algorithm_name} - Tree Graph", store_path)
 
     @dispatch()
     def special_components(self):
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         self._plot_tree_function(self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        self._plot_tree_function()
+        self._plot_tree_function(self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         
-
 
 class ExtraTreeRegression(RegressionWorkflowBase):
     """The automation workflow of using Extra Tree algorithm to make insightful products."""

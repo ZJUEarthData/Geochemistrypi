@@ -10,7 +10,7 @@ def feature_importance__(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataF
 
     Parameters
     ----------
-    X: pd.DataFrame (n_samples, n_components)
+    X : pd.DataFrame (n_samples, n_components)
         The input data.
 
     X_test : pd.DataFrame (n_samples, n_components)

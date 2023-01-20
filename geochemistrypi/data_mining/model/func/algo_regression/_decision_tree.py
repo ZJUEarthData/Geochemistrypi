@@ -3,6 +3,17 @@ from sklearn.tree import plot_tree
 
 
 def decision_tree_plot(trained_model: object, image_config: dict) -> None:
+    """Drawing decision tree diagrams.
+
+    Parameters
+    ----------
+    trained_model : sklearn algorithm model
+        The sklearn algorithm model trained with X_train data.
+
+    image_config : dict
+        Image Configuration
+    """
+
     # create drawing canvas
     fig, ax = plt.subplots(figsize=(image_config['width'], image_config['height']), dpi=image_config['dpi'])
 
