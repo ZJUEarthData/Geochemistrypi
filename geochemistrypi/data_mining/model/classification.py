@@ -16,7 +16,7 @@ from typing import Union, Optional, List, Dict, Callable, Tuple, Any, Sequence, 
 from multipledispatch import dispatch
 from flaml import AutoML
 from ._base import WorkflowBase
-from .func.algo_classification._common import confusion_matrix_plot, contour_data
+from .func.algo_classification._common import confusion_matrix_plot, contour_data, plot_precision_recall, plot_ROC
 from .func.algo_classification._svm import plot_2d_decision_boundary
 from .func.algo_classification._xgboost import feature_importance_map, feature_importance_value, \
     feature_weights_histograms
@@ -95,11 +95,30 @@ class ClassificationWorkflowBase(WorkflowBase):
         """Build up coordinate matrices as the data of contour plot."""
         return contour_data(X, trained_model)
 
+    @staticmethod
+    def _plot_precision_recall( X_train: pd.DataFrame, y_train: pd.DataFrame,
+                                trained_model: object, algorithm_name: str, store_path: str) -> None:
+        print("-----* Precision and Recall Versus the Decision Threshold *-----")
+        plot_precision_recall(X_train, y_train, trained_model, algorithm_name)
+        save_fig(f'Precision_Recall_Curve - {algorithm_name}', store_path)
+
+    @staticmethod
+    def _plot_ROC(X_train: pd.DataFrame, y_train: pd.DataFrame,
+                  trained_model: object, algorithm_name: str, store_path: str) -> None:
+        print("-----* ROC Curve *-----")
+        plot_ROC(X_train, y_train, trained_model, algorithm_name)
+        save_fig(f'ROC_Curve - {algorithm_name}', store_path)
+
+
     @dispatch()
     def common_components(self) -> None:
         """Invoke all common application functions for classification algorithms by Scikit-learn framework."""
         self._score(ClassificationWorkflowBase.y_test, ClassificationWorkflowBase.y_test_predict)
         self._confusion_matrix_plot(ClassificationWorkflowBase.y_test, ClassificationWorkflowBase.y_test_predict,
+                                    self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._plot_precision_recall(ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.y_train,
+                                    self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._plot_ROC(ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.y_train,
                                     self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
     @dispatch(bool)
@@ -108,7 +127,10 @@ class ClassificationWorkflowBase(WorkflowBase):
         self._score(ClassificationWorkflowBase.y_test, ClassificationWorkflowBase.y_test_predict)
         self._confusion_matrix_plot(ClassificationWorkflowBase.y_test, ClassificationWorkflowBase.y_test_predict,
                                     self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
-
+        self._plot_precision_recall(ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.y_train,
+                                    self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._plot_ROC(ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.y_train,
+                                    self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
 class SVMClassification(ClassificationWorkflowBase):
     """The automation workflow of using SVC algorithm to make insightful products."""
