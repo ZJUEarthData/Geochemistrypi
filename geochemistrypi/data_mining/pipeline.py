@@ -137,6 +137,7 @@ def pipeline(file_name: str) -> None:
         basic_statistic(data_processed_imputed)
         clear_output()
     else:
+        # if the selected data set doesn't need imputation, which means there are no missing values.
         data_processed_imputed = data_processed
 
     # Feature engineering
@@ -253,6 +254,7 @@ def pipeline(file_name: str) -> None:
             run.activate(X, y, is_automl)
     else:
         # gain all models result in the specific mode
-        for i in range(len(MODELS)):
+        for i in range(len(MODELS)-1):
             run = Modes2Initiators[mode_num](MODELS[i])
             run.activate(X, y)
+            clear_output()

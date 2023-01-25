@@ -95,30 +95,11 @@ class ClassificationWorkflowBase(WorkflowBase):
         """Build up coordinate matrices as the data of contour plot."""
         return contour_data(X, trained_model)
 
-    @staticmethod
-    def _plot_precision_recall( X_train: pd.DataFrame, y_train: pd.DataFrame,
-                                trained_model: object, algorithm_name: str, store_path: str) -> None:
-        print("-----* Precision and Recall Versus the Decision Threshold *-----")
-        plot_precision_recall(X_train, y_train, trained_model, algorithm_name)
-        save_fig(f'Precision_Recall_Curve - {algorithm_name}', store_path)
-
-    @staticmethod
-    def _plot_ROC(X_train: pd.DataFrame, y_train: pd.DataFrame,
-                  trained_model: object, algorithm_name: str, store_path: str) -> None:
-        print("-----* ROC Curve *-----")
-        plot_ROC(X_train, y_train, trained_model, algorithm_name)
-        save_fig(f'ROC_Curve - {algorithm_name}', store_path)
-
-
     @dispatch()
     def common_components(self) -> None:
         """Invoke all common application functions for classification algorithms by Scikit-learn framework."""
         self._score(ClassificationWorkflowBase.y_test, ClassificationWorkflowBase.y_test_predict)
         self._confusion_matrix_plot(ClassificationWorkflowBase.y_test, ClassificationWorkflowBase.y_test_predict,
-                                    self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
-        self._plot_precision_recall(ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.y_train,
-                                    self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
-        self._plot_ROC(ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.y_train,
                                     self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
     @dispatch(bool)
@@ -127,10 +108,7 @@ class ClassificationWorkflowBase(WorkflowBase):
         self._score(ClassificationWorkflowBase.y_test, ClassificationWorkflowBase.y_test_predict)
         self._confusion_matrix_plot(ClassificationWorkflowBase.y_test, ClassificationWorkflowBase.y_test_predict,
                                     self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
-        self._plot_precision_recall(ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.y_train,
-                                    self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
-        self._plot_ROC(ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.y_train,
-                                    self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+
 
 class SVMClassification(ClassificationWorkflowBase):
     """The automation workflow of using SVC algorithm to make insightful products."""
@@ -369,9 +347,27 @@ class SVMClassification(ClassificationWorkflowBase):
         plot_2d_decision_boundary(X, X_test, y_test, trained_model, image_config, algorithm_name)
         save_fig(f'Classification - {algorithm_name} - Decision Boundary', store_path)
 
+    @staticmethod
+    def _plot_precision_recall( X_train: pd.DataFrame, y_train: pd.DataFrame,
+                                trained_model: object, algorithm_name: str, store_path: str) -> None:
+        print("-----* Precision and Recall Versus the Decision Threshold *-----")
+        plot_precision_recall(X_train, y_train, trained_model, algorithm_name)
+        save_fig(f'Precision_Recall_Curve - {algorithm_name}', store_path)
+
+    @staticmethod
+    def _plot_ROC(X_train: pd.DataFrame, y_train: pd.DataFrame,
+                  trained_model: object, algorithm_name: str, store_path: str) -> None:
+        print("-----* ROC Curve *-----")
+        plot_ROC(X_train, y_train, trained_model, algorithm_name)
+        save_fig(f'ROC_Curve - {algorithm_name}', store_path)
+
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        self._plot_precision_recall(ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.y_train,
+                                    self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._plot_ROC(ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.y_train,
+                       self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         if SVMClassification.X.shape[1] == 2:
             self._plot_2d_decision_boundary(SVMClassification.X, SVMClassification.X_test, SVMClassification.y_test,
                                             self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
@@ -387,6 +383,10 @@ class SVMClassification(ClassificationWorkflowBase):
     @dispatch(bool)
     def special_components(self, is_automl: bool, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
+        self._plot_precision_recall(ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.y_train,
+                                    self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._plot_ROC(ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.y_train,
+                       self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         if SVMClassification.X.shape[1] == 2:
             self._plot_2d_decision_boundary(SVMClassification.X, SVMClassification.X_test, SVMClassification.y_test,
                                             self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
@@ -1327,18 +1327,41 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
         }
         return configuration
 
-    def _feature_importance(self, data: pd.DataFrame, trained_model: any, algorithm_name: str, store_path: str) -> None:
+    @staticmethod
+    def _feature_importance(data: pd.DataFrame, trained_model: any, algorithm_name: str, store_path: str) -> None:
         """Print the feature coefficient value orderly."""
         print("-----* Feature Importance *-----")
         logistic_importance_plot(data, trained_model, algorithm_name)
         save_fig("LogisticRegression_feature_importance", store_path)
 
+    @staticmethod
+    def _plot_precision_recall(X_train: pd.DataFrame, y_train: pd.DataFrame,
+                               trained_model: object, algorithm_name: str, store_path: str) -> None:
+        print("-----* Precision and Recall Versus the Decision Threshold *-----")
+        plot_precision_recall(X_train, y_train, trained_model, algorithm_name)
+        save_fig(f'Precision_Recall_Curve - {algorithm_name}', store_path)
+
+    @staticmethod
+    def _plot_ROC(X_train: pd.DataFrame, y_train: pd.DataFrame,
+                  trained_model: object, algorithm_name: str, store_path: str) -> None:
+        print("-----* ROC Curve *-----")
+        plot_ROC(X_train, y_train, trained_model, algorithm_name)
+        save_fig(f'ROC_Curve - {algorithm_name}', store_path)
+
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        self._feature_importance(ClassificationWorkflowBase.X, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._feature_importance(LogisticRegressionClassification.X, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._plot_precision_recall(LogisticRegressionClassification.X_train, LogisticRegressionClassification.y_train,
+                                    self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._plot_ROC(LogisticRegressionClassification.X_train, LogisticRegressionClassification.y_train,
+                       self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        self._feature_importance(ClassificationWorkflowBase.X, self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._feature_importance(LogisticRegressionClassification.X, self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._plot_precision_recall(LogisticRegressionClassification.X_train, LogisticRegressionClassification.y_train,
+                                    self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._plot_ROC(LogisticRegressionClassification.X_train, LogisticRegressionClassification.y_train,
+                       self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
