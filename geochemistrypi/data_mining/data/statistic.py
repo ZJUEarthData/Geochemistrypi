@@ -9,10 +9,21 @@ def test_once(df_orig: pd.DataFrame, df_impute: pd.DataFrame, test: str = 'wilco
     """Do hypothesis testing on each pair-wise column once, non-parametric test.
     Null hypothesis: the distributions of the data set before and after imputing remain the same.
 
-    :param df_orig: pd.DataFrame, the original dataset with missing value
-    :param df_impute: pd.DataFrame, the dataset after imputation
-    :param test:str, the statistics test method used
-    :return: a numpy array containing the p-values of the tests on each column in the column order
+    Parameters
+    ----------
+    df_orig : pd.DataFrame (n_samples, n_components)
+        The original dataset with missing value.
+
+    df_impute : pd.DataFrame (n_samples, n_components)
+        The dataset after imputation.
+
+    test : str
+        The statistics test method used.
+
+    Returns
+    -------
+    pvals : np.ndarray
+        A numpy array containing the p-values of the tests on each column in the column order
     """
     cols = df_orig.columns
     pvals = np.array([])
@@ -34,22 +45,33 @@ def test_once(df_orig: pd.DataFrame, df_impute: pd.DataFrame, test: str = 'wilco
 
 
 def monte_carlo_simulator(df_orig: pd.DataFrame, df_impute: pd.DataFrame, sample_size: int, iteration: int,
-                          test: str = 'wilcoxon', confidence: float = 0.05) -> pd.DataFrame:
+                          test: str = 'wilcoxon', confidence: float = 0.05) -> None:
     """Check which column rejects hypothesis testing, p value < significance level, to find whether
     the imputation change the distribution of the original data set.
 
-    :param df_orig: The original dataset with missing value
-    :param df_impute: The dataset after imputation
-    :param test: The statistics test used
-    :param sample_size: The size of the sample for each iteration
-    :param iteration: Number of iterations of Monte Carlo Simulation
-    :param confidence: Confidence level, default to be 0.05
-    :return: The column names that reject the null hypothesis,
+    Parameters
+    ----------
+    df_orig : pd.DataFrame (n_samples, n_components)
+        The original dataset with missing value.
+
+    df_impute : pd.DataFrame (n_samples, n_components)
+        The dataset after imputation.
+
+    test : str
+        The statistics test method used.
+
+    sample_size : int
+        The size of the sample for each iteration.
+
+    iteration : int
+        The number of iterations of Monte Carlo simulation.
+
+    confidence : float
+        Confidence level, default to be 0.05
     """
     random.seed(2)
     simu_pvals = np.array([0] * df_orig.shape[1])
     for i in range(iteration):
-        # TODO(sany hecan@mail2.sysu.edu.cn): which way to perform monte carlo sampling, random.sample?
         # monte carlo sampling
         sample_idx = random.sample(range(df_orig.shape[0]), sample_size)
         sample_orig = df_orig.iloc[sample_idx]
@@ -61,5 +83,15 @@ def monte_carlo_simulator(df_orig: pd.DataFrame, df_impute: pd.DataFrame, sample
 
     # average p value
     col_res = simu_pvals / iteration
-    # check which column rejects hypothesis testing, p value < significance level
-    return df_orig.columns[np.where(col_res < confidence)[0]]
+    # check which column rejects hypothesis testing, 0 < p value < significance level
+    rejected_col = df_orig.columns[np.where((col_res < confidence) & (col_res > 0))[0]]
+
+    print("Significance Level: ", confidence)
+    print("The number of iterations of Monte Carlo simulation: ", iteration)
+    print("The size of the sample for each iteration (half of the whole data set): ", sample_size)
+    print("Average p-value: ")
+    print("\n".join("{} {}".format(x, y) for x, y in zip(df_orig.columns, col_res)))
+    print("Note: 'p-value = 0' means imputation method doesn't apply to that column.")
+    print("The columns which rejects null hypothesis: ", end='')
+    print('None') if not rejected_col.size else print(*list(rejected_col))
+

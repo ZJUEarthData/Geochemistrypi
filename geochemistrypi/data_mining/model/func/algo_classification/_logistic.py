@@ -13,10 +13,10 @@ def logistic_importance_plot(data: pd.DataFrame, trained_model: any, algorithm_n
         Data for silhouette.
 
     trained_model: any
-        The algorithm which to be used
+        The algorithm which to be used.
 
     algorithm_name : str
-        the name of the algorithm
+        The name of the algorithm.
 
     References
     ----------

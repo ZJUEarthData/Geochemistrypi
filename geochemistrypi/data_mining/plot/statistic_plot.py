@@ -20,16 +20,23 @@ def is_null_value(data: pd.DataFrame) -> None:
 
 
 def is_imputed(data: pd.DataFrame) -> bool:
-    """Check whether the data set has null value or not
+    """Check whether the data set has null value or not.
 
-    :param data: pd.DataFrame, the data set
-    :return: bool, True if it has null value
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The data set.
+
+    Returns
+    -------
+    flag : bool
+        True if it has null value.
     """
     flag = data.isnull().any().any()
     if flag:
-        print("Tip: you'd better use imputation techniques to deal with the missing values.")
+        print("Note: you'd better use imputation techniques to deal with the missing values.")
     else:
-        print("Tip: you don't need to deal with the missing values, we'll just pass this part!")
+        print("Note: you don't need to deal with the missing values, we'll just pass this step!")
     return flag
 
 
@@ -41,38 +48,79 @@ def ratio_null_vs_filled(data: pd.DataFrame) -> None:
 
 
 def correlation_plot(col: pd.Index, df: pd.DataFrame) -> None:
-    """A heatmap describing the correlation between the required columns
+    """A heatmap describing the correlation between the required columns.
 
-    :param col: pd.Index, a list of columns that need to plot
-    :param df: pd.DataFrame, the dataframe
+    Parameters
+    ----------
+    col : pd.Index
+        A list of columns that need to plot.
+
+    df : pd.DataFrame
+        The data set.
     """
     plot_df = df[col]
     plot_df_cor = plot_df.corr()
     plt.figure(figsize=(20, 20))
     sns.heatmap(plot_df_cor, cmap='coolwarm', annot=True, linewidths=.5)
     print("Successfully calculate the pair-wise correlation coefficient among the selected columns.")
-    save_fig("correlation_plot", STATISTIC_IMAGE_PATH)
+    save_fig("Correlation Plot", STATISTIC_IMAGE_PATH)
 
 
 def distribution_plot(col: pd.Index, df: pd.DataFrame) -> None:
-    """The histogram containing the respective distribution subplots of the required columns
+    """The histogram containing the respective distribution subplots of the required columns.
 
-    :param col: pd.Index, a list of columns that need to plot
-    :param df: pd.DataFrame, the dataframe
+    Parameters
+    ----------
+    col : pd.Index
+        A list of columns that need to plot.
+
+    df : pd.DataFrame
+        The data set.
     """
     n = int(np.sqrt(len(col))) + 1
     plt.figure(figsize=(n*2, n*2))
-    df.hist()
-    print("Successfully plot the distribution plot of the selected columns.")
-    save_fig("distribution_histogram", STATISTIC_IMAGE_PATH)
+    for i in range(len(col)):
+        plt.subplot(n, n, i+1)
+        plt.hist(df[col[i]])
+        plt.title(col[i])
+    print("Successfully draw the distribution plot of the selected columns.")
+    save_fig("Distribution Histogram", STATISTIC_IMAGE_PATH)
+
+
+def logged_distribution_plot(col: pd.Index, df: pd.DataFrame) -> None:
+    """The histogram containing the respective distribution subplots after log transformation of the required columns.
+
+    Parameters
+    ----------
+    col : pd.Index
+        A list of columns that need to plot.
+
+    df : pd.DataFrame
+        The data set.
+    """
+    n = int(np.sqrt(len(col))) + 1
+    plt.figure(figsize=(n*2, n*2))
+    for i in range(len(col)):
+        plt.subplot(n, n, i+1)
+        plt.hist(df[col[i]].map(lambda x: np.log(x+1)))
+        plt.title(col[i])
+    print("Successfully draw the distribution plot after log transformation of the selected columns.")
+    save_fig("Distribution Histogram After Log Transformation", STATISTIC_IMAGE_PATH)
 
 
 def probability_plot(col: pd.Index, df_origin: pd.DataFrame, df_impute: pd.DataFrame) -> None:
-    """A large graph containing the respective probability plots (origin vs. impute) of the required columns
+    """A large graph containing the respective probability plots (origin vs. impute) of the required columns.
 
-    :param col: pd.Index, a list of columns that need to plot
-    :param df_origin: pd.DataFrame, the original dataframe
-    :param df_impute: pd.DataFrame, the dataframe after missing value imputation
+    Parameters
+    ----------
+    col : pd.Index
+        A list of columns that need to plot.
+
+    df_origin : pd.DataFrame (n_samples, n_components)
+        The original dataset with missing value.
+
+    df_impute : pd.DataFrame (n_samples, n_components)
+        The dataset after imputation.
     """
     r, c = len(col) // 4 + 1, 4
     fig = plt.figure(figsize=(c*8, r*8))
@@ -83,5 +131,5 @@ def probability_plot(col: pd.Index, df_origin: pd.DataFrame, df_impute: pd.DataF
         ax = fig.add_subplot(r, c, i+1)
         pp_origin.ppplot(line="45", other=pp_impute, ax=ax)
         plt.title(f"{feature}, origin data vs. imputed data")
-    print("Successfully graph the respective probability plot (origin vs. impute) of the selected columns")
-    save_fig("probability_plot", STATISTIC_IMAGE_PATH)
+    print("Successfully draw the respective probability plot (origin vs. impute) of the selected columns")
+    save_fig("Probability Plot", STATISTIC_IMAGE_PATH)

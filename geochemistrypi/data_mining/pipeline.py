@@ -8,8 +8,9 @@ from .data.data_readiness import read_data, show_data_columns, num2option, creat
     num_input, limit_num_input
 from .data.imputation import imputer
 from .data.feature_engineering import FeatureConstructor
+from .data.statistic import monte_carlo_simulator
 from .plot.statistic_plot import basic_statistic, correlation_plot, distribution_plot, is_null_value, probability_plot, \
-    ratio_null_vs_filled
+    ratio_null_vs_filled, logged_distribution_plot, is_imputed
 from .plot.map_plot import map_projected
 from .utils.base import clear_output, log, show_warning
 from .process.regress import RegressionModelSelection
@@ -103,33 +104,46 @@ def pipeline(file_name: str) -> None:
     basic_statistic(data_processed)
     correlation_plot(data_processed.columns, data_processed)
     distribution_plot(data_processed.columns, data_processed)
-    is_null_value(data_processed)
-    ratio_null_vs_filled(data_processed)
-    # TODO(sany hecan@mail2.sysu.edu.cn): this variable used for imputing
-    # imputed_flag = is_imputed(data_processed)
+    logged_distribution_plot(data_processed.columns, data_processed)
     clear_output()
 
     # Imputing
-    # TODO(sany hecan@mail2.sysu.edu.cn): if no null value, skip it
     logger.debug("Imputation")
-    print("-*-*- Strategy for Missing Values -*-*-")
-    num2option(IMPUTING_STRATEGY)
-    print("Which strategy do you want to apply?")
-    strategy_num = limit_num_input(IMPUTING_STRATEGY, SECTION[1], num_input)
-    data_processed_imputed_np = imputer(data_processed, IMPUTING_STRATEGY[strategy_num - 1])
-    data_processed_imputed = np2pd(data_processed_imputed_np, data_processed.columns)
-    basic_info(data_processed_imputed)
-    basic_statistic(data_processed_imputed)
-    probability_plot(data_processed.columns, data_processed, data_processed_imputed)
+    is_null_value(data_processed)
+    ratio_null_vs_filled(data_processed)
+    imputed_flag = is_imputed(data_processed)
     clear_output()
-
-    # TODO(sany hecan@mail2.sysu.edu.cn): Use Hypothesis Test
+    if imputed_flag:
+        print("-*-*- Strategy for Missing Values -*-*-")
+        num2option(IMPUTING_STRATEGY)
+        print("Which strategy do you want to apply?")
+        strategy_num = limit_num_input(IMPUTING_STRATEGY, SECTION[1], num_input)
+        data_processed_imputed_np = imputer(data_processed, IMPUTING_STRATEGY[strategy_num - 1])
+        data_processed_imputed = np2pd(data_processed_imputed_np, data_processed.columns)
+        clear_output()
+        print("-*-*- Hypothesis Testing on Imputation Method -*-*-")
+        print("Null Hypothesis: The distributions of the data set before and after imputing remain the same.")
+        print("Thoughts: Check which column rejects null hypothesis.")
+        print("Statistics Test Method: Wilcoxon Test")
+        monte_carlo_simulator(data_processed, data_processed_imputed,
+                              sample_size=data_processed_imputed.shape[0]//2,
+                              iteration=100, test='wilcoxon', confidence=0.05)
+        # TODO(sany sanyhew1097618435@163.com): Kruskal Wallis Test - P value - why near 1?
+        # print("The statistics test method: Kruskal Wallis Test")
+        # monte_carlo_simulator(data_processed, data_processed_imputed, sample_size=50,
+        #                       iteration=100, test='kruskal', confidence=0.05)
+        probability_plot(data_processed.columns, data_processed, data_processed_imputed)
+        basic_info(data_processed_imputed)
+        basic_statistic(data_processed_imputed)
+        clear_output()
+    else:
+        data_processed_imputed = data_processed
 
     # Feature engineering
-    # FIXME(sany hecan@mail2.sysu.edu.cn): fix the logic
+    # FIXME(hecan sanyhew1097618435@163.com): fix the logic
     logger.debug("Feature Engineering")
     print("The Selected Data Set:")
-    show_data_columns(data_processed.columns)
+    show_data_columns(data_processed_imputed.columns)
     fe_flag = 0
     is_feature_engineering = 0
     while True:
