@@ -9,7 +9,6 @@ from ..data.data_readiness import num2option, num_input, limit_num_input, create
 from ..global_variable import SECTION, MODEL_PATH
 from typing import Tuple, List, Union
 from abc import ABCMeta, abstractmethod
-from sklearn.model_selection import train_test_split
 from multipledispatch import dispatch
 from datetime import date
 
@@ -187,12 +186,6 @@ class WorkflowBase(metaclass=ABCMeta):
             WorkflowBase.y_test = y_test
         if y_test_predict is not None:
             WorkflowBase.y_test_predict = y_test_predict
-
-    def data_split(self, X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], test_size: float = 0.2)\
-            -> Tuple[pd.DataFrame, pd.DataFrame, Union[pd.DataFrame, pd.Series], Union[pd.DataFrame, pd.Series]]:
-        """Split arrays or matrices into random train and test subsets."""
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=self.random_state)
-        return X_train, X_test, y_train, y_test
 
     @dispatch()
     def save_model(self) -> None:

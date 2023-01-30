@@ -14,8 +14,14 @@ class DecompositionModelSelection(object):
         self.dcp_workflow = DecompositionWorkflowBase()
         self.components_num = None
 
-    def activate(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
+    def activate(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None, X_train: Optional[pd.DataFrame] = None,
+                 X_test: Optional[pd.DataFrame] = None, y_train: Optional[pd.DataFrame] = None,
+                 y_test: Optional[pd.DataFrame] = None) -> None:
+        """Train by Scikit-learn framework."""
+
+        self.dcp_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
         if self.model == "Principal Component Analysis":
+            print("-*-*- Hyper-parameters Specification -*-*-")
             print("Decide the component numbers to keep:")
             self.components_num = num_input(SECTION[2])
             self.dcp_workflow = PCADecomposition(n_components=self.components_num)

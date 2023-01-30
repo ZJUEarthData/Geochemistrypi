@@ -2,15 +2,18 @@ import sys
 import os
 import re
 import openpyxl.utils.exceptions
+from sklearn.model_selection import train_test_split
 from ..global_variable import BUILT_IN_DATASET_PATH
 import pandas as pd
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Union
+
+
 # from utils.exceptions import InvalidFileError
 
 
 def read_data(file_name: Optional[str] = None, is_own_data: int = 2, prefix: Optional[str] = None,
               slogan: Optional[str] = "@File: "):
-    """process the data set"""
+    """Read the data set."""
     if is_own_data == 1:
         while True:
             # Capture exception: The path is invalid -> doesn't exist or not xlsx format
@@ -128,8 +131,14 @@ def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
     return sub_data_set
 
 
+def data_split(X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], test_size: float = 0.2) -> dict:
+    """Split arrays or matrices into random train and test subsets."""
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
+    return {"X train": X_train, "X test": X_test, "y train": y_train, "y test": y_test}
+
+
 def num2option(items: List[str]) -> None:
-    """list all the options serially.
+    """List all the options serially.
 
     Parameters
     ----------
@@ -168,7 +177,7 @@ def num_input(prefix: Optional[str] = None, slogan: Optional[str] = "@Number: ")
 
 
 def limit_num_input(option_list: List[str], prefix: str, input_func: num_input) -> int:
-    """Limit the scope of the option
+    """Limit the scope of the option.
 
     Parameters
     ----------

@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
+import pandas as pd
+from multipledispatch import dispatch
 from ..model.classification import ClassificationWorkflowBase, SVMClassification, DecisionTreeClassification,\
     RandomForestClassification, XgboostClassification, LogisticRegressionClassification
-from multipledispatch import dispatch
 
 
 class ClassificationModelSelection(object):
@@ -11,11 +12,12 @@ class ClassificationModelSelection(object):
         self.model = model
         self.clf_workflow = ClassificationWorkflowBase()
 
-    @dispatch(object, object)
-    def activate(self, X, y):
+    @dispatch(object, object, object, object, object, object)
+    def activate(self, X: pd.DataFrame, y: pd.DataFrame, X_train: pd.DataFrame,
+                 X_test: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame) -> None:
         """Train by Scikit-learn framework."""
 
-        X_train, X_test, y_train, y_test = self.clf_workflow.data_split(X, y)
+        self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
 
         # model option
         if self.model == "Support Vector Machine":
@@ -47,11 +49,12 @@ class ClassificationModelSelection(object):
         # Save the trained model
         self.clf_workflow.save_model()
 
-    @dispatch(object, object, bool)
-    def activate(self, X, y, is_automl):
-        """Train by FLAML framework."""
+    @dispatch(object, object, object, object, object, object, bool)
+    def activate(self, X: pd.DataFrame, y: pd.DataFrame, X_train: pd.DataFrame, X_test: pd.DataFrame,
+                 y_train: pd.DataFrame, y_test: pd.DataFrame, is_automl: bool) -> None:
+        """Train by FLAML framework + RAY framework."""
 
-        X_train, X_test, y_train, y_test = self.clf_workflow.data_split(X, y)
+        self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
 
         # Model option
         if self.model == "Support Vector Machine":

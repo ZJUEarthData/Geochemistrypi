@@ -13,13 +13,21 @@ class ClusteringModelSelection(object):
         self.model = model
         self.clt_workflow = ClusteringWorkflowBase()
 
-    def activate(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
+    def activate(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None, X_train: Optional[pd.DataFrame] = None,
+                 X_test: Optional[pd.DataFrame] = None, y_train: Optional[pd.DataFrame] = None,
+                 y_test: Optional[pd.DataFrame] = None) -> None:
+        """Train by Scikit-learn framework."""
+
+        self.clt_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
+
         if self.model == "KMeans":
+            print("-*-*- Hyper-parameters Specification -*-*-")
             print("Clusters Number: The number of clusters to form as well as the number of centroids to generate.")
             print("Designate the clustering number for KMeans in advance, such as 8.")
             cluster_num = num_input(SECTION[2], "Clusters Number: ")
             self.clt_workflow = KMeansClustering(n_clusters=cluster_num)
         elif self.model == "DBSCAN":
+            print("-*-*- Hyper-parameters Specification -*-*-")
             print("Maximum Distance: The maximum distance between two samples for one to be considered as in the"
                   " neighborhood of the other. This is not a maximum bound on the distances of points within a cluster."
                   " This is the most important DBSCAN parameter to choose appropriately for your data set and"

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import pandas as pd
 from matplotlib import pyplot as plt
 import logging
 import platform
@@ -11,16 +12,24 @@ def clear_output() -> None:
     my_os = platform.system()
     if flag == '':
         if my_os == "Windows":
-            os.system('cls')    # for Window
+            os.system('cls')    # for Windows
         else:
-            os.system('clear')  # for Linux and MacOS
+            os.system('clear')  # for Linux and macOS
 
 
-def save_fig(fig_name, image_path, tight_layout=True):
-    """Run to save pictures
+def save_fig(fig_name: str, image_path: str, tight_layout: bool = True) -> None:
+    """Save the figure.
 
-    :param image_path: where to store the image
-    :param fig_name: Picture Name
+    Parameters
+    ----------
+    image_path : str
+        The path to store the image.
+
+    fig_name : str
+        Figure name.
+
+    tight_layout : bool, default=True
+        Automatically adjust subplot parameters to give specified padding.
     """
     # TODO: seperate the stored path outside
     path = os.path.join(image_path, fig_name + ".png")
@@ -30,24 +39,31 @@ def save_fig(fig_name, image_path, tight_layout=True):
     plt.savefig(path, format='png', dpi=300)
 
 
-def save_data(df, df_name, path):
-    """make a sheet to store the result
+def save_data(df: pd.DataFrame, df_name: str, path: str) -> None:
+    """Save the dataset.
 
-    :param df: dataset
-    :param df_name: the name of the data sheet
-    :param path: the path to store the data sheet
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The dataset to store.
+
+    df_name : str
+        The name of the data sheet.
+
+    path : str
+        The path to store the data sheet
     """
     try:
         # drop the index in case that the dimensions change
         # store the result in the directory "results"
         df.to_excel(os.path.join(path, "{}.xlsx".format(df_name)), index=False)
-        print(f"Successfully store the results of {df_name} in '{df_name}.xlsx' in {path}.")
+        print(f"Successfully store '{df_name}' in '{df_name}.xlsx' in {path}.")
     except ModuleNotFoundError:
         print("** Please download openpyxl by pip3 **")
         print("** The data will be stored in .csv file **")
         # store the result in the directory "results"
         df.to_csv(os.path.join(path, "{}.csv".format(df_name)))
-        print(f"Successfully store the results of {df_name} in '{df_name}.csv' in {path}.")
+        print(f"Successfully store '{df_name}' in '{df_name}.csv' in {path}.")
 
 
 def log(log_path, log_name):

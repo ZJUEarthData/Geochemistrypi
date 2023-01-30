@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 import os
 from .global_variable import OPTION, SECTION, IMPUTING_STRATEGY, MODE_OPTION, REGRESSION_MODELS,\
-    CLASSIFICATION_MODELS, CLUSTERING_MODELS, DECOMPOSITION_MODELS, WORKING_PATH, DATA_OPTION,\
+    CLASSIFICATION_MODELS, CLUSTERING_MODELS, DECOMPOSITION_MODELS, WORKING_PATH,\
     TEST_DATA_OPTION, MODEL_OUTPUT_IMAGE_PATH, STATISTIC_IMAGE_PATH, DATASET_OUTPUT_PATH,\
-    GEO_IMAGE_PATH, MAP_IMAGE_PATH, MODEL_PATH, NON_AUTOML_MODELS
+    GEO_IMAGE_PATH, MAP_IMAGE_PATH, MODEL_PATH, NON_AUTOML_MODELS, OUTPUT_PATH
 from .data.data_readiness import read_data, show_data_columns, num2option, create_sub_data_set, basic_info, np2pd, \
-    num_input, limit_num_input
+    num_input, limit_num_input, data_split, float_input
 from .data.imputation import imputer
 from .data.feature_engineering import FeatureConstructor
 from .data.statistic import monte_carlo_simulator
 from .plot.statistic_plot import basic_statistic, correlation_plot, distribution_plot, is_null_value, probability_plot, \
     ratio_null_vs_filled, logged_distribution_plot, is_imputed
 from .plot.map_plot import map_projected
-from .utils.base import clear_output, log, show_warning
+from .utils.base import clear_output, log, show_warning, save_data
 from .process.regress import RegressionModelSelection
 from .process.classify import ClassificationModelSelection
 from .process.cluster import ClusteringModelSelection
@@ -28,10 +28,10 @@ os.makedirs(MODEL_PATH, exist_ok=True)
 
 
 def pipeline(file_name: str) -> None:
-    print("Geochemistry Py - User Behaviour Testing Demo")
+    print("Geochemistry Py v.1.0.0 - Beta Version")
     print("....... Initializing .......")
-    logger = log(WORKING_PATH, "test.log")
-    logger.info("Geochemistry Py - User Behaviour Testing Demo")
+    logger = log(OUTPUT_PATH, "inner_test.log")
+    logger.info("Geochemistry Py v.1.0.0 - beta version")
 
     # If the argument is False, hide all Python level warnings.
     show_warning(False)
@@ -109,6 +109,7 @@ def pipeline(file_name: str) -> None:
 
     # Imputing
     logger.debug("Imputation")
+    print("-*-*- Imputation -*-*-")
     is_null_value(data_processed)
     ratio_null_vs_filled(data_processed)
     imputed_flag = is_imputed(data_processed)
@@ -143,6 +144,7 @@ def pipeline(file_name: str) -> None:
     # Feature engineering
     # FIXME(hecan sanyhew1097618435@163.com): fix the logic
     logger.debug("Feature Engineering")
+    print("-*-*- Feature Engineering -*-*-")
     print("The Selected Data Set:")
     show_data_columns(data_processed_imputed.columns)
     fe_flag = 0
@@ -152,7 +154,6 @@ def pipeline(file_name: str) -> None:
             print("Feature Engineering Option:")
             num2option(OPTION)
             is_feature_engineering = limit_num_input(OPTION, SECTION[1], num_input)
-            clear_output()
         if is_feature_engineering == 1:
             print("-*-*- Feature Engineering -*-*-")
             feature_built = FeatureConstructor(data_processed_imputed)
@@ -175,10 +176,13 @@ def pipeline(file_name: str) -> None:
                 clear_output()
                 continue
             else:
+                save_data(data_processed_imputed, "Data After Processed", DATASET_OUTPUT_PATH)
                 print('Exit Feature Engineering Mode.')
                 clear_output()
                 break
         else:
+            save_data(data_processed_imputed, "Data After Processed", DATASET_OUTPUT_PATH)
+            clear_output()
             break
 
     # Mode selection
@@ -190,7 +194,7 @@ def pipeline(file_name: str) -> None:
     # divide X and y data set when it is supervised learning
     logger.debug("Data Split")
     if mode_num == 1 or mode_num == 2:
-        print("-*-*- Data Split -*-*-")
+        print("-*-*- Data Split - X Set and Y Set-*-*-")
         print("Divide the processing data set into X (feature value) and Y (target value) respectively.")
         # create X data set
         print("Selected sub data set to create X data set:")
@@ -198,18 +202,46 @@ def pipeline(file_name: str) -> None:
         print('The selected X data set:')
         X = create_sub_data_set(data_processed_imputed)
         print('Successfully create X data set.')
+        print("The Selected Data Set:")
+        print(X)
+        print('Basic Statistical Information: ')
+        basic_statistic(X)
+        save_data(X, "X", DATASET_OUTPUT_PATH)
         clear_output()
+
         # create Y data set
         print("Selected sub data set to create Y data set:")
         show_data_columns(data_processed_imputed.columns)
         print('The selected Y data set:')
+        print('Note: Normally, only one column is allowed to be tag column, not multiple columns.')
         y = create_sub_data_set(data_processed_imputed)
         print('Successfully create Y data set.')
+        print("The Selected Data Set:")
+        print(y)
+        print('Basic Statistical Information: ')
+        basic_statistic(y)
+        save_data(y, "Y", DATASET_OUTPUT_PATH)
+        clear_output()
+
+        # create training data and testing data
+        print("-*-*- Data Split - Train Set and Test Set -*-*-")
+        print('Note: Normally, set 20% of the dataset aside as test set, such as 0.2')
+        test_ratio = float_input(default=0.2, prefix=SECTION[1], slogan="@Test Ratio: ")
+        train_test_data = data_split(X, y, test_ratio)
+        for key, value in train_test_data.items():
+            print(f"The Selected Data Set: {key}")
+            print(value)
+            print(f'Basic Statistical Information: {key}')
+            basic_statistic(value)
+            save_data(value, key, DATASET_OUTPUT_PATH)
+        X_train, X_test = train_test_data['X train'], train_test_data['X test']
+        y_train, y_test = train_test_data['y train'], train_test_data['y test']
         clear_output()
     else:
         # unsupervised learning
         X = data_processed_imputed
-        y = None
+        X_train = data_processed_imputed
+        y, X_test, y_train, y_test = None, None, None, None
 
     # Model option for users
     logger.debug("Model Selection")
@@ -221,10 +253,8 @@ def pipeline(file_name: str) -> None:
     MODELS = Modes2Models[mode_num]
     num2option(MODELS)
     all_models_num = len(MODELS) + 1
-    # all_models_num = 0
     print(str(all_models_num) + " - All models above to be trained")
     print("Which model do you want to apply?(Enter the Corresponding Number)")
-    # FIXME(hecan sanyhew1097618435@163.com): how to train all the algorithms at once
     MODELS.append("all_models")
     model_num = limit_num_input(MODELS, SECTION[2], num_input)
     clear_output()
@@ -246,15 +276,15 @@ def pipeline(file_name: str) -> None:
     logger.debug("Model Training")
     if model_num != all_models_num:
         # run the designated model
-        # model = MODELS[model_num - 1]
         run = Modes2Initiators[mode_num](model)
         if not is_automl:
-            run.activate(X, y)
+            #run.activate(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
+            run.activate(X, y, X_train, X_test, y_train, y_test)
         else:
-            run.activate(X, y, is_automl)
+            run.activate(X, y, X_train, X_test, y_train, y_test, is_automl)
     else:
         # gain all models result in the specific mode
         for i in range(len(MODELS)-1):
             run = Modes2Initiators[mode_num](MODELS[i])
-            run.activate(X, y)
+            run.activate(X, y, X_train, X_test, y_train, y_test)
             clear_output()

@@ -42,7 +42,7 @@ class ClusteringWorkflowBase(WorkflowBase):
         print("-----* Clustering Labels *-----")
         self.X['clustering result'] = self.model.labels_
         print(self.X)
-        save_data(self.X, f"{self.naming}", DATASET_OUTPUT_PATH)
+        save_data(self.X, f"{self.naming}'s result", DATASET_OUTPUT_PATH)
 
 
 class KMeansClustering(ClusteringWorkflowBase):

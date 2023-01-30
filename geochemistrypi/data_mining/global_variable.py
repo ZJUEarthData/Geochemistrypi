@@ -9,17 +9,20 @@ PACKAGEDIR = os.path.dirname(os.path.realpath(__file__))
 # the directory where the built-in data set to be processed stays
 BUILT_IN_DATASET_PATH = os.path.join(PACKAGEDIR, "data", "dataset")
 
+# the root directory where all the output stays
+OUTPUT_PATH = os.path.join(WORKING_PATH, "output")
+
 # the directory where the data set produced stays
-DATASET_OUTPUT_PATH = os.path.join(WORKING_PATH, "output")
+DATASET_OUTPUT_PATH = os.path.join(OUTPUT_PATH, "data")
 
 # the directory where pictures saved
-MODEL_OUTPUT_IMAGE_PATH = os.path.join(WORKING_PATH, "images", "model_output")
-STATISTIC_IMAGE_PATH = os.path.join(WORKING_PATH, "images", "statistic")
-MAP_IMAGE_PATH = os.path.join(WORKING_PATH, "images", "map")
-GEO_IMAGE_PATH = os.path.join(WORKING_PATH, "images", "geochemistry")
+MODEL_OUTPUT_IMAGE_PATH = os.path.join(OUTPUT_PATH, "images", "model_output")
+STATISTIC_IMAGE_PATH = os.path.join(OUTPUT_PATH, "images", "statistic")
+MAP_IMAGE_PATH = os.path.join(OUTPUT_PATH, "images", "map")
+GEO_IMAGE_PATH = os.path.join(OUTPUT_PATH, "images", "geochemistry")
 
 # the directory where the trained model saved
-MODEL_PATH = os.path.join(WORKING_PATH, "trained_models")
+MODEL_PATH = os.path.join(OUTPUT_PATH, "trained_models")
 
 
 # Tell which section the user is currently in on the UML
