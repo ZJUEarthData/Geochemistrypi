@@ -61,6 +61,8 @@ class WorkflowBase(metaclass=ABCMeta):
             'alpha2': 0.95,
             'linestyle': '-',
             # bar
+            'bar_color': 'blue',
+            'bar_align': 'center',
             'bar_x': range(len(self.X.columns)),  # the sequence of horizontal coordinates of the bar
             'bar_height': None,  # the height(s) of the bars
             'bar_label': self.X.columns,  # The label on the X-axis
