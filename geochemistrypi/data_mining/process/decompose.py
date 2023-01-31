@@ -2,7 +2,7 @@
 import pandas as pd
 from ..model.decomposition import DecompositionWorkflowBase, PCADecomposition
 from ..data.data_readiness import num_input
-from ..global_variable import SECTION
+from ..global_variable import SECTION, DATASET_OUTPUT_PATH
 from typing import Optional
 
 
@@ -34,6 +34,9 @@ class DecompositionModelSelection(object):
 
         # special components of different algorithms
         self.dcp_workflow.special_components(components_num=self.components_num, reduced_data=X_reduced)
+
+        # Save decomposition result
+        self.dcp_workflow.data_save(X_reduced, "X reduced", DATASET_OUTPUT_PATH, "Decomposition Result")
 
         # Save the trained model
         self.dcp_workflow.save_model()

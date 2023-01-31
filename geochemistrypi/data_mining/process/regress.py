@@ -2,7 +2,7 @@
 from ..model.regression import PolynomialRegression, XgboostRegression, DecisionTreeRegression, ExtraTreeRegression,\
     RandomForestRegression, RegressionWorkflowBase, SVMRegression, DNNRegression, LinearRegression2
 from ..data.data_readiness import num_input, float_input, tuple_input, limit_num_input
-from ..global_variable import SECTION
+from ..global_variable import SECTION, DATASET_OUTPUT_PATH
 from multipledispatch import dispatch
 import pandas as pd
 
@@ -70,6 +70,9 @@ class RegressionModelSelection(object):
         # Special components of different algorithms
         self.reg_workflow.special_components()
 
+        # Save the prediction result
+        self.reg_workflow.data_save(y_test_predict, "Y Test Predict", DATASET_OUTPUT_PATH, "Model Prediction")
+
         # Save the trained model
         self.reg_workflow.save_model()
 
@@ -115,6 +118,9 @@ class RegressionModelSelection(object):
 
         # Special components of different algorithms
         self.reg_workflow.special_components(is_automl)
+
+        # Save the prediction result
+        self.reg_workflow.data_save(y_test_predict, "Y Test Predict", DATASET_OUTPUT_PATH, "Model Prediction")
 
         # Save the trained model
         self.reg_workflow.save_model(is_automl)

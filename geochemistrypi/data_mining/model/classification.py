@@ -2,12 +2,10 @@
 # import sys
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 from sklearn.svm import SVC
 from sklearn.metrics import classification_report
 from ..utils.base import save_fig
 from ..global_variable import MODEL_OUTPUT_IMAGE_PATH
-from sklearn import tree
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 import xgboost
@@ -16,7 +14,8 @@ from typing import Union, Optional, List, Dict, Callable, Tuple, Any, Sequence, 
 from multipledispatch import dispatch
 from flaml import AutoML
 from ._base import WorkflowBase
-from .func.algo_classification._common import confusion_matrix_plot, contour_data, plot_precision_recall, plot_ROC
+from .func.algo_classification._common import confusion_matrix_plot, contour_data, plot_precision_recall, plot_ROC,\
+    cross_validation
 from .func.algo_classification._svm import plot_2d_decision_boundary
 from .func.algo_classification._xgboost import feature_importance_map, feature_importance_value, \
     feature_weights_histograms
@@ -28,7 +27,7 @@ from .func.algo_classification._rf import feature_importances
 class ClassificationWorkflowBase(WorkflowBase):
     """The base workflow class of classification algorithms."""
 
-    common_function = ["Model Score", "Confusion Matrix"]
+    common_function = ["Model Score", "Confusion Matrix", 'Cross Validation', 'Model Prediction', 'Model Persistence']
 
     def __init__(self) -> None:
         super().__init__()
@@ -84,6 +83,12 @@ class ClassificationWorkflowBase(WorkflowBase):
         print(classification_report(y_true, y_predict))
 
     @staticmethod
+    def _cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, cv_num: int = 10) -> None:
+        print("-----* Cross Validation *-----")
+        print(f"K-Folds: {cv_num}")
+        cross_validation(trained_model, X_train, y_train, cv_num=cv_num)
+
+    @staticmethod
     def _confusion_matrix_plot(y_test: pd.DataFrame, y_test_predict: pd.DataFrame,
                                trained_model: object, algorithm_name: str, store_path: str) -> None:
         print("-----* Confusion Matrix *-----")
@@ -99,6 +104,7 @@ class ClassificationWorkflowBase(WorkflowBase):
     def common_components(self) -> None:
         """Invoke all common application functions for classification algorithms by Scikit-learn framework."""
         self._score(ClassificationWorkflowBase.y_test, ClassificationWorkflowBase.y_test_predict)
+        self._cross_validation(self.model, ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.y_train, 10)
         self._confusion_matrix_plot(ClassificationWorkflowBase.y_test, ClassificationWorkflowBase.y_test_predict,
                                     self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
@@ -106,6 +112,7 @@ class ClassificationWorkflowBase(WorkflowBase):
     def common_components(self, is_automl: bool) -> None:
         """Invoke all common application functions for classification algorithms by FLAML framework."""
         self._score(ClassificationWorkflowBase.y_test, ClassificationWorkflowBase.y_test_predict)
+        self._cross_validation(self.auto_model, ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.y_train, 10)
         self._confusion_matrix_plot(ClassificationWorkflowBase.y_test, ClassificationWorkflowBase.y_test_predict,
                                     self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
@@ -114,7 +121,7 @@ class SVMClassification(ClassificationWorkflowBase):
     """The automation workflow of using SVC algorithm to make insightful products."""
 
     name = "Support Vector Machine"
-    special_function = ['Two-dimensional Decision Boundary Diagram']
+    special_function = ['Two-dimensional Decision Boundary Diagram', 'Precision_Recall_Curve', 'ROC Curve']
 
     def __init__(
             self,
@@ -310,32 +317,6 @@ class SVMClassification(ClassificationWorkflowBase):
                 return space
 
         return MySVMClassification
-
-    # TODO(Sany sanyhew1097618435@163.com): think about What layout of the graph is more user-friendly.
-    """
-    def plot_svc_surface_function(self):
-        # divide the two selected elements and draw an image
-        print("-----* Two-dimensional Decision Surface Boundary Diagram *-----")
-        plt.figure()
-        y = np.array(ClassificationWorkflowBase().y)
-        X = np.array(ClassificationWorkflowBase().X)
-        X = PCA(n_components=2).fit_transform(X)
-        y = np.squeeze(y)
-        clf = self.model.fit(X, y)
-        plt.scatter(X[:, 0], X[:, 1], c=y, s=50, cmap=ListedColormap(['#FF0000', '#0000FF']),alpha=0.6)
-        ax = plt.gca()
-        xlim = ax.get_xlim()
-        ylim = ax.get_ylim()
-        x = np.linspace(xlim[0], xlim[1], 30)
-        y = np.linspace(ylim[0], ylim[1], 30)
-        Y, X = np.meshgrid(y, x)
-        Z = clf.decision_function(np.c_[X.ravel(), Y.ravel()])
-        Z = Z.reshape(X.shape)
-        ax.contourf(X, Y, Z, cmap=plt.cm.RdYlBu, alpha=0.5)
-        ax.set_xlim(xlim)
-        ax.set_ylim(ylim)
-        save_fig('SVC Surface Function Plot', MODEL_OUTPUT_IMAGE_PATH)
-    """
 
     @staticmethod
     def _plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: Any,
@@ -573,37 +554,10 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
         self.naming = DecisionTreeClassification.name
 
     def plot_tree_function(self, trained_model: object, image_config: dict, algorithm_name: str, store_path: str) -> None:
-        ###################################################
-        # Drawing decision tree diagrams
-        ###################################################
+        """Drawing decision tree diagrams."""
         print("-----* Decision Tree Plot *-----")
         decision_tree_plot(trained_model, image_config)
         save_fig(f"Classification - {algorithm_name} - Tree Graph", store_path)
-
-    '''
-       def decision_surface_plot(self):
-           #############################################################
-           #Plot the decision surfaces of forests of the data
-           #############################################################
-           print("Decision_Surface_Plot", "Drawing Decision Surface Plot")
-           plt.figure()
-           y = np.array(ClassificationWorkflowBase().y)
-           X = np.array(ClassificationWorkflowBase().X)
-           X = PCA(n_components=2).fit_transform(X)
-           self.model.fit(X,y)
-           x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
-           y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
-           xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.02), np.arange(y_min, y_max, 0.02))
-           Z = self.model.predict(np.c_[xx.ravel(), yy.ravel()])
-           Z = Z.reshape(xx.shape)
-           plt.contour(xx, yy, Z, colors="k", levels=[-1, 0, 1], alpha=0.5, linestyles=["--", "-", "--"], s=2)
-           plt.contourf(xx, yy, Z, cmap=plt.cm.RdYlBu, alpha=0.5)
-           plt.scatter(X[:, 0], X[:, 1],c=y,cmap=ListedColormap(['#FF0000', '#0000FF']),alpha=0.6,s=20)
-           plt.suptitle("Decision Surface Plot ", fontsize=12)
-           plt.axis("tight")
-           plt.tight_layout(h_pad=0.2, w_pad=0.2, pad=2.5)
-           save_fig('Decision Surface Plot', MODEL_OUTPUT_IMAGE_PATH)
-       '''
 
     @staticmethod
     def _plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: Any,
@@ -973,7 +927,7 @@ class XgboostClassification(ClassificationWorkflowBase):
             gpu_id: Optional[int] = None,
             validate_parameters: Optional[bool] = None,
             predictor: Optional[str] = None,
-            enable_categorical: bool = False,
+            # enable_categorical: bool = False,
             eval_metric: Optional[Union[str, List[str], Callable]] = None,
             early_stopping_rounds: Optional[int] = None,
             **kwargs: Any
@@ -1010,7 +964,7 @@ class XgboostClassification(ClassificationWorkflowBase):
         self.gpu_id = gpu_id
         self.validate_parameters = validate_parameters
         self.predictor = predictor
-        self.enable_categorical = enable_categorical
+        # self.enable_categorical = enable_categorical
         self.eval_metric = eval_metric
         self.early_stopping_rounds = early_stopping_rounds
         if kwargs:
@@ -1047,7 +1001,7 @@ class XgboostClassification(ClassificationWorkflowBase):
             gpu_id=self.gpu_id,
             validate_parameters=self.validate_parameters,
             predictor=self.predictor,
-            enable_categorical=self.enable_categorical,
+            # enable_categorical=self.enable_categorical,
             eval_metric=self.eval_metric,
             early_stopping_rounds=self.early_stopping_rounds,
         )
@@ -1106,7 +1060,7 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
     """The automation workflow of using Logistic Regression algorithm to make insightful products."""
 
     name = "Logistic Regression"
-    special_function = ['Feature Importance']
+    special_function = ['Feature Importance', 'Precision_Recall_Curve', 'ROC Curve']
 
     def __init__(
             self,

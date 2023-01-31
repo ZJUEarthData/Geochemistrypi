@@ -10,7 +10,7 @@ from ..utils.base import save_fig
 from ..global_variable import MODEL_OUTPUT_IMAGE_PATH
 from ..global_variable import DATASET_OUTPUT_PATH
 from ._base import WorkflowBase
-from .func.algo_clustering._cluster import plot_silhouette_diagram, scatter2d, scatter3d
+from .func.algo_clustering._kmeans import plot_silhouette_diagram, scatter2d, scatter3d
 from .func.algo_clustering._dbscan import dbscan_result_plot
 from typing import Optional, Union, Dict
 
@@ -21,12 +21,11 @@ class ClusteringWorkflowBase(WorkflowBase):
     Warning: This class should not be used directly.
     Use derived classes instead.
     """
-    common_function = ['Cluster Centers',
-                       'Cluster Labels',
-                       ]
+    common_function = ['Cluster Centers', 'Cluster Labels', 'Model Persistence']
 
     def __init__(self):
         super().__init__()
+        self.clustering_result = None
 
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
         self.X = X
@@ -40,9 +39,10 @@ class ClusteringWorkflowBase(WorkflowBase):
 
     def get_labels(self):
         print("-----* Clustering Labels *-----")
-        self.X['clustering result'] = self.model.labels_
-        print(self.X)
-        save_data(self.X, f"{self.naming}'s result", DATASET_OUTPUT_PATH)
+        #self.X['clustering result'] = self.model.labels_
+        self.clustering_result = pd.DataFrame(self.model.labels_, columns=['clustering result'])
+        print(self.clustering_result)
+        save_data(self.clustering_result, f"{self.naming}'s result", DATASET_OUTPUT_PATH)
 
 
 class KMeansClustering(ClusteringWorkflowBase):
@@ -186,18 +186,34 @@ class KMeansClustering(ClusteringWorkflowBase):
             The components_num Represents the dimension of the data.
             We subtract 1 because the label takes up a column.
         """
-        data_dimension = self.X.shape[1] - 1
+        # data_dimension = self.X.shape[1] - 1
 
         self._get_scores()
-        self._plot_silhouette_diagram(data=self.X, cluster_labels=self.X['clustering result'],
+        self._plot_silhouette_diagram(data=self.X, cluster_labels=self.clustering_result['clustering result'],
                                       cluster_centers_=self.get_cluster_centers(), n_clusters=self.n_clusters,
                                       algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
         # Draw graphs when the number of principal components > 3
-        if data_dimension >= 3:
-            self._scatter3d(data=self.X, cluster_labels=self.X['clustering result'], algorithm_name=self.naming,
+        if self.X.shape[1] >= 3:
+            # choose two of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(self.X, 2)
+            self._scatter2d(data=two_dimen_data, cluster_labels=self.clustering_result['clustering result'], algorithm_name=self.naming,
                             store_path=MODEL_OUTPUT_IMAGE_PATH)
-        elif data_dimension == 2:
-            self._scatter2d(data=self.X, cluster_labels=self.X['clustering result'], algorithm_name=self.naming,
+
+            # choose three of dimensions to draw
+            three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(self.X, 3)
+            self._scatter3d(data=three_dimen_data, cluster_labels=self.clustering_result['clustering result'], algorithm_name=self.naming,
+                            store_path=MODEL_OUTPUT_IMAGE_PATH)
+        elif self.X.shape[1] == 3:
+            # choose two of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(self.X, 2)
+            self._scatter2d(data=two_dimen_data, cluster_labels=self.clustering_result['clustering result'], algorithm_name=self.naming,
+                            store_path=MODEL_OUTPUT_IMAGE_PATH)
+
+            # no need to choose
+            self._scatter3d(data=self.X, cluster_labels=self.clustering_result['clustering result'], algorithm_name=self.naming,
+                            store_path=MODEL_OUTPUT_IMAGE_PATH)
+        elif self.X.shape[1] == 2:
+            self._scatter2d(data=self.X, cluster_labels=self.clustering_result['clustering result'], algorithm_name=self.naming,
                             store_path=MODEL_OUTPUT_IMAGE_PATH)
         else:
             pass

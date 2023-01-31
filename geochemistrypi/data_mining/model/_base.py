@@ -7,6 +7,7 @@ import pickle
 from typing import Optional
 from ..data.data_readiness import num2option, num_input, limit_num_input, create_sub_data_set, show_data_columns
 from ..global_variable import SECTION, MODEL_PATH
+from ..utils.base import save_data
 from typing import Tuple, List, Union
 from abc import ABCMeta, abstractmethod
 from multipledispatch import dispatch
@@ -146,7 +147,7 @@ class WorkflowBase(metaclass=ABCMeta):
             the selected data from the whole data set
         """
         print(f"-----* {dimensions} Dimensions Data Selection *-----")
-        print(f"The system is going to draw related {dimensions}d graphs.")
+        print(f"The software is going to draw related {dimensions}d graphs.")
         print(f"Currently, the data dimension is beyond {dimensions} dimensions.")
         print(f"Please choose {dimensions} dimensions of the data below.")
         data = pd.DataFrame(data)
@@ -186,6 +187,12 @@ class WorkflowBase(metaclass=ABCMeta):
             WorkflowBase.y_test = y_test
         if y_test_predict is not None:
             WorkflowBase.y_test_predict = y_test_predict
+
+    @staticmethod
+    def data_save(df: pd.DataFrame, df_name: str, path: str, slogan: str) -> None:
+        print(f"-----* {slogan} *-----")
+        print(df)
+        save_data(df, df_name, path)
 
     @dispatch()
     def save_model(self) -> None:

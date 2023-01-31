@@ -139,7 +139,7 @@ def scatter2d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: 
 
     plt.xlabel(f"{data.columns[0]}")
     plt.ylabel(f"{data.columns[1]}")
-    plt.title(f"Compositional Bi-plot - {algorithm_name}")
+    plt.title(f"Cluster Data Bi-plot - {algorithm_name}")
 
 
 def scatter3d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str) -> None:
@@ -149,18 +149,18 @@ def scatter3d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: 
     plt.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.9)
 
     ax = fig.add_subplot(121, projection='3d')
-    ax.scatter(data.iloc[:, [0]], data.iloc[:, [1]], data.iloc[:, [2]], alpha=0.3, c="#FF0000", s=6)
+    ax.scatter(data.iloc[:, 0], data.iloc[:, 1], data.iloc[:, 2], alpha=0.3, c="#FF0000", s=6)
     ax.set_xlabel(namelist[0])
     ax.set_ylabel(namelist[1])
-    ax.set_zlabel(namelist[1])
+    ax.set_zlabel(namelist[2])
     plt.grid(True)
 
     ax2 = fig.add_subplot(122, projection='3d')
-    ax2.scatter(data.iloc[:, [0]], data.iloc[:, [1]], data.iloc[:, [2]],
+    ax2.scatter(data.iloc[:, 0], data.iloc[:, 1], data.iloc[:, 2],
                 c=cluster_labels, s=6, cmap=plt.cm.Paired, edgecolors='none')
     ax2.set_xlabel(namelist[0])
     ax2.set_ylabel(namelist[1])
-    ax2.set_zlabel(namelist[1])
+    ax2.set_zlabel(namelist[2])
     plt.grid(True)
     ax.set_title(f"Base Data Tri-plot - {algorithm_name}")
     ax2.set_title(f"Cluster Data Tri-plot - {algorithm_name}")

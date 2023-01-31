@@ -4,8 +4,8 @@ import pandas as pd
 import numpy as np
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, precision_recall_curve, roc_curve
 from typing import Tuple, List
-
 from sklearn.model_selection import cross_val_predict
+from sklearn.model_selection import cross_validate
 
 
 def confusion_matrix_plot(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, trained_model: object) -> None:
@@ -14,6 +14,47 @@ def confusion_matrix_plot(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, tr
     plt.figure()
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=trained_model.classes_)
     disp.plot()
+
+
+def display_cross_validation_scores(scores: np.ndarray) -> None:
+    print("Scores:", scores)
+    print("Mean:", scores.mean())
+    print("Standard deviation:", scores.std())
+
+
+def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, cv_num: int = 10) -> None:
+    """Evaluate metric(s) by cross-validation and also record fit/score times.
+
+    Parameters
+    ----------
+    trained_model : object
+        The model trained.
+
+    X_train : pd.DataFrame (n_samples, n_components)
+        The training feature data.
+
+    y_train : pd.DataFrame (n_samples, n_components)
+        The training target values.
+
+    cv_num : int
+        Determines the cross-validation splitting strategy.
+    """
+
+    scores = cross_validate(trained_model, X_train, y_train,
+                            scoring=('precision',
+                                     'recall',
+                                     'f1'),
+                            cv=cv_num)
+    # the keys follow the returns of cross_validate in scikit-learn
+    scores2display = {'fit_time': 'Fit Time',
+                      'score_time': 'Score Time',
+                      'test_precision': 'Precision',
+                      'test_recall': 'Recall',
+                      'test_f1': 'F1 Score'}
+    for key, values in scores.items():
+        print("*", scores2display[key], "*")
+        display_cross_validation_scores(values)
+        print('-------------')
 
 
 def contour_data(X: pd.DataFrame, trained_model: object) -> Tuple[List[np.ndarray], np.ndarray]:

@@ -44,3 +44,5 @@ NON_AUTOML_MODELS = ['Linear Regression', 'Polynomial Regression']
 RAY_FLAML = ['Deep Neural Networks']
 
 IMPUTING_STRATEGY = ['Mean', 'Median', 'Most Frequent']
+
+FEATURE_SCALING_STRATEGY = ['Min-max Scaling', 'Standardization']

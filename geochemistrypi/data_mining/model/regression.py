@@ -9,7 +9,6 @@ from sklearn.svm import SVR
 from sklearn.neural_network import MLPRegressor
 from typing import Union, Optional, List, Dict, Callable, Tuple, Any
 from typing import Sequence
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xgboost
@@ -28,7 +27,7 @@ from .func.algo_regression._decision_tree import decision_tree_plot
 class RegressionWorkflowBase(WorkflowBase):
     """The base workflow class of regression algorithms."""
 
-    common_function = ['Model Score', 'Cross Validation']
+    common_function = ['Model Score', 'Cross Validation', 'Model Prediction', 'Model Persistence']
 
     def __init__(self) -> None:
         super().__init__()
@@ -115,6 +114,7 @@ class RegressionWorkflowBase(WorkflowBase):
     @staticmethod
     def _cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, cv_num: int = 10) -> None:
         print("-----* Cross Validation *-----")
+        print(f"K-Folds: {cv_num}")
         cross_validation(trained_model, X_train, y_train, cv_num=cv_num)
 
     # TODO(Sany sanyhew1097618435@163.com): How to prevent overfitting
@@ -244,7 +244,7 @@ class XgboostRegression(RegressionWorkflowBase):
                 gpu_id: Optional[int] = None,
                 validate_parameters: Optional[bool] = None,
                 predictor: Optional[str] = None,
-                enable_categorical: bool = False,
+                #enable_categorical: bool = False,
                 eval_metric: Optional[Union[str, List[str], Callable]] = None,
                 early_stopping_rounds: Optional[int] = None,
                 **kwargs: Any) -> None:
@@ -446,7 +446,7 @@ class XgboostRegression(RegressionWorkflowBase):
         self.gpu_id = gpu_id
         self.validate_parameters = validate_parameters
         self.predictor = predictor
-        self.enable_categorical = enable_categorical
+        #self.enable_categorical = enable_categorical
         self.eval_metric = eval_metric
         self.early_stopping_rounds = early_stopping_rounds
         if kwargs:
@@ -480,7 +480,7 @@ class XgboostRegression(RegressionWorkflowBase):
                                           gpu_id=self.gpu_id,
                                           validate_parameters=self.validate_parameters,
                                           predictor=self.predictor,
-                                          enable_categorical=self.enable_categorical,
+                                          # enable_categorical=self.enable_categorical,
                                           eval_metric=self.eval_metric,
                                           early_stopping_rounds=self.early_stopping_rounds)
         self.naming = XgboostRegression.name

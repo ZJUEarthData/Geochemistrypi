@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 import os
 from .global_variable import OPTION, SECTION, IMPUTING_STRATEGY, MODE_OPTION, REGRESSION_MODELS,\
-    CLASSIFICATION_MODELS, CLUSTERING_MODELS, DECOMPOSITION_MODELS, WORKING_PATH,\
+    CLASSIFICATION_MODELS, CLUSTERING_MODELS, DECOMPOSITION_MODELS, FEATURE_SCALING_STRATEGY,\
     TEST_DATA_OPTION, MODEL_OUTPUT_IMAGE_PATH, STATISTIC_IMAGE_PATH, DATASET_OUTPUT_PATH,\
     GEO_IMAGE_PATH, MAP_IMAGE_PATH, MODEL_PATH, NON_AUTOML_MODELS, OUTPUT_PATH
 from .data.data_readiness import read_data, show_data_columns, num2option, create_sub_data_set, basic_info, np2pd, \
     num_input, limit_num_input, data_split, float_input
 from .data.imputation import imputer
 from .data.feature_engineering import FeatureConstructor
+from .data.preprocessing import feature_scaler
 from .data.statistic import monte_carlo_simulator
 from .plot.statistic_plot import basic_statistic, correlation_plot, distribution_plot, is_null_value, probability_plot, \
     ratio_null_vs_filled, logged_distribution_plot, is_imputed
@@ -121,6 +122,7 @@ def pipeline(file_name: str) -> None:
         strategy_num = limit_num_input(IMPUTING_STRATEGY, SECTION[1], num_input)
         data_processed_imputed_np = imputer(data_processed, IMPUTING_STRATEGY[strategy_num - 1])
         data_processed_imputed = np2pd(data_processed_imputed_np, data_processed.columns)
+        del data_processed_imputed_np
         clear_output()
         print("-*-*- Hypothesis Testing on Imputation Method -*-*-")
         print("Null Hypothesis: The distributions of the data set before and after imputing remain the same.")
@@ -136,6 +138,7 @@ def pipeline(file_name: str) -> None:
         probability_plot(data_processed.columns, data_processed, data_processed_imputed)
         basic_info(data_processed_imputed)
         basic_statistic(data_processed_imputed)
+        del data_processed
         clear_output()
     else:
         # if the selected data set doesn't need imputation, which means there are no missing values.
@@ -155,7 +158,6 @@ def pipeline(file_name: str) -> None:
             num2option(OPTION)
             is_feature_engineering = limit_num_input(OPTION, SECTION[1], num_input)
         if is_feature_engineering == 1:
-            print("-*-*- Feature Engineering -*-*-")
             feature_built = FeatureConstructor(data_processed_imputed)
             feature_built.index2name()
             feature_built.name_feature()
@@ -176,12 +178,12 @@ def pipeline(file_name: str) -> None:
                 clear_output()
                 continue
             else:
-                save_data(data_processed_imputed, "Data After Processed", DATASET_OUTPUT_PATH)
+                save_data(data_processed_imputed, "Data Before Splitting", DATASET_OUTPUT_PATH)
                 print('Exit Feature Engineering Mode.')
                 clear_output()
                 break
         else:
-            save_data(data_processed_imputed, "Data After Processed", DATASET_OUTPUT_PATH)
+            save_data(data_processed_imputed, "Data Before Splitting", DATASET_OUTPUT_PATH)
             clear_output()
             break
 
@@ -206,10 +208,29 @@ def pipeline(file_name: str) -> None:
         print(X)
         print('Basic Statistical Information: ')
         basic_statistic(X)
-        save_data(X, "X", DATASET_OUTPUT_PATH)
+        save_data(X, "X Without Scaling", DATASET_OUTPUT_PATH)
+        clear_output()
+
+        # feature scaling
+        print("-*-*- Feature Scaling on X Set -*-*-")
+        num2option(OPTION)
+        is_feature_scaling = limit_num_input(OPTION, SECTION[1], num_input)
+        if is_feature_scaling == 1:
+            print("Which strategy do you want to apply?")
+            num2option(FEATURE_SCALING_STRATEGY)
+            feature_scaling_num = limit_num_input(FEATURE_SCALING_STRATEGY, SECTION[1], num_input)
+            X_scaled_np = feature_scaler(X, FEATURE_SCALING_STRATEGY, feature_scaling_num-1)
+            X = np2pd(X_scaled_np, X.columns)
+            del X_scaled_np
+            print("Data Set After Scaling:")
+            print(X)
+            print('Basic Statistical Information: ')
+            basic_statistic(X)
+            save_data(X, "X With Scaling", DATASET_OUTPUT_PATH)
         clear_output()
 
         # create Y data set
+        print("-*-*- Data Split - X Set and Y Set-*-*-")
         print("Selected sub data set to create Y data set:")
         show_data_columns(data_processed_imputed.columns)
         print('The selected Y data set:')
@@ -220,7 +241,7 @@ def pipeline(file_name: str) -> None:
         print(y)
         print('Basic Statistical Information: ')
         basic_statistic(y)
-        save_data(y, "Y", DATASET_OUTPUT_PATH)
+        save_data(y, "y", DATASET_OUTPUT_PATH)
         clear_output()
 
         # create training data and testing data
@@ -229,6 +250,7 @@ def pipeline(file_name: str) -> None:
         test_ratio = float_input(default=0.2, prefix=SECTION[1], slogan="@Test Ratio: ")
         train_test_data = data_split(X, y, test_ratio)
         for key, value in train_test_data.items():
+            print("-" * 25)
             print(f"The Selected Data Set: {key}")
             print(value)
             print(f'Basic Statistical Information: {key}')
@@ -236,6 +258,7 @@ def pipeline(file_name: str) -> None:
             save_data(value, key, DATASET_OUTPUT_PATH)
         X_train, X_test = train_test_data['X train'], train_test_data['X test']
         y_train, y_test = train_test_data['y train'], train_test_data['y test']
+        del data_processed_imputed
         clear_output()
     else:
         # unsupervised learning
@@ -278,7 +301,6 @@ def pipeline(file_name: str) -> None:
         # run the designated model
         run = Modes2Initiators[mode_num](model)
         if not is_automl:
-            #run.activate(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
             run.activate(X, y, X_train, X_test, y_train, y_test)
         else:
             run.activate(X, y, X_train, X_test, y_train, y_test, is_automl)

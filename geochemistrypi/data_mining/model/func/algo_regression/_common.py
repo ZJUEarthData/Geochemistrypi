@@ -12,9 +12,9 @@ def score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> None:
     mae = mean_absolute_error(y_true, y_predict)
     r2 = r2_score(y_true, y_predict)
     evs = explained_variance_score(y_true, y_predict)
-    print("RMSE score:", rmse)
-    print("MAE score:", mae)
-    print("R2 score:", r2)
+    print("Root Mean Square Error:", rmse)
+    print("Mean Absolute Error:", mae)
+    print("R2 Score:", r2)
     print("Explained Variance Score:", evs)
 
 
@@ -25,18 +25,43 @@ def display_cross_validation_scores(scores: np.ndarray) -> None:
 
 
 def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, cv_num: int = 10) -> None:
-    # self.model comes from the subclass of every regression algorithm
+    """Evaluate metric(s) by cross-validation and also record fit/score times.
+
+    Parameters
+    ----------
+    trained_model : object
+        The model trained.
+
+    X_train : pd.DataFrame (n_samples, n_components)
+        The training feature data.
+
+    y_train : pd.DataFrame (n_samples, n_components)
+        The training target values.
+
+    cv_num : int
+        Determines the cross-validation splitting strategy.
+    """
+
     scores = cross_validate(trained_model, X_train, y_train,
                             scoring=('neg_root_mean_squared_error',
                                      'neg_mean_absolute_error',
                                      'r2',
                                      'explained_variance'),
                             cv=cv_num)
+    # the keys follow the returns of cross_validate in scikit-learn
+    scores2display = {'fit_time': 'Fit Time',
+                      'score_time': 'Score Time',
+                      'test_neg_root_mean_squared_error': 'Root Mean Square Error',
+                      'test_neg_mean_absolute_error': 'Mean Absolute Error',
+                      'test_r2': 'R2 Score',
+                      'test_explained_variance': 'Explained Variance Score'}
     for key, values in scores.items():
-        print("*", key.upper(), "*")
-        display_cross_validation_scores(values)
+        print("*", scores2display[key], "*")
+        if (key == 'test_neg_root_mean_squared_error') or (key == 'test_neg_mean_absolute_error'):
+            display_cross_validation_scores(-values)
+        else:
+            display_cross_validation_scores(values)
         print('-------------')
-    return scores
 
 
 def plot_predicted_value_evaluation(y_test: pd.DataFrame, y_test_predict: pd.DataFrame) -> None:

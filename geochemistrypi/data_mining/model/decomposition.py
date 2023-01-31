@@ -12,6 +12,8 @@ from ..utils.base import save_fig
 class DecompositionWorkflowBase(WorkflowBase):
     """The base workflow class of decomposition algorithms."""
 
+    common_function = ['Decomposition Result', 'Model Persistence']
+
     def __init__(self) -> None:
         super().__init__()
 
