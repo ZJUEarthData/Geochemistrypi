@@ -25,7 +25,7 @@ def feature_importances(X_train: pd.DataFrame, trained_model: object, image_conf
     importance["importance"] = (importance["importance"]).astype(float)
     importance = importance.sort_values(["importance"])
     importance.set_index('feature', inplace=True)
-    rects = importance.plot.barh(alpha=image_config['alpha2'], rot=0)
+    importance.plot.barh(alpha=image_config['alpha2'], rot=0)
 
     # automatically optimize picture layout structure
     fig.tight_layout()

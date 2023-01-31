@@ -18,7 +18,7 @@ from flaml import AutoML
 from ._base import WorkflowBase
 from .func.algo_regression._common import plot_predicted_value_evaluation, plot_true_vs_predicted, score, cross_validation
 from .func.algo_regression._polynomial import show_formula
-from .func.algo_regression._rf import feature_importance__
+from .func.algo_regression._rf import feature_importance__, box_plot
 from .func.algo_regression._xgboost import feature_importance, histograms_feature_weights, permutation_importance_
 from .func.algo_regression._linear import show_formula, plot_2d_graph, plot_3d_graph
 from .func.algo_regression._extra_tree import feature_importances
@@ -1162,12 +1162,15 @@ class RandomForestRegression(RegressionWorkflowBase):
     def _feature_importances(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame,
                              trained_model: object,  image_config: dict, algorithm_name: str, store_path: str) -> None:
         print("-----* Feature Importance *-----")
-        feature_importance__(X, X_test, y_test, trained_model)
+        feature_importance__(X, X_test, y_test, trained_model, image_config)
         save_fig(f"Regression - {algorithm_name} - Feature Importance", store_path)
 
     @staticmethod
-    def _box_plot():
+    def _box_plot(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame,
+                 trained_model: object,  image_config: dict, algorithm_name: str, store_path: str) -> None:
         print("-----* Box Plot *-----")
+        box_plot(X, X_test, y_test, trained_model, image_config)
+        save_fig(f"Regression - {algorithm_name} - Box Plot", store_path)
 
     @dispatch()
     def special_components(self, **kwargs) -> None:
@@ -1175,11 +1178,17 @@ class RandomForestRegression(RegressionWorkflowBase):
         self._feature_importances(RandomForestRegression.X, RandomForestRegression.X_test,
                                   RandomForestRegression.y_test, self.model, self.image_config, self.naming,
                                   MODEL_OUTPUT_IMAGE_PATH)
+        self._box_plot(RandomForestRegression.X, RandomForestRegression.X_test,
+                                  RandomForestRegression.y_test, self.model, self.image_config, self.naming,
+                                  MODEL_OUTPUT_IMAGE_PATH)
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
         self._feature_importances(RandomForestRegression.X, RandomForestRegression.X_test,
+                                  RandomForestRegression.y_test, self.auto_model, self.image_config, self.naming,
+                                  MODEL_OUTPUT_IMAGE_PATH)
+        self._box_plot(RandomForestRegression.X, RandomForestRegression.X_test,
                                   RandomForestRegression.y_test, self.auto_model, self.image_config, self.naming,
                                   MODEL_OUTPUT_IMAGE_PATH)
 
