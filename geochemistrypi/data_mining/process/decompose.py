@@ -36,7 +36,7 @@ class DecompositionModelSelection(object):
         self.dcp_workflow.special_components(components_num=self.components_num, reduced_data=X_reduced)
 
         # Save decomposition result
-        self.dcp_workflow.data_save(X_reduced, "X reduced", DATASET_OUTPUT_PATH, "Decomposition Result")
+        # self.dcp_workflow.data_save(X_reduced, "X reduced", DATASET_OUTPUT_PATH, "Decomposition Result")
 
         # Save the trained model
         self.dcp_workflow.save_model()

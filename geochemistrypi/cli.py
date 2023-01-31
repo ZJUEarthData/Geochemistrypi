@@ -10,8 +10,7 @@ app = typer.Typer()
 def callback():
     """
     Geochemistry π is a Python framework for data-driven geochemistry discovery.
-    It automates data mining process with frequently-used machine learning algorithm
-    by providing the users with options to choose.
+    It automates data mining process with frequently-used machine learning algorithm by providing the users with options to choose.
     """
 
 

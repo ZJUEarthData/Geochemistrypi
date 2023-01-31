@@ -6,14 +6,11 @@ a series of user-friendly and extensible products of high automation for the ful
 
 ## Quick Installation
 
-One instruction to download on command line, such as terminal on MacOS, docs on Windows.  
+One instruction to download on command line, such as Terminal on macOS, CMD on Windows.  
 ```
 pip install geochemistrypi
 ```
-**Note**: The beta version runs on MacOS, Windows or Linux. Make sure that your network is stable while downloading.
-
-It is highly recommended downloading our software in an isolated virtual python environment, which prevents messing up 
-your system python packages. Please search `Virtualenv` on Google for more information.
+**Note**: The beta version runs on MacOS, Windows or Linux.
 
 ## Example
 
@@ -23,16 +20,17 @@ your system python packages. Please search `Virtualenv` on Google for more infor
 ```
 geochemistrypi data-mining 
 ```
-**Note**: There are four built-in data sets corresponding to four kinds of model pattern, regression, classification,
-clustering, decomposition.
+**Note**: There are four built-in data sets corresponding to four kinds of model pattern.
 
 ### Case 2: Run with your own data set
 ```
 geochemistrypi data-mining --data your_own_data_set.xlsx
 ```
-**Note**: Currently, only `.xlsx` file is supported. Please specify the path your data file exists. If you run the
-command above, it means the command is executed under the directory your data file exists.
+**Note**: Currently, only `.xlsx` file is supported. Please specify the path your data file exists. 
 
+For more details: Please to refer to 
++ [Manual for Geochemistry π - Beta (International - Google drive)](https://drive.google.com/file/d/1ZQqmi6nkTZUaODAWzmXLvnaQ1bajEjYp/view?usp=sharing)
++ [Manual for Geochemistry π - Beta (China - Tencent Docs)](https://docs.qq.com/pdf/DQ1llWXRiTHp1Y0lj?&u=6868f96d4a384b309036e04e637e367a)
 
 ## First Phase
 It works as a **software application** with a command-line interface (CLI) to automate **data mining** process with
@@ -66,9 +64,9 @@ The whole package is under construction and the documentation is progressively e
   Email: sanyhew1097618435@163.com
 
 **Core Developers:**
-+ Yang Lyu (Daisy, Zhejiang University, China)
-+ Jianming Zhao (Jamie, Jilin University, Changchun, China)
 + Jianhao Sun (Jin, China University of Geosciences，Wuhan, China)
++ Jianming Zhao (Jamie, Jilin University, Changchun, China)
++ Yang Lyu (Daisy, Zhejiang University, China)
 + Shengxin Wang (Samson, Lanzhou University, China)
 
 **Members**:
@@ -119,13 +117,18 @@ Contact with your CV: sanyhew1097618435@163.com
 
 ## In-house Materials
 Materials are in both Chinese and English. Others unshown below are internal materials.
-1. [Guideline Manual – Geochemistry π](https://docs.google.com/document/d/1LjwB5Lazk33E5vbtnFPJio_MyjYQxjEu/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true)
-2. [Learning Steps for Newbies – Geochemistry π](https://docs.google.com/document/d/1GQO-SXwEx_8midr362pqfxNZtfUf-nA6/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true)
-3. [Code Specification v2.1.2 - Geochemistry π](https://drive.google.com/file/d/12UPrGqrj9hl0_vK8r-m6xykh_6052OtI/view?usp=sharing)
-4. [Cycle Report - Geochemistry π](https://drive.google.com/file/d/1JPZoSLcPRqzu6LDvw8wLQkV2GfJoER51/view?usp=sharing)
+1. [Guideline Manual – Geochemistry π (International - Google drive)](https://docs.google.com/document/d/1LjwB5Lazk33E5vbtnFPJio_MyjYQxjEu/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true)
+2. [Guideline Manual – Geochemistry π (China - Tencent Docs)](https://docs.qq.com/doc/DQ21IZUdVQktqRWpm?&u=6868f96d4a384b309036e04e637e367a)
+3. [Learning Steps for Newbies – Geochemistry π (International - Google drive)](https://docs.google.com/document/d/1GQO-SXwEx_8midr362pqfxNZtfUf-nA6/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true)
+4. [Learning Steps for Newbies - Geochemistry π (China - Tencent Docs)](https://docs.qq.com/doc/DTlVEakt2WnJrdkN1?&u=6868f96d4a384b309036e04e637e367a)
+5. [Code Specification v2.1.2 - Geochemistry π (International - Google drive)](https://drive.google.com/file/d/12UPrGqrj9hl0_vK8r-m6xykh_6052OtI/view?usp=sharing)
+6. [Code Specification v2.1.2 - Geochemistry π (China - Tencent Docs)](https://docs.qq.com/pdf/DQ2pmc1l1Z2t3QVFa?&u=6868f96d4a384b309036e04e637e367a)
+7. [Cycle Report - Geochemistry π (International - Google drive)](https://drive.google.com/file/d/1JPZoSLcPRqzu6LDvw8wLQkV2GfJoER51/view?usp=sharing)
+8. [Cycle Report - Geochemistry π (China - Tencent Docs)](https://docs.qq.com/pdf/DQ25VSGNlbGx4UkFZ?&u=6868f96d4a384b309036e04e637e367a)
 
 ## In-house Videos
 Technical record videos are on Bilibili and Youtube synchronously while other meeting videos are internal materials.
+More Videos will be recorded soon.
 1. [ZJU_Earth_Data Introduction (Geochemical Data, Python, Geochemistry π) - Prof. Zhang](https://www.bilibili.com/video/BV1Lf4y1w7EK?spm_id_from=333.999.0.0)
 2. [How to Collaborate and Provide Bug Report on Geochemistry π Through GitHub - Can He (Sany)](https://www.youtube.com/watch?v=1DWoEsqsfvQ&list=PLy8hNsI55lvh1UHjhVhqNUj3xPdV9sEiM&index=3)
 3. [How to Run Geochemistry π v1.0.0-alpha - Can He (Sany)](https://www.bilibili.com/video/BV1i541117dd?spm_id_from=333.999.0.0)
