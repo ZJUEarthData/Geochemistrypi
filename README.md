@@ -1,8 +1,21 @@
-<img src="./docs/Geochemistry π.png" width="50%"/>
+<p>
+<img src="./docs/Geochemistry π.png" class="center"/>
+</p>
+<p align="center">
+<img src="https://img.shields.io/github/actions/workflow/status/ZJUEarthData/geochemistrypi/geochemistrypy.yml?logo=github">
+<img src="https://img.shields.io/github/license/ZJUEarthData/geochemistrypi">
+<img src="https://img.shields.io/github/v/release/ZJUEarthData/geochemistrypi?include_prereleases">
+<img src="https://img.shields.io/pypi/dm/geochemistrypi?logo=pypi">
+</p>
+
 
 Geochemistry π is **a Python framework** for data-driven geochemistry discovery. It provides an extendable tool and
 one-stop shop for **geochemical data analysis** on tabular data. The goal of the Geochemistry π is to create
 a series of user-friendly and extensible products of high automation for the full cycle of geochemistry research.  
+
+Key features are:
++ **Easy to use:** The automation of data mining process provides the users with simple number options to choose.
++ **Extensible:** It allows appending new algorithms through Scikit-learn with AutoML function by FLAML and Ray.
 
 ## Quick Installation
 
@@ -28,9 +41,9 @@ geochemistrypi data-mining --data your_own_data_set.xlsx
 ```
 **Note**: Currently, only `.xlsx` file is supported. Please specify the path your data file exists. 
 
-For more details: Please to refer to 
-+ [Manual for Geochemistry π - Beta (International - Google drive)](https://drive.google.com/file/d/1ZQqmi6nkTZUaODAWzmXLvnaQ1bajEjYp/view?usp=sharing)
-+ [Manual for Geochemistry π - Beta (China - Tencent Docs)](https://docs.qq.com/pdf/DQ1llWXRiTHp1Y0lj?&u=6868f96d4a384b309036e04e637e367a)
+For more details: Please refer to 
++ [Manual for Geochemistry π - Beta (International - Google drive)](https://drive.google.com/file/d/1YKG0-fkuIzS279YnGl4c-kokxNx2I_Fz/view?usp=sharing)
++ [Manual for Geochemistry π - Beta (China - Tencent Docs)](https://docs.qq.com/pdf/DQ3J4bGhQemhDS3FJ?&u=6868f96d4a384b309036e04e637e367a)
 
 ## First Phase
 It works as a **software application** with a command-line interface (CLI) to automate **data mining** process with
