@@ -92,8 +92,8 @@ def pipeline(file_name: str) -> None:
             break
 
     # Create the processing data set
-    logger.debug("Data Selected")
-    print("-*-*- Data Selected -*-*-")
+    logger.debug("Data Selection")
+    print("-*-*- Data Selection -*-*-")
     show_data_columns(data.columns)
     data_processed = create_sub_data_set(data)
     clear_output()

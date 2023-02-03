@@ -42,8 +42,8 @@ geochemistrypi data-mining --data your_own_data_set.xlsx
 **Note**: Currently, only `.xlsx` file is supported. Please specify the path your data file exists. 
 
 For more details: Please refer to 
-+ [Manual for Geochemistry π - Beta (International - Google drive)](https://drive.google.com/file/d/1YKG0-fkuIzS279YnGl4c-kokxNx2I_Fz/view?usp=sharing)
-+ [Manual for Geochemistry π - Beta (China - Tencent Docs)](https://docs.qq.com/pdf/DQ3J4bGhQemhDS3FJ?&u=6868f96d4a384b309036e04e637e367a)
++ [Manual for Geochemistry π - Beta (International - Google drive)](https://drive.google.com/file/d/1yryykCyWKM-Sj88fOYbOba6QkB_fu2ws/view?usp=sharing)
++ [Manual for Geochemistry π - Beta (China - Tencent Docs)](https://docs.qq.com/pdf/DQ0l5d2xVd2VwcnVW?&u=6868f96d4a384b309036e04e637e367a)
 + [Geochemistry π - Download and Run the Beta Version (International - Youtube)](https://www.youtube.com/watch?v=EeVaJ3H7_AU&list=PLy8hNsI55lvh1UHjhVhqNUj3xPdV9sEiM&index=9)
 + [Geochemistry π - Download and Run the Beta Version (China - Bilibili)](https://www.bilibili.com/video/BV1UM4y1Q7Ju/?spm_id_from=333.999.0.0&vd_source=27944ab3b73a78970c1a52a5dcbb9140)
 
