@@ -44,6 +44,9 @@ geochemistrypi data-mining --data your_own_data_set.xlsx
 For more details: Please refer to 
 + [Manual for Geochemistry π - Beta (International - Google drive)](https://drive.google.com/file/d/1YKG0-fkuIzS279YnGl4c-kokxNx2I_Fz/view?usp=sharing)
 + [Manual for Geochemistry π - Beta (China - Tencent Docs)](https://docs.qq.com/pdf/DQ3J4bGhQemhDS3FJ?&u=6868f96d4a384b309036e04e637e367a)
++ [Geochemistry π - Download and Run the Beta Version (International - Youtube)](https://www.youtube.com/watch?v=EeVaJ3H7_AU&list=PLy8hNsI55lvh1UHjhVhqNUj3xPdV9sEiM&index=9)
++ [Geochemistry π - Download and Run the Beta Version (China - Bilibili)](https://www.bilibili.com/video/BV1UM4y1Q7Ju/?spm_id_from=333.999.0.0&vd_source=27944ab3b73a78970c1a52a5dcbb9140)
+
 
 ## First Phase
 It works as a **software application** with a command-line interface (CLI) to automate **data mining** process with
@@ -144,7 +147,7 @@ Technical record videos are on Bilibili and Youtube synchronously while other me
 More Videos will be recorded soon.
 1. [ZJU_Earth_Data Introduction (Geochemical Data, Python, Geochemistry π) - Prof. Zhang](https://www.bilibili.com/video/BV1Lf4y1w7EK?spm_id_from=333.999.0.0)
 2. [How to Collaborate and Provide Bug Report on Geochemistry π Through GitHub - Can He (Sany)](https://www.youtube.com/watch?v=1DWoEsqsfvQ&list=PLy8hNsI55lvh1UHjhVhqNUj3xPdV9sEiM&index=3)
-3. [How to Run Geochemistry π v1.0.0-alpha - Can He (Sany)](https://www.bilibili.com/video/BV1i541117dd?spm_id_from=333.999.0.0)
+3. [Geochemistry π - Download and Run the Beta Version](https://www.youtube.com/watch?v=EeVaJ3H7_AU&list=PLy8hNsI55lvh1UHjhVhqNUj3xPdV9sEiM&index=9)
 4. [How to Create and Use Virtual Environment on Geochemistry π - Can He (Sany)](https://www.youtube.com/watch?v=4KFi7OXxD-c&list=PLy8hNsI55lvh1UHjhVhqNUj3xPdV9sEiM&index=4)
 5. [How to use Github-Desktop in conflict resolution - Qiuhao Zhao (Brad)](https://www.youtube.com/watch?v=KT1g5JpuUVI&list=PLy8hNsI55lvh1UHjhVhqNUj3xPdV9sEiM)
 6. [Virtual Environment & Packages On Windows - Jianming Zhao (Jamie)](https://www.youtube.com/watch?v=e4VqSBuNp_o&list=PLy8hNsI55lvh1UHjhVhqNUj3xPdV9sEiM&index=2)
