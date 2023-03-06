@@ -10,7 +10,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 logging.captureWarnings(True)
 
 
-def map_projected(col: pd.Series, longitude: pd.DataFrame, latitude: pd.DataFrame) -> None:
+def map_projected(col: pd.Series, df: pd.DataFrame) -> None:
     """Project an element data into world map.
 
     Parameters
@@ -22,9 +22,8 @@ def map_projected(col: pd.Series, longitude: pd.DataFrame, latitude: pd.DataFram
         The data sheet.
     """
     # Create point geometries
-    geometry = geopandas.points_from_xy(longitude, latitude)
-
-    geo_df = geopandas.GeoDataFrame(pd.concat([col, longitude, latitude], axis=1), geometry=geometry)
+    geometry = geopandas.points_from_xy(df['LONGITUDE'], df['LATITUDE'])
+    geo_df = geopandas.GeoDataFrame(df[[col.name, 'LONGITUDE', 'LATITUDE']], geometry=geometry)
     world = geopandas.read_file(geopandas.datasets.get_path('naturalearth_lowres'))
 
     # Make figure
