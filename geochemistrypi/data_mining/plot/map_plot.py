@@ -18,8 +18,11 @@ def map_projected(col: pd.Series, longitude: pd.DataFrame, latitude: pd.DataFram
     col : pd.Series
         One selected column from the data sheet.
 
-    df : pd.DataFrame
-        The data sheet.
+    longitude : pd.DataFrame
+        Longitude data of data items.
+
+    latitude : pd.DataFrame
+        Latitude data of data items.
     """
     # Create point geometries
     geometry = geopandas.points_from_xy(longitude, latitude)

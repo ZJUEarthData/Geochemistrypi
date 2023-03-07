@@ -66,18 +66,19 @@ def pipeline(file_name: str) -> None:
     map_flag = 0
     is_map_projection = 0
     detection_index = 0
-    if 'LATITUDE' not in data.columns:
+    if ('LATITUDE' not in data.columns) and ('latitude' not in data.columns):
         detection_index += 1
-    if 'LONGITUDE' not in data.columns:
+    if ('LONGITUDE' not in data.columns) and ('longitude' not in data.columns):
         detection_index += 2
     if detection_index == 1:
-        print("\nData missing 'LATITUDE' !\n")
+        print("The provided data set is lack of 'LATITUDE' data.")
     elif detection_index == 2:
-        print("\nData missing 'LONGITUDE' !\n")
+        print("The provided data set is lack of 'LONGITUDE' data.")
     elif detection_index == 3:
-        print("\nData missing 'LONGITUDE' and 'LATITUDE' !\n")
-    else:
-        pass
+        print("The provided data set is lack of 'LONGITUDE' and 'LATITUDE' data.")
+    if detection_index != 0:
+        print("Hence, world map projection functionality will be skipped!")
+        clear_output()
     while detection_index == 0:
         if map_flag != 1:
             # option selection
@@ -91,14 +92,16 @@ def pipeline(file_name: str) -> None:
             show_data_columns(data.columns)
             elm_num = limit_num_input(data.columns, SECTION[3], num_input)
             clear_output()
-            print("Select the longitude of the elements: ")
-            show_data_columns(data.columns)
-            longitude = limit_num_input(data.columns, SECTION[3], num_input)
-            clear_output()
-            print("Select the latitude of the elements: ")
-            show_data_columns(data.columns)
-            latitude = limit_num_input(data.columns, SECTION[3], num_input)
-            map_projected(data.iloc[:, elm_num - 1], data.iloc[:, longitude - 1], data.iloc[:, latitude - 1])
+            if 'LONGITUDE' in data.columns:
+                longitude = data.loc[:, 'LONGITUDE']
+            else:
+                longitude = data.loc[:, 'longitude']
+            if 'LATITUDE' in data.columns:
+                latitude = data.loc[:, 'LATITUDE']
+            else:
+                latitude = data.loc[:, 'latitude']
+            print("Longitude and latitude data are selected from the provided data set.")
+            map_projected(data.iloc[:, elm_num - 1], longitude, latitude)
             clear_output()
             print("Do you want to continue to project a new element in the World Map?")
             num2option(OPTION)

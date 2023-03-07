@@ -122,21 +122,21 @@ def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
             print("Warning: Please follow the rules and re-enter.")
             judge = True
             sub_data_set_columns_range = input('@input: ')
-        else:
-            data_checking = data.iloc[:, sub_data_set_columns_selected].T
-            v_value = list(data_checking.isnull().any())
-            for index, row in data_checking.iterrows():
-                if True in v_value:
-                    print("There is a vacancy value in the selected data!")
-                    judge = True
-                    sub_data_set_columns_range = input('@input: ')
-                elif row.dtypes in ['int64', 'float64']:
-                    continue
-                else:
-                    print("There is a problem with the type of data selected!\n "
-                          "Please make sure that the selected data type is numeric and re-enter")
-                    judge = True
-                    sub_data_set_columns_range = input('@input: ')
+        # else:
+        #     data_checking = data.iloc[:, sub_data_set_columns_selected].T
+        #     v_value = list(data_checking.isnull().any())
+        #     for index, row in data_checking.iterrows():
+        #         if True in v_value:
+        #             print("There is a vacancy value in the selected data!")
+        #             judge = True
+        #             sub_data_set_columns_range = input('@input: ')
+        #         elif row.dtypes in ['int64', 'float64']:
+        #             continue
+        #         else:
+        #             print("There is a problem with the type of data selected!\n "
+        #                   "Please make sure that the selected data type is numeric and re-enter")
+        #             judge = True
+        #             sub_data_set_columns_range = input('@input: ')
         if judge == False:
             break
 
