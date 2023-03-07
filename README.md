@@ -5,7 +5,7 @@
 <img src="https://img.shields.io/github/actions/workflow/status/ZJUEarthData/geochemistrypi/geochemistrypy.yml?logo=github">
 <img src="https://img.shields.io/github/license/ZJUEarthData/geochemistrypi">
 <img src="https://img.shields.io/github/v/release/ZJUEarthData/geochemistrypi?include_prereleases">
-<img src="https://img.shields.io/pypi/dm/geochemistrypi?logo=pypi">
+<img src="https://static.pepy.tech/personalized-badge/geochemistrypi?period=total&units=international_system&left_color=grey&right_color=green&left_text=Downloads">
 </p>
 
 
@@ -15,7 +15,7 @@ a series of user-friendly and extensible products of high automation for the ful
 
 Key features are:
 + **Easy to use:** The automation of data mining process provides the users with simple number options to choose.
-+ **Extensible:** It allows appending new algorithms through Scikit-learn with AutoML function by FLAML and Ray.
++ **Extensible:** It allows appending new algorithms through Scikit-learn with augmented AutoML functionality by FLAML and Ray.
 
 ## Quick Installation
 
@@ -42,8 +42,8 @@ geochemistrypi data-mining --data your_own_data_set.xlsx
 **Note**: Currently, only `.xlsx` file is supported. Please specify the path your data file exists. 
 
 For more details: Please refer to 
-+ [Manual for Geochemistry π - Beta (International - Google drive)](https://drive.google.com/file/d/1yryykCyWKM-Sj88fOYbOba6QkB_fu2ws/view?usp=sharing)
-+ [Manual for Geochemistry π - Beta (China - Tencent Docs)](https://docs.qq.com/pdf/DQ0l5d2xVd2VwcnVW?&u=6868f96d4a384b309036e04e637e367a)
++ [Manual v1.1.0 for Geochemistry π - Beta (International - Google drive)](https://drive.google.com/file/d/1yryykCyWKM-Sj88fOYbOba6QkB_fu2ws/view?usp=sharing)
++ [Manual v1.1.0 for Geochemistry π - Beta (China - Tencent Docs)](https://docs.qq.com/pdf/DQ0l5d2xVd2VwcnVW?&u=6868f96d4a384b309036e04e637e367a)
 + [Geochemistry π - Download and Run the Beta Version (International - Youtube)](https://www.youtube.com/watch?v=EeVaJ3H7_AU&list=PLy8hNsI55lvh1UHjhVhqNUj3xPdV9sEiM&index=9)
 + [Geochemistry π - Download and Run the Beta Version (China - Bilibili)](https://www.bilibili.com/video/BV1UM4y1Q7Ju/?spm_id_from=333.999.0.0&vd_source=27944ab3b73a78970c1a52a5dcbb9140)
 
@@ -80,21 +80,24 @@ The whole package is under construction and the documentation is progressively e
   Email: sanyhew1097618435@163.com
 
 **Core Developers:**
-+ Jianhao Sun (Jin, China University of Geosciences，Wuhan, China)
++ Jianhao Sun (Jin, China University of Geosciences, Wuhan, China)
 + Jianming Zhao (Jamie, Jilin University, Changchun, China)
 + Yang Lyu (Daisy, Zhejiang University, China)
 + Shengxin Wang (Samson, Lanzhou University, China)
++ Wenyu Zhao (Molly, Zhejiang University, China)
 
 **Members**:
-+ Wenyu Zhao (Molly, Zhejiang University, China)
 + Fang Li (liv, Shenzhen University, China)
 + Ting Liu (Kira, Sun Yat-sen University, China)
 + Kaixin Zheng (Hayne, Sun Yat-sen University, China)
 + Aixiwake·Janganuer (Ayshuak, Sun Yat-sen University, China)
-+ Parnanjan Dutta (Presidency University, Kolkata, India)
-+ Bailun Jiang (EPSI / Lille University, France)
-+ Yongkang Chang (Kill-virus, Langzhou University, China)
 + Xirui Zhu (Rae, University of York, United Kingdom)
++ Jianing Wang (National University of Singapore, Singapore)
++ Yongkang Chang (Kill-virus, Langzhou University, China)
++ Bailun Jiang (EPSI / Lille University, France)
++ Yucheng Yan (Andy, University of Sydney)
++ Keran Li (Kirk, Chengdu University of Technology)
+
 
 ## Join Us :)
 **The recruitment of research interns is ongoing !!!**
@@ -157,5 +160,6 @@ More Videos will be recorded soon.
 ## Contributors
 + Qiuhao Zhao (Brad, Zhejiang University, China)
 + Anzhou Li (Andrian, Zhejiang University, China) 
++ Dan Hu (Notre Dame University, United States)
 + Xunxin Liu (Tante, China University of Geosciences, Wuhan, China)
 + Xin Li (The University of Manchester, United Kingdom)

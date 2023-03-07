@@ -391,7 +391,7 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
             random_state: Optional[int] = None,
             max_leaf_nodes: Optional[int] = None,
             min_impurity_decrease: float = 0.0,
-            class_weight: Union[dict, list[dict], str, None] = None,
+            class_weight: Union[dict, List[dict], str, None] = None,
             ccp_alpha: float = 0.0
     ) -> None:
         """
