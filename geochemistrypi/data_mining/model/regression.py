@@ -21,6 +21,7 @@ from .func.algo_regression._rf import feature_importance__, box_plot
 from .func.algo_regression._xgboost import feature_importance, histograms_feature_weights, permutation_importance_
 from .func.algo_regression._linear import show_formula, plot_2d_graph, plot_3d_graph
 from .func.algo_regression._extra_tree import feature_importances
+from .func.algo_regression._svr import plot_2d_decision_boundary
 from .func.algo_regression._decision_tree import decision_tree_plot
 
 
@@ -1197,7 +1198,7 @@ class SVMRegression(RegressionWorkflowBase):
     """The automation workflow of using SVR algorithm to make insightful products."""
 
     name = "Support Vector Machine"
-    special_function = []
+    special_function = ['Two-dimensional Decision Boundary Diagram']
 
     def __init__(
         self,
@@ -1343,15 +1344,32 @@ class SVMRegression(RegressionWorkflowBase):
 
         return MySVMRegression
 
+    @staticmethod
+    def _plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: Any,
+                                   image_config: dict, algorithm_name: str, store_path: str,
+                                   contour_data: Optional[List[np.ndarray]] = None,
+                                   labels: Optional[np.ndarray] = None) -> None:
+        """Plot the decision boundary of the trained model with the testing data set below."""
+        print("-----* Two-dimensional Decision Boundary Diagram *-----")
+        plot_2d_decision_boundary(X, X_test, y_test, trained_model, image_config, algorithm_name)
+        save_fig(f'Regression - {algorithm_name} - Decision Boundary', store_path)
+
     @dispatch()
     def special_components(self, **kwargs):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        pass
+
+        if SVMRegression.X.shape[1] == 2:
+            self._plot_2d_decision_boundary(SVMRegression.X, SVMRegression.X_test, SVMRegression.y_test,
+                                            self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
     @dispatch(bool)
     def special_components(self, is_automl: bool, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        pass
+
+        if SVMRegression.X.shape[1] == 2:
+            self._plot_2d_decision_boundary(SVMRegression.X, SVMRegression.X_test, SVMRegression.y_test,
+                                            self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+
 
 
 class DNNRegression(RegressionWorkflowBase):
