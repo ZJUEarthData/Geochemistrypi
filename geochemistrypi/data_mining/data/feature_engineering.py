@@ -6,12 +6,14 @@ import pandas
 
 
 class Stack(object):
+    """Create a stack."""
+
     Error = -1
 
     def __init__(self, MaxSize):
-        # the size of the stack
+        # The size of the stack.
         self.MaxSize = MaxSize
-        # pointer indicates the position of the top element
+        # Pointer indicates the position of the top element.
         self.Top = -1
         self.Data = [None for _ in range(self.MaxSize)]
 
@@ -52,7 +54,7 @@ class FeatureConstructor(object):
         self._result = None
 
     def index2name(self):
-        """pattern: [letter : column name], e.g. a : 1st column name; b : 2nd column name
+        """Pattern: [letter : column name], e.g. a : 1st column name; b : 2nd column name
 
         :return: index : column name, dict
         """
@@ -66,18 +68,23 @@ class FeatureConstructor(object):
         return self.data[self.map_dict[index]]
 
     def name_feature(self):
-        self.feature_name = input("Name the constructed feature (column name): \n"
+        self.feature_name = input("Name the constructed feature (column name), like 'NEW-COMPOUND': \n"
                                   "@input: ")
 
     def input_expression(self):
-        expression = input("Build up new feature with the combination of 4 basic arithmatic operator.\n"
+        expression = input("Build up new feature with the combination of 4 basic arithmatic operator,"
+                           " including '+', '-', '*', '/', '()'.\n"
                            "Input example 1: a * b - c \n"
                            "--> Step 1: Multiply a column with b column; \n"
                            "--> Step 2: Subtract c from the result of Step 1; \n"
                            "Input example 2: (d + 5 * f) / g \n"
-                           "--> Step 1: multiply 5 with f; \n"
+                           "--> Step 1: Multiply 5 with f; \n"
                            "--> Step 2: Plus d column with the result of Step 1;\n"
                            "--> Step 3: Divide the result of Step 1 by g; \n"
+                           # "Input example 3: (h ** 3) / (i ** (1/2)) \n"
+                           # "--> Step 1: Exponent calculation, h raised to the power of 3; \n"
+                           # "--> Step 2: Root calculation, find the square root of i; \n"
+                           # "--> Step 3: Divide the result of Step 1 by the result of Step 2; \n"
                            "@input: ")
         self._infix_expr = list(expression.replace(' ', ''))
 

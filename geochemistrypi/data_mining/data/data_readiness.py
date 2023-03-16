@@ -129,15 +129,16 @@ def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
                 test_columns = df_test.columns
                 v_value = int(df_test.isnull().sum())
                 if v_value == len(df_test):
-                    print(f"The selected data {df_test.columns.values} is an empty column!")
+                    print(f"Warning: The selected column {df_test.columns.values} is an empty column!")
                     judge = True
                 elif df_test[test_columns[0]].dtype in ['int64', 'float64']:
                     continue
                 else:
-                    print(f"There is a problem with the type of data {df_test.columns.values}!"
-                          "Please make sure that the selected data type is numeric and re-enter")
+                    print(f"Warning: The data type of selected column {df_test.columns.values} is not numeric!"
+                          " Please make sure that the selected data type is numeric and re-enter.")
                     judge = True
-            sub_data_set_columns_range = input('@input: ')
+            if judge == True:
+                sub_data_set_columns_range = input('@input: ')
         if judge == False:
             break
 
