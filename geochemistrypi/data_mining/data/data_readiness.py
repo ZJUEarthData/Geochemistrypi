@@ -137,7 +137,8 @@ def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
                     print(f"There is a problem with the type of data {df_test.columns.values}!"
                           "Please make sure that the selected data type is numeric and re-enter")
                     judge = True
-            sub_data_set_columns_range = input('@input: ')
+            if judge == True:
+                sub_data_set_columns_range = input('@input: ')
         if judge == False:
             break
 
