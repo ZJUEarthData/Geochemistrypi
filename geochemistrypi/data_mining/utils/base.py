@@ -36,7 +36,21 @@ def save_fig(fig_name: str, image_path: str, tight_layout: bool = True) -> None:
     print(f"Save figure '{fig_name}' in {image_path}.")
     if tight_layout:
         plt.tight_layout()
+
+    # Check that the original file exists,
+    # and if it does, add a number after the filename to distinguish
+    i = 1
+    if os.path.isfile(path):
+        path = path[:-4] + str(i) + ".png"
+        if os.path.isfile(path):
+            path = path[:-5] + str(i) + ".png"
+            i = i + 1
+        else:
+            pass
     plt.savefig(path, format='png', dpi=300)
+    plt.close()
+
+
 
 
 def save_data(df: pd.DataFrame, df_name: str, path: str) -> None:
