@@ -259,7 +259,8 @@ def pipeline(file_name: str) -> None:
         print("Selected sub data set to create Y data set:")
         show_data_columns(data_processed_imputed.columns)
         print('The selected Y data set:')
-        print('Note: Normally, only one column is allowed to be tag column, not multiple columns.')
+        print('Notice: Normally, please choose only one column to be tag column Y, not multiple columns.')
+        print('Notice: For classification model training, please choose the label column which has distinctive integers.')
         y = create_sub_data_set(data_processed_imputed)
         print('Successfully create Y data set.')
         print("The Selected Data Set:")
@@ -271,7 +272,7 @@ def pipeline(file_name: str) -> None:
 
         # create training data and testing data
         print("-*-*- Data Split - Train Set and Test Set -*-*-")
-        print('Note: Normally, set 20% of the dataset aside as test set, such as 0.2')
+        print('Notice: Normally, set 20% of the dataset aside as test set, such as 0.2')
         test_ratio = float_input(default=0.2, prefix=SECTION[1], slogan="@Test Ratio: ")
         train_test_data = data_split(X, y, test_ratio)
         for key, value in train_test_data.items():
