@@ -79,11 +79,13 @@ class ClassificationWorkflowBase(WorkflowBase):
 
     @staticmethod
     def _score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> None:
+        """Print the classification score report of the model."""
         print("-----* Model Score *-----")
         print(classification_report(y_true, y_predict))
 
     @staticmethod
     def _cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, cv_num: int = 10) -> None:
+        """Perform cross validation on the model."""
         print("-----* Cross Validation *-----")
         print(f"K-Folds: {cv_num}")
         cross_validation(trained_model, X_train, y_train, cv_num=cv_num)
@@ -91,6 +93,7 @@ class ClassificationWorkflowBase(WorkflowBase):
     @staticmethod
     def _confusion_matrix_plot(y_test: pd.DataFrame, y_test_predict: pd.DataFrame,
                                trained_model: object, algorithm_name: str, store_path: str) -> None:
+        """Plot the confusion matrix of the model."""
         print("-----* Confusion Matrix *-----")
         confusion_matrix_plot(y_test, y_test_predict, trained_model)
         save_fig(f"Confusion Matrix - {algorithm_name}", store_path)
