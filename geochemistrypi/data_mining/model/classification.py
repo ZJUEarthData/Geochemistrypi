@@ -377,7 +377,7 @@ class SVMClassification(ClassificationWorkflowBase):
 
 
 class DecisionTreeClassification(ClassificationWorkflowBase):
-    """A decision tree classifier"""
+    """The automation workflow of using Decision Tree algorithm to make insightful products."""
 
     name = "Decision Tree"
     special_function = ["Decision Tree Plot"]
@@ -555,6 +555,56 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
                                             class_weight=self.class_weight,
                                             ccp_alpha=self.ccp_alpha)
         self.naming = DecisionTreeClassification.name
+        self.customized = True
+        self.customized_name = 'Decision Tree'
+
+    @property
+    def settings(self) -> Dict:
+        """The configuration of Decision Tree to implement AutoML by FLAML framework."""
+        configuration = {
+            "time_budget": 10,  # total running time in seconds
+            "metric": 'accuracy',
+            "estimator_list": [self.customized_name],  # list of ML learners
+            "task": 'classification',  # task type
+            # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
+            # "log_training_metric": True,  # whether to log training metric
+        }
+        return configuration
+    
+    @property
+    def customization(self) -> object:
+        """The customized Decision Tree of FLAML framework."""
+        from flaml.model import SKLearnEstimator
+        from flaml import tune
+        from flaml.data import CLASSIFICATION
+        from sklearn.tree import DecisionTreeClassifier
+
+        class MyDTClassification(SKLearnEstimator):
+            def __init__(self, task='binary', n_jobs=None, **config):
+                super().__init__(task, **config)
+                if task in CLASSIFICATION:
+                    self.estimator_class = DecisionTreeClassifier
+
+            @classmethod
+            def search_space(cls, data_size, task):
+                space = {
+                    'criterion': {'domain': tune.choice(['gini', 'entropy', 'log_loss'])},
+                    'max_depth': {'domain': tune.randint(lower=2, upper=20),
+                                  'init_value': 1,
+                                  'low_cost_init_value': 1},
+                    'min_samples_split': {'domain': tune.randint(lower=2, upper=10),
+                                          'init_value': 2,
+                                          'low_cost_init_value': 2},
+                    'min_samples_leaf': {'domain': tune.randint(lower=1, upper=10),
+                                         'init_value': 1,
+                                         'low_cost_init_value': 1},
+                    'max_features': {'domain': tune.randint(lower=1, upper=10),
+                                     'init_value': 1,
+                                     'low_cost_init_value': 1},
+                }
+                return space
+
+        return MyDTClassification
 
     def plot_tree_function(self, trained_model: object, image_config: dict, algorithm_name: str, store_path: str) -> None:
         """Drawing decision tree diagrams."""
@@ -572,13 +622,23 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
         plot_2d_decision_boundary(X, X_test, y_test, trained_model, image_config, algorithm_name)
         save_fig(f'Classification - {algorithm_name} - Decision Boundary', store_path)
 
+    @dispatch()
     def special_components(self, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         self.plot_tree_function(self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         if DecisionTreeClassification.X.shape[1] == 2:
             self._plot_2d_decision_boundary(DecisionTreeClassification.X, DecisionTreeClassification.X_test,
                                               DecisionTreeClassification.y_test,
                                               self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
+    @dispatch(bool)
+    def special_components(self, is_automl: bool, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by FLAML framework."""
+        self.plot_tree_function(self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        if DecisionTreeClassification.X.shape[1] == 2:
+            self._plot_2d_decision_boundary(DecisionTreeClassification.X, DecisionTreeClassification.X_test,
+                                              DecisionTreeClassification.y_test,
+                                              self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
 class RandomForestClassification(ClassificationWorkflowBase):
     """The automation workflow of using Random Forest algorithm to make insightful products."""
