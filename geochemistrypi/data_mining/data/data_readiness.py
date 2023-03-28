@@ -257,7 +257,21 @@ def float_input(default: float, prefix: Optional[str] = None, slogan: Optional[s
 
 
 def str_input(option_list: List[str], prefix: Optional[str] = None) -> str:
-    # TODO (Sany sanyhew1097618435@163,com): Test this function and add the docstring.
+    """Get the string of the desired option.
+    
+    Parameters
+    ----------
+    option_list : list
+        All the options provided are stored in a list.
+
+    prefix : str, default=None
+        It indicates which section the user currently is in on the UML, which is shown on the command-line console.
+    
+    Returns
+    -------
+    option: str
+        A string of the desired option.
+    """
     num2option(option_list)
     option_num = limit_num_input(option_list, prefix, num_input)
     option = option_list[option_num-1]
