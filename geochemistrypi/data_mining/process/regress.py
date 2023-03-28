@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from ..model.regression import PolynomialRegression, XgboostRegression, DecisionTreeRegression, ExtraTreeRegression,\
     RandomForestRegression, RegressionWorkflowBase, SVMRegression, DNNRegression, LinearRegression2
-from ..data.data_readiness import num_input, float_input, tuple_input, limit_num_input
+from ..data.data_readiness import num_input, float_input, tuple_input, limit_num_input, str_input
 from ..global_variable import SECTION, DATASET_OUTPUT_PATH
 from multipledispatch import dispatch
 import pandas as pd
@@ -33,9 +33,23 @@ class RegressionModelSelection(object):
             self.reg_workflow = XgboostRegression()
         elif self.model == "Decision Tree":
             print("-*-*- Hyper-parameters Specification -*-*-")
-            print("Please specify the max depth of the decision tree regression.")
-            dts_max_depth = num_input(SECTION[2], "@Max_depth:")
-            self.reg_workflow = DecisionTreeRegression(max_depth=dts_max_depth)
+            print("Criterion: The function to measure the quality of a split. Supported criteria are “squared_error” for the mean squared error, which is equal to variance reduction as feature selection criterion and minimizes the L2 loss using the mean of each terminal node, “friedman_mse”, which uses mean squared error with Friedman’s improvement score for potential splits, “absolute_error” for the mean absolute error, which minimizes the L1 loss using the median of each terminal node, and “poisson” which uses reduction in Poisson deviance to find splits.")
+            print("The default value is 'squared_error'. Optional criterions are 'friedman_mse', 'absolute_error' and 'poisson'.")
+            criterions = ["squared_error", "friedman_mse", "absolute_error", "poisson"]
+            criterion = str_input(criterions, SECTION[2])
+            print("Max Depth: The maximum depth of the tree. If None, then nodes are expanded until all leaves are pure or until all leaves contain less than min_samples_split samples.")
+            print("Please specify the maximum depth of the tree. A good starting range could be between 3 and 15, such as 4.")
+            max_depth = num_input(SECTION[2], "@Max Depth: ")
+            print("Min Samples Split: The minimum number of samples required to split an internal node.")
+            print("Please specify the minimum number of samples required to split an internal node. A good starting range could be between 2 and 10, such as 3.")
+            min_samples_split = num_input(SECTION[2], "@Min Samples Split: ")
+            print("Min Samples Leaf: The minimum number of samples required to be at a leaf node.")
+            print("Please specify the minimum number of samples required to be at a leaf node. A good starting range could be between 1 and 10, such as 2.")
+            min_samples_leaf = num_input(SECTION[2], "@Min Samples Leaf: ")
+            print("Max Features: The number of features to consider when looking for the best split.")
+            print("Please specify the number of features to consider when looking for the best split. A good starting range could be between 1 and the total number of features in the dataset.")
+            max_features = num_input(SECTION[2], "@Max Features: ")
+            self.reg_workflow = DecisionTreeRegression(criterion=criterion, max_depth=max_depth, min_samples_split=min_samples_split, min_samples_leaf=min_samples_leaf, max_features=max_features)
         elif self.model == "Extra-Trees":
             self.reg_workflow = ExtraTreeRegression()
         elif self.model == "Random Forest":
