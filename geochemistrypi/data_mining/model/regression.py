@@ -534,7 +534,7 @@ class XgboostRegression(RegressionWorkflowBase):
 
 
 class DecisionTreeRegression(RegressionWorkflowBase):
-    """The automation workflow of using Extra Tree algorithm to make insightful products."""
+    """The automation workflow of using Decision Tree algorithm to make insightful products."""
 
     name = "Decision Tree"
     special_function = ["Decision Tree Plot"]
@@ -714,6 +714,56 @@ class DecisionTreeRegression(RegressionWorkflowBase):
                                            ccp_alpha=self.ccp_alpha
         )
         self.naming = DecisionTreeRegression.name
+        self.customized = True
+        self.customized_name = 'Decision Tree'
+    
+    @property
+    def settings(self) -> Dict:
+        """The configuration of Decision Tree to implement AutoML by FLAML framework."""
+        configuration = {
+            "time_budget": 10,  # total running time in seconds
+            "metric": 'r2',
+            "estimator_list": [self.customized_name],  # list of ML learners
+            "task": 'regression',  # task type
+            # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
+            # "log_training_metric": True,  # whether to log training metric
+        }
+        return configuration
+    
+    @property
+    def customization(self) -> object:
+        """The customized Decision Tree of FLAML framework."""
+        from flaml.model import SKLearnEstimator
+        from flaml import tune
+        from flaml.data import REGRESSION
+        from sklearn.tree import DecisionTreeRegressor
+
+        class MyDTRegression(SKLearnEstimator):
+            def __init__(self, task='regression', n_jobs=None, **config):
+                super().__init__(task, **config)
+                if task in REGRESSION:
+                    self.estimator_class = DecisionTreeRegressor
+
+            @classmethod
+            def search_space(cls, data_size, task):
+                space = {
+                    'criterion': {'domain': tune.choice(["squared_error", "friedman_mse", "absolute_error", "poisson"])},
+                    'max_depth': {'domain': tune.randint(lower=2, upper=20),
+                                  'init_value': 1,
+                                  'low_cost_init_value': 1},
+                    'min_samples_split': {'domain': tune.randint(lower=2, upper=10),
+                                          'init_value': 2,
+                                          'low_cost_init_value': 2},
+                    'min_samples_leaf': {'domain': tune.randint(lower=1, upper=10),
+                                         'init_value': 1,
+                                         'low_cost_init_value': 1},
+                    'max_features': {'domain': tune.randint(lower=1, upper=10),
+                                     'init_value': 1,
+                                     'low_cost_init_value': 1},
+                }
+                return space
+
+        return MyDTRegression
 
     def _plot_tree_function(self, trained_model: object, image_config: dict, algorithm_name: str, store_path: str) -> None:
         """Drawing decision tree diagrams."""
@@ -730,7 +780,7 @@ class DecisionTreeRegression(RegressionWorkflowBase):
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        self._plot_tree_function(self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._plot_tree_function(self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         
 
 class ExtraTreeRegression(RegressionWorkflowBase):
