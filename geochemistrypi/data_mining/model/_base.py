@@ -119,6 +119,18 @@ class WorkflowBase(metaclass=ABCMeta):
         """The interface for the child classes."""
         return pd.DataFrame()
 
+    # TODO(Sany Email:sanyhew1097618435@163.com): The manual_hyper_parameters method is not used temporarily. It will be used in the future.
+    # @abstractmethod
+    # def manual_hyper_parameters(self, **kwargs) -> None:
+    #     """Placeholder for manual_hyper_parameters. child classes should implement this method!
+
+    #     Parameters
+    #     ----------
+    #     kwargs : dict
+    #         The hyper parameters of the model.
+    #     """
+    #     return None
+
     @staticmethod
     def score(y_true: Union[pd.DataFrame, np.ndarray], y_predict: Union[pd.DataFrame, np.ndarray])\
             -> Union[int, float]:
