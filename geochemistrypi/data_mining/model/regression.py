@@ -505,24 +505,28 @@ class XgboostRegression(RegressionWorkflowBase):
     
     @staticmethod
     def manual_hyper_parameters() -> Dict:
+        """Manual hyper-parameters specification."""
         print("-*-*- Hyper-parameters Specification -*-*-")
         hyperparameters = manual_hyper_parameters_()
         return hyperparameters
 
     @staticmethod
     def _feature_importance(X: pd.DataFrame, trained_model: object, image_config: dict, algorithm_name: str, store_path: str) -> None:
+        """Feature importance plot."""
         print("-----* Feature Importance *-----")
         feature_importance(X, trained_model, image_config)
         save_fig(f"Feature Importance - {algorithm_name}", store_path)
 
     @staticmethod
     def _histograms_feature_weights(X: pd.DataFrame, trained_model: object, image_config: dict, algorithm_name: str, store_path: str) -> None:
+        """Histograms of feature weights plot."""
         histograms_feature_weights(X, trained_model,image_config)
         save_fig(f"Regression - {algorithm_name} - Feature Importance Score", store_path)
 
     @staticmethod
     def _permutation_importance(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object,
                                 image_config: dict, algorithm_name: str, store_path: str) -> None:
+        """Permutation importance plot."""
         permutation_importance_(X, X_test, y_test, trained_model, image_config)
         save_fig(f"Regression - {algorithm_name} - Xgboost Feature Importance", store_path)
 
