@@ -18,7 +18,7 @@ from ._base import WorkflowBase
 from .func.algo_regression._common import plot_predicted_value_evaluation, plot_true_vs_predicted, score, cross_validation
 from .func.algo_regression._polynomial import show_formula
 from .func.algo_regression._rf import feature_importance__, box_plot
-from .func.algo_regression._xgboost import feature_importance, histograms_feature_weights, permutation_importance_
+from .func.algo_regression._xgboost import feature_importance, histograms_feature_weights, permutation_importance_, manual_hyper_parameters_
 from .func.algo_regression._linear import show_formula, plot_2d_graph, plot_3d_graph
 from .func.algo_regression._extra_tree import feature_importances
 from .func.algo_regression._svr import plot_2d_decision_boundary
@@ -97,23 +97,27 @@ class RegressionWorkflowBase(WorkflowBase):
 
     @staticmethod
     def _plot_predicted_value_evaluation(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
+        """Plot the predicted value evaluation."""
         print("-----* Predicted Value Evaluation *-----")
         plot_predicted_value_evaluation(y_test, y_test_predict)
         save_fig(f'Predicted Value Evaluation - {algorithm_name}', store_path)
 
     @staticmethod
     def _plot_true_vs_predicted(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
+        """Plot the true value vs. predicted value."""
         print("-----* True Value vs. Predicted Value *-----")
         plot_true_vs_predicted(y_test_predict, y_test, algorithm_name)
         save_fig(f'True Value vs. Predicted Value - {algorithm_name}', store_path)
 
     @staticmethod
     def _score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> None:
+        """Calculate the score of the model."""
         print("-----* Model Score *-----")
         score(y_true, y_predict)
 
     @staticmethod
     def _cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, cv_num: int = 10) -> None:
+        """Cross validation."""
         print("-----* Cross Validation *-----")
         print(f"K-Folds: {cv_num}")
         cross_validation(trained_model, X_train, y_train, cv_num=cv_num)
@@ -498,6 +502,12 @@ class XgboostRegression(RegressionWorkflowBase):
             # "log_training_metric": True,  # whether to log training metric
         }
         return configuration
+    
+    @staticmethod
+    def manual_hyper_parameters() -> Dict:
+        print("-*-*- Hyper-parameters Specification -*-*-")
+        hyperparameters = manual_hyper_parameters_()
+        return hyperparameters
 
     @staticmethod
     def _feature_importance(X: pd.DataFrame, trained_model: object, image_config: dict, algorithm_name: str, store_path: str) -> None:

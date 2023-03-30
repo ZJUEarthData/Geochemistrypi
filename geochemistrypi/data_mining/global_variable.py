@@ -3,7 +3,7 @@ import os
 # current working directory in which the user activates the application
 WORKING_PATH = os.getcwd()
 
-# the directory in which the package(application) s installed
+# the directory in which the package(application) is installed
 PACKAGEDIR = os.path.dirname(os.path.realpath(__file__))
 
 # the directory where the built-in data set to be processed stays
