@@ -10,12 +10,12 @@ sys.path.append("../../..")
 from data_mining.data.data_readiness import float_input, num_input
 from data_mining.global_variable import SECTION
 
-def manual_hyper_parameters_() -> Dict:
+def xgboost_manual_hyper_parameters() -> Dict:
     """Manually set hyperparameters.
 
     Returns
     -------
-    hyperparameters : dict
+    hyper_parameters : dict
     """
     print("N Estimators: The number of trees in the forest.")
     print("Please specify the number of trees in the forest. A good starting range could be between 50 and 500, such as 100.")
@@ -38,8 +38,8 @@ def manual_hyper_parameters_() -> Dict:
     print("Lambda: L2 regularization term on weights.")
     print("Please specify the L2 regularization term on weights. A good starting range could be between 0 and 1.0, such as 1.")
     lambd = float_input(1, SECTION[2], "@Lambda: ")
-    hyperparameters = {'n_estimators': n_estimators, 'learning_rate': learning_rate, 'max_depth': max_depth, 'subsample': subsample, 'colsample_bytree': colsample_bytree, 'alpha': alpha, 'lambd': lambd}
-    return hyperparameters
+    hyper_parameters = {'n_estimators': n_estimators, 'learning_rate': learning_rate, 'max_depth': max_depth, 'subsample': subsample, 'colsample_bytree': colsample_bytree, 'alpha': alpha, 'lambd': lambd}
+    return hyper_parameters
 
 
 def feature_importance(X: pd.DataFrame, trained_model: object, image_config: dict) -> None:

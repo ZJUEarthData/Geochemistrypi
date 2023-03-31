@@ -18,11 +18,11 @@ from ._base import WorkflowBase
 from .func.algo_regression._common import plot_predicted_value_evaluation, plot_true_vs_predicted, score, cross_validation
 from .func.algo_regression._polynomial import show_formula
 from .func.algo_regression._rf import feature_importance__, box_plot
-from .func.algo_regression._xgboost import feature_importance, histograms_feature_weights, permutation_importance_, manual_hyper_parameters_
+from .func.algo_regression._xgboost import feature_importance, histograms_feature_weights, permutation_importance_, xgboost_manual_hyper_parameters
 from .func.algo_regression._linear import show_formula, plot_2d_graph, plot_3d_graph
 from .func.algo_regression._extra_tree import feature_importances
 from .func.algo_regression._svr import plot_2d_decision_boundary
-from .func.algo_regression._decision_tree import decision_tree_plot
+from .func.algo_regression._decision_tree import decision_tree_plot, decision_tree_manual_hyper_parameters
 
 
 class RegressionWorkflowBase(WorkflowBase):
@@ -94,6 +94,11 @@ class RegressionWorkflowBase(WorkflowBase):
     def ray_tune(self, X_train, X_test, y_train, y_test) -> object:
         """The customized model of FLAML framework and RAY framework."""
         return object
+    
+    @staticmethod
+    def manual_hyper_parameters() -> Dict:
+        """Manual hyper-parameters specification."""
+        return dict()
 
     @staticmethod
     def _plot_predicted_value_evaluation(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
@@ -502,12 +507,12 @@ class XgboostRegression(RegressionWorkflowBase):
             # "log_training_metric": True,  # whether to log training metric
         }
         return configuration
-    
+
     @staticmethod
     def manual_hyper_parameters() -> Dict:
         """Manual hyper-parameters specification."""
         print("-*-*- Hyper-parameters Specification -*-*-")
-        hyperparameters = manual_hyper_parameters_()
+        hyperparameters = xgboost_manual_hyper_parameters()
         return hyperparameters
 
     @staticmethod
@@ -730,7 +735,7 @@ class DecisionTreeRegression(RegressionWorkflowBase):
         self.naming = DecisionTreeRegression.name
         self.customized = True
         self.customized_name = 'Decision Tree'
-    
+
     @property
     def settings(self) -> Dict:
         """The configuration of Decision Tree to implement AutoML by FLAML framework."""
@@ -778,6 +783,13 @@ class DecisionTreeRegression(RegressionWorkflowBase):
                 return space
 
         return MyDTRegression
+
+    @staticmethod
+    def manual_hyper_parameters() -> Dict:
+        """Manual hyper-parameters specification."""
+        print("-*-*- Hyper-parameters Specification -*-*-")
+        hyperparameters = decision_tree_manual_hyper_parameters()
+        return hyperparameters
 
     def _plot_tree_function(self, trained_model: object, image_config: dict, algorithm_name: str, store_path: str) -> None:
         """Drawing decision tree diagrams."""

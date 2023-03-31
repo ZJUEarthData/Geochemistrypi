@@ -33,25 +33,10 @@ class RegressionModelSelection(object):
             hyper_parameters = XgboostRegression.manual_hyper_parameters()
             self.reg_workflow = XgboostRegression(n_estimators=hyper_parameters['n_estimators'], learning_rate=hyper_parameters['learning_rate'], max_depth=hyper_parameters['max_depth'], subsample=hyper_parameters['subsample'], colsample_bytree=hyper_parameters['colsample_bytree'], alpha=hyper_parameters['alpha'], lambd=hyper_parameters['lambd'])
         elif self.model == "Decision Tree":
-            print("-*-*- Hyper-parameters Specification -*-*-")
-            print("Criterion: The function to measure the quality of a split. Supported criteria are “squared_error” for the mean squared error, which is equal to variance reduction as feature selection criterion and minimizes the L2 loss using the mean of each terminal node, “friedman_mse”, which uses mean squared error with Friedman’s improvement score for potential splits, “absolute_error” for the mean absolute error, which minimizes the L1 loss using the median of each terminal node, and “poisson” which uses reduction in Poisson deviance to find splits.")
-            print("The default value is 'squared_error'. Optional criterions are 'friedman_mse', 'absolute_error' and 'poisson'.")
-            criterions = ["squared_error", "friedman_mse", "absolute_error", "poisson"]
-            criterion = str_input(criterions, SECTION[2])
-            print("Max Depth: The maximum depth of the tree. If None, then nodes are expanded until all leaves are pure or until all leaves contain less than min_samples_split samples.")
-            print("Please specify the maximum depth of the tree. A good starting range could be between 3 and 15, such as 4.")
-            max_depth = num_input(SECTION[2], "@Max Depth: ")
-            print("Min Samples Split: The minimum number of samples required to split an internal node.")
-            print("Please specify the minimum number of samples required to split an internal node. A good starting range could be between 2 and 10, such as 3.")
-            min_samples_split = num_input(SECTION[2], "@Min Samples Split: ")
-            print("Min Samples Leaf: The minimum number of samples required to be at a leaf node.")
-            print("Please specify the minimum number of samples required to be at a leaf node. A good starting range could be between 1 and 10, such as 2.")
-            min_samples_leaf = num_input(SECTION[2], "@Min Samples Leaf: ")
-            print("Max Features: The number of features to consider when looking for the best split.")
-            print("Please specify the number of features to consider when looking for the best split. A good starting range could be between 1 and the total number of features in the dataset.")
-            max_features = num_input(SECTION[2], "@Max Features: ")
-            self.reg_workflow = DecisionTreeRegression(criterion=criterion, max_depth=max_depth, min_samples_split=min_samples_split, min_samples_leaf=min_samples_leaf, max_features=max_features)
+            hyper_parameters = DecisionTreeRegression.manual_hyper_parameters()
+            self.reg_workflow = DecisionTreeRegression(criterion=hyper_parameters['criterion'], max_depth=hyper_parameters['max_depth'], min_samples_split=hyper_parameters['min_samples_split'], min_samples_leaf=hyper_parameters['min_samples_leaf'], max_features=hyper_parameters['max_features'])
         elif self.model == "Extra-Trees":
+            # hyper_parameters = ExtraTreeRegression.manual_hyper_parameters()
             self.reg_workflow = ExtraTreeRegression()
         elif self.model == "Random Forest":
             self.reg_workflow = RandomForestRegression()
