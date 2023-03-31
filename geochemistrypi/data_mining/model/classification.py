@@ -18,8 +18,8 @@ from .func.algo_classification._common import confusion_matrix_plot, contour_dat
     cross_validation
 from .func.algo_classification._svm import plot_2d_decision_boundary
 from .func.algo_classification._xgboost import feature_importance_map, feature_importance_value, \
-    feature_weights_histograms
-from .func.algo_classification._decision_tree import decision_tree_plot
+    feature_weights_histograms, xgboost_manual_hyper_parameters
+from .func.algo_classification._decision_tree import decision_tree_plot, decision_tree_manual_hyper_parameters
 from .func.algo_classification._logistic import logistic_importance_plot
 from .func.algo_classification._rf import feature_importances
 
@@ -76,6 +76,11 @@ class ClassificationWorkflowBase(WorkflowBase):
     def auto_model(self) -> object:
         """Get AutoML trained model by FLAML framework."""
         return self.automl.model.estimator
+
+    @staticmethod
+    def manual_hyper_parameters() -> Dict:
+        """Manual hyper-parameters specification."""
+        return dict()
 
     @staticmethod
     def _score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> None:
@@ -606,6 +611,13 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
 
         return MyDTClassification
 
+    @staticmethod
+    def manual_hyper_parameters() -> Dict:
+        """Manual hyper-parameters specification."""
+        print("-*-*- Hyper-parameters Specification -*-*-")
+        hyperparameters = decision_tree_manual_hyper_parameters()
+        return hyperparameters
+
     def plot_tree_function(self, trained_model: object, image_config: dict, algorithm_name: str, store_path: str) -> None:
         """Drawing decision tree diagrams."""
         print("-----* Decision Tree Plot *-----")
@@ -1082,6 +1094,13 @@ class XgboostClassification(ClassificationWorkflowBase):
             # "log_training_metric": True,  # whether to log training metric
         }
         return configuration
+
+    @staticmethod
+    def manual_hyper_parameters() -> Dict:
+        """Manual hyper-parameters specification."""
+        print("-*-*- Hyper-parameters Specification -*-*-")
+        hyperparameters = xgboost_manual_hyper_parameters()
+        return hyperparameters
 
     @staticmethod
     def _feature_importance_series(data: pd.DataFrame, trained_model: any, algorithm_name: str, image_config: dict,
