@@ -36,7 +36,7 @@ class RegressionModelSelection(object):
             hyper_parameters = DecisionTreeRegression.manual_hyper_parameters()
             self.reg_workflow = DecisionTreeRegression(criterion=hyper_parameters['criterion'], max_depth=hyper_parameters['max_depth'], min_samples_split=hyper_parameters['min_samples_split'], min_samples_leaf=hyper_parameters['min_samples_leaf'], max_features=hyper_parameters['max_features'])
         elif self.model == "Extra-Trees":
-            # hyper_parameters = ExtraTreeRegression.manual_hyper_parameters()
+            hyper_parameters = ExtraTreeRegression.manual_hyper_parameters()
             self.reg_workflow = ExtraTreeRegression()
         elif self.model == "Random Forest":
             self.reg_workflow = RandomForestRegression()
