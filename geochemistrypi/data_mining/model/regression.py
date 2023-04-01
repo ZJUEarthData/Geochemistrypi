@@ -17,7 +17,7 @@ from flaml import AutoML
 from ._base import WorkflowBase
 from .func.algo_regression._common import plot_predicted_value_evaluation, plot_true_vs_predicted, score, cross_validation
 from .func.algo_regression._polynomial import show_formula
-from .func.algo_regression._rf import feature_importance__, box_plot
+from .func.algo_regression._rf import feature_importance__, box_plot, random_forest_manual_hyper_parameters
 from .func.algo_regression._xgboost import feature_importance, histograms_feature_weights, permutation_importance_, xgboost_manual_hyper_parameters
 from .func.algo_regression._linear import show_formula, plot_2d_graph, plot_3d_graph
 from .func.algo_regression._extra_tree import feature_importances, extra_tree_manual_hyper_parameters
@@ -816,7 +816,7 @@ class ExtraTreeRegression(RegressionWorkflowBase):
     special_function = ["Feature Importance"]
 
     def __init__(self,
-                 n_estimator: int = 500,
+                 n_estimators: int = 500,
                  bootstrap: bool = False,
                  oob_score: bool = False,
                  max_leaf_nodes: int = 20,
@@ -1044,12 +1044,26 @@ class RandomForestRegression(RegressionWorkflowBase):
     name = "Random Forest"
     special_function = ["Feature Importance"]
 
-    def __init__(self,
-                 n_estimators: int = 500,
-                 oob_score: bool = True,
-                 max_leaf_nodes: int = 15,
-                 n_jobs: int = -1,
-                 random_state: int = 42
+    def __init__(   
+        self,
+        n_estimators=100,
+        criterion="mse",
+        max_depth=None,
+        min_samples_split=2,
+        min_samples_leaf=1,
+        min_weight_fraction_leaf=0.0,
+        max_features="sqrt",
+        max_leaf_nodes=None,
+        min_impurity_decrease=0.0,
+        bootstrap=True,
+        oob_score=False,
+        n_jobs=None,
+        random_state=None,
+        verbose=0,
+        warm_start=False,
+        # class_weight=None,
+        ccp_alpha=0.0,
+        max_samples=None,
     ) -> None:
         """
         Parameters
@@ -1217,16 +1231,44 @@ class RandomForestRegression(RegressionWorkflowBase):
         
         super().__init__()
         self.n_estimators = n_estimators
-        self.oob_score = oob_score
+        self.criterion = criterion
+        self.max_depth = max_depth
+        self.min_samples_split = min_samples_split
+        self.min_samples_leaf = min_samples_leaf
+        self.min_weight_fraction_leaf = min_weight_fraction_leaf
+        self.max_features = max_features
         self.max_leaf_nodes = max_leaf_nodes
+        self.min_impurity_decrease = min_impurity_decrease
+        self.bootstrap = bootstrap
+        self.oob_score = oob_score
         self.n_jobs = n_jobs
         self.random_state = random_state
+        self.verbose = verbose
+        self.warm_start = warm_start
+        # self.class_weight = class_weight
+        self.ccp_alpha = ccp_alpha
+        self.max_samples=max_samples
 
-        self.model = RandomForestRegressor(n_estimators=self.n_estimators,
-                                           oob_score=self.oob_score,
-                                           max_leaf_nodes=self.max_leaf_nodes,
-                                           n_jobs=self.n_jobs,
-                                           random_state=self.random_state)
+        self.model = RandomForestRegressor(
+            n_estimators=self.n_estimators,
+            criterion=self.criterion,
+            max_depth=self.max_depth,
+            min_samples_split=self.min_samples_split,
+            min_samples_leaf=self.min_samples_leaf,
+            min_weight_fraction_leaf=self.min_weight_fraction_leaf,
+            max_features=self.max_features,
+            max_leaf_nodes=self.max_leaf_nodes,
+            min_impurity_decrease=self.min_impurity_decrease,
+            bootstrap=self.bootstrap,
+            oob_score=self.oob_score,
+            n_jobs=self.n_jobs,
+            random_state=self.random_state,
+            verbose=self.verbose,
+            warm_start=self.warm_start,
+            # class_weight=self.class_weight,
+            ccp_alpha=self.ccp_alpha,
+            max_samples=self.max_samples,
+        )
         self.naming = RandomForestRegression.name
 
     @property
@@ -1241,6 +1283,13 @@ class RandomForestRegression(RegressionWorkflowBase):
             # "log_training_metric": True,  # whether to log training metric
         }
         return configuration
+
+    @staticmethod
+    def manual_hyper_parameters() -> Dict:
+        """Manual hyper-parameters specification."""
+        print("-*-*- Hyper-parameters Specification -*-*-")
+        hyperparameters = random_forest_manual_hyper_parameters()
+        return hyperparameters
 
     @staticmethod
     def _feature_importances(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame,
