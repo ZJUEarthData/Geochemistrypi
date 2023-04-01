@@ -1506,9 +1506,28 @@ class SVMRegression(RegressionWorkflowBase):
             @classmethod
             def search_space(cls, data_size, task):
                 space = {
-                    'C': {'domain': tune.uniform(lower=1, upper=data_size[0]),
-                          'init_value': 1,
-                          'low_cost_init_value': 1}
+                    'C': {
+                        'domain': tune.uniform(lower=1, upper=data_size[0]),
+                        'init_value': 1,
+                        'low_cost_init_value': 1
+                    },
+                    'kernel': {'domain': tune.choice(['linear', 'poly', 'rbf', 'sigmoid'])},
+                    'gamma': {
+                        'domain': tune.loguniform(lower=1e-5, upper=1e-1),
+                        'init_value': 1e-1,
+                        'low_cost_init_value': 1e-1
+                    },
+                    'degree': {
+                        'domain': tune.quniform(lower=1, upper=5, q=1),
+                        'init_value': 3,
+                        'low_cost_init_value': 3
+                    },
+                    'coef0': {
+                        'domain': tune.uniform(lower=0, upper=1),
+                        'init_value': 0,
+                        'low_cost_init_value': 0
+                    },
+                    'shrinking': {'domain': tune.choice([True, False])},
                 }
                 return space
 
