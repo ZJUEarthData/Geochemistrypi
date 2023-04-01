@@ -34,13 +34,13 @@ def extra_tree_manual_hyper_parameters() -> Dict:
     max_features = num_input(SECTION[2], "@Max Features: ")
     print("Bootstrap: Whether bootstrap samples are used when building trees. Bootstrapping is a technique where a random subset of the data is sampled with replacement to create a new dataset of the same size as the original. This new dataset is then used to construct a decision tree in the ensemble. If False, the whole dataset is used to build each tree.")
     print("Please specify whether bootstrap samples are used when building trees. It is generally recommended to leave it set to True.")
-    boostraps = ["True", "Flase"]
-    boostrap = bool(str_input(boostraps, SECTION[2]))
+    bootstraps = ["True", "Flase"]
+    bootstrap = bool(str_input(bootstraps, SECTION[2]))
     print("oob_score: Whether to use out-of-bag samples to estimate the generalization accuracy. When the oob_score hyperparameter is set to True, Extra Trees will use a random subset of the data to train each decision tree in the ensemble, and the remaining data that was not used for training (the out-of-bag samples) will be used to calculate the OOB score. ")
     print("Please specify whether to use out-of-bag samples to estimate the generalization accuracy. It is generally recommended to leave it set to True.")
     oob_scores = ["True", "Flase"]
     oob_score = bool(str_input(oob_scores, SECTION[2]))
-    hyper_parameters = {"n_estimators": n_estimators, "max_depth": max_depth, "min_samples_split": min_samples_split, "min_samples_leaf": min_samples_leaf, "max_features": max_features, "boostrap": boostrap, "oob_score": oob_score}
+    hyper_parameters = {"n_estimators": n_estimators, "max_depth": max_depth, "min_samples_split": min_samples_split, "min_samples_leaf": min_samples_leaf, "max_features": max_features, "bootstrap": bootstrap, "oob_score": oob_score}
     return hyper_parameters
 
 

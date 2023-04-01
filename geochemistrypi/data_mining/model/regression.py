@@ -816,12 +816,24 @@ class ExtraTreeRegression(RegressionWorkflowBase):
     special_function = ["Feature Importance"]
 
     def __init__(self,
-                 n_estimators: int = 500,
-                 bootstrap: bool = False,
-                 oob_score: bool = False,
-                 max_leaf_nodes: int = 20,
-                 random_state: int = 42,
-                 n_jobs: int = -1
+                 n_estimators=100,
+                 criterion="mse",
+                 max_depth=None,
+                 min_samples_split=2,
+                 min_samples_leaf=1,
+                 min_weight_fraction_leaf=0.,
+                 max_features="auto",
+                 max_leaf_nodes=None,
+                 min_impurity_decrease=0.,
+                #  min_impurity_split=None,
+                 bootstrap=False,
+                 oob_score=False,
+                 n_jobs=None,
+                 random_state=None,
+                 verbose=0,
+                 warm_start=False,
+                 ccp_alpha=0.0,
+                 max_samples=None
     ) -> None:
         """
         Parameters
@@ -985,19 +997,45 @@ class ExtraTreeRegression(RegressionWorkflowBase):
         """
         
         super().__init__()
-        self.n_estimators = n_estimator
+        self.n_estimators = n_estimators
+        self.criterion = criterion
+        self.max_depth = max_depth
+        self.min_samples_split = min_samples_split
+        self.min_samples_leaf = min_samples_leaf
+        self.min_weight_fraction_leaf = min_weight_fraction_leaf
+        self.max_features = max_features
+        self.max_leaf_nodes = max_leaf_nodes
+        self.min_impurity_decrease = min_impurity_decrease
+        # self.min_impurity_split = min_impurity_split
         self.bootstrap = bootstrap
         self.oob_score = oob_score
-        self.max_leaf_nodes = max_leaf_nodes
-        self.random_state = random_state
         self.n_jobs = n_jobs
+        self.random_state = random_state
+        self.verbose = verbose
+        self.warm_start = warm_start
+        self.ccp_alpha = ccp_alpha
+        self.max_samples = max_samples
 
-        self.model = ExtraTreesRegressor(n_estimators=self.n_estimators,
-                                         bootstrap=self.bootstrap,
-                                         oob_score=self.oob_score,
-                                         max_leaf_nodes=self.max_leaf_nodes,
-                                         random_state=self.random_state,
-                                         n_jobs=self.n_jobs)
+        self.model = ExtraTreesRegressor(
+            n_estimators=self.n_estimators,
+            criterion=self.criterion,
+            max_depth=self.max_depth,
+            min_samples_split=self.min_samples_split,
+            min_samples_leaf=self.min_samples_leaf,
+            min_weight_fraction_leaf=self.min_weight_fraction_leaf,
+            max_features=self.max_features,
+            max_leaf_nodes=self.max_leaf_nodes,
+            min_impurity_decrease=self.min_impurity_decrease,
+            # min_impurity_split=self.min_impurity_split,
+            bootstrap=self.bootstrap,
+            oob_score=self.oob_score,
+            n_jobs=self.n_jobs,
+            random_state=self.random_state,
+            verbose=self.verbose,
+            warm_start=self.warm_start,
+            ccp_alpha=self.ccp_alpha,
+            max_samples=self.max_samples,
+        )
         self.naming = ExtraTreeRegression.name
 
     @property
