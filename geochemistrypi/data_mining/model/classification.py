@@ -21,7 +21,7 @@ from .func.algo_classification._xgboost import feature_importance_map, feature_i
     feature_weights_histograms, xgboost_manual_hyper_parameters
 from .func.algo_classification._decision_tree import decision_tree_plot, decision_tree_manual_hyper_parameters
 from .func.algo_classification._logistic import logistic_importance_plot
-from .func.algo_classification._rf import feature_importances
+from .func.algo_classification._rf import feature_importances, random_forest_manual_hyper_parameters
 
 
 class ClassificationWorkflowBase(WorkflowBase):
@@ -911,6 +911,13 @@ class RandomForestClassification(ClassificationWorkflowBase):
             # "log_training_metric": True,  # whether to log training metric
         }
         return configuration
+
+    @staticmethod
+    def manual_hyper_parameters() -> Dict:
+        """Manual hyper-parameters specification."""
+        print("-*-*- Hyper-parameters Specification -*-*-")
+        hyperparameters = random_forest_manual_hyper_parameters()
+        return hyperparameters
 
     @staticmethod
     def _feature_importances(X_train: pd.DataFrame, trained_model: object, algorithm_name: str,

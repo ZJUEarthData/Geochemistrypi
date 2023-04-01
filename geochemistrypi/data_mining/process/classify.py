@@ -29,7 +29,8 @@ class ClassificationModelSelection(object):
             hyper_parameters = DecisionTreeClassification.manual_hyper_parameters()
             self.clf_workflow = DecisionTreeClassification(criterion=hyper_parameters['criterion'], max_depth=hyper_parameters['max_depth'], min_samples_split=hyper_parameters['min_samples_split'], min_samples_leaf=hyper_parameters['min_samples_leaf'], max_features=hyper_parameters['max_features'])
         elif self.model == "Random Forest":
-            self.clf_workflow = RandomForestClassification()
+            hyper_parameters = RandomForestClassification.manual_hyper_parameters()
+            self.clf_workflow = RandomForestClassification(n_estimators=hyper_parameters['n_estimators'], max_depth=hyper_parameters['max_depth'], min_samples_split=hyper_parameters['min_samples_split'], min_samples_leaf=hyper_parameters['min_samples_leaf'], max_features=hyper_parameters['max_features'], bootstrap=hyper_parameters['bootstrap'], oob_score=hyper_parameters['oob_score'])
         elif self.model == "Xgboost":
             hyper_parameters = XgboostClassification.manual_hyper_parameters()
             self.clf_workflow = XgboostClassification(n_estimators=hyper_parameters['n_estimators'], learning_rate=hyper_parameters['learning_rate'], max_depth=hyper_parameters['max_depth'], subsample=hyper_parameters['subsample'], colsample_bytree=hyper_parameters['colsample_bytree'], alpha=hyper_parameters['alpha'], lambd=hyper_parameters['lambd'])
