@@ -21,7 +21,7 @@ from .func.algo_regression._rf import feature_importance__, box_plot, random_for
 from .func.algo_regression._xgboost import feature_importance, histograms_feature_weights, permutation_importance_, xgboost_manual_hyper_parameters
 from .func.algo_regression._linear import show_formula, plot_2d_graph, plot_3d_graph
 from .func.algo_regression._extra_tree import feature_importances, extra_tree_manual_hyper_parameters
-from .func.algo_regression._svr import plot_2d_decision_boundary
+from .func.algo_regression._svr import plot_2d_decision_boundary, svr_manual_hyper_parameters
 from .func.algo_regression._decision_tree import decision_tree_plot, decision_tree_manual_hyper_parameters
 
 
@@ -1372,10 +1372,10 @@ class SVMRegression(RegressionWorkflowBase):
 
     def __init__(
         self,
-        kernel='rbf',
+        kernel: str = 'rbf',
         degree: int = 3,
-        gamma='scale',
-        coef0: float = 0.0,
+        gamma: Union[str, float] = 'scale',
+        # coef0: float = 0.0,
         tol: float = 1e-3,
         C: float = 1.0,
         epsilon: float = 0.1,
@@ -1451,7 +1451,7 @@ class SVMRegression(RegressionWorkflowBase):
         self.kernel = kernel
         self.degree = degree
         self.gamma = gamma
-        self.coef0 = coef0
+        # self.coef0 = coef0
         self.tol = tol
         self.C = C
         self.epsilon = epsilon
@@ -1463,7 +1463,7 @@ class SVMRegression(RegressionWorkflowBase):
         self.model = SVR(kernel=self.kernel,
                         degree=self.degree,
                         gamma=self.gamma,
-                        coef0=self.coef0,
+                        # coef0=self.coef0,
                         tol=self.tol,
                         C=self.C,
                         epsilon=self.epsilon,
@@ -1511,9 +1511,9 @@ class SVMRegression(RegressionWorkflowBase):
                         'init_value': 1,
                         'low_cost_init_value': 1
                     },
-                    'kernel': {'domain': tune.choice(['linear', 'poly', 'rbf', 'sigmoid'])},
+                    'kernel': {'domain': tune.choice(['poly', 'rbf', 'sigmoid'])},
                     'gamma': {
-                        'domain': tune.loguniform(lower=1e-5, upper=1e-1),
+                        'domain': tune.uniform(lower=1e-5, upper=10),
                         'init_value': 1e-1,
                         'low_cost_init_value': 1e-1
                     },
@@ -1532,6 +1532,13 @@ class SVMRegression(RegressionWorkflowBase):
                 return space
 
         return MySVMRegression
+
+    @staticmethod
+    def manual_hyper_parameters() -> Dict:
+        """Manual hyper-parameters specification."""
+        print("-*-*- Hyper-parameters Specification -*-*-")
+        hyperparameters = svr_manual_hyper_parameters()
+        return hyperparameters
 
     @staticmethod
     def _plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: Any,

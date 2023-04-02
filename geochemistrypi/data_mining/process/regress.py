@@ -42,7 +42,15 @@ class RegressionModelSelection(object):
             hyper_parameters = RandomForestRegression.manual_hyper_parameters()
             self.reg_workflow = RandomForestRegression(n_estimators=hyper_parameters['n_estimators'], max_depth=hyper_parameters['max_depth'], min_samples_split=hyper_parameters['min_samples_split'], min_samples_leaf=hyper_parameters['min_samples_leaf'], max_features=hyper_parameters['max_features'], bootstrap=hyper_parameters['bootstrap'], oob_score=hyper_parameters['oob_score'])
         elif self.model == "Support Vector Machine":
-            self.reg_workflow = SVMRegression()
+            hyper_parameters = SVMRegression.manual_hyper_parameters()
+            if hyper_parameters["kernel"] == "linear":
+                self.reg_workflow = SVMRegression(kernel=hyper_parameters["kernel"], C=hyper_parameters["C"], shrinking=hyper_parameters["shrinking"])
+            elif hyper_parameters["kernel"] == "poly":
+                self.reg_workflow = SVMRegression(kernel=hyper_parameters["kernel"], degree=hyper_parameters["degree"], gamma=hyper_parameters["gamma"], C=hyper_parameters["C"], shrinking=hyper_parameters["shrinking"])
+            elif hyper_parameters["kernel"] == "rbf":
+                self.reg_workflow = SVMRegression(kernel=hyper_parameters["kernel"], gamma=hyper_parameters["gamma"], C=hyper_parameters["C"], shrinking=hyper_parameters["shrinking"])
+            elif hyper_parameters["kernel"] == "sigmoid":
+                self.reg_workflow = SVMRegression(kernel=hyper_parameters["kernel"], gamma=hyper_parameters["gamma"], C=hyper_parameters["C"], shrinking=hyper_parameters["shrinking"])
         elif self.model == "Deep Neural Networks":
             print("-*-*- Hyper-parameters Specification -*-*-")
             print("Learning Rate: It controls the step-size in updating the weights.")
