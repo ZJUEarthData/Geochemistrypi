@@ -24,7 +24,15 @@ class ClassificationModelSelection(object):
 
         # model option
         if self.model == "Support Vector Machine":
-            self.clf_workflow = SVMClassification()
+            hyper_parameters = SVMClassification.manual_hyper_parameters()
+            if hyper_parameters["kernel"] == "linear":
+                self.clf_workflow = SVMClassification(kernel=hyper_parameters["kernel"], C=hyper_parameters["C"], shrinking=hyper_parameters["shrinking"])
+            elif hyper_parameters["kernel"] == "poly":
+                self.clf_workflow = SVMClassification(kernel=hyper_parameters["kernel"], degree=hyper_parameters["degree"], gamma=hyper_parameters["gamma"], C=hyper_parameters["C"], shrinking=hyper_parameters["shrinking"])
+            elif hyper_parameters["kernel"] == "rbf":
+                self.clf_workflow = SVMClassification(kernel=hyper_parameters["kernel"], gamma=hyper_parameters["gamma"], C=hyper_parameters["C"], shrinking=hyper_parameters["shrinking"])
+            elif hyper_parameters["kernel"] == "sigmoid":
+                self.clf_workflow = SVMClassification(kernel=hyper_parameters["kernel"], gamma=hyper_parameters["gamma"], C=hyper_parameters["C"], shrinking=hyper_parameters["shrinking"])
         elif self.model == "Decision Tree":
             hyper_parameters = DecisionTreeClassification.manual_hyper_parameters()
             self.clf_workflow = DecisionTreeClassification(criterion=hyper_parameters['criterion'], max_depth=hyper_parameters['max_depth'], min_samples_split=hyper_parameters['min_samples_split'], min_samples_leaf=hyper_parameters['min_samples_leaf'], max_features=hyper_parameters['max_features'])

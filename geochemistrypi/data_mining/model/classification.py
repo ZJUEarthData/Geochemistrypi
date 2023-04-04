@@ -16,7 +16,7 @@ from flaml import AutoML
 from ._base import WorkflowBase
 from .func.algo_classification._common import confusion_matrix_plot, contour_data, plot_precision_recall, plot_ROC,\
     cross_validation
-from .func.algo_classification._svm import plot_2d_decision_boundary
+from .func.algo_classification._svm import plot_2d_decision_boundary, svc_manual_hyper_parameters
 from .func.algo_classification._xgboost import feature_importance_map, feature_importance_value, \
     feature_weights_histograms, xgboost_manual_hyper_parameters
 from .func.algo_classification._decision_tree import decision_tree_plot, decision_tree_manual_hyper_parameters
@@ -344,6 +344,13 @@ class SVMClassification(ClassificationWorkflowBase):
                 return space
 
         return MySVMClassification
+
+    @staticmethod
+    def manual_hyper_parameters() -> Dict:
+        """Manual hyper-parameters specification."""
+        print("-*-*- Hyper-parameters Specification -*-*-")
+        hyperparameters = svc_manual_hyper_parameters()
+        return hyperparameters
 
     @staticmethod
     def _plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: Any,
