@@ -43,7 +43,8 @@ class ClassificationModelSelection(object):
             hyper_parameters = XgboostClassification.manual_hyper_parameters()
             self.clf_workflow = XgboostClassification(n_estimators=hyper_parameters['n_estimators'], learning_rate=hyper_parameters['learning_rate'], max_depth=hyper_parameters['max_depth'], subsample=hyper_parameters['subsample'], colsample_bytree=hyper_parameters['colsample_bytree'], alpha=hyper_parameters['alpha'], lambd=hyper_parameters['lambd'])
         elif self.model == "Logistic Regression":
-            self.clf_workflow = LogisticRegressionClassification()
+            hyper_parameters = LogisticRegressionClassification.manual_hyper_parameters()
+            self.clf_workflow = LogisticRegressionClassification(penalty=hyper_parameters['penalty'], C=hyper_parameters['C'], solver=hyper_parameters["solver"], max_iter=hyper_parameters['max_iter'], class_weight=hyper_parameters['class_weight'], l1_ratio=hyper_parameters['l1_ratio'])
 
         self.clf_workflow.show_info()
 
