@@ -3,6 +3,30 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from mpl_toolkits.mplot3d import Axes3D
+from typing import Dict
+import sys
+sys.path.append("../../..")
+from data_mining.data.data_readiness import float_input, num_input, str_input
+from data_mining.global_variable import SECTION
+
+
+def linear_regression_manual_hyper_parameters() -> Dict:
+    """Manually set hyperparameters.
+
+    Returns
+    -------
+    hyper_parameters : dict
+    """
+    print("Fit Intercept: This hyperparameter specifies whether to calculate the intercept (also called the bias term) for this model.")
+    print("Please specify whether to calculate the intercept for this model. It is generally recommended to leave it set to True.")
+    fit_intercepts = ["True", "False"]
+    fit_intercept = bool(str_input(fit_intercepts, SECTION[2]))
+    print("Normalize: This hyperparameter specifies whether to normalize the data before fitting the model.")
+    print("Please specify whether to normalize the input features before fitting the model. It is generally recommended to leave it set to False.")
+    normalizes = ["True", "False"]
+    normalize = bool(str_input(normalizes, SECTION[2]))
+    hyper_parameters = {'fit_intercept': fit_intercept, 'normalize': normalize}
+    return hyper_parameters
 
 
 def show_formula(coef, intercept, columns_name):

@@ -63,7 +63,8 @@ class RegressionModelSelection(object):
             self.reg_workflow = DNNRegression(learning_rate_init=learning_rate,
                                               hidden_layer_sizes=hidden_layer)
         elif self.model == "Linear Regression":
-            self.reg_workflow = LinearRegression2()
+            hyper_parameters = LinearRegression2.manual_hyper_parameters()
+            self.reg_workflow = LinearRegression2(fit_intercept=hyper_parameters['fit_intercept'], normalize=hyper_parameters['normalize'])
 
         self.reg_workflow.show_info()
 

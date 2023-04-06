@@ -19,7 +19,7 @@ from .func.algo_regression._common import plot_predicted_value_evaluation, plot_
 from .func.algo_regression._polynomial import show_formula
 from .func.algo_regression._rf import feature_importance__, box_plot, random_forest_manual_hyper_parameters
 from .func.algo_regression._xgboost import feature_importance, histograms_feature_weights, permutation_importance_, xgboost_manual_hyper_parameters
-from .func.algo_regression._linear import show_formula, plot_2d_graph, plot_3d_graph
+from .func.algo_regression._linear_regression import show_formula, plot_2d_graph, plot_3d_graph, linear_regression_manual_hyper_parameters
 from .func.algo_regression._extra_tree import feature_importances, extra_tree_manual_hyper_parameters
 from .func.algo_regression._svr import plot_2d_decision_boundary, svr_manual_hyper_parameters
 from .func.algo_regression._decision_tree import decision_tree_plot, decision_tree_manual_hyper_parameters
@@ -1938,6 +1938,13 @@ class LinearRegression2(RegressionWorkflowBase):
                                       normalize=self.normalize,
                                       n_jobs=self.n_jobs)
         self.naming = LinearRegression2.name
+
+    @staticmethod
+    def manual_hyper_parameters() -> Dict:
+        """Manual hyper-parameters specification."""
+        print("-*-*- Hyper-parameters Specification -*-*-")
+        hyperparameters = linear_regression_manual_hyper_parameters()
+        return hyperparameters
 
     @staticmethod
     def _show_formula(coef, intercept, columns_name):
