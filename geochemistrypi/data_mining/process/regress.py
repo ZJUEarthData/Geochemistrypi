@@ -23,10 +23,11 @@ class RegressionModelSelection(object):
 
         # Model option
         if self.model == "Polynomial Regression":
-            print("-*-*- Hyper-parameters Specification -*-*-")
-            print("Please specify the maximal degree of the polynomial features.")
-            poly_degree = num_input(SECTION[2], "@Degree: ")
-            self.reg_workflow = PolynomialRegression(degree=poly_degree)
+            # print("-*-*- Hyper-parameters Specification -*-*-")
+            # print("Please specify the maximal degree of the polynomial features.")
+            # poly_degree = num_input(SECTION[2], "@Degree: ")
+            hyper_parameters = PolynomialRegression.manual_hyper_parameters()
+            self.reg_workflow = PolynomialRegression(degree=hyper_parameters['degree'], interaction_only=hyper_parameters['interaction_only'], include_bias=hyper_parameters['include_bias'])
             X_train, X_test = self.reg_workflow.poly(X_train, X_test)
             self.reg_workflow.data_upload(X_train=X_train, X_test=X_test)
         elif self.model == "Xgboost":

@@ -16,7 +16,7 @@ from multipledispatch import dispatch
 from flaml import AutoML
 from ._base import WorkflowBase
 from .func.algo_regression._common import plot_predicted_value_evaluation, plot_true_vs_predicted, score, cross_validation
-from .func.algo_regression._polynomial import show_formula
+from .func.algo_regression._polynomial_regression import show_formula, polynomial_regression_manual_hyper_parameters
 from .func.algo_regression._rf import feature_importance__, box_plot, random_forest_manual_hyper_parameters
 from .func.algo_regression._xgboost import feature_importance, histograms_feature_weights, permutation_importance_, xgboost_manual_hyper_parameters
 from .func.algo_regression._linear_regression import show_formula, plot_2d_graph, plot_3d_graph, linear_regression_manual_hyper_parameters
@@ -155,6 +155,7 @@ class RegressionWorkflowBase(WorkflowBase):
 
 
 class PolynomialRegression(RegressionWorkflowBase):
+    """The automation workflow of using Polynomial Regression algorithm to make insightful products."""
 
     name = "Polynomial Regression"
     special_function = ["Polynomial Regression Formula"]
@@ -162,7 +163,7 @@ class PolynomialRegression(RegressionWorkflowBase):
     def __init__(self,
                  degree: int = 2,
                  interaction_only: bool = False,
-                 is_include_bias: bool = False,
+                 include_bias: bool = False,
                  order: str = 'C',
                  fit_intercept: bool = True,
                  normalize: bool = False,
@@ -171,7 +172,7 @@ class PolynomialRegression(RegressionWorkflowBase):
 
         super().__init__()
         self.degree = degree
-        self.is_include_bias = is_include_bias
+        self.include_bias = include_bias
         self.interaction_only = interaction_only
         self.order = order
         self.fit_intercept = fit_intercept
@@ -186,9 +187,10 @@ class PolynomialRegression(RegressionWorkflowBase):
         self._features_name = None
         self.naming = PolynomialRegression.name
 
-    def poly(self, X_train, X_test):
+    def poly(self, X_train: pd.DataFrame, X_test: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """Polynomial features."""
         poly_features = PolynomialFeatures(degree=self.degree,
-                                           include_bias=self.is_include_bias,
+                                           include_bias=self.include_bias,
                                            interaction_only=self.interaction_only,
                                            order=self.order)
         X_train_poly = poly_features.fit_transform(X_train)
@@ -201,11 +203,20 @@ class PolynomialRegression(RegressionWorkflowBase):
         return X_train_poly, X_test_poly
 
     @staticmethod
-    def _show_formula(coef, intercept, features_name):
+    def manual_hyper_parameters() -> Dict:
+        """Manual hyper-parameters specification."""
+        print("-*-*- Hyper-parameters Specification -*-*-")
+        hyperparameters = polynomial_regression_manual_hyper_parameters()
+        return hyperparameters
+
+    @staticmethod
+    def _show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: List) -> None:
+        """Show the formula of the polynomial regression."""
         print("-----* Polynomial Regression Formula *-----")
         show_formula(coef, intercept, features_name)
 
-    def special_components(self, **kwargs):
+    def special_components(self, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         self._show_formula(coef=self.model.coef_, intercept=self.model.intercept_, features_name=self._features_name)
 
 
