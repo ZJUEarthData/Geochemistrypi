@@ -23,9 +23,6 @@ class RegressionModelSelection(object):
 
         # Model option
         if self.model == "Polynomial Regression":
-            # print("-*-*- Hyper-parameters Specification -*-*-")
-            # print("Please specify the maximal degree of the polynomial features.")
-            # poly_degree = num_input(SECTION[2], "@Degree: ")
             hyper_parameters = PolynomialRegression.manual_hyper_parameters()
             self.reg_workflow = PolynomialRegression(degree=hyper_parameters['degree'], interaction_only=hyper_parameters['interaction_only'], include_bias=hyper_parameters['include_bias'])
             X_train, X_test = self.reg_workflow.poly(X_train, X_test)
@@ -53,16 +50,8 @@ class RegressionModelSelection(object):
             elif hyper_parameters["kernel"] == "sigmoid":
                 self.reg_workflow = SVMRegression(kernel=hyper_parameters["kernel"], gamma=hyper_parameters["gamma"], C=hyper_parameters["C"], shrinking=hyper_parameters["shrinking"])
         elif self.model == "Deep Neural Networks":
-            print("-*-*- Hyper-parameters Specification -*-*-")
-            print("Learning Rate: It controls the step-size in updating the weights.")
-            print("Please specify the initial learning rate of the the neural networks, such as 0.001.")
-            learning_rate = float_input(0.05, SECTION[2], "@Learning Rate: ")
-            print("Hidden Layer Sizes: The ith element represents the number of neurons in the ith hidden layer.")
-            print("Please specify the size of hidden layer and the number of neurons in the each hidden layer.")
-            hidden_layer = tuple_input((50, 25, 5), SECTION[2], "@Hidden Layer Sizes: ")
-            # batch_size = limit_num_input()
-            self.reg_workflow = DNNRegression(learning_rate_init=learning_rate,
-                                              hidden_layer_sizes=hidden_layer)
+            hyper_parameters = DNNRegression.manual_hyper_parameters()
+            self.reg_workflow = DNNRegression(hidden_layer_sizes=hyper_parameters['hidden_layer_sizes'], activation=hyper_parameters['activation'], solver=hyper_parameters['solver'], alpha=hyper_parameters['alpha'], learning_rate=hyper_parameters['learning_rate'], max_iter=hyper_parameters['max_iter'])
         elif self.model == "Linear Regression":
             hyper_parameters = LinearRegression2.manual_hyper_parameters()
             self.reg_workflow = LinearRegression2(fit_intercept=hyper_parameters['fit_intercept'], normalize=hyper_parameters['normalize'])

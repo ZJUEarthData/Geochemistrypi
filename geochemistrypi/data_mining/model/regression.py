@@ -23,6 +23,7 @@ from .func.algo_regression._linear_regression import show_formula, plot_2d_graph
 from .func.algo_regression._extra_tree import feature_importances, extra_tree_manual_hyper_parameters
 from .func.algo_regression._svr import plot_2d_decision_boundary, svr_manual_hyper_parameters
 from .func.algo_regression._decision_tree import decision_tree_plot, decision_tree_manual_hyper_parameters
+from .func.algo_regression._deep_neural_network import deep_neural_network_manual_hyper_parameters
 
 
 class RegressionWorkflowBase(WorkflowBase):
@@ -1580,6 +1581,7 @@ class SVMRegression(RegressionWorkflowBase):
 
 
 class DNNRegression(RegressionWorkflowBase):
+    """The automation workflow of using Deep Neural Network algorithm to make insightful products."""
 
     name = "Deep Neural Networks"
     special_function = ["Loss Record"]
@@ -1606,8 +1608,6 @@ class DNNRegression(RegressionWorkflowBase):
             epsilon: float = 1e-8,
             n_iter_no_change: int = 10,
     ):
-
-
         """
         Parameters
         ----------
@@ -1874,7 +1874,15 @@ class DNNRegression(RegressionWorkflowBase):
                                                best_result.config['l3'], best_result.config['batch'])
 
     @staticmethod
+    def manual_hyper_parameters() -> Dict:
+        """Manual hyper-parameters specification."""
+        print("-*-*- Hyper-parameters Specification -*-*-")
+        hyperparameters = deep_neural_network_manual_hyper_parameters()
+        return hyperparameters
+
+    @staticmethod
     def _plot_learning_curve(trained_model: object, algorithm_name: str, store_path) -> None:
+        """Plot the learning curve of the trained model."""
         print("-----* Loss Record *-----")
         pd.DataFrame(trained_model.loss_curve_).plot(title="Loss")
         save_fig(f'Loss Record - {algorithm_name}', store_path)
