@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from ..model.regression import PolynomialRegression, XgboostRegression, DecisionTreeRegression, ExtraTreeRegression,\
+from ..model.regression import PolynomialRegression, XgboostRegression, DecisionTreeRegression, ExtraTreesRegression,\
     RandomForestRegression, RegressionWorkflowBase, SVMRegression, DNNRegression, LinearRegression2
 from ..data.data_readiness import num_input, float_input, tuple_input, limit_num_input, str_input
 from ..global_variable import SECTION, DATASET_OUTPUT_PATH
@@ -34,8 +34,8 @@ class RegressionModelSelection(object):
             hyper_parameters = DecisionTreeRegression.manual_hyper_parameters()
             self.reg_workflow = DecisionTreeRegression(criterion=hyper_parameters['criterion'], max_depth=hyper_parameters['max_depth'], min_samples_split=hyper_parameters['min_samples_split'], min_samples_leaf=hyper_parameters['min_samples_leaf'], max_features=hyper_parameters['max_features'])
         elif self.model == "Extra-Trees":
-            hyper_parameters = ExtraTreeRegression.manual_hyper_parameters()
-            self.reg_workflow = ExtraTreeRegression(n_estimators=hyper_parameters['n_estimators'], max_depth=hyper_parameters['max_depth'], min_samples_split=hyper_parameters['min_samples_split'], min_samples_leaf=hyper_parameters['min_samples_leaf'], max_features=hyper_parameters['max_features'], bootstrap=hyper_parameters['bootstrap'], oob_score=hyper_parameters['oob_score'])
+            hyper_parameters = ExtraTreesRegression.manual_hyper_parameters()
+            self.reg_workflow = ExtraTreesRegression(n_estimators=hyper_parameters['n_estimators'], max_depth=hyper_parameters['max_depth'], min_samples_split=hyper_parameters['min_samples_split'], min_samples_leaf=hyper_parameters['min_samples_leaf'], max_features=hyper_parameters['max_features'], bootstrap=hyper_parameters['bootstrap'], oob_score=hyper_parameters['oob_score'])
         elif self.model == "Random Forest":
             hyper_parameters = RandomForestRegression.manual_hyper_parameters()
             self.reg_workflow = RandomForestRegression(n_estimators=hyper_parameters['n_estimators'], max_depth=hyper_parameters['max_depth'], min_samples_split=hyper_parameters['min_samples_split'], min_samples_leaf=hyper_parameters['min_samples_leaf'], max_features=hyper_parameters['max_features'], bootstrap=hyper_parameters['bootstrap'], oob_score=hyper_parameters['oob_score'])
@@ -95,7 +95,7 @@ class RegressionModelSelection(object):
         elif self.model == "Decision Tree":
             self.reg_workflow = DecisionTreeRegression()
         elif self.model == "Extra-Trees":
-            self.reg_workflow = ExtraTreeRegression()
+            self.reg_workflow = ExtraTreesRegression()
         elif self.model == "Random Forest":
             self.reg_workflow = RandomForestRegression()
         elif self.model == "Support Vector Machine":

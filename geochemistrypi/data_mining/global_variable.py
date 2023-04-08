@@ -37,8 +37,8 @@ MODE_OPTION = ['Regression', 'Classification', 'Clustering', 'Dimensional Reduct
 # The model provided to use
 REGRESSION_MODELS = ['Linear Regression', 'Polynomial Regression', 'Support Vector Machine', 'Decision Tree',
                      'Random Forest', 'Extra-Trees', 'Xgboost', 'Deep Neural Network']
-CLASSIFICATION_MODELS = ['Logistic Regression', 'Support Vector Machine', 'Decision Tree', 'Random Forest', 'Xgboost',
-                         'Deep Neural Network']
+CLASSIFICATION_MODELS = ['Logistic Regression', 'Support Vector Machine', 'Decision Tree', 'Random Forest', 'Extra-Trees', 
+                         'Xgboost', 'Deep Neural Network']
 CLUSTERING_MODELS = ['KMeans', 'DBSCAN']
 DECOMPOSITION_MODELS = ['Principal Component Analysis']
 NON_AUTOML_MODELS = ['Linear Regression', 'Polynomial Regression']

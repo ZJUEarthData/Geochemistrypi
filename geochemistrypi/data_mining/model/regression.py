@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-from ..global_variable import MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
-from ..utils.base import save_fig
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.tree import DecisionTreeRegressor, plot_tree
@@ -14,6 +12,9 @@ import pandas as pd
 import xgboost
 from multipledispatch import dispatch
 from flaml import AutoML
+
+from ..global_variable import MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
+from ..utils.base import save_fig
 from ._base import WorkflowBase
 from .func.algo_regression._common import plot_predicted_value_evaluation, plot_true_vs_predicted, score, cross_validation
 from .func.algo_regression._polynomial_regression import show_formula, polynomial_regression_manual_hyper_parameters
@@ -821,31 +822,32 @@ class DecisionTreeRegression(RegressionWorkflowBase):
         self._plot_tree_function(self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         
 
-class ExtraTreeRegression(RegressionWorkflowBase):
-    """The automation workflow of using Extra Tree algorithm to make insightful products."""
+class ExtraTreesRegression(RegressionWorkflowBase):
+    """The automation workflow of using Extra-Trees algorithm to make insightful products."""
     
     name = "Extra-Trees"
     special_function = ["Feature Importance"]
 
-    def __init__(self,
-                 n_estimators=100,
-                 criterion="mse",
-                 max_depth=None,
-                 min_samples_split=2,
-                 min_samples_leaf=1,
-                 min_weight_fraction_leaf=0.,
-                 max_features="auto",
-                 max_leaf_nodes=None,
-                 min_impurity_decrease=0.,
-                #  min_impurity_split=None,
-                 bootstrap=False,
-                 oob_score=False,
-                 n_jobs=None,
-                 random_state=None,
-                 verbose=0,
-                 warm_start=False,
-                 ccp_alpha=0.0,
-                 max_samples=None
+    def __init__(
+        self,
+        n_estimators=100,
+        criterion="mse",
+        max_depth=None,
+        min_samples_split=2,
+        min_samples_leaf=1,
+        min_weight_fraction_leaf=0.,
+        max_features="auto",
+        max_leaf_nodes=None,
+        min_impurity_decrease=0.,
+    #  min_impurity_split=None,
+        bootstrap=False,
+        oob_score=False,
+        n_jobs=None,
+        random_state=None,
+        verbose=0,
+        warm_start=False,
+        ccp_alpha=0.0,
+        max_samples=None
     ) -> None:
         """
         Parameters
@@ -1048,7 +1050,8 @@ class ExtraTreeRegression(RegressionWorkflowBase):
             ccp_alpha=self.ccp_alpha,
             max_samples=self.max_samples,
         )
-        self.naming = ExtraTreeRegression.name
+        
+        self.naming = ExtraTreesRegression.name
 
     @property
     def settings(self) -> Dict:
@@ -1080,12 +1083,12 @@ class ExtraTreeRegression(RegressionWorkflowBase):
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        self._feature_importances(ExtraTreeRegression.X_train, self.model,  self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._feature_importances(ExtraTreesRegression.X_train, self.model,  self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        self._feature_importances(ExtraTreeRegression.X_train, self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._feature_importances(ExtraTreesRegression.X_train, self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
 
 class RandomForestRegression(RegressionWorkflowBase):
