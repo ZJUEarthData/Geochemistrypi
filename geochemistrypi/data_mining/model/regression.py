@@ -162,15 +162,17 @@ class PolynomialRegression(RegressionWorkflowBase):
     name = "Polynomial Regression"
     special_function = ["Polynomial Regression Formula"]
 
-    def __init__(self,
-                 degree: int = 2,
-                 interaction_only: bool = False,
-                 include_bias: bool = False,
-                 order: str = 'C',
-                 fit_intercept: bool = True,
-                 normalize: bool = False,
-                 copy_X: bool = True,
-                 n_jobs: Optional[int] = None) -> None:
+    def __init__(
+        self,
+        degree: int = 2,
+        interaction_only: bool = False,
+        include_bias: bool = False,
+        order: str = 'C',
+        fit_intercept: bool = True,
+        normalize: bool = False,
+        copy_X: bool = True,
+        n_jobs: Optional[int] = None
+    ) -> None:
 
         super().__init__()
         self.degree = degree
@@ -182,9 +184,11 @@ class PolynomialRegression(RegressionWorkflowBase):
         self.copy_X = copy_X
         self.n_jobs = n_jobs
 
-        self.model = LinearRegression(fit_intercept=self.fit_intercept,
-                                      copy_X=self.copy_X,
-                                      n_jobs=self.n_jobs)
+        self.model = LinearRegression(
+            fit_intercept=self.fit_intercept,
+            copy_X=self.copy_X,
+            n_jobs=self.n_jobs
+        )
 
         self._features_name = None
         self.naming = PolynomialRegression.name
@@ -238,39 +242,40 @@ class XgboostRegression(RegressionWorkflowBase):
 
     # TODO: find out the attributes importance_type effect
     def __init__(
-                self,
-                max_depth: Optional[int] = 6,
-                learning_rate: Optional[float] = 0.3,
-                n_estimators: int = 100,
-                verbosity: Optional[int] = 1,
-                objective: _SklObjective = None,
-                booster: Optional[str] = None,
-                tree_method: Optional[str] = 'auto',
-                n_jobs: Optional[int] = None,
-                gamma: Optional[float] = 0,
-                min_child_weight: Optional[float] = None,
-                max_delta_step: Optional[float] = 0,
-                subsample: Optional[float] = 1,
-                colsample_bytree: Optional[float] = 1,
-                colsample_bylevel: Optional[float] = 1,
-                colsample_bynode: Optional[float] = 1,
-                reg_alpha: Optional[float] = 0,
-                reg_lambda: Optional[float] = 1,
-                scale_pos_weight: Optional[float] = 1,
-                base_score: Optional[float] = None,
-                random_state: Optional[Union[np.random.RandomState, int]] = None,
-                missing: float = np.nan,
-                num_parallel_tree: Optional[int] = 1,
-                monotone_constraints: Optional[Union[Dict[str, int], str]] = None,
-                interaction_constraints: Optional[Union[str, Sequence[Sequence[str]]]] = None,
-                importance_type: Optional[str] = 'gain',
-                gpu_id: Optional[int] = None,
-                validate_parameters: Optional[bool] = None,
-                predictor: Optional[str] = None,
-                #enable_categorical: bool = False,
-                eval_metric: Optional[Union[str, List[str], Callable]] = None,
-                early_stopping_rounds: Optional[int] = None,
-                **kwargs: Any) -> None:
+        self,
+        max_depth: Optional[int] = 6,
+        learning_rate: Optional[float] = 0.3,
+        n_estimators: int = 100,
+        verbosity: Optional[int] = 1,
+        objective: _SklObjective = None,
+        booster: Optional[str] = None,
+        tree_method: Optional[str] = 'auto',
+        n_jobs: Optional[int] = None,
+        gamma: Optional[float] = 0,
+        min_child_weight: Optional[float] = None,
+        max_delta_step: Optional[float] = 0,
+        subsample: Optional[float] = 1,
+        colsample_bytree: Optional[float] = 1,
+        colsample_bylevel: Optional[float] = 1,
+        colsample_bynode: Optional[float] = 1,
+        reg_alpha: Optional[float] = 0,
+        reg_lambda: Optional[float] = 1,
+        scale_pos_weight: Optional[float] = 1,
+        base_score: Optional[float] = None,
+        random_state: Optional[Union[np.random.RandomState, int]] = None,
+        missing: float = np.nan,
+        num_parallel_tree: Optional[int] = 1,
+        monotone_constraints: Optional[Union[Dict[str, int], str]] = None,
+        interaction_constraints: Optional[Union[str, Sequence[Sequence[str]]]] = None,
+        importance_type: Optional[str] = 'gain',
+        gpu_id: Optional[int] = None,
+        validate_parameters: Optional[bool] = None,
+        predictor: Optional[str] = None,
+        #enable_categorical: bool = False,
+        eval_metric: Optional[Union[str, List[str], Callable]] = None,
+        early_stopping_rounds: Optional[int] = None,
+        **kwargs: Any
+    ) -> None:
         """
         Parameters
         ----------
@@ -475,37 +480,40 @@ class XgboostRegression(RegressionWorkflowBase):
         if kwargs:
             self.kwargs = kwargs
 
-        self.model = xgboost.XGBRegressor(n_estimators=self.n_estimators,
-                                          objective=self.objective,
-                                          max_depth=self.max_depth,
-                                          learning_rate=self.learning_rate,
-                                          verbosity=self.verbosity,
-                                          booster=self.booster,
-                                          tree_method=self.tree_method,
-                                          gamma=self.gamma,
-                                          min_child_weight=self.min_child_weight,
-                                          max_delta_step=self.max_delta_step,
-                                          subsample=self.subsample,
-                                          colsample_bytree=self.colsample_bytree,
-                                          colsample_bylevel=self.colsample_bylevel,
-                                          colsample_bynode=self.colsample_bynode,
-                                          reg_alpha=self.reg_alpha,
-                                          reg_lambda=self.reg_lambda,
-                                          scale_pos_weight=self.scale_pos_weight,
-                                          base_score=self.base_score,
-                                          missing=self.missing,
-                                          num_parallel_tree=self.num_parallel_tree,
-                                          random_state=self.random_state,
-                                          n_jobs=self.n_jobs,
-                                          monotone_constraints=self.monotone_constraints,
-                                          interaction_constraints=self.interaction_constraints,
-                                          importance_type=self.importance_type,
-                                          gpu_id=self.gpu_id,
-                                          validate_parameters=self.validate_parameters,
-                                          predictor=self.predictor,
-                                          # enable_categorical=self.enable_categorical,
-                                          eval_metric=self.eval_metric,
-                                          early_stopping_rounds=self.early_stopping_rounds)
+        self.model = xgboost.XGBRegressor(
+            n_estimators=self.n_estimators,
+            objective=self.objective,
+            max_depth=self.max_depth,
+            learning_rate=self.learning_rate,
+            verbosity=self.verbosity,
+            booster=self.booster,
+            tree_method=self.tree_method,
+            gamma=self.gamma,
+            min_child_weight=self.min_child_weight,
+            max_delta_step=self.max_delta_step,
+            subsample=self.subsample,
+            colsample_bytree=self.colsample_bytree,
+            colsample_bylevel=self.colsample_bylevel,
+            colsample_bynode=self.colsample_bynode,
+            reg_alpha=self.reg_alpha,
+            reg_lambda=self.reg_lambda,
+            scale_pos_weight=self.scale_pos_weight,
+            base_score=self.base_score,
+            missing=self.missing,
+            num_parallel_tree=self.num_parallel_tree,
+            random_state=self.random_state,
+            n_jobs=self.n_jobs,
+            monotone_constraints=self.monotone_constraints,
+            interaction_constraints=self.interaction_constraints,
+            importance_type=self.importance_type,
+            gpu_id=self.gpu_id,
+            validate_parameters=self.validate_parameters,
+            predictor=self.predictor,
+            # enable_categorical=self.enable_categorical,
+            eval_metric=self.eval_metric,
+            early_stopping_rounds=self.early_stopping_rounds
+        )
+
         self.naming = XgboostRegression.name
 
     @property
@@ -571,18 +579,19 @@ class DecisionTreeRegression(RegressionWorkflowBase):
     name = "Decision Tree"
     special_function = ["Decision Tree Plot"]
 
-    def __init__(self,
-                 criterion: str = 'squared_error',
-                 splitter: str = 'best',
-                 max_depth: Optional[int] = None,
-                 min_samples_split: Union[int, float] = 2,
-                 min_samples_leaf: Union[int, float] = 1,
-                 min_weight_fraction_leaf: float = 0.0,
-                 max_features: Union[int, float, str, None] = None,
-                 random_state: Optional[int] = None,
-                 max_leaf_nodes: Optional[int] = None,
-                 min_impurity_decrease: float = 0.0,
-                 ccp_alpha: float = 0.0
+    def __init__(
+        self,
+        criterion: str = 'squared_error',
+        splitter: str = 'best',
+        max_depth: Optional[int] = None,
+        min_samples_split: Union[int, float] = 2,
+        min_samples_leaf: Union[int, float] = 1,
+        min_weight_fraction_leaf: float = 0.0,
+        max_features: Union[int, float, str, None] = None,
+        random_state: Optional[int] = None,
+        max_leaf_nodes: Optional[int] = None,
+        min_impurity_decrease: float = 0.0,
+        ccp_alpha: float = 0.0
     ) -> None:
         """
         Parameters
@@ -733,17 +742,17 @@ class DecisionTreeRegression(RegressionWorkflowBase):
         self.ccp_alpha = ccp_alpha
 
         self.model = DecisionTreeRegressor(
-                                           criterion=self.criterion[0],
-                                           splitter=self.splitter[0],
-                                           max_depth=self.max_depth[0],
-                                           min_samples_split=self.min_samples_split[0],
-                                           min_samples_leaf=self.min_samples_leaf[0],
-                                           min_weight_fraction_leaf=self.min_weight_fraction_leaf[0],
-                                           max_features=self.max_features[0],
-                                           random_state=self.random_state[0],
-                                           max_leaf_nodes=self.max_leaf_nodes[0],
-                                           min_impurity_decrease=self.min_impurity_decrease[0],
-                                           ccp_alpha=self.ccp_alpha
+            criterion=self.criterion[0],
+            splitter=self.splitter[0],
+            max_depth=self.max_depth[0],
+            min_samples_split=self.min_samples_split[0],
+            min_samples_leaf=self.min_samples_leaf[0],
+            min_weight_fraction_leaf=self.min_weight_fraction_leaf[0],
+            max_features=self.max_features[0],
+            random_state=self.random_state[0],
+            max_leaf_nodes=self.max_leaf_nodes[0],
+            min_impurity_decrease=self.min_impurity_decrease[0],
+            ccp_alpha=self.ccp_alpha
         )
         self.naming = DecisionTreeRegression.name
         self.customized = True
@@ -1050,7 +1059,7 @@ class ExtraTreesRegression(RegressionWorkflowBase):
             ccp_alpha=self.ccp_alpha,
             max_samples=self.max_samples,
         )
-        
+
         self.naming = ExtraTreesRegression.name
 
     @property
@@ -1475,17 +1484,19 @@ class SVMRegression(RegressionWorkflowBase):
         self.verbose = verbose
         self.max_iter = max_iter
 
-        self.model = SVR(kernel=self.kernel,
-                        degree=self.degree,
-                        gamma=self.gamma,
-                        # coef0=self.coef0,
-                        tol=self.tol,
-                        C=self.C,
-                        epsilon=self.epsilon,
-                        shrinking=self.shrinking,
-                        cache_size=self.cache_size,
-                        verbose=self.verbose,
-                        max_iter=self.max_iter)
+        self.model = SVR(
+            kernel=self.kernel,
+            degree=self.degree,
+            gamma=self.gamma,
+            # coef0=self.coef0,
+            tol=self.tol,
+            C=self.C,
+            epsilon=self.epsilon,
+            shrinking=self.shrinking,
+            cache_size=self.cache_size,
+            verbose=self.verbose,
+            max_iter=self.max_iter
+        )
 
         self.naming = SVMRegression.name
         self.customized = True
@@ -1909,11 +1920,11 @@ class LinearRegression2(RegressionWorkflowBase):
     special_function = ["Linear Regression Formula", "Two/Three-dimensional Linear Regression Image"]
 
     def __init__(
-            self,
-            fit_intercept: bool = True,
-            normalize: bool = False,
-            copy_X: bool = True,
-            n_jobs: Optional[int] = None
+        self,
+        fit_intercept: bool = True,
+        normalize: bool = False,
+        copy_X: bool = True,
+        n_jobs: Optional[int] = None
     ) -> None:
         """
         Parameters
@@ -1957,10 +1968,13 @@ class LinearRegression2(RegressionWorkflowBase):
         self.copy_X = copy_X
         self.n_jobs = n_jobs
 
-        self.model = LinearRegression(fit_intercept=self.fit_intercept,
-                                      copy_X=self.copy_X,
-                                      normalize=self.normalize,
-                                      n_jobs=self.n_jobs)
+        self.model = LinearRegression(
+            fit_intercept=self.fit_intercept,
+            copy_X=self.copy_X,
+            normalize=self.normalize,
+            n_jobs=self.n_jobs
+        )
+        
         self.naming = LinearRegression2.name
 
     @staticmethod

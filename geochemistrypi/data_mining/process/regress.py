@@ -100,7 +100,7 @@ class RegressionModelSelection(object):
             self.reg_workflow = RandomForestRegression()
         elif self.model == "Support Vector Machine":
             self.reg_workflow = SVMRegression()
-        elif self.model == "Deep Neural Networks":
+        elif self.model == "Deep Neural Network":
             self.reg_workflow = DNNRegression()
         elif self.model == "Linear Regression":
             self.reg_workflow = LinearRegression2()
