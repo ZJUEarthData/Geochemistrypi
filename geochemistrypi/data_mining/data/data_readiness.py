@@ -302,7 +302,7 @@ def tuple_input(default: Tuple[int], prefix: Optional[str] = None, slogan: Optio
                        'Input format:\n'
                        'Format 1: "(**,)", such as "(100,)"\n'
                        '--> You want to set one hidden layer with 100 neurons for the deep neural network.\n'
-                       'Format 2: "(**, **)", such as "(50,25)"\n'
+                       'Format 2: "(**, **)", such as "(50, 25)"\n'
                        '--> You want to set two hidden layers in order with 50 neurons and 25 neurons respectively'
                        ' for the deep neural network.\n'
                        'Format 3: "(**, **, **)", such as "(64, 32, 8)"\n'

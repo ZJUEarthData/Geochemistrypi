@@ -13,7 +13,6 @@ def deep_neural_network_manual_hyper_parameters() -> Dict:
     -------
     hyper_parameters : dict
     """
-    print("-*-*- Hyper-parameters Specification -*-*-")
     print("Hidden Layer Sizes: The ith element represents the number of neurons in the ith hidden layer.")
     print("Please specify the size of hidden layer and the number of neurons in the each hidden layer.")
     hidden_layer = tuple_input((50, 25, 5), SECTION[2], "@Hidden Layer Sizes: ")

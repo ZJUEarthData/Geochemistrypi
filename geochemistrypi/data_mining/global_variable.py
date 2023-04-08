@@ -41,8 +41,10 @@ CLASSIFICATION_MODELS = ['Logistic Regression', 'Support Vector Machine', 'Decis
                          'Xgboost', 'Deep Neural Network']
 CLUSTERING_MODELS = ['KMeans', 'DBSCAN']
 DECOMPOSITION_MODELS = ['Principal Component Analysis']
+
+# Special AutoML models
 NON_AUTOML_MODELS = ['Linear Regression', 'Polynomial Regression']
-RAY_FLAML = ['Deep Neural Networks']
+RAY_FLAML = ['Deep Neural Network']
 
 IMPUTING_STRATEGY = ['Mean', 'Median', 'Most Frequent']
 
