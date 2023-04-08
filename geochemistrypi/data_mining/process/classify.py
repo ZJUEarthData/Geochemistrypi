@@ -3,7 +3,7 @@ import pandas as pd
 from multipledispatch import dispatch
 from ..global_variable import DATASET_OUTPUT_PATH
 from ..model.classification import ClassificationWorkflowBase, SVMClassification, DecisionTreeClassification,\
-    RandomForestClassification, XgboostClassification, LogisticRegressionClassification, DNNClassification
+    RandomForestClassification, XgboostClassification, LogisticRegressionClassification, DNNClassification, ExtraTreesClassification
 from ..data.data_readiness import num_input, float_input, str_input, limit_num_input
 from ..global_variable import SECTION
 
@@ -47,6 +47,8 @@ class ClassificationModelSelection(object):
             self.clf_workflow = LogisticRegressionClassification(penalty=hyper_parameters['penalty'], C=hyper_parameters['C'], solver=hyper_parameters["solver"], max_iter=hyper_parameters['max_iter'], class_weight=hyper_parameters['class_weight'], l1_ratio=hyper_parameters['l1_ratio'])
         elif self.model == "Deep Neural Network":
             self.clf_workflow = DNNClassification()
+        elif self.model == "Extra-Trees":
+            self.clf_workflow = ExtraTreesClassification()
 
         self.clf_workflow.show_info()
 
@@ -89,6 +91,8 @@ class ClassificationModelSelection(object):
             self.clf_workflow = LogisticRegressionClassification()
         elif self.model == "Deep Neural Network":
             self.clf_workflow = DNNClassification()
+        elif self.model == "Extra-Trees":
+            self.clf_workflow = ExtraTreesClassification()
 
         self.clf_workflow.show_info()
 
