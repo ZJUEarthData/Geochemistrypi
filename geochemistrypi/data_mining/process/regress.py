@@ -49,7 +49,7 @@ class RegressionModelSelection(object):
                 self.reg_workflow = SVMRegression(kernel=hyper_parameters["kernel"], gamma=hyper_parameters["gamma"], C=hyper_parameters["C"], shrinking=hyper_parameters["shrinking"])
             elif hyper_parameters["kernel"] == "sigmoid":
                 self.reg_workflow = SVMRegression(kernel=hyper_parameters["kernel"], gamma=hyper_parameters["gamma"], C=hyper_parameters["C"], shrinking=hyper_parameters["shrinking"])
-        elif self.model == "Deep Neural Networks":
+        elif self.model == "Deep Neural Network":
             hyper_parameters = DNNRegression.manual_hyper_parameters()
             self.reg_workflow = DNNRegression(hidden_layer_sizes=hyper_parameters['hidden_layer_sizes'], activation=hyper_parameters['activation'], solver=hyper_parameters['solver'], alpha=hyper_parameters['alpha'], learning_rate=hyper_parameters['learning_rate'], max_iter=hyper_parameters['max_iter'])
         elif self.model == "Linear Regression":

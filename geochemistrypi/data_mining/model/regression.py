@@ -1583,30 +1583,30 @@ class SVMRegression(RegressionWorkflowBase):
 class DNNRegression(RegressionWorkflowBase):
     """The automation workflow of using Deep Neural Network algorithm to make insightful products."""
 
-    name = "Deep Neural Networks"
+    name = "Deep Neural Network"
     special_function = ["Loss Record"]
 
     def __init__(
-            self,
-            hidden_layer_sizes: tuple = (50, 25, 5),
-            activation: List[str] = 'relu',
-            solver: List[str] ='adam',
-            alpha: float = 0.0001,
-            batch_size: Union[int, str] ='auto',
-            learning_rate: List[str] = 'constant',
-            learning_rate_init: float = 0.001,
-            max_iter: int = 200,
-            shuffle: bool = True,
-            random_state: int = None,
-            tol: float = 1e-4,
-            verbose: bool = False,
-            warm_start: bool = False,
-            early_stopping: bool = False,
-            validation_fraction: float = 0.1,
-            beta_1: float = 0.9,
-            beta_2: float = 0.999,
-            epsilon: float = 1e-8,
-            n_iter_no_change: int = 10,
+        self,
+        hidden_layer_sizes: tuple = (50, 25, 5),
+        activation: str = 'relu',
+        solver: str ='adam',
+        alpha: float = 0.0001,
+        batch_size: Union[int, str] = 'auto',
+        learning_rate: str = 'constant',
+        learning_rate_init: float = 0.001,
+        max_iter: int = 200,
+        shuffle: bool = True,
+        random_state: Optional[int] = None,
+        tol: float = 1e-4,
+        verbose: bool = False,
+        warm_start: bool = False,
+        early_stopping: bool = False,
+        validation_fraction: float = 0.1,
+        beta_1: float = 0.9,
+        beta_2: float = 0.999,
+        epsilon: float = 1e-8,
+        n_iter_no_change: int = 10,
     ):
         """
         Parameters
@@ -1750,7 +1750,7 @@ class DNNRegression(RegressionWorkflowBase):
             .. versionadded:: 0.22
 
         References
-        ----------------------------------------
+        ----------
         Hinton, Geoffrey E. "Connectionist learning procedures."
         Artificial intelligence 40.1 (1989): 185-234.
         Glorot, Xavier, and Yoshua Bengio.
@@ -1782,25 +1782,27 @@ class DNNRegression(RegressionWorkflowBase):
         self.epsilon = epsilon
         self.n_iter_no_change = n_iter_no_change
 
-        self.model = MLPRegressor(hidden_layer_sizes=self.hidden_layer_sizes,
-                                   activation=self.activation,
-                                   solver=self.solver,
-                                   alpha=self.alpha,
-                                   batch_size=self.batch_size,
-                                   learning_rate=self.learning_rate,
-                                   learning_rate_init=self.learning_rate_init,
-                                   max_iter=self.max_iter,
-                                   shuffle=self.shuffle,
-                                   random_state=self.random_state,
-                                   tol=self.tol,
-                                   verbose=self.verbose,
-                                   warm_start=self.warm_start,
-                                   early_stopping=self.early_stopping,
-                                   validation_fraction=self.validation_fraction,
-                                   beta_1=self.beta_1,
-                                   beta_2=self.beta_2,
-                                   epsilon=self.epsilon,
-                                   n_iter_no_change=self.n_iter_no_change)
+        self.model = MLPRegressor(
+            hidden_layer_sizes=self.hidden_layer_sizes,
+            activation=self.activation,
+            solver=self.solver,
+            alpha=self.alpha,
+            batch_size=self.batch_size,
+            learning_rate=self.learning_rate,
+            learning_rate_init=self.learning_rate_init,
+            max_iter=self.max_iter,
+            shuffle=self.shuffle,
+            random_state=self.random_state,
+            tol=self.tol,
+            verbose=self.verbose,
+            warm_start=self.warm_start,
+            early_stopping=self.early_stopping,
+            validation_fraction=self.validation_fraction,
+            beta_1=self.beta_1,
+            beta_2=self.beta_2,
+            epsilon=self.epsilon,
+            n_iter_no_change=self.n_iter_no_change
+        )
 
         self.naming = DNNRegression.name
 
