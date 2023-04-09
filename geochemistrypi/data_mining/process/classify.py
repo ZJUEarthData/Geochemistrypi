@@ -48,7 +48,8 @@ class ClassificationModelSelection(object):
         elif self.model == "Deep Neural Network":
             self.clf_workflow = DNNClassification()
         elif self.model == "Extra-Trees":
-            self.clf_workflow = ExtraTreesClassification()
+            hyper_parameters = ExtraTreesClassification.manual_hyper_parameters()
+            self.clf_workflow = ExtraTreesClassification(n_estimators=hyper_parameters['n_estimators'], max_depth=hyper_parameters['max_depth'], min_samples_split=hyper_parameters['min_samples_split'], min_samples_leaf=hyper_parameters['min_samples_leaf'], max_features=hyper_parameters['max_features'], bootstrap=hyper_parameters['bootstrap'], oob_score=hyper_parameters['oob_score'])
 
         self.clf_workflow.show_info()
 

@@ -24,7 +24,7 @@ from .func.algo_classification._xgboost import feature_importance_map, feature_i
 from .func.algo_classification._decision_tree import decision_tree_plot, decision_tree_manual_hyper_parameters
 from .func.algo_classification._logistic_regression import logistic_importance_plot, logistic_regression_manual_hyper_parameters
 from .func.algo_classification._rf import feature_importances, random_forest_manual_hyper_parameters
-
+from .func.algo_classification._extra_trees import extra_trees_manual_hyper_parameters
 
 class ClassificationWorkflowBase(WorkflowBase):
     """The base workflow class of classification algorithms."""
@@ -1921,6 +1921,26 @@ class ExtraTreesClassification(ClassificationWorkflowBase):
         )
 
         self.naming = ExtraTreesClassification.name
+
+    @property
+    def settings(self) -> Dict:
+        """The configuration to implement AutoML by FLAML framework."""
+        configuration = {
+            "time_budget": 10,  # total running time in seconds
+            "metric": 'accuracy',
+            "estimator_list": ['extra_tree'],  # list of ML learners
+            "task": 'classification',  # task type
+            # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
+            # "log_training_metric": True,  # whether to log training metric
+        }
+        return configuration
+
+    @staticmethod
+    def manual_hyper_parameters() -> Dict:
+        """Manual hyper-parameters specification."""
+        print("-*-*- Hyper-parameters Specification -*-*-")
+        hyperparameters = extra_trees_manual_hyper_parameters()
+        return hyperparameters
 
     @dispatch()
     def special_components(self, **kwargs) -> None:
