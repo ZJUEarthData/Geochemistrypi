@@ -46,7 +46,8 @@ class ClassificationModelSelection(object):
             hyper_parameters = LogisticRegressionClassification.manual_hyper_parameters()
             self.clf_workflow = LogisticRegressionClassification(penalty=hyper_parameters['penalty'], C=hyper_parameters['C'], solver=hyper_parameters["solver"], max_iter=hyper_parameters['max_iter'], class_weight=hyper_parameters['class_weight'], l1_ratio=hyper_parameters['l1_ratio'])
         elif self.model == "Deep Neural Network":
-            self.clf_workflow = DNNClassification()
+            hyper_parameters = DNNClassification.manual_hyper_parameters()
+            self.clf_workflow = DNNClassification(hidden_layer_sizes=hyper_parameters['hidden_layer_sizes'], activation=hyper_parameters['activation'], solver=hyper_parameters['solver'], alpha=hyper_parameters['alpha'], learning_rate=hyper_parameters['learning_rate'], max_iter=hyper_parameters['max_iter'])
         elif self.model == "Extra-Trees":
             hyper_parameters = ExtraTreesClassification.manual_hyper_parameters()
             self.clf_workflow = ExtraTreesClassification(n_estimators=hyper_parameters['n_estimators'], max_depth=hyper_parameters['max_depth'], min_samples_split=hyper_parameters['min_samples_split'], min_samples_leaf=hyper_parameters['min_samples_leaf'], max_features=hyper_parameters['max_features'], bootstrap=hyper_parameters['bootstrap'], oob_score=hyper_parameters['oob_score'])

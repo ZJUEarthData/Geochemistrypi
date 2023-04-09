@@ -25,6 +25,7 @@ from .func.algo_classification._decision_tree import decision_tree_plot, decisio
 from .func.algo_classification._logistic_regression import logistic_importance_plot, logistic_regression_manual_hyper_parameters
 from .func.algo_classification._rf import feature_importances, random_forest_manual_hyper_parameters
 from .func.algo_classification._extra_trees import extra_trees_manual_hyper_parameters
+from .func.algo_classification._deep_neural_network import deep_neural_network_manual_hyper_parameters
 
 class ClassificationWorkflowBase(WorkflowBase):
     """The base workflow class of classification algorithms."""
@@ -1680,6 +1681,13 @@ class DNNClassification(ClassificationWorkflowBase):
         )
 
         self.naming = DNNClassification.name
+
+    @staticmethod
+    def manual_hyper_parameters() -> Dict:
+        """Manual hyper-parameters specification."""
+        print("-*-*- Hyper-parameters Specification -*-*-")
+        hyperparameters = deep_neural_network_manual_hyper_parameters()
+        return hyperparameters
 
     @dispatch()
     def special_components(self, **kwargs) -> None:
