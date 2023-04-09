@@ -8,7 +8,7 @@ from data_mining.data.data_readiness import float_input, num_input, str_input
 from data_mining.global_variable import SECTION
 
 
-def extra_tree_manual_hyper_parameters() -> Dict:
+def extra_trees_manual_hyper_parameters() -> Dict:
     """Manually set hyperparameters.
 
     Returns
