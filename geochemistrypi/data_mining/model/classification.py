@@ -148,22 +148,22 @@ class SVMClassification(ClassificationWorkflowBase):
     special_function = ['Two-dimensional Decision Boundary Diagram', 'Precision_Recall_Curve', 'ROC Curve']
 
     def __init__(
-            self,
-            C: float = 1.0,
-            kernel: Union[str, Callable] = 'rbf',
-            degree: int = 3,
-            gamma: Union[str, float] = "scale",
-            coef0: float = 0.0,
-            shrinking: bool = True,
-            probability: bool = False,
-            tol: float = 1e-3,
-            cache_size: float = 200,
-            class_weight: Union[dict, str, None] = None,
-            verbose: bool = False,
-            max_iter: int = -1,
-            decision_function_shape: Literal['ovo', 'ovr'] = "ovr",
-            break_ties: bool = False,
-            random_state: Optional[int] = None
+        self,
+        C: float = 1.0,
+        kernel: Union[str, Callable] = 'rbf',
+        degree: int = 3,
+        gamma: Union[str, float] = "scale",
+        coef0: float = 0.0,
+        shrinking: bool = True,
+        probability: bool = False,
+        tol: float = 1e-3,
+        cache_size: float = 200,
+        class_weight: Union[dict, str, None] = None,
+        verbose: bool = False,
+        max_iter: int = -1,
+        decision_function_shape: Literal['ovo', 'ovr'] = "ovr",
+        break_ties: bool = False,
+        random_state: Optional[int] = None
     ) -> None:
         """
         Parameters
@@ -265,7 +265,7 @@ class SVMClassification(ClassificationWorkflowBase):
 
         References
         ----------
-        scikit API: sklearn.svm.SVC
+        Scikit-learn API: sklearn.svm.SVC
         https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html
         """
 
@@ -285,21 +285,24 @@ class SVMClassification(ClassificationWorkflowBase):
         self.decision_function_shape = decision_function_shape
         self.break_ties = break_ties
 
-        self.model = SVC(C=self.C,
-                         kernel=self.kernel,
-                         degree=self.degree,
-                         gamma=self.gamma,
-                         coef0=self.coef0,
-                         shrinking=self.shrinking,
-                         probability=self.probability,
-                         tol=self.tol,
-                         cache_size=self.cache_size,
-                         class_weight=self.class_weight,
-                         verbose=self.verbose,
-                         max_iter=self.max_iter,
-                         decision_function_shape=self.decision_function_shape,
-                         break_ties=self.break_ties,
-                         random_state=self.random_state)
+        self.model = SVC(
+            C=self.C,
+            kernel=self.kernel,
+            degree=self.degree,
+            gamma=self.gamma,
+            coef0=self.coef0,
+            shrinking=self.shrinking,
+            probability=self.probability,
+            tol=self.tol,
+            cache_size=self.cache_size,
+            class_weight=self.class_weight,
+            verbose=self.verbose,
+            max_iter=self.max_iter,
+            decision_function_shape=self.decision_function_shape,
+            break_ties=self.break_ties,
+            random_state=self.random_state
+        )
+        
         self.naming = SVMClassification.name
         self.customized = True
         self.customized_name = 'SVC'
@@ -430,19 +433,19 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
     special_function = ["Decision Tree Plot"]
 
     def __init__(
-            self,
-            criterion: str = 'gini',
-            splitter: str = 'best',
-            max_depth: Optional[int] = 3,
-            min_samples_split: Union[int, float] = 2,
-            min_samples_leaf: Union[int, float] = 1,
-            min_weight_fraction_leaf: float = 0.0,
-            max_features: Union[int, float, str, None] = None,
-            random_state: Optional[int] = None,
-            max_leaf_nodes: Optional[int] = None,
-            min_impurity_decrease: float = 0.0,
-            class_weight: Union[dict, List[dict], str, None] = None,
-            ccp_alpha: float = 0.0
+        self,
+        criterion: str = 'gini',
+        splitter: str = 'best',
+        max_depth: Optional[int] = 3,
+        min_samples_split: Union[int, float] = 2,
+        min_samples_leaf: Union[int, float] = 1,
+        min_weight_fraction_leaf: float = 0.0,
+        max_features: Union[int, float, str, None] = None,
+        random_state: Optional[int] = None,
+        max_leaf_nodes: Optional[int] = None,
+        min_impurity_decrease: float = 0.0,
+        class_weight: Union[dict, List[dict], str, None] = None,
+        ccp_alpha: float = 0.0
     ) -> None:
         """
         Parameters
@@ -574,9 +577,10 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
 
         References
         ----------
-        sklearn.tree.DecisionTreeClassifier
+        Scikit-learn API: sklearn.tree.DecisionTreeClassifier
         https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html?highlight=decisiontreeclassifier#sklearn.tree.DecisionTreeClassifier
         """
+
         super().__init__()
         self.criterion = criterion
         self.splitter = splitter
@@ -589,18 +593,22 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
         self.min_impurity_decrease = min_impurity_decrease
         self.class_weight = class_weight
         self.ccp_alpha = ccp_alpha
-        self.model = DecisionTreeClassifier(criterion=self.criterion,
-                                            splitter=self.splitter,
-                                            max_depth=self.max_depth,
-                                            min_samples_split=self.min_samples_split,
-                                            min_samples_leaf=self.min_samples_leaf,
-                                            min_weight_fraction_leaf=self.min_weight_fraction_leaf,
-                                            max_features=self.max_features,
-                                            random_state=self.random_state,
-                                            max_leaf_nodes=self.max_leaf_nodes,
-                                            min_impurity_decrease=self.min_impurity_decrease,
-                                            class_weight=self.class_weight,
-                                            ccp_alpha=self.ccp_alpha)
+
+        self.model = DecisionTreeClassifier(
+            criterion=self.criterion,
+            splitter=self.splitter,
+            max_depth=self.max_depth,
+            min_samples_split=self.min_samples_split,
+            min_samples_leaf=self.min_samples_leaf,
+            min_weight_fraction_leaf=self.min_weight_fraction_leaf,
+            max_features=self.max_features,
+            random_state=self.random_state,
+            max_leaf_nodes=self.max_leaf_nodes,
+            min_impurity_decrease=self.min_impurity_decrease,
+            class_weight=self.class_weight,
+            ccp_alpha=self.ccp_alpha
+        )
+
         self.naming = DecisionTreeClassification.name
         self.customized = True
         self.customized_name = 'Decision Tree'
@@ -694,6 +702,7 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
                                               DecisionTreeClassification.y_test,
                                               self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
+
 class RandomForestClassification(ClassificationWorkflowBase):
     """The automation workflow of using Random Forest algorithm to make insightful products."""
 
@@ -701,25 +710,25 @@ class RandomForestClassification(ClassificationWorkflowBase):
     special_function = ['Feature Importance', "Random Forest's Tree Plot", "Drawing Decision Surfaces Plot"]
 
     def __init__(
-            self,
-            n_estimators: int = 100,
-            criterion: str = 'gini',
-            max_depth: Optional[int] = 4,
-            min_samples_split: Union[int, float] = 4,
-            min_samples_leaf: Union[int, float] = 1,
-            min_weight_fraction_leaf: float = 0.0,
-            max_features: Union[str, int, float] = 'sqrt',
-            max_leaf_nodes: Optional[int] = 3,
-            min_impurity_decrease: float = 0.0,
-            bootstrap: bool = True,
-            oob_score: bool = False,
-            n_jobs: Optional[int] = -1,
-            random_state: Optional[int] = 42,
-            verbose: int = 0,
-            warm_start: bool = False,
-            class_weight: Union[str, dict, list[dict], None] = None,
-            ccp_alpha: float = 0.0,
-            max_samples: Union[int, float] = 10
+        self,
+        n_estimators: int = 100,
+        criterion: str = 'gini',
+        max_depth: Optional[int] = 4,
+        min_samples_split: Union[int, float] = 4,
+        min_samples_leaf: Union[int, float] = 1,
+        min_weight_fraction_leaf: float = 0.0,
+        max_features: Union[str, int, float] = 'sqrt',
+        max_leaf_nodes: Optional[int] = 3,
+        min_impurity_decrease: float = 0.0,
+        bootstrap: bool = True,
+        oob_score: bool = False,
+        n_jobs: Optional[int] = -1,
+        random_state: Optional[int] = 42,
+        verbose: int = 0,
+        warm_start: bool = False,
+        class_weight: Union[str, dict, list[dict], None] = None,
+        ccp_alpha: float = 0.0,
+        max_samples: Union[int, float] = 10
     ) -> None:
         """
         A random forest classifier.
@@ -899,9 +908,10 @@ class RandomForestClassification(ClassificationWorkflowBase):
 
         References
         ----------
-        scikit API: sklearn.ensemble.RandomForestClassifier
+        Scikit-learn API: sklearn.ensemble.RandomForestClassifier
         https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html?highlight=randomforestclassifier#sklearn.ensemble.RandomForestClassifier
         """
+
         super().__init__()
         self.n_estimators = n_estimators
         self.criterion = criterion
@@ -921,24 +931,28 @@ class RandomForestClassification(ClassificationWorkflowBase):
         self.class_weight = class_weight
         self.ccp_alpha = ccp_alpha
         self.max_samples = max_samples
-        self.model = RandomForestClassifier(n_estimators=self.n_estimators,
-                                            criterion=self.criterion,
-                                            max_depth=self.max_depth,
-                                            min_samples_split=self.min_samples_split,
-                                            min_samples_leaf=self.min_samples_leaf,
-                                            min_weight_fraction_leaf=self.min_weight_fraction_leaf,
-                                            max_features=self.max_features,
-                                            max_leaf_nodes=self.max_leaf_nodes,
-                                            min_impurity_decrease=self.min_impurity_decrease,
-                                            bootstrap=self.bootstrap,
-                                            oob_score=self.oob_score,
-                                            n_jobs=self.n_jobs,
-                                            random_state=self.random_state,
-                                            verbose=self.verbose,
-                                            warm_start=self.warm_start,
-                                            class_weight=self.class_weight,
-                                            ccp_alpha=self.ccp_alpha,
-                                            max_samples=self.max_samples)
+        
+        self.model = RandomForestClassifier(
+            n_estimators=self.n_estimators,
+            criterion=self.criterion,
+            max_depth=self.max_depth,
+            min_samples_split=self.min_samples_split,
+            min_samples_leaf=self.min_samples_leaf,
+            min_weight_fraction_leaf=self.min_weight_fraction_leaf,
+            max_features=self.max_features,
+            max_leaf_nodes=self.max_leaf_nodes,
+            min_impurity_decrease=self.min_impurity_decrease,
+            bootstrap=self.bootstrap,
+            oob_score=self.oob_score,
+            n_jobs=self.n_jobs,
+            random_state=self.random_state,
+            verbose=self.verbose,
+            warm_start=self.warm_start,
+            class_weight=self.class_weight,
+            ccp_alpha=self.ccp_alpha,
+            max_samples=self.max_samples
+        )
+
         self.naming = RandomForestClassification.name
 
     @property
@@ -1019,43 +1033,210 @@ class XgboostClassification(ClassificationWorkflowBase):
     special_function = ['Feature Importance']
 
     def __init__(
-            self,
-            n_estimators: int = 100,
-            max_depth: Optional[int] = None,
-            max_leaves: Optional[int] = None,
-            max_bin: Optional[int] = None,
-            grow_policy=1,
-            learning_rate: Optional[float] = None,
-            verbosity: Optional[int] = None,
-            objective: _SklObjective = None,
-            booster: Optional[str] = None,
-            tree_method: Optional[str] = None,
-            n_jobs: Optional[int] = None,
-            gamma: Optional[float] = None,
-            min_child_weight: Optional[float] = None,
-            max_delta_step: Optional[float] = None,
-            subsample: Optional[float] = None,
-            colsample_bytree: Optional[float] = None,
-            colsample_bylevel: Optional[float] = None,
-            colsample_bynode: Optional[float] = None,
-            reg_alpha: Optional[float] = None,
-            reg_lambda: Optional[float] = None,
-            scale_pos_weight: Optional[float] = None,
-            base_score: Optional[float] = None,
-            random_state: Optional[Union[np.random.RandomState, int]] = None,
-            missing: float = np.nan,
-            num_parallel_tree: Optional[int] = None,
-            monotone_constraints: Optional[Union[Dict[str, int], str]] = None,
-            interaction_constraints: Optional[Union[str, Sequence[Sequence[str]]]] = None,
-            importance_type: Optional[str] = 'weight',
-            gpu_id: Optional[int] = None,
-            validate_parameters: Optional[bool] = None,
-            predictor: Optional[str] = None,
-            # enable_categorical: bool = False,
-            eval_metric: Optional[Union[str, List[str], Callable]] = None,
-            early_stopping_rounds: Optional[int] = None,
-            **kwargs: Any
+        self,
+        n_estimators: int = 100,
+        max_depth: Optional[int] = None,
+        max_leaves: Optional[int] = None,
+        max_bin: Optional[int] = None,
+        grow_policy=1,
+        learning_rate: Optional[float] = None,
+        verbosity: Optional[int] = None,
+        objective: _SklObjective = None,
+        booster: Optional[str] = None,
+        tree_method: Optional[str] = None,
+        n_jobs: Optional[int] = None,
+        gamma: Optional[float] = None,
+        min_child_weight: Optional[float] = None,
+        max_delta_step: Optional[float] = None,
+        subsample: Optional[float] = None,
+        colsample_bytree: Optional[float] = None,
+        colsample_bylevel: Optional[float] = None,
+        colsample_bynode: Optional[float] = None,
+        reg_alpha: Optional[float] = None,
+        reg_lambda: Optional[float] = None,
+        scale_pos_weight: Optional[float] = None,
+        base_score: Optional[float] = None,
+        random_state: Optional[Union[np.random.RandomState, int]] = None,
+        missing: float = np.nan,
+        num_parallel_tree: Optional[int] = None,
+        monotone_constraints: Optional[Union[Dict[str, int], str]] = None,
+        interaction_constraints: Optional[Union[str, Sequence[Sequence[str]]]] = None,
+        importance_type: Optional[str] = 'weight',
+        gpu_id: Optional[int] = None,
+        validate_parameters: Optional[bool] = None,
+        predictor: Optional[str] = None,
+        # enable_categorical: bool = False,
+        eval_metric: Optional[Union[str, List[str], Callable]] = None,
+        early_stopping_rounds: Optional[int] = None,
+        **kwargs: Any
     ):
+        """
+        Parameters
+        ----------
+        max_depth [default=6]
+            Maximum depth of a tree. Increasing this value will make the model more complex and more likely to overfit.
+            0 indicates no limit on depth. Beware that XGBoost aggressively consumes memory when training a deep tree.
+            exact tree method requires non-zero value.
+            range: [0,∞]
+
+        learning_rate [default=0.3]
+            Step size shrinkage used in update to prevents overfitting.
+            After each boosting step, we can directly get the weights of new features,
+            and eta shrinks the feature weights to make the boosting process more conservative.
+            range: [0,1]
+
+        n_estimators : int
+        Number of gradient boosted trees.  Equivalent to number of boosting rounds.
+
+        objective : {SklObjective}
+            Specify the learning task and the corresponding learning objective or
+            a custom objective function to be used (see note below).
+
+        verbosity [default=1]
+            Verbosity of printing messages. Valid values are 0 (silent), 1 (warning), 2 (info), 3 (debug).
+            Sometimes XGBoost tries to change configurations based on heuristics,
+            which is displayed as warning message.
+            If there’s unexpected behaviour, please try to increase value of verbosity.
+
+        booster [default= gbtree ]
+            Which booster to use. Can be gbtree, gblinear or dart;
+            gbtree and dart use tree based models while gblinear uses linear functions.
+
+        tree_method string [default= auto]
+            The tree construction algorithm used in XGBoost. See description in the reference paper and Tree Methods.
+            XGBoost supports approx, hist and gpu_hist for distributed training. Experimental support for external memory is available for approx and gpu_hist.
+            Choices: auto, exact, approx, hist, gpu_hist, this is a combination of commonly used updaters. For other updaters like refresh, set the parameter updater directly.
+                auto: Use heuristic to choose the fastest method.
+                    For small dataset, exact greedy (exact) will be used.
+                    For larger dataset, approximate algorithm (approx) will be chosen. It’s recommended to try hist and gpu_hist for higher performance with large dataset. (gpu_hist)has support for external memory.
+                    Because old behavior is always use exact greedy in single machine, user will get a message when approximate algorithm is chosen to notify this choice.
+                exact: Exact greedy algorithm. Enumerates all split candidates.
+                approx: Approximate greedy algorithm using quantile sketch and gradient histogram.
+                hist: Faster histogram optimized approximate greedy algorithm.
+                gpu_hist: GPU implementation of hist algorithm.
+
+        n_jobs : Optional[int]
+            Number of parallel threads used to run xgboost.  When used with other
+            Scikit-Learn algorithms like grid search, you may choose which algorithm to
+            parallelize and balance the threads.  Creating thread contention will
+            significantly slow down both algorithms.
+
+        gamma [default=0, alias: min_split_loss]
+            Minimum loss reduction required to make a further partition on a leaf node of the tree.
+            The larger gamma is, the more conservative the algorithm will be.
+            range: [0,∞]
+
+        min_child_weight [default=1]
+            Minimum sum of instance weight (hessian) needed in a child.
+            If the tree partition step results in a leaf node with the sum of instance weight less than min_child_weight,
+            then the building process will give up further partitioning. In linear regression task,
+            this simply corresponds to minimum number of instances needed to be in each node.
+            The larger min_child_weight is, the more conservative the algorithm will be.
+            range: [0,∞]
+
+        max_delta_step [default=0]
+            Maximum delta step we allow each leaf output to be.
+            If the value is set to 0, it means there is no constraint.
+            If it is set to a positive value, it can help making the update step more conservative.
+            Usually this parameter is not needed, but it might help in logistic regression
+            when class is extremely imbalanced. Set it to value of 1-10 might help control the update.
+            range: [0,∞]
+
+        subsample [default=1]
+            Subsample ratio of the training instances.
+            Setting it to 0.5 means that XGBoost would randomly sample half of the training data prior to growing trees.
+            and this will prevent overfitting.
+            Subsampling will occur once in every boosting iteration.
+            range: (0,1]
+
+        colsample_bytree [default=1]
+            colsample_bytree is the subsample ratio of columns when constructing each tree.
+            Subsampling occurs once for every tree constructed.
+
+        colsample_bylevel [default=1]
+            colsample_bylevel is the subsample ratio of columns for each level.
+            Subsampling occurs once for every new depth level reached in a tree.
+            Columns are subsampled from the set of columns chosen for the current tree.
+
+        colsample_bynode [default=1]
+            colsample_bynode is the subsample ratio of columns for each node (split).
+            Subsampling occurs once every time a new split is evaluated.
+            Columns are subsampled from the set of columns chosen for the current level.
+
+        reg_alpha [default=0]
+            L1 regularization term on weights.
+            Increasing this value will make model more conservative.
+
+        reg_lambda [default=1, alias: reg_lambda]
+            L2 regularization term on weights.
+            Increasing this value will make model more conservative.
+
+        scale_pos_weight [default=1]
+            Control the balance of positive and negative weights, useful for unbalanced classes.
+
+        predictor, [default= auto]
+            The type of predictor algorithm to use.
+            Provides the same results but allows the use of GPU or CPU.
+                auto: Configure predictor based on heuristics.
+                cpu_predictor: Multicore CPU prediction algorithm.
+                gpu_predictor: Prediction using GPU. Used when tree_method is gpu_hist.
+                    When predictor is set to default value auto, the gpu_hist tree method is able to provide GPU based prediction
+                    without copying training data to GPU memory. If gpu_predictor is explicitly specified,
+                    then all data is copied into GPU, only recommended for performing prediction tasks.
+
+        base_score : Optional[float]
+            The initial prediction score of all instances, global bias.
+
+        random_state : Optional[Union[numpy.random.RandomState, int]]
+            Random number seed.
+            .. note::
+
+               Using gblinear booster with shotgun updater is nondeterministic as
+               it uses Hogwild algorithm.
+
+        missing : float, default np.nan
+        Value in the data which needs to be present as a missing value.
+
+        num_parallel_tree: Optional[int]
+            Used for boosting random forest.
+
+        monotone_constraints : Optional[Union[Dict[str, int], str]]
+            Constraint of variable monotonicity.  See :doc:`tutorial </tutorials/monotonic>`
+            for more information.
+
+        interaction_constraints : Optional[Union[str, List[Tuple[str]]]]
+            Constraints for interaction representing permitted interactions.  The
+            constraints must be specified in the form of a nested list, e.g. ``[[0, 1], [2,
+            3, 4]]``, where each inner list is a group of indices of features that are
+            allowed to interact with each other.  See :doc:`tutorial
+            </tutorials/feature_interaction_constraint>` for more information
+
+        importance_type: Optional[str]
+            The feature importance type for the feature_importances\\_ property:
+
+            * For tree model, it's either "gain", "weight", "cover", "total_gain" or
+              "total_cover".
+            * For linear model, only "weight" is defined and it's the normalized coefficients
+              without bias.
+
+        gpu_id : Optional[int]
+            Device ordinal.
+
+        validate_parameters : Optional[bool]
+            Give warnings for unknown parameter.
+
+        eval_metric : Optional[Union[str, List[str], Callable]]
+
+        early_stopping_rounds : Optional[int]
+
+        References
+        ----------
+        [1] Xgboost Python API Reference - Scikit-Learn API
+            https://xgboost.readthedocs.io/en/latest/python/python_api.html#module-xgboost.sklearn
+
+        [2] Xgboost API for the scikit-learn wrapper:
+            https://github.com/dmlc/xgboost/blob/master/python-package/xgboost/sklearn.py
+        """
         super().__init__()
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
@@ -1129,6 +1310,7 @@ class XgboostClassification(ClassificationWorkflowBase):
             eval_metric=self.eval_metric,
             early_stopping_rounds=self.early_stopping_rounds,
         )
+
         self.naming = XgboostClassification.name
 
     @property
@@ -1154,6 +1336,7 @@ class XgboostClassification(ClassificationWorkflowBase):
     @staticmethod
     def _feature_importance_series(data: pd.DataFrame, trained_model: any, algorithm_name: str, image_config: dict,
                                    store_path: str) -> None:
+        """Plot feature importance series."""
         print("-----* Feature Importance *-----")
         feature_importance_value(data, trained_model)
         feature_weights_histograms(trained_model, image_config, algorithm_name)
@@ -1194,22 +1377,22 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
     special_function = ['Feature Importance', 'Precision_Recall_Curve', 'ROC Curve']
 
     def __init__(
-            self,
-            penalty: str = 'l2',
-            dual: bool = False,
-            tol: float = 0.0001,
-            C: float = 1.0,
-            fit_intercept: bool = True,
-            intercept_scaling: float = 1,
-            class_weight: Optional[Union[Dict, str]] = None,
-            random_state: Optional[int] = None,
-            solver: str = 'lbfgs',
-            max_iter: int = 100,
-            multi_class: str = 'auto',
-            verbose: int = 0,
-            warm_start: bool = False,
-            n_jobs: int = None,
-            l1_ratio: float = None
+        self,
+        penalty: str = 'l2',
+        dual: bool = False,
+        tol: float = 0.0001,
+        C: float = 1.0,
+        fit_intercept: bool = True,
+        intercept_scaling: float = 1,
+        class_weight: Optional[Union[Dict, str]] = None,
+        random_state: Optional[int] = None,
+        solver: str = 'lbfgs',
+        max_iter: int = 100,
+        multi_class: str = 'auto',
+        verbose: int = 0,
+        warm_start: bool = False,
+        n_jobs: int = None,
+        l1_ratio: float = None
     ) -> None:
         """
         Parameters
@@ -1357,7 +1540,7 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
 
         References
         ----------
-        scikit API: sklearn.linear_model.LogisticRegression
+        Scikit-learn API: sklearn.linear_model.LogisticRegression
         https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
         """
         super().__init__()
@@ -1429,6 +1612,7 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
     @staticmethod
     def _plot_precision_recall(X_train: pd.DataFrame, y_train: pd.DataFrame,
                                trained_model: object, algorithm_name: str, store_path: str) -> None:
+        """Plot the precision-recall curve."""
         print("-----* Precision and Recall Versus the Decision Threshold *-----")
         plot_precision_recall(X_train, y_train, trained_model, algorithm_name)
         save_fig(f'Precision_Recall_Curve - {algorithm_name}', store_path)
@@ -1436,6 +1620,7 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
     @staticmethod
     def _plot_ROC(X_train: pd.DataFrame, y_train: pd.DataFrame,
                   trained_model: object, algorithm_name: str, store_path: str) -> None:
+        """Plot the ROC curve."""
         print("-----* ROC Curve *-----")
         plot_ROC(X_train, y_train, trained_model, algorithm_name)
         save_fig(f'ROC_Curve - {algorithm_name}', store_path)
@@ -1637,7 +1822,7 @@ class DNNClassification(ClassificationWorkflowBase):
 
         References
         ----------
-        scikit API: sklearn.neural_network.MLPClassifier
+        Scikit-learn API: sklearn.neural_network.MLPClassifier
         https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html
         """
 
@@ -1965,7 +2150,7 @@ class ExtraTreesClassification(ClassificationWorkflowBase):
         
         References
         ----------
-        scikit API: sklearn.ensemble.ExtraTreesClassifier
+        Scikit-learn API: sklearn.ensemble.ExtraTreesClassifier
         https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.ExtraTreesClassifier.html#sklearn-ensemble-extratreesclassifier
         """
 
