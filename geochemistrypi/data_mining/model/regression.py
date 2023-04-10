@@ -294,8 +294,6 @@ class XgboostRegression(RegressionWorkflowBase):
         n_estimators : int
         Number of gradient boosted trees.  Equivalent to number of boosting rounds.
 
-
-
         objective : {SklObjective}
             Specify the learning task and the corresponding learning objective or
             a custom objective function to be used (see note below).
@@ -439,7 +437,8 @@ class XgboostRegression(RegressionWorkflowBase):
 
         References
         ----------
-        [1] https://xgboost.readthedocs.io/en/stable/parameter.html#
+        [1] Xgboost Python API Reference - Scikit-Learn API
+            https://xgboost.readthedocs.io/en/latest/python/python_api.html#module-xgboost.sklearn
 
         [2] Xgboost API for the scikit-learn wrapper:
             https://github.com/dmlc/xgboost/blob/master/python-package/xgboost/sklearn.py
@@ -714,13 +713,8 @@ class DecisionTreeRegression(RegressionWorkflowBase):
 
         References
         ----------
-        [1] https://en.wikipedia.org/wiki/Decision_tree_learning
-        [2] L. Breiman, J. Friedman, R. Olshen, and C. Stone, "Classification
-               and Regression Trees", Wadsworth, Belmont, CA, 1984.
-        [3] T. Hastie, R. Tibshirani and J. Friedman. "Elements of Statistical
-               Learning", Springer, 2009.
-        [4] L. Breiman, and A. Cutler, "Random Forests",
-               https://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm
+        Scikit-learn API: sklearn.tree.DecisionTreeClassifier
+        https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html#sklearn.tree.DecisionTreeClassifier
         """
 
         super().__init__()
@@ -839,15 +833,15 @@ class ExtraTreesRegression(RegressionWorkflowBase):
 
     def __init__(
         self,
-        n_estimators=100,
-        criterion="mse",
-        max_depth=None,
-        min_samples_split=2,
-        min_samples_leaf=1,
-        min_weight_fraction_leaf=0.,
-        max_features="auto",
-        max_leaf_nodes=None,
-        min_impurity_decrease=0.,
+        n_estimators: int = 100,
+        criterion: str = "mse",
+        max_depth: Optional[int] = None,
+        min_samples_split: Union[int, float] = 2,
+        min_samples_leaf: Union[int, float] = 1,
+        min_weight_fraction_leaf: float = 0.,
+        max_features: Union[int, float, str] = "auto",
+        max_leaf_nodes: int = None,
+        min_impurity_decrease: float = 0.,
     #  min_impurity_split=None,
         bootstrap=False,
         oob_score=False,
@@ -855,7 +849,7 @@ class ExtraTreesRegression(RegressionWorkflowBase):
         random_state=None,
         verbose=0,
         warm_start=False,
-        ccp_alpha=0.0,
+        ccp_alpha: float = 0.0,
         max_samples=None
     ) -> None:
         """
@@ -1015,7 +1009,7 @@ class ExtraTreesRegression(RegressionWorkflowBase):
 
         References
         ----------
-        scikit API: sklearn.ensemble.ExtraTreesRegressor
+        Scikit-learn API: sklearn.ensemble.ExtraTreesRegressor
         https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.ExtraTreesRegressor.html?highlight=extratreesregressor#sklearn.ensemble.ExtraTreesRegressor
         """
         
@@ -1287,7 +1281,7 @@ class RandomForestRegression(RegressionWorkflowBase):
 
         References
         ----------
-        scikit API: sklearn.ensemble.RandomForestRegressor
+        Scikit-learn API: sklearn.ensemble.RandomForestRegressor
         https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html?highlight=randomforestregressor#sklearn.ensemble.RandomForestRegressor
         """
         
@@ -1356,6 +1350,7 @@ class RandomForestRegression(RegressionWorkflowBase):
     @staticmethod
     def _feature_importances(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame,
                              trained_model: object,  image_config: dict, algorithm_name: str, store_path: str) -> None:
+        """Feature importance plot."""
         print("-----* Feature Importance *-----")
         feature_importance__(X, X_test, y_test, trained_model, image_config)
         save_fig(f"Regression - {algorithm_name} - Feature Importance", store_path)
@@ -1363,6 +1358,7 @@ class RandomForestRegression(RegressionWorkflowBase):
     @staticmethod
     def _box_plot(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame,
                  trained_model: object,  image_config: dict, algorithm_name: str, store_path: str) -> None:
+        """Box plot."""
         print("-----* Box Plot *-----")
         box_plot(X, X_test, y_test, trained_model, image_config)
         save_fig(f"Regression - {algorithm_name} - Box Plot", store_path)
@@ -1463,12 +1459,8 @@ class SVMRegression(RegressionWorkflowBase):
 
         References
         ----------
-        .. [1] `LIBSVM: A Library for Support Vector Machines
-            <http://www.csie.ntu.edu.tw/~cjlin/papers/libsvm.pdf>`_
-          
-        .. [2] `Platt, John (1999). "Probabilistic outputs for support vector
-            machines and comparison to regularizedlikelihood methods."
-            <http://citeseer.ist.psu.edu/viewdoc/summary?doi=10.1.1.41.1639>`_
+        Scikit-learn API: sklearn.svm.SVR
+        https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVR.html
         """
         
         super().__init__()
@@ -1765,15 +1757,8 @@ class DNNRegression(RegressionWorkflowBase):
 
         References
         ----------
-        Hinton, Geoffrey E. "Connectionist learning procedures."
-        Artificial intelligence 40.1 (1989): 185-234.
-        Glorot, Xavier, and Yoshua Bengio.
-        "Understanding the difficulty of training deep feedforward neural networks."
-        International Conference on Artificial Intelligence and Statistics. 2010.
-        :arxiv:`He, Kaiming, et al (2015). "Delving deep into rectifiers:
-        Surpassing human-level performance on imagenet classification." <1502.01852>`
-        :arxiv:`Kingma, Diederik, and Jimmy Ba (2014)
-        "Adam: A method for stochastic optimization." <1412.6980>`
+        Scikit-learn API: sklearn.neural_network.MLPRegressor
+        https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPRegressor.html
         """
         super().__init__()
         self.hidden_layer_sizes = hidden_layer_sizes
@@ -1915,6 +1900,7 @@ class DNNRegression(RegressionWorkflowBase):
 
 
 class LinearRegression2(RegressionWorkflowBase):
+    """The automation workflow of using Linear Regression algorithm to make insightful products."""
 
     name = "Linear Regression"
     special_function = ["Linear Regression Formula", "Two/Three-dimensional Linear Regression Image"]
@@ -1933,6 +1919,7 @@ class LinearRegression2(RegressionWorkflowBase):
             Whether to calculate the intercept for this model. If set
             to False, no intercept will be used in calculations
             (i.e. data is expected to be centered).
+
         normalize : bool, default=False
             This parameter is ignored when ``fit_intercept`` is set to False.
             If True, the regressors X will be normalized before regression by
@@ -1943,8 +1930,10 @@ class LinearRegression2(RegressionWorkflowBase):
             .. deprecated:: 1.0
                `normalize` was deprecated in version 1.0 and will be
                removed in 1.2.
+        
         copy_X : bool, default=True
                         If True, X will be copied; else, it may be overwritten.
+        
         n_jobs : int, default=None
             The number of jobs to use for the computation. This will only provide
             speedup in case of sufficiently large problems, that is if firstly
@@ -1952,6 +1941,7 @@ class LinearRegression2(RegressionWorkflowBase):
             to `True`. ``None`` means 1 unless in a
             :obj:`joblib.parallel_backend` context. ``-1`` means using all
             processors. See :term:`Glossary <n_jobs>` for more details.
+        
         positive : bool, default=False
                         When set to ``True``, forces the coefficients to be positive. This
             option is only supported for dense arrays.
@@ -1959,7 +1949,7 @@ class LinearRegression2(RegressionWorkflowBase):
 
         References
         ----------
-        scikit API: sklearn.linear_model.LinearRegression
+        Scikit-learn API: sklearn.linear_model.LinearRegression
         https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html?highlight=linearregression
         """
         super().__init__()
@@ -1986,12 +1976,14 @@ class LinearRegression2(RegressionWorkflowBase):
 
     @staticmethod
     def _show_formula(coef, intercept, columns_name):
+        """Show the formula of the linear regression model."""
         print("-----* Linear Regression Formula *-----")
         show_formula(coef, intercept, columns_name)
 
     @staticmethod
     def _plot_2d_graph(feature_data: pd.DataFrame, target_data: pd.DataFrame, algorithm_name: str,
                        store_path: str):
+        """Plot the 2D graph of the linear regression model."""
         print("-----* Plot 2D Graph *-----")
         plot_2d_graph(feature_data, target_data)
         save_fig(f"2D Scatter Graph - {algorithm_name}", store_path)
@@ -1999,11 +1991,13 @@ class LinearRegression2(RegressionWorkflowBase):
     @staticmethod
     def _plot_3d_graph(feature_data: pd.DataFrame, target_data: pd.DataFrame, algorithm_name: str,
                        store_path: str):
+        """Plot the 3D graph of the linear regression model."""
         print("-----* Plot 3D Graph *-----")
         plot_3d_graph(feature_data, target_data)
         save_fig(f"3D Scatter Graph - {algorithm_name}", store_path)
 
     def special_components(self, **kwargs):
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         self._show_formula(coef=self.model.coef_, intercept=self.model.intercept_,
                            columns_name=LinearRegression2.X.columns)
 
