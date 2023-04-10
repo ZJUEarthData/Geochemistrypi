@@ -14,7 +14,7 @@ from multipledispatch import dispatch
 from flaml import AutoML
 
 from ..utils.base import save_fig
-from ..global_variable import MODEL_OUTPUT_IMAGE_PATH
+from ..global_variable import MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
 from ._base import WorkflowBase
 from .func.algo_classification._common import confusion_matrix_plot, contour_data, plot_precision_recall, plot_ROC,\
     cross_validation
@@ -46,12 +46,18 @@ class ClassificationWorkflowBase(WorkflowBase):
     @dispatch(object, object, bool)
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None, is_automl: bool = False) -> None:
         """Fit the model by FLAML framework."""
-        self.automl = AutoML()
-        if self.customized:  # When the model is not built-in in FLAML framwork
-            self.automl.add_learner(learner_name=self.customized_name, learner_class=self.customization)
-        if y.shape[1] == 1:  # FLAML's data format validation mechanism
-            y = y.squeeze()  # Convert a single dataFrame column into a series
-        self.automl.fit(X_train=X, y_train=y, **self.settings)
+        if self.naming not in RAY_FLAML:
+            self.automl = AutoML()
+            if self.customized:  # When the model is not built-in in FLAML framwork
+                self.automl.add_learner(learner_name=self.customized_name, learner_class=self.customization)
+            if y.shape[1] == 1:  # FLAML's data format validation mechanism
+                y = y.squeeze()  # Convert a single dataFrame column into a series
+            self.automl.fit(X_train=X, y_train=y, **self.settings)
+        else:
+            # When the model is not built-in in FLAML framework, use RAY + FLAML customization.
+            self.ray_tune(ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.X_test,
+                          ClassificationWorkflowBase.y_train, ClassificationWorkflowBase.y_test)
+            self.ray_best_model.fit(X, y)
 
     @dispatch(object)
     def predict(self, X: pd.DataFrame) -> np.ndarray:
@@ -62,8 +68,12 @@ class ClassificationWorkflowBase(WorkflowBase):
     @dispatch(object, bool)
     def predict(self, X: pd.DataFrame, is_automl: bool = False) -> np.ndarray:
         """Perform classification on samples in X by FLAML framework."""
-        y_predict = self.automl.predict(X)
-        return y_predict
+        if self.naming not in RAY_FLAML:
+            y_predict = self.automl.predict(X)
+            return y_predict
+        else:
+            y_predict = self.ray_best_model.predict(X)
+            return y_predict
 
     @property
     def settings(self) -> Dict:
@@ -78,7 +88,10 @@ class ClassificationWorkflowBase(WorkflowBase):
     @property
     def auto_model(self) -> object:
         """Get AutoML trained model by FLAML framework."""
-        return self.automl.model.estimator
+        if self.naming not in RAY_FLAML:
+            return self.automl.model.estimator
+        else:
+            return self.ray_best_model
 
     @staticmethod
     def manual_hyper_parameters() -> Dict:
@@ -1681,6 +1694,75 @@ class DNNClassification(ClassificationWorkflowBase):
         )
 
         self.naming = DNNClassification.name
+
+    def ray_tune(self, X_train: pd.DataFrame, X_test: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame) -> None:
+        """The customized DNN of the combinations of Ray, FLAML and Scikit-learn framework."""
+
+        from ray import tune
+        from ray.air import session
+        from ray.tune.search import ConcurrencyLimiter
+        from ray.tune.search.flaml import BlendSearch
+        from sklearn.metrics import accuracy_score
+
+        def customized_model(l1: int, l2: int, l3: int, batch: int) -> object:
+            """The customized model by Scikit-learn framework."""
+            return MLPClassifier(hidden_layer_sizes=(l1, l2, l3), batch_size=batch)
+
+        def evaluate(l1: int, l2: int, l3: int, batch: int) -> float:
+            """The evaluation function by simulating a long-running ML experiment
+             to get the model's performance at every epoch."""
+            clfr = customized_model(l1, l2, l3, batch)
+            clfr.fit(X_train, y_train)
+            y_pred = clfr.predict(X_test)
+            acc = accuracy_score(y_test, y_pred)
+            return acc
+
+        def objective(config: Dict) -> None:
+            """Objective function takes a Tune config, evaluates the score of your experiment in a training loop,
+             and uses session.report to report the score back to Tune."""
+            for step in range(config["steps"]):
+                score = evaluate(config["l1"], config["l2"], config["l3"], config["batch"])
+                session.report({"iterations": step, "mean_loss": score})
+
+        # Search space: The critical assumption is that the optimal hyper-parameters live within this space.
+        search_config = {
+            "l1": tune.randint(1, 20),
+            "l2": tune.randint(1, 30),
+            "l3": tune.randint(1, 20),
+            "batch": tune.randint(20, 100)
+        }
+
+        # Define the time budget in seconds.
+        time_budget_s = 30
+
+        # Integrate with FLAML's BlendSearch to implement hyper-parameters optimization .
+        algo = BlendSearch(
+            metric="mean_loss",
+            mode="min",
+            space=search_config)
+        algo.set_search_properties(config={"time_budget_s": time_budget_s})
+        algo = ConcurrencyLimiter(algo, max_concurrent=4)
+
+        # Use Ray Tune to  run the experiment to "min"imize the “mean_loss” of the "objective"
+        # by searching "search_config" via "algo", "num_samples" times.
+        tuner = tune.Tuner(
+            objective,
+            tune_config=tune.TuneConfig(
+                metric="mean_loss",
+                mode="min",
+                search_alg=algo,
+                num_samples=-1,
+                time_budget_s=time_budget_s,
+            ),
+            param_space={"steps": 100},
+        )
+        results = tuner.fit()
+
+        # The hyper-parameters found to minimize the mean loss of the defined objective and the corresponding model.
+        best_result = results.get_best_result(metric='mean_loss', mode='min')
+        self.ray_best_model = customized_model(best_result.config['l1'], best_result.config['l2'],
+                                               best_result.config['l3'], best_result.config['batch'])
+
 
     @staticmethod
     def manual_hyper_parameters() -> Dict:
