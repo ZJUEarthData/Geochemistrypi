@@ -2,7 +2,29 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from typing import Optional, List
+from typing import Optional, List, Dict
+import sys
+sys.path.append("../../..")
+from data_mining.data.data_readiness import float_input, num_input, str_input
+from data_mining.global_variable import SECTION
+
+
+def pca_manual_hyper_parameters() -> Dict:
+    """Manually set hyperparameters.
+
+    Returns
+    -------
+    hyper_parameters : dict
+    """
+    print("N Components: This parameter specifies the number of components to retain after dimensionality reduction.")
+    print("Please specify the number of components to retain. A good starting range could be between 2 and 10, such as 4.")
+    n_components = num_input(SECTION[2], "N Components: ")
+    print("SVD Solver: This parameter specifies the algorithm used to perform the singular value decomposition.")
+    print("Please specify the algorithm. It is generally recommended to leave it set to auto.")
+    svd_solvers = ["auto", "full", "arpack", "randomized"]
+    svd_solver = str_input(svd_solvers, SECTION[2])
+    hyper_parameters = {"n_components": n_components, "svd_solver": svd_solver}
+    return hyper_parameters
 
 
 def biplot(reduced_data: pd.DataFrame, pc: pd.DataFrame, algorithm_name: str,

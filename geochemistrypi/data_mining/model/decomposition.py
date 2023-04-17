@@ -2,11 +2,12 @@
 import pandas as pd
 from sklearn.decomposition import PCA
 import numpy as np
-from ..global_variable import MODEL_OUTPUT_IMAGE_PATH
 from typing import Optional, Union, Dict
+
 from ._base import WorkflowBase
-from .func.algo_decomposition._pca import biplot, triplot
+from .func.algo_decomposition._pca import biplot, triplot, pca_manual_hyper_parameters
 from ..utils.base import save_fig
+from ..global_variable import MODEL_OUTPUT_IMAGE_PATH
 
 
 class DecompositionWorkflowBase(WorkflowBase):
@@ -28,6 +29,11 @@ class DecompositionWorkflowBase(WorkflowBase):
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         """Apply dimensionality reduction to X."""
         return self.model.transform(X)
+
+    @staticmethod
+    def manual_hyper_parameters() -> Dict:
+        """Manual hyper-parameters specification."""
+        return dict()
 
     def _reduced_data2pd(self, reduced_data: np.ndarray, components_num: int) -> None:
         """Transform reduced data into the format of pd.DataFrame.
@@ -161,7 +167,7 @@ class PCADecomposition(DecompositionWorkflowBase):
 
         References
         ----------
-        scikit API: sklearn.decomposition.PCA
+        Scikit-learn API: sklearn.decomposition.PCA
         https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html
         """
         super().__init__()
@@ -175,21 +181,32 @@ class PCADecomposition(DecompositionWorkflowBase):
         # self.power_iteration_normalizer = power_iteration_normalizer
         self.random_state = random_state
 
-        self.model = PCA(n_components=self.n_components,
-                         copy=self.copy,
-                         whiten=self.whiten,
-                         svd_solver=self.svd_solver,
-                         tol=self.tol,
-                         iterated_power=self.iterated_power,
-                         # n_oversamples=self.n_oversamples,
-                         # power_iteration_normalizer=self.power_iteration_normalizer,
-                         random_state=self.random_state)
+        self.model = PCA(
+            n_components=self.n_components,
+            copy=self.copy,
+            whiten=self.whiten,
+            svd_solver=self.svd_solver,
+            tol=self.tol,
+            iterated_power=self.iterated_power,
+            # n_oversamples=self.n_oversamples,
+            # power_iteration_normalizer=self.power_iteration_normalizer,
+            random_state=self.random_state
+        )
+        
         self.naming = PCADecomposition.name
 
         # special attributes
         self.pc_data = None
 
+    @staticmethod
+    def manual_hyper_parameters() -> Dict:
+        """Manual hyper-parameters specification."""
+        print("-*-*- Hyper-parameters Specification -*-*-")
+        hyperparameters = pca_manual_hyper_parameters()
+        return hyperparameters
+
     def _get_principal_components(self) -> None:
+        """Get principal components."""
         print("-----* Principal Components *-----")
         print("Every column represents one principal component respectively.")
         print("Every row represents how much that row feature contributes to each principal component respectively.")
@@ -203,22 +220,26 @@ class PCADecomposition(DecompositionWorkflowBase):
         print(self.pc_data)
 
     def _get_explained_variance_ratio(self) -> None:
+        """Get explained variance ratio."""
         print("-----* Explained Variance Ratio *-----")
         print(self.model.explained_variance_ratio_)
 
     @staticmethod
     def _biplot(reduced_data: pd.DataFrame, pc_data: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
+        """Draw bi-plot."""
         print("-----* Compositional Bi-plot *-----")
         biplot(reduced_data, pc_data, algorithm_name)
         save_fig(f"Compositional Bi-plot - {algorithm_name}", store_path)
 
     @staticmethod
     def _triplot(reduced_data: pd.DataFrame, pc_data: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
+        """Draw tri-plot."""
         print("-----* Compositional Tri-plot *-----")
         triplot(reduced_data, pc_data, algorithm_name)
         save_fig(f"Compositional Tri-plot - {algorithm_name}", store_path)
 
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         self._reduced_data2pd(kwargs['reduced_data'], kwargs['components_num'])
         self._get_principal_components()
         self._get_explained_variance_ratio()

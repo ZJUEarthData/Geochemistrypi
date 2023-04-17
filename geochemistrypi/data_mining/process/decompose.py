@@ -12,7 +12,6 @@ class DecompositionModelSelection(object):
     def __init__(self, model: str) -> None:
         self.model = model
         self.dcp_workflow = DecompositionWorkflowBase()
-        self.components_num = None
 
     def activate(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None, X_train: Optional[pd.DataFrame] = None,
                  X_test: Optional[pd.DataFrame] = None, y_train: Optional[pd.DataFrame] = None,
@@ -20,11 +19,10 @@ class DecompositionModelSelection(object):
         """Train by Scikit-learn framework."""
 
         self.dcp_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
+        
         if self.model == "Principal Component Analysis":
-            print("-*-*- Hyper-parameters Specification -*-*-")
-            print("Decide the component numbers to keep:")
-            self.components_num = num_input(SECTION[2])
-            self.dcp_workflow = PCADecomposition(n_components=self.components_num)
+            hyper_parameters = PCADecomposition.manual_hyper_parameters()
+            self.dcp_workflow = PCADecomposition(n_components=hyper_parameters["n_components"], svd_solver=hyper_parameters["svd_solver"])
 
         # common components for every decomposition algorithm
         self.dcp_workflow.show_info()
@@ -33,7 +31,7 @@ class DecompositionModelSelection(object):
         self.dcp_workflow.data_upload(X=X)
 
         # special components of different algorithms
-        self.dcp_workflow.special_components(components_num=self.components_num, reduced_data=X_reduced)
+        self.dcp_workflow.special_components(components_num=hyper_parameters["n_components"], reduced_data=X_reduced)
 
         # Save decomposition result
         # self.dcp_workflow.data_save(X_reduced, "X reduced", DATASET_OUTPUT_PATH, "Decomposition Result")
