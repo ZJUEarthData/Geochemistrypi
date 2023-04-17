@@ -13,7 +13,7 @@ from ..global_variable import MODEL_OUTPUT_IMAGE_PATH
 from ..global_variable import DATASET_OUTPUT_PATH
 from ._base import WorkflowBase
 from .func.algo_clustering._kmeans import plot_silhouette_diagram, scatter2d, scatter3d, kmeans_manual_hyper_parameters
-from .func.algo_clustering._dbscan import dbscan_result_plot
+from .func.algo_clustering._dbscan import dbscan_result_plot, dbscan_manual_hyper_parameters
 
 
 class ClusteringWorkflowBase(WorkflowBase):
@@ -137,8 +137,8 @@ class KMeansClustering(ClusteringWorkflowBase):
 
         References
         ----------------------------------------
-        Read more in the :ref:`User Guide <k_means>`.
-        https://scikit-learn.org/stable/modules/clustering.html#k-means
+        Scikit-learn API: sklearn.cluster.KMeans
+        https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html
         """
 
         super().__init__()
@@ -236,20 +236,22 @@ class KMeansClustering(ClusteringWorkflowBase):
 
 
 class DBSCANClustering(ClusteringWorkflowBase):
+    """The automation workflow of using DBSCAN algorithm to make insightful products."""
 
     name = "DBSCAN"
-    special_function = ['Virtualization of result in 2D graph']
+    special_function = ['Virtualization of Result in 2D Graph']
 
-    def __init__(self,
-                 eps=0.5,
-                 min_samples=5,
-                 metric="euclidean",
-                 metric_params=None,
-                 algorithm="auto",
-                 leaf_size=30,
-                 p=None,
-                 n_jobs=None,
-                 ):
+    def __init__(
+        self,
+        eps=0.5,
+        min_samples=5,
+        metric="euclidean",
+        metric_params=None,
+        algorithm="auto",
+        leaf_size=30,
+        p=None,
+        n_jobs=None,
+    ) -> None:
         """
         Parameters
         ----------
@@ -283,8 +285,8 @@ class DBSCANClustering(ClusteringWorkflowBase):
 
         References
         ----------------------------------------
-        Read more in the :ref:`User Guide <dbscan>`.
-        https://scikit-learn.org/stable/modules/clustering.html#dbscan
+        Scikit-learn API: sklearn.cluster.DBSCAN
+        https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html
         """
 
         super().__init__()
@@ -296,24 +298,37 @@ class DBSCANClustering(ClusteringWorkflowBase):
         self.leaf_size = leaf_size
         self.p = p
         self.n_jobs = n_jobs
-        self.model = DBSCAN(eps=self.eps,
-                            min_samples=self.min_samples,
-                            metric=self.metric,
-                            metric_params=self.metric_params,
-                            algorithm=self.algorithm,
-                            leaf_size=self.leaf_size,
-                            p=self.p,
-                            n_jobs=self.n_jobs)
+
+        self.model = DBSCAN(
+            eps=self.eps,
+            min_samples=self.min_samples,
+            metric=self.metric,
+            metric_params=self.metric_params,
+            algorithm=self.algorithm,
+            leaf_size=self.leaf_size,
+            p=self.p,
+            n_jobs=self.n_jobs
+        )
+
         self.naming = DBSCANClustering.name
 
     @staticmethod
-    def clustering_result_plot(X: pd.DataFrame, trained_model: any, algorithm_name: str, imag_config: dict, store_path: str) -> None:
+    def manual_hyper_parameters() -> Dict:
+        """Manual hyper-parameters specification."""
+        print("-*-*- Hyper-parameters Specification -*-*-")
+        hyperparameters = dbscan_manual_hyper_parameters()
+        return hyperparameters
+
+    @staticmethod
+    def _clustering_result_plot(X: pd.DataFrame, trained_model: any, algorithm_name: str, imag_config: dict, store_path: str) -> None:
+        """Plot the clustering result in 2D graph."""
         print("-------** dbscan_clustering_result_2d_plot **----------")
         dbscan_result_plot(X, trained_model, imag_config, algorithm_name)
         save_fig(f'Plot - {algorithm_name} - 2D', store_path)
 
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
-        self.clustering_result_plot(X=self.X, trained_model=self.model, algorithm_name=self.naming, imag_config=self.image_config, store_path=MODEL_OUTPUT_IMAGE_PATH)
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        self._clustering_result_plot(X=self.X, trained_model=self.model, algorithm_name=self.naming, imag_config=self.image_config, store_path=MODEL_OUTPUT_IMAGE_PATH)
 
 
 class AffinityPropagationClustering(ClusteringWorkflowBase):

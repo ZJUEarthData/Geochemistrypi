@@ -26,20 +26,8 @@ class ClusteringModelSelection(object):
             hyper_parameters = KMeansClustering.manual_hyper_parameters()
             self.clt_workflow = KMeansClustering(n_clusters=hyper_parameters["n_clusters"], init=hyper_parameters["init"], max_iter=hyper_parameters["max_iter"], tol=hyper_parameters["tol"], algorithm=hyper_parameters["algorithm"])
         elif self.model == "DBSCAN":
-            print("-*-*- Hyper-parameters Specification -*-*-")
-            print("Maximum Distance: The maximum distance between two samples for one to be considered as in the"
-                  " neighborhood of the other. This is not a maximum bound on the distances of points within a cluster."
-                  " This is the most important DBSCAN parameter to choose appropriately for your data set and"
-                  " distance function.")
-            print("Determine the maximum distance for DBSCAN in advance, such as 0.5.")
-            eps = float_input(0.5, SECTION[2], "Maximum Distance: ")
-            print("Minimum Samples: The number of samples (or total weight) in a neighborhood for a point to be"
-                  " considered as a core point. This includes the point itself.")
-            print("Determine the minimum samples for DBSCAN in advance, such as 5.")
-            min_samples = num_input(SECTION[2], "Minimum Samples: ")
-
-            self.clt_workflow = DBSCANClustering(eps=eps, min_samples=min_samples)
-
+            hyper_parameters = DBSCANClustering.manual_hyper_parameters()
+            self.clt_workflow = DBSCANClustering(eps=hyper_parameters["eps"], min_samples=hyper_parameters["min_samples"], metric=hyper_parameters["metric"], algorithm=hyper_parameters["algorithm"], leaf_size=hyper_parameters["leaf_size"], p=hyper_parameters["p"])
         elif self.model == "":
             pass
 
