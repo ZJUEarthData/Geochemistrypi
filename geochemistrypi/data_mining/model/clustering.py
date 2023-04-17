@@ -1,26 +1,24 @@
 # -*- coding: utf-8 -*-
+import numpy as np
+import pandas as pd
 from sklearn import metrics
 from sklearn.cluster import KMeans
 from sklearn.cluster import DBSCAN
-import numpy as np
-import pandas as pd
 from sklearn.cluster import AffinityPropagation
+from typing import Optional, Union, Dict
+
 from ..utils.base import save_data
 from ..utils.base import save_fig
 from ..global_variable import MODEL_OUTPUT_IMAGE_PATH
 from ..global_variable import DATASET_OUTPUT_PATH
 from ._base import WorkflowBase
-from .func.algo_clustering._kmeans import plot_silhouette_diagram, scatter2d, scatter3d
+from .func.algo_clustering._kmeans import plot_silhouette_diagram, scatter2d, scatter3d, kmeans_manual_hyper_parameters
 from .func.algo_clustering._dbscan import dbscan_result_plot
-from typing import Optional, Union, Dict
 
 
 class ClusteringWorkflowBase(WorkflowBase):
-    """Base class for Cluster.
+    """The base workflow class of clustering algorithms."""
 
-    Warning: This class should not be used directly.
-    Use derived classes instead.
-    """
     common_function = ['Cluster Centers', 'Cluster Labels', 'Model Persistence']
 
     def __init__(self):
@@ -28,16 +26,24 @@ class ClusteringWorkflowBase(WorkflowBase):
         self.clustering_result = None
 
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
+        """Fit the model according to the given training data."""
         self.X = X
         self.model.fit(X)
 
+    @staticmethod
+    def manual_hyper_parameters() -> Dict:
+        """Manual hyper-parameters specification."""
+        return dict()
+
     # TODO(Samson 1057266013@qq.com): This function might need to be rethought.
     def get_cluster_centers(self) -> np.ndarray:
+        """Get the cluster centers."""
         print("-----* Clustering Centers *-----")
         print(getattr(self.model, 'cluster_centers_', 'This class don not have cluster_centers_'))
         return getattr(self.model, 'cluster_centers_', 'This class don not have cluster_centers_')
 
     def get_labels(self):
+        """Get the cluster labels."""
         print("-----* Clustering Labels *-----")
         #self.X['clustering result'] = self.model.labels_
         self.clustering_result = pd.DataFrame(self.model.labels_, columns=['clustering result'])
@@ -46,23 +52,24 @@ class ClusteringWorkflowBase(WorkflowBase):
 
 
 class KMeansClustering(ClusteringWorkflowBase):
+    """The automation workflow of using KMeans algorithm to make insightful products."""
 
     name = "KMeans"
     special_function = ['KMeans Score']
 
-    def __init__(self,
-                 n_clusters=8,
-                 init="k-means++",
-                 n_init=10,
-                 max_iter=300,
-                 tol=1e-4,
-                 verbose=0,
-                 random_state=None,
-                 copy_x=True,
-                 algorithm="auto"
+    def __init__(
+        self,
+        n_clusters=8,
+        init="k-means++",
+        n_init=10,
+        max_iter=300,
+        tol=1e-4,
+        verbose=0,
+        random_state=None,
+        copy_x=True,
+        algorithm="auto"
     ) -> None:
         """
-
         Parameters
         ----------
         n_clusters : int, default=8
@@ -144,19 +151,30 @@ class KMeansClustering(ClusteringWorkflowBase):
         self.random_state = random_state
         self.copy_x = copy_x
         self.algorithm = algorithm
-        self.model = KMeans(n_clusters=self.n_clusters,
-                            init=self.init,
-                            n_init=self.n_init,
-                            max_iter=self.max_iter,
-                            tol=self.tol,
-                            verbose=self.verbose,
-                            random_state=self.random_state,
-                            copy_x=self.copy_x,
-                            algorithm=self.algorithm)
+
+        self.model = KMeans(
+            n_clusters=self.n_clusters,
+            init=self.init,
+            n_init=self.n_init,
+            max_iter=self.max_iter,
+            tol=self.tol,
+            verbose=self.verbose,
+            random_state=self.random_state,
+            copy_x=self.copy_x,
+            algorithm=self.algorithm
+        )
 
         self.naming = KMeansClustering.name
 
+    @staticmethod
+    def manual_hyper_parameters() -> Dict:
+        """Manual hyper-parameters specification."""
+        print("-*-*- Hyper-parameters Specification -*-*-")
+        hyperparameters = kmeans_manual_hyper_parameters()
+        return hyperparameters
+
     def _get_scores(self):
+        """Get the scores of the clustering result."""
         print("-----* KMeans Scores *-----")
         print("Inertia Score: ", self.model.inertia_)
         print("Calinski Harabasz Score: ", metrics.calinski_harabasz_score(self.X, self.model.labels_))
@@ -165,29 +183,27 @@ class KMeansClustering(ClusteringWorkflowBase):
     @staticmethod
     def _plot_silhouette_diagram(data: pd.DataFrame, cluster_labels: pd.DataFrame, cluster_centers_: np.ndarray,
                                  n_clusters: int, algorithm_name: str, store_path: str) -> None:
+        """Plot the silhouette diagram of the clustering result."""
         print("-----* Silhouette Diagram *-----")
         plot_silhouette_diagram(data, cluster_labels, cluster_centers_, n_clusters, algorithm_name)
         save_fig(f"Silhouette Diagram - {algorithm_name}", store_path)
 
     @staticmethod
     def _scatter2d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
+        """Plot the two-dimensional diagram of the clustering result."""
         print("-----* Cluster Two-Dimensional Diagram *-----")
         scatter2d(data, cluster_labels, algorithm_name)
         save_fig(f"Cluster Two-Dimensional Diagram - {algorithm_name}", store_path)
 
     @staticmethod
     def _scatter3d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
+        """Plot the three-dimensional diagram of the clustering result."""
         print("-----* Cluster Three-Dimensional Diagram *-----")
         scatter3d(data, cluster_labels, algorithm_name)
         save_fig(f"Cluster Three-Dimensional Diagram - {algorithm_name}", store_path)
 
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
-        """
-            The components_num Represents the dimension of the data.
-            We subtract 1 because the label takes up a column.
-        """
-        # data_dimension = self.X.shape[1] - 1
-
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         self._get_scores()
         self._plot_silhouette_diagram(data=self.X, cluster_labels=self.clustering_result['clustering result'],
                                       cluster_centers_=self.get_cluster_centers(), n_clusters=self.n_clusters,

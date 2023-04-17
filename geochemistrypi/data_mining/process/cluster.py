@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 import pandas as pd
+from typing import Optional
+
 from ..data.data_readiness import num_input, float_input, str_input
 from ..model.clustering import KMeansClustering, DBSCANClustering, ClusteringWorkflowBase
 from ..global_variable import SECTION
-from typing import Optional
+
 
 
 class ClusteringModelSelection(object):
@@ -21,11 +23,8 @@ class ClusteringModelSelection(object):
         self.clt_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
 
         if self.model == "KMeans":
-            print("-*-*- Hyper-parameters Specification -*-*-")
-            print("Clusters Number: The number of clusters to form as well as the number of centroids to generate.")
-            print("Designate the clustering number for KMeans in advance, such as 8.")
-            cluster_num = num_input(SECTION[2], "Clusters Number: ")
-            self.clt_workflow = KMeansClustering(n_clusters=cluster_num)
+            hyper_parameters = KMeansClustering.manual_hyper_parameters()
+            self.clt_workflow = KMeansClustering(n_clusters=hyper_parameters["n_clusters"], init=hyper_parameters["init"], max_iter=hyper_parameters["max_iter"], tol=hyper_parameters["tol"], algorithm=hyper_parameters["algorithm"])
         elif self.model == "DBSCAN":
             print("-*-*- Hyper-parameters Specification -*-*-")
             print("Maximum Distance: The maximum distance between two samples for one to be considered as in the"
