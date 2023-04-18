@@ -46,6 +46,6 @@ DECOMPOSITION_MODELS = ['Principal Component Analysis']
 NON_AUTOML_MODELS = ['Linear Regression', 'Polynomial Regression']
 RAY_FLAML = ['Deep Neural Network']
 
-IMPUTING_STRATEGY = ['Mean', 'Median', 'Most Frequent']
+IMPUTING_STRATEGY = ['Mean Value', 'Median Value', 'Most Frequent Value', 'Constant(Specified Value)']
 
 FEATURE_SCALING_STRATEGY = ['Min-max Scaling', 'Standardization']
