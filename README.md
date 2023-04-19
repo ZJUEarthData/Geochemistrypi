@@ -9,13 +9,17 @@
 </p>
 
 
-Geochemistry π is **a Python framework** for data-driven geochemistry discovery. It provides an extendable tool and
-one-stop shop for **geochemical data analysis** on tabular data. The goal of the Geochemistry π is to create
-a series of user-friendly and extensible products of high automation for the full cycle of geochemistry research.  
+Geochemistry π is **a Python framework** for data-driven geochemistry discovery. It provides an extendable tool and one-stop shop for **geochemical data analysis** on tabular data. 
+
+The goal of the Geochemistry π is to create a series of user-friendly and extensible products of high automation for the full cycle of geochemistry research.  
 
 Key features are:
 + **Easy to use:** The automation of data mining process provides the users with simple number options to choose.
 + **Extensible:** It allows appending new algorithms through Scikit-learn with augmented AutoML functionality by FLAML and Ray.
+
+Official Website: https://geochemistrypy.readthedocs.io/en/latest/Introduction/Introduction.html
+
+Latest Update: follow up by clicking `Starred` and  `Watch` on our [GitHub repository](https://github.com/ZJUEarthData/geochemistrypi), then get email notifications of the newest features automatically.
 
 ## Quick Installation
 
