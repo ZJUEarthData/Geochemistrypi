@@ -29,6 +29,12 @@ pip install geochemistrypi
 ```
 **Note**: The beta version runs on MacOS, Windows or Linux.
 
+## Quick Update
+One instruction to update the software to the latest version on command line, such as Terminal on macOS, CMD on Windows. 
+```
+pip install --upgrade geochemistrypi
+```
+
 ## Example
 
 **How to run:** After successfully downloading, run this instruction on command line whatever directory it is.
