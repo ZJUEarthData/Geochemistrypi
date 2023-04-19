@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 from typing import Optional, List, Dict
-import sys
-sys.path.append("../../..")
-from data_mining.data.data_readiness import float_input, num_input, str_input, tuple_input
-from data_mining.global_variable import SECTION
+from ....data.data_readiness import float_input, num_input, str_input, tuple_input
+from ....global_variable import SECTION
 
 
 def deep_neural_network_manual_hyper_parameters() -> Dict:

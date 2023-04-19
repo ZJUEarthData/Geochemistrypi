@@ -5,10 +5,8 @@ import pandas as pd
 import xgboost
 from matplotlib import pyplot as plt
 from sklearn.inspection import permutation_importance
-import sys
-sys.path.append("../../..")
-from data_mining.data.data_readiness import float_input, num_input
-from data_mining.global_variable import SECTION
+from ....data.data_readiness import float_input, num_input
+from ....global_variable import SECTION
 
 def xgboost_manual_hyper_parameters() -> Dict:
     """Manually set hyperparameters.

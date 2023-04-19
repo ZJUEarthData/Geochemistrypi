@@ -4,10 +4,8 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from sklearn.inspection import permutation_importance
 from typing import Dict
-import sys
-sys.path.append("../../..")
-from data_mining.data.data_readiness import float_input, num_input, str_input
-from data_mining.global_variable import SECTION
+from ....data.data_readiness import num_input, str_input
+from ....global_variable import SECTION
 
 
 def random_forest_manual_hyper_parameters() -> Dict:

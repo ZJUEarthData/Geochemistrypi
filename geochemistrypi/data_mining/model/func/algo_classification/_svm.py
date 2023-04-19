@@ -3,10 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from typing import Optional, List, Dict
-import sys
-sys.path.append("../../..")
-from data_mining.data.data_readiness import float_input, num_input, str_input
-from data_mining.global_variable import SECTION
+from ....data.data_readiness import float_input, num_input, str_input
+from ....global_variable import SECTION
 
 
 def svc_manual_hyper_parameters() -> Dict:

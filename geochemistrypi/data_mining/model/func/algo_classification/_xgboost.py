@@ -2,10 +2,8 @@ import matplotlib.pyplot as plt
 import xgboost
 import pandas as pd
 from typing import Dict
-import sys
-sys.path.append("../../..")
-from data_mining.data.data_readiness import float_input, num_input
-from data_mining.global_variable import SECTION
+from ....data.data_readiness import float_input, num_input
+from ....global_variable import SECTION
 
 def xgboost_manual_hyper_parameters() -> Dict:
     """Manually set hyperparameters.

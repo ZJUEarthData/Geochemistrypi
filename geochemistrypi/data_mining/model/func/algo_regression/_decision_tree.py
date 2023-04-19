@@ -1,10 +1,8 @@
 import matplotlib.pyplot as plt
 from sklearn.tree import plot_tree
 from typing import Dict
-import sys
-sys.path.append("../../..")
-from data_mining.data.data_readiness import num_input, str_input
-from data_mining.global_variable import SECTION
+from ....data.data_readiness import num_input, str_input
+from ....global_variable import SECTION
 
 
 def decision_tree_manual_hyper_parameters() -> Dict:
