@@ -30,8 +30,8 @@ class DecompositionWorkflowBase(WorkflowBase):
         """Apply dimensionality reduction to X."""
         return self.model.transform(X)
 
-    @staticmethod
-    def manual_hyper_parameters() -> Dict:
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
         return dict()
 
@@ -198,12 +198,12 @@ class PCADecomposition(DecompositionWorkflowBase):
         # special attributes
         self.pc_data = None
 
-    @staticmethod
-    def manual_hyper_parameters() -> Dict:
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print("-*-*- Hyper-parameters Specification -*-*-")
-        hyperparameters = pca_manual_hyper_parameters()
-        return hyperparameters
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = pca_manual_hyper_parameters()
+        return hyper_parameters
 
     def _get_principal_components(self) -> None:
         """Get principal components."""

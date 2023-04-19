@@ -4,14 +4,15 @@ import pandas as pd
 import numpy as np
 import joblib
 import pickle
-from typing import Optional
-from ..data.data_readiness import num2option, num_input, limit_num_input, create_sub_data_set, show_data_columns
-from ..global_variable import SECTION, MODEL_PATH
-from ..utils.base import save_data
+from typing import Dict, Optional
 from typing import Tuple, List, Union
 from abc import ABCMeta, abstractmethod
 from multipledispatch import dispatch
 from datetime import date
+
+from ..data.data_readiness import num2option, num_input, limit_num_input, create_sub_data_set, show_data_columns
+from ..global_variable import SECTION, MODEL_PATH
+from ..utils.base import save_data
 
 
 class WorkflowBase(metaclass=ABCMeta):
@@ -119,17 +120,16 @@ class WorkflowBase(metaclass=ABCMeta):
         """The interface for the child classes."""
         return pd.DataFrame()
 
-    # TODO(Sany Email:sanyhew1097618435@163.com): The manual_hyper_parameters method is not used temporarily. It will be used in the future.
-    # @abstractmethod
-    # def manual_hyper_parameters(self, **kwargs) -> None:
-    #     """Placeholder for manual_hyper_parameters. child classes should implement this method!
+    @abstractmethod
+    def manual_hyper_parameters(cls) -> Dict:
+        """Placeholder for manual_hyper_parameters. child classes should implement this method!
 
-    #     Parameters
-    #     ----------
-    #     kwargs : dict
-    #         The hyper parameters of the model.
-    #     """
-    #     return None
+        Parameters
+        ----------
+        kwargs : dict
+            The hyper parameters of the model.
+        """
+        return dict()
 
     @staticmethod
     def score(y_true: Union[pd.DataFrame, np.ndarray], y_predict: Union[pd.DataFrame, np.ndarray])\

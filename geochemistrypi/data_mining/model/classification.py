@@ -93,8 +93,8 @@ class ClassificationWorkflowBase(WorkflowBase):
         else:
             return self.ray_best_model
 
-    @staticmethod
-    def manual_hyper_parameters() -> Dict:
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
         return dict()
 
@@ -364,12 +364,12 @@ class SVMClassification(ClassificationWorkflowBase):
 
         return MySVMClassification
 
-    @staticmethod
-    def manual_hyper_parameters() -> Dict:
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print("-*-*- Hyper-parameters Specification -*-*-")
-        hyperparameters = svc_manual_hyper_parameters()
-        return hyperparameters
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = svc_manual_hyper_parameters()
+        return hyper_parameters
 
     @staticmethod
     def _plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: Any,
@@ -661,12 +661,12 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
 
         return MyDTClassification
 
-    @staticmethod
-    def manual_hyper_parameters() -> Dict:
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print("-*-*- Hyper-parameters Specification -*-*-")
-        hyperparameters = decision_tree_manual_hyper_parameters()
-        return hyperparameters
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = decision_tree_manual_hyper_parameters()
+        return hyper_parameters
 
     def plot_tree_function(self, trained_model: object, image_config: dict, algorithm_name: str, store_path: str) -> None:
         """Drawing decision tree diagrams."""
@@ -968,12 +968,12 @@ class RandomForestClassification(ClassificationWorkflowBase):
         }
         return configuration
 
-    @staticmethod
-    def manual_hyper_parameters() -> Dict:
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print("-*-*- Hyper-parameters Specification -*-*-")
-        hyperparameters = random_forest_manual_hyper_parameters()
-        return hyperparameters
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = random_forest_manual_hyper_parameters()
+        return hyper_parameters
 
     @staticmethod
     def _feature_importances(X_train: pd.DataFrame, trained_model: object, algorithm_name: str,
@@ -1326,12 +1326,12 @@ class XgboostClassification(ClassificationWorkflowBase):
         }
         return configuration
 
-    @staticmethod
-    def manual_hyper_parameters() -> Dict:
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print("-*-*- Hyper-parameters Specification -*-*-")
-        hyperparameters = xgboost_manual_hyper_parameters()
-        return hyperparameters
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = xgboost_manual_hyper_parameters()
+        return hyper_parameters
 
     @staticmethod
     def _feature_importance_series(data: pd.DataFrame, trained_model: any, algorithm_name: str, image_config: dict,
@@ -1595,12 +1595,12 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
         }
         return configuration
 
-    @staticmethod
-    def manual_hyper_parameters() -> Dict:
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print("-*-*- Hyper-parameters Specification -*-*-")
-        hyperparameters = logistic_regression_manual_hyper_parameters()
-        return hyperparameters
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = logistic_regression_manual_hyper_parameters()
+        return hyper_parameters
 
     @staticmethod
     def _feature_importance(data: pd.DataFrame, trained_model: any, algorithm_name: str, store_path: str) -> None:
@@ -1949,12 +1949,12 @@ class DNNClassification(ClassificationWorkflowBase):
                                                best_result.config['l3'], best_result.config['batch'])
 
 
-    @staticmethod
-    def manual_hyper_parameters() -> Dict:
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print("-*-*- Hyper-parameters Specification -*-*-")
-        hyperparameters = deep_neural_network_manual_hyper_parameters()
-        return hyperparameters
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = deep_neural_network_manual_hyper_parameters()
+        return hyper_parameters
 
     @dispatch()
     def special_components(self, **kwargs) -> None:
@@ -2210,12 +2210,12 @@ class ExtraTreesClassification(ClassificationWorkflowBase):
         }
         return configuration
 
-    @staticmethod
-    def manual_hyper_parameters() -> Dict:
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print("-*-*- Hyper-parameters Specification -*-*-")
-        hyperparameters = extra_trees_manual_hyper_parameters()
-        return hyperparameters
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = extra_trees_manual_hyper_parameters()
+        return hyper_parameters
 
     @dispatch()
     def special_components(self, **kwargs) -> None:

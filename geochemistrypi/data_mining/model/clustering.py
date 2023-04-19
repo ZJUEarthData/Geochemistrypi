@@ -30,8 +30,8 @@ class ClusteringWorkflowBase(WorkflowBase):
         self.X = X
         self.model.fit(X)
 
-    @staticmethod
-    def manual_hyper_parameters() -> Dict:
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
         return dict()
 
@@ -166,12 +166,12 @@ class KMeansClustering(ClusteringWorkflowBase):
 
         self.naming = KMeansClustering.name
 
-    @staticmethod
-    def manual_hyper_parameters() -> Dict:
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print("-*-*- Hyper-parameters Specification -*-*-")
-        hyperparameters = kmeans_manual_hyper_parameters()
-        return hyperparameters
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = kmeans_manual_hyper_parameters()
+        return hyper_parameters
 
     def _get_scores(self):
         """Get the scores of the clustering result."""
@@ -312,17 +312,17 @@ class DBSCANClustering(ClusteringWorkflowBase):
 
         self.naming = DBSCANClustering.name
 
-    @staticmethod
-    def manual_hyper_parameters() -> Dict:
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print("-*-*- Hyper-parameters Specification -*-*-")
-        hyperparameters = dbscan_manual_hyper_parameters()
-        return hyperparameters
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = dbscan_manual_hyper_parameters()
+        return hyper_parameters
 
     @staticmethod
     def _clustering_result_plot(X: pd.DataFrame, trained_model: any, algorithm_name: str, imag_config: dict, store_path: str) -> None:
         """Plot the clustering result in 2D graph."""
-        print("-------** dbscan_clustering_result_2d_plot **----------")
+        print("-------** DBSCAN Clustering Result 2D Plot **----------")
         dbscan_result_plot(X, trained_model, imag_config, algorithm_name)
         save_fig(f'Plot - {algorithm_name} - 2D', store_path)
 

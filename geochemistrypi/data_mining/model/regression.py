@@ -97,8 +97,8 @@ class RegressionWorkflowBase(WorkflowBase):
         """The customized model of FLAML framework and RAY framework."""
         return object
     
-    @staticmethod
-    def manual_hyper_parameters() -> Dict:
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
         return dict()
 
@@ -208,12 +208,12 @@ class PolynomialRegression(RegressionWorkflowBase):
             self._features_name = poly_features.get_feature_names()
         return X_train_poly, X_test_poly
 
-    @staticmethod
-    def manual_hyper_parameters() -> Dict:
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print("-*-*- Hyper-parameters Specification -*-*-")
-        hyperparameters = polynomial_regression_manual_hyper_parameters()
-        return hyperparameters
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = polynomial_regression_manual_hyper_parameters()
+        return hyper_parameters
 
     @staticmethod
     def _show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: List) -> None:
@@ -528,12 +528,12 @@ class XgboostRegression(RegressionWorkflowBase):
         }
         return configuration
 
-    @staticmethod
-    def manual_hyper_parameters() -> Dict:
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print("-*-*- Hyper-parameters Specification -*-*-")
-        hyperparameters = xgboost_manual_hyper_parameters()
-        return hyperparameters
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = xgboost_manual_hyper_parameters()
+        return hyper_parameters
 
     @staticmethod
     def _feature_importance(X: pd.DataFrame, trained_model: object, image_config: dict, algorithm_name: str, store_path: str) -> None:
@@ -800,12 +800,12 @@ class DecisionTreeRegression(RegressionWorkflowBase):
 
         return MyDTRegression
 
-    @staticmethod
-    def manual_hyper_parameters() -> Dict:
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print("-*-*- Hyper-parameters Specification -*-*-")
-        hyperparameters = decision_tree_manual_hyper_parameters()
-        return hyperparameters
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = decision_tree_manual_hyper_parameters()
+        return hyper_parameters
 
     def _plot_tree_function(self, trained_model: object, image_config: dict, algorithm_name: str, store_path: str) -> None:
         """Drawing decision tree diagrams."""
@@ -1069,12 +1069,12 @@ class ExtraTreesRegression(RegressionWorkflowBase):
         }
         return configuration
 
-    @staticmethod
-    def manual_hyper_parameters() -> Dict:
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print("-*-*- Hyper-parameters Specification -*-*-")
-        hyperparameters = extra_trees_manual_hyper_parameters()
-        return hyperparameters
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = extra_trees_manual_hyper_parameters()
+        return hyper_parameters
 
     @staticmethod
     def _feature_importances(X_train: pd.DataFrame, trained_model: object,  image_config: dict, algorithm_name: str, store_path: str) -> None:
@@ -1340,12 +1340,12 @@ class RandomForestRegression(RegressionWorkflowBase):
         }
         return configuration
 
-    @staticmethod
-    def manual_hyper_parameters() -> Dict:
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print("-*-*- Hyper-parameters Specification -*-*-")
-        hyperparameters = random_forest_manual_hyper_parameters()
-        return hyperparameters
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = random_forest_manual_hyper_parameters()
+        return hyper_parameters
 
     @staticmethod
     def _feature_importances(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame,
@@ -1551,12 +1551,12 @@ class SVMRegression(RegressionWorkflowBase):
 
         return MySVMRegression
 
-    @staticmethod
-    def manual_hyper_parameters() -> Dict:
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print("-*-*- Hyper-parameters Specification -*-*-")
-        hyperparameters = svr_manual_hyper_parameters()
-        return hyperparameters
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = svr_manual_hyper_parameters()
+        return hyper_parameters
 
     @staticmethod
     def _plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: Any,
@@ -1874,12 +1874,12 @@ class DNNRegression(RegressionWorkflowBase):
         self.ray_best_model = customized_model(best_result.config['l1'], best_result.config['l2'],
                                                best_result.config['l3'], best_result.config['batch'])
 
-    @staticmethod
-    def manual_hyper_parameters() -> Dict:
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print("-*-*- Hyper-parameters Specification -*-*-")
-        hyperparameters = deep_neural_network_manual_hyper_parameters()
-        return hyperparameters
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = deep_neural_network_manual_hyper_parameters()
+        return hyper_parameters
 
     @staticmethod
     def _plot_learning_curve(trained_model: object, algorithm_name: str, store_path) -> None:
@@ -1967,12 +1967,12 @@ class LinearRegression2(RegressionWorkflowBase):
 
         self.naming = LinearRegression2.name
 
-    @staticmethod
-    def manual_hyper_parameters() -> Dict:
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print("-*-*- Hyper-parameters Specification -*-*-")
-        hyperparameters = linear_regression_manual_hyper_parameters()
-        return hyperparameters
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = linear_regression_manual_hyper_parameters()
+        return hyper_parameters
 
     @staticmethod
     def _show_formula(coef, intercept, columns_name):
