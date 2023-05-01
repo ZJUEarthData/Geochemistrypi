@@ -29,7 +29,7 @@ os.makedirs(MODEL_PATH, exist_ok=True)
 
 
 def pipeline(file_name: str) -> None:
-    print("Geochemistry Py v.1.0.0 - Beta Version")
+    print("Geochemistry Py v0.2.1 - Beta Version")
     print("....... Initializing .......")
     logger = log(OUTPUT_PATH, "inner_test.log")
     logger.info("Geochemistry Py v.1.0.0 - beta version")

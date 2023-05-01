@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "geochemistrypi"
-version = "0.2.0"
+version = "0.2.1"
 authors = [
   { name="Can He", email="sanyhew1097618435@163.com" },
 ]
@@ -33,11 +33,9 @@ dependencies = [
     "pandas==1.5.2",
     "joblib==1.2.0",
     "flaml==1.0.14",         # required to run Xgboost + FLMAL
-    "numpy==1.21.6",         # required to run Xgboost + FLMAL
+    "numpy==1.23.5",         # required to run Xgboost + FLMAL
     "xgboost==1.6.2",        # required to run Xgboost + FLAML and be compatible with M2 chip on Mac
-    "pyogrio==0.4.2",        # required to draw world map
-    "geopandas==0.10.2",     # required to draw world map
-    "Fiona==1.8.19",         # required to draw world map
+    "basemap==1.3.6",        # required to draw world map
     "threadpoolctl==3.1.0",  # required to draw 3d plot for KMeans
     "matplotlib==3.5.2"      # required to draw 3d plot for KMeans
 ]
