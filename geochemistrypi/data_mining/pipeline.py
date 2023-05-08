@@ -1,23 +1,38 @@
 # -*- coding: utf-8 -*-
 import os
-from .global_variable import OPTION, SECTION, IMPUTING_STRATEGY, MODE_OPTION, REGRESSION_MODELS,\
-    CLASSIFICATION_MODELS, CLUSTERING_MODELS, DECOMPOSITION_MODELS, FEATURE_SCALING_STRATEGY,\
-    TEST_DATA_OPTION, MODEL_OUTPUT_IMAGE_PATH, STATISTIC_IMAGE_PATH, DATASET_OUTPUT_PATH,\
-    GEO_IMAGE_PATH, MAP_IMAGE_PATH, MODEL_PATH, NON_AUTOML_MODELS, OUTPUT_PATH
-from .data.data_readiness import read_data, show_data_columns, num2option, create_sub_data_set, basic_info, np2pd, \
-    num_input, limit_num_input, data_split, float_input
-from .data.imputation import imputer
+
+from .data.data_readiness import basic_info, create_sub_data_set, data_split, float_input, limit_num_input, np2pd, num2option, num_input, read_data, show_data_columns
 from .data.feature_engineering import FeatureConstructor
+from .data.imputation import imputer
 from .data.preprocessing import feature_scaler
 from .data.statistic import monte_carlo_simulator
-from .plot.statistic_plot import basic_statistic, correlation_plot, distribution_plot, is_null_value, probability_plot, \
-    ratio_null_vs_filled, logged_distribution_plot, is_imputed
+from .global_variable import (
+    CLASSIFICATION_MODELS,
+    CLUSTERING_MODELS,
+    DATASET_OUTPUT_PATH,
+    DECOMPOSITION_MODELS,
+    FEATURE_SCALING_STRATEGY,
+    GEO_IMAGE_PATH,
+    IMPUTING_STRATEGY,
+    MAP_IMAGE_PATH,
+    MODE_OPTION,
+    MODEL_OUTPUT_IMAGE_PATH,
+    MODEL_PATH,
+    NON_AUTOML_MODELS,
+    OPTION,
+    OUTPUT_PATH,
+    REGRESSION_MODELS,
+    SECTION,
+    STATISTIC_IMAGE_PATH,
+    TEST_DATA_OPTION,
+)
 from .plot.map_plot import map_projected
-from .utils.base import clear_output, log, show_warning, save_data
-from .process.regress import RegressionModelSelection
+from .plot.statistic_plot import basic_statistic, correlation_plot, distribution_plot, is_imputed, is_null_value, logged_distribution_plot, probability_plot, ratio_null_vs_filled
 from .process.classify import ClassificationModelSelection
 from .process.cluster import ClusteringModelSelection
 from .process.decompose import DecompositionModelSelection
+from .process.regress import RegressionModelSelection
+from .utils.base import clear_output, log, save_data, show_warning
 
 # create the directories if they didn't exist yet
 os.makedirs(MODEL_OUTPUT_IMAGE_PATH, exist_ok=True)
@@ -48,13 +63,13 @@ def pipeline(file_name: str) -> None:
         num2option(TEST_DATA_OPTION)
         test_data_num = limit_num_input(TEST_DATA_OPTION, SECTION[0], num_input)
         if test_data_num == 1:
-            file_name = 'Data_Regression.xlsx'
+            file_name = "Data_Regression.xlsx"
         elif test_data_num == 2:
-            file_name = 'Data_Classification.xlsx'
+            file_name = "Data_Classification.xlsx"
         elif test_data_num == 3:
-            file_name = 'Data_Clustering.xlsx'
+            file_name = "Data_Clustering.xlsx"
         elif test_data_num == 4:
-            file_name = 'Data_Decomposition.xlsx'
+            file_name = "Data_Decomposition.xlsx"
         data = read_data(file_name=file_name)
         print(f"Successfully loading the built-in data set '{file_name}'.")
     show_data_columns(data.columns)
@@ -66,13 +81,13 @@ def pipeline(file_name: str) -> None:
     map_flag = 0
     is_map_projection = 0
     detection_index = 0
-    lon = ['LONGITUDE', 'Longitude (°E)', 'longitude', 'Longitude', '经度 (°N)', '经度']
-    lat = ['LATITUDE', 'Latitude (°N)', 'latitude', 'Latitude', '纬度 (°E)', '纬度']
+    lon = ["LONGITUDE", "Longitude (°E)", "longitude", "Longitude", "经度 (°N)", "经度"]
+    lat = ["LATITUDE", "Latitude (°N)", "latitude", "Latitude", "纬度 (°E)", "纬度"]
     j = [j for j in lat if j in data.columns]
     i = [i for i in lon if i in data.columns]
-    if (bool(len(j) > 0)):
+    if bool(len(j) > 0):
         detection_index += 1
-    if (bool(len(i) > 0)):
+    if bool(len(i) > 0):
         detection_index += 2
     if detection_index == 2:
         print("The provided data set is lack of 'LATITUDE' data.")
@@ -108,7 +123,7 @@ def pipeline(file_name: str) -> None:
                 clear_output()
                 continue
             else:
-                print('Exit Map Projection Mode.')
+                print("Exit Map Projection Mode.")
                 clear_output()
                 break
         elif is_map_projection == 2:
@@ -123,7 +138,7 @@ def pipeline(file_name: str) -> None:
     print("The Selected Data Set:")
     print(data_processed)
     clear_output()
-    print('Basic Statistical Information: ')
+    print("Basic Statistical Information: ")
     basic_info(data_processed)
     basic_statistic(data_processed)
     correlation_plot(data_processed.columns, data_processed)
@@ -151,9 +166,14 @@ def pipeline(file_name: str) -> None:
         print("Null Hypothesis: The distributions of the data set before and after imputing remain the same.")
         print("Thoughts: Check which column rejects null hypothesis.")
         print("Statistics Test Method: Wilcoxon Test")
-        monte_carlo_simulator(data_processed, data_processed_imputed,
-                              sample_size=data_processed_imputed.shape[0]//2,
-                              iteration=100, test='wilcoxon', confidence=0.05)
+        monte_carlo_simulator(
+            data_processed,
+            data_processed_imputed,
+            sample_size=data_processed_imputed.shape[0] // 2,
+            iteration=100,
+            test="wilcoxon",
+            confidence=0.05,
+        )
         # TODO(sany sanyhew1097618435@163.com): Kruskal Wallis Test - P value - why near 1?
         # print("The statistics test method: Kruskal Wallis Test")
         # monte_carlo_simulator(data_processed, data_processed_imputed, sample_size=50,
@@ -202,7 +222,7 @@ def pipeline(file_name: str) -> None:
                 continue
             else:
                 save_data(data_processed_imputed, "Data Before Splitting", DATASET_OUTPUT_PATH)
-                print('Exit Feature Engineering Mode.')
+                print("Exit Feature Engineering Mode.")
                 clear_output()
                 break
         else:
@@ -224,12 +244,12 @@ def pipeline(file_name: str) -> None:
         # create X data set
         print("Selected sub data set to create X data set:")
         show_data_columns(data_processed_imputed.columns)
-        print('The selected X data set:')
+        print("The selected X data set:")
         X = create_sub_data_set(data_processed_imputed)
-        print('Successfully create X data set.')
+        print("Successfully create X data set.")
         print("The Selected Data Set:")
         print(X)
-        print('Basic Statistical Information: ')
+        print("Basic Statistical Information: ")
         basic_statistic(X)
         save_data(X, "X Without Scaling", DATASET_OUTPUT_PATH)
         clear_output()
@@ -242,12 +262,12 @@ def pipeline(file_name: str) -> None:
             print("Which strategy do you want to apply?")
             num2option(FEATURE_SCALING_STRATEGY)
             feature_scaling_num = limit_num_input(FEATURE_SCALING_STRATEGY, SECTION[1], num_input)
-            X_scaled_np = feature_scaler(X, FEATURE_SCALING_STRATEGY, feature_scaling_num-1)
+            X_scaled_np = feature_scaler(X, FEATURE_SCALING_STRATEGY, feature_scaling_num - 1)
             X = np2pd(X_scaled_np, X.columns)
             del X_scaled_np
             print("Data Set After Scaling:")
             print(X)
-            print('Basic Statistical Information: ')
+            print("Basic Statistical Information: ")
             basic_statistic(X)
             save_data(X, "X With Scaling", DATASET_OUTPUT_PATH)
         clear_output()
@@ -256,32 +276,32 @@ def pipeline(file_name: str) -> None:
         print("-*-*- Data Split - X Set and Y Set-*-*-")
         print("Selected sub data set to create Y data set:")
         show_data_columns(data_processed_imputed.columns)
-        print('The selected Y data set:')
-        print('Notice: Normally, please choose only one column to be tag column Y, not multiple columns.')
-        print('Notice: For classification model training, please choose the label column which has distinctive integers.')
+        print("The selected Y data set:")
+        print("Notice: Normally, please choose only one column to be tag column Y, not multiple columns.")
+        print("Notice: For classification model training, please choose the label column which has distinctive integers.")
         y = create_sub_data_set(data_processed_imputed)
-        print('Successfully create Y data set.')
+        print("Successfully create Y data set.")
         print("The Selected Data Set:")
         print(y)
-        print('Basic Statistical Information: ')
+        print("Basic Statistical Information: ")
         basic_statistic(y)
         save_data(y, "y", DATASET_OUTPUT_PATH)
         clear_output()
 
         # create training data and testing data
         print("-*-*- Data Split - Train Set and Test Set -*-*-")
-        print('Notice: Normally, set 20% of the dataset aside as test set, such as 0.2')
+        print("Notice: Normally, set 20% of the dataset aside as test set, such as 0.2")
         test_ratio = float_input(default=0.2, prefix=SECTION[1], slogan="@Test Ratio: ")
         train_test_data = data_split(X, y, test_ratio)
         for key, value in train_test_data.items():
             print("-" * 25)
             print(f"The Selected Data Set: {key}")
             print(value)
-            print(f'Basic Statistical Information: {key}')
+            print(f"Basic Statistical Information: {key}")
             basic_statistic(value)
             save_data(value, key, DATASET_OUTPUT_PATH)
-        X_train, X_test = train_test_data['X train'], train_test_data['X test']
-        y_train, y_test = train_test_data['y train'], train_test_data['y test']
+        X_train, X_test = train_test_data["X train"], train_test_data["X test"]
+        y_train, y_test = train_test_data["y train"], train_test_data["y test"]
         del data_processed_imputed
         clear_output()
     else:
@@ -293,10 +313,13 @@ def pipeline(file_name: str) -> None:
     # Model option for users
     logger.debug("Model Selection")
     print("-*-*- Model Selection -*-*-:")
-    Modes2Models = {1: REGRESSION_MODELS, 2: CLASSIFICATION_MODELS,
-                    3: CLUSTERING_MODELS, 4: DECOMPOSITION_MODELS}
-    Modes2Initiators = {1: RegressionModelSelection, 2: ClassificationModelSelection,
-                        3: ClusteringModelSelection, 4: DecompositionModelSelection}
+    Modes2Models = {1: REGRESSION_MODELS, 2: CLASSIFICATION_MODELS, 3: CLUSTERING_MODELS, 4: DECOMPOSITION_MODELS}
+    Modes2Initiators = {
+        1: RegressionModelSelection,
+        2: ClassificationModelSelection,
+        3: ClusteringModelSelection,
+        4: DecompositionModelSelection,
+    }
     MODELS = Modes2Models[mode_num]
     num2option(MODELS)
     all_models_num = len(MODELS) + 1
@@ -311,8 +334,7 @@ def pipeline(file_name: str) -> None:
     model = MODELS[model_num - 1]
     if mode_num == 1 or mode_num == 2:
         if model not in NON_AUTOML_MODELS:
-            print("Do you want to employ automated machine learning with respect to this algorithm?"
-                  "(Enter the Corresponding Number):")
+            print("Do you want to employ automated machine learning with respect to this algorithm?" "(Enter the Corresponding Number):")
             num2option(OPTION)
             automl_num = limit_num_input(OPTION, SECTION[2], num_input)
             if automl_num == 1:
@@ -330,7 +352,7 @@ def pipeline(file_name: str) -> None:
             run.activate(X, y, X_train, X_test, y_train, y_test, is_automl)
     else:
         # gain all models result in the specific mode
-        for i in range(len(MODELS)-1):
+        for i in range(len(MODELS) - 1):
             run = Modes2Initiators[mode_num](MODELS[i])
             run.activate(X, y, X_train, X_test, y_train, y_test)
             clear_output()

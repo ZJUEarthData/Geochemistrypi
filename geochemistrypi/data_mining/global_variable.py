@@ -26,26 +26,40 @@ MODEL_PATH = os.path.join(OUTPUT_PATH, "trained_models")
 
 
 # Tell which section the user is currently in on the UML
-SECTION = ['User', 'Data', 'Model', 'Plot']
+SECTION = ["User", "Data", "Model", "Plot"]
 
-OPTION = ['Yes', 'No']
-DATA_OPTION = ['Own Data', 'Testing Data (Built-in)']
-TEST_DATA_OPTION = ['Data For Regression', 'Data For Classification',
-                    'Data For Clustering', 'Data For Dimensional Reduction']
-MODE_OPTION = ['Regression', 'Classification', 'Clustering', 'Dimensional Reduction']
+OPTION = ["Yes", "No"]
+DATA_OPTION = ["Own Data", "Testing Data (Built-in)"]
+TEST_DATA_OPTION = ["Data For Regression", "Data For Classification", "Data For Clustering", "Data For Dimensional Reduction"]
+MODE_OPTION = ["Regression", "Classification", "Clustering", "Dimensional Reduction"]
 
 # The model provided to use
-REGRESSION_MODELS = ['Linear Regression', 'Polynomial Regression', 'Support Vector Machine', 'Decision Tree',
-                     'Random Forest', 'Extra-Trees', 'Xgboost', 'Deep Neural Network']
-CLASSIFICATION_MODELS = ['Logistic Regression', 'Support Vector Machine', 'Decision Tree', 'Random Forest', 'Extra-Trees', 
-                         'Xgboost', 'Deep Neural Network']
-CLUSTERING_MODELS = ['KMeans', 'DBSCAN']
-DECOMPOSITION_MODELS = ['Principal Component Analysis']
+REGRESSION_MODELS = [
+    "Linear Regression",
+    "Polynomial Regression",
+    "Support Vector Machine",
+    "Decision Tree",
+    "Random Forest",
+    "Extra-Trees",
+    "Xgboost",
+    "Deep Neural Network",
+]
+CLASSIFICATION_MODELS = [
+    "Logistic Regression",
+    "Support Vector Machine",
+    "Decision Tree",
+    "Random Forest",
+    "Extra-Trees",
+    "Xgboost",
+    "Deep Neural Network",
+]
+CLUSTERING_MODELS = ["KMeans", "DBSCAN"]
+DECOMPOSITION_MODELS = ["Principal Component Analysis"]
 
 # Special AutoML models
-NON_AUTOML_MODELS = ['Linear Regression', 'Polynomial Regression']
-RAY_FLAML = ['Deep Neural Network']
+NON_AUTOML_MODELS = ["Linear Regression", "Polynomial Regression"]
+RAY_FLAML = ["Deep Neural Network"]
 
-IMPUTING_STRATEGY = ['Mean Value', 'Median Value', 'Most Frequent Value', 'Constant(Specified Value)']
+IMPUTING_STRATEGY = ["Mean Value", "Median Value", "Most Frequent Value", "Constant(Specified Value)"]
 
-FEATURE_SCALING_STRATEGY = ['Min-max Scaling', 'Standardization']
+FEATURE_SCALING_STRATEGY = ["Min-max Scaling", "Standardization"]

@@ -1,9 +1,11 @@
-from sklearn.metrics import silhouette_samples, silhouette_score
-import matplotlib.pyplot as plt
+from typing import Dict
+
 import matplotlib.cm as cm
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from typing import Dict
+from sklearn.metrics import silhouette_samples, silhouette_score
+
 from ....data.data_readiness import float_input, num_input, str_input
 from ....global_variable import SECTION
 
@@ -37,8 +39,7 @@ def kmeans_manual_hyper_parameters() -> Dict:
     return hyper_parameters
 
 
-def plot_silhouette_diagram(data: pd.DataFrame, cluster_labels: pd.DataFrame,
-                            cluster_centers_: np.ndarray, n_clusters: int, algorithm_name: str) -> None:
+def plot_silhouette_diagram(data: pd.DataFrame, cluster_labels: pd.DataFrame, cluster_centers_: np.ndarray, n_clusters: int, algorithm_name: str) -> None:
     """
     Draw the silhouette diagram for analysis.
 
@@ -133,9 +134,7 @@ def plot_silhouette_diagram(data: pd.DataFrame, cluster_labels: pd.DataFrame,
 
     # 2nd Plot showing the actual clusters formed
     colors = cm.nipy_spectral(cluster_labels.astype(float) / n_clusters)
-    ax2.scatter(
-        data.iloc[:, 0], data.iloc[:, 1], marker=".", s=30, lw=0, alpha=0.7, c=colors, edgecolor="k"
-    )
+    ax2.scatter(data.iloc[:, 0], data.iloc[:, 1], marker=".", s=30, lw=0, alpha=0.7, c=colors, edgecolor="k")
 
     # Labeling the clusters
     centers = cluster_centers_
@@ -157,8 +156,7 @@ def plot_silhouette_diagram(data: pd.DataFrame, cluster_labels: pd.DataFrame,
     ax2.set_xlabel("Feature space for the 1st feature")
     ax2.set_ylabel("Feature space for the 2nd feature")
     plt.suptitle(
-        f"Silhouette analysis for KMeans clustering on sample data with n_clusters = %d - {algorithm_name}"
-        % n_clusters,
+        f"Silhouette analysis for KMeans clustering on sample data with n_clusters = %d - {algorithm_name}" % n_clusters,
         fontsize=14,
         fontweight="bold",
     )
@@ -167,7 +165,7 @@ def plot_silhouette_diagram(data: pd.DataFrame, cluster_labels: pd.DataFrame,
 def scatter2d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str) -> None:
     plt.figure()
     plt.subplot(111)
-    plt.scatter(data.iloc[:, 0], data.iloc[:, 1], c = cluster_labels)
+    plt.scatter(data.iloc[:, 0], data.iloc[:, 1], c=cluster_labels)
 
     plt.xlabel(f"{data.columns[0]}")
     plt.ylabel(f"{data.columns[1]}")
@@ -177,24 +175,21 @@ def scatter2d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: 
 def scatter3d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str) -> None:
     plt.figure()
     namelist = data.columns.values.tolist()
-    fig = plt.figure(figsize=(12, 6), facecolor='w')
+    fig = plt.figure(figsize=(12, 6), facecolor="w")
     plt.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.9)
 
-    ax = fig.add_subplot(121, projection='3d')
+    ax = fig.add_subplot(121, projection="3d")
     ax.scatter(data.iloc[:, 0], data.iloc[:, 1], data.iloc[:, 2], alpha=0.3, c="#FF0000", s=6)
     ax.set_xlabel(namelist[0])
     ax.set_ylabel(namelist[1])
     ax.set_zlabel(namelist[2])
     plt.grid(True)
 
-    ax2 = fig.add_subplot(122, projection='3d')
-    ax2.scatter(data.iloc[:, 0], data.iloc[:, 1], data.iloc[:, 2],
-                c=cluster_labels, s=6, cmap=plt.cm.Paired, edgecolors='none')
+    ax2 = fig.add_subplot(122, projection="3d")
+    ax2.scatter(data.iloc[:, 0], data.iloc[:, 1], data.iloc[:, 2], c=cluster_labels, s=6, cmap=plt.cm.Paired, edgecolors="none")
     ax2.set_xlabel(namelist[0])
     ax2.set_ylabel(namelist[1])
     ax2.set_zlabel(namelist[2])
     plt.grid(True)
     ax.set_title(f"Base Data Tri-plot - {algorithm_name}")
     ax2.set_title(f"Cluster Data Tri-plot - {algorithm_name}")
-
-

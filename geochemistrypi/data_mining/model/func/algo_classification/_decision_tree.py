@@ -1,6 +1,8 @@
+from typing import Dict
+
 import matplotlib.pyplot as plt
 from sklearn.tree import plot_tree
-from typing import Dict
+
 from ....data.data_readiness import num_input, str_input
 from ....global_variable import SECTION
 
@@ -28,29 +30,36 @@ def decision_tree_manual_hyper_parameters() -> Dict:
     print("Max Features: The number of features to consider when looking for the best split.")
     print("Please specify the number of features to consider when looking for the best split. A good starting range could be between 1 and the total number of features in the dataset.")
     max_features = num_input(SECTION[2], "@Max Features: ")
-    hyper_parameters = {'criterion': criterion, 'max_depth': max_depth, 'min_samples_split': min_samples_split, 'min_samples_leaf': min_samples_leaf, 'max_features': max_features}
+    hyper_parameters = {
+        "criterion": criterion,
+        "max_depth": max_depth,
+        "min_samples_split": min_samples_split,
+        "min_samples_leaf": min_samples_leaf,
+        "max_features": max_features,
+    }
     return hyper_parameters
 
 
 def decision_tree_plot(trained_model: object, image_config: dict) -> None:
     # create drawing canvas
-    fig, ax = plt.subplots(figsize=(image_config['width'], image_config['height']), dpi=image_config['dpi'])
+    fig, ax = plt.subplots(figsize=(image_config["width"], image_config["height"]), dpi=image_config["dpi"])
 
     # draw the main content
-    plot_tree(trained_model,
-              max_depth=image_config['max_depth'],
-              feature_names=image_config['feature_names'],
-              class_names=image_config['class_names'],
-              label=image_config['label'],
-              filled=image_config['filled'],
-              impurity=image_config['impurity'],
-              node_ids=image_config['node_ids'],
-              proportion=image_config['proportion'],
-              rounded=image_config['rounded'],
-              precision=image_config['precision'],
-              ax=image_config['ax'],
-              fontsize=image_config['fontsize']
-              )
+    plot_tree(
+        trained_model,
+        max_depth=image_config["max_depth"],
+        feature_names=image_config["feature_names"],
+        class_names=image_config["class_names"],
+        label=image_config["label"],
+        filled=image_config["filled"],
+        impurity=image_config["impurity"],
+        node_ids=image_config["node_ids"],
+        proportion=image_config["proportion"],
+        rounded=image_config["rounded"],
+        precision=image_config["precision"],
+        ax=image_config["ax"],
+        fontsize=image_config["fontsize"],
+    )
 
     # automatically optimize picture layout structure
     fig.tight_layout()
@@ -67,11 +76,17 @@ def decision_tree_plot(trained_model: object, image_config: dict) -> None:
     # plt.setp(ax.get_yticklabels(), rotation=image_config['rot'], ha=image_config['yha'],
     #          rotation_mode="anchor")  # axis label rotation Angle
     x1_label = ax.get_xticklabels()  # adjust the axis label font
-    [x1_label_temp.set_fontname(image_config['axislabelfont']) for x1_label_temp in x1_label]
+    [x1_label_temp.set_fontname(image_config["axislabelfont"]) for x1_label_temp in x1_label]
     y1_label = ax.get_yticklabels()
-    [y1_label_temp.set_fontname(image_config['axislabelfont']) for y1_label_temp in y1_label]
+    [y1_label_temp.set_fontname(image_config["axislabelfont"]) for y1_label_temp in y1_label]
 
-    ax.set_title(label=image_config['title_label'],
-                 fontdict={"size": image_config['title_size'], "color": image_config['title_color'],
-                           "family": image_config['title_font']}, loc=image_config['title_location'],
-                 pad=image_config['title_pad'])
+    ax.set_title(
+        label=image_config["title_label"],
+        fontdict={
+            "size": image_config["title_size"],
+            "color": image_config["title_color"],
+            "family": image_config["title_font"],
+        },
+        loc=image_config["title_location"],
+        pad=image_config["title_pad"],
+    )

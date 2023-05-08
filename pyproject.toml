@@ -37,8 +37,23 @@ dependencies = [
     "xgboost==1.6.2",        # required to run Xgboost + FLAML and be compatible with M2 chip on Mac
     "basemap==1.3.6",        # required to draw world map
     "threadpoolctl==3.1.0",  # required to draw 3d plot for KMeans
-    "matplotlib==3.5.2"      # required to draw 3d plot for KMeans
+    "matplotlib==3.5.2",     # required to draw 3d plot for KMeans
+    "sphinx",                # required to build docs
+    "furo",                  # required to build docs, html theme
+    "pre-commit",            # required to run pre-commit
 ]
+
+[tool.black]
+line-length = "200"
+
+[tool.isort]
+line_length = "200"
+profile = "black"
+
+[tool.flake8]
+max-line-length = "200"
+max-complexity = "20"
+ignore = "F811,W605"
 
 [project.optional-dependencies]
 test = [

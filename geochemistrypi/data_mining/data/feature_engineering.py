@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-import string
-import operator
 import gc
+import operator
+import string
+
 import pandas
 
 
@@ -41,8 +42,8 @@ class Stack(object):
 
 class FeatureConstructor(object):
 
-    oper = ['-', '+', '*', '/', '(', ')']
-    parenthesis = ['(', ')']
+    oper = ["-", "+", "*", "/", "(", ")"]
+    parenthesis = ["(", ")"]
     alphabet = string.ascii_letters
 
     def __init__(self, data):
@@ -61,58 +62,58 @@ class FeatureConstructor(object):
         columns_name = self.data.columns
         print("Selected data set:")
         for i in range(len(columns_name)):
-            print(FeatureConstructor.alphabet[i] + ' - ' + columns_name[i])
+            print(FeatureConstructor.alphabet[i] + " - " + columns_name[i])
             self.map_dict[FeatureConstructor.alphabet[i]] = columns_name[i]
 
     def _get_column(self, index):
         return self.data[self.map_dict[index]]
 
     def name_feature(self):
-        self.feature_name = input("Name the constructed feature (column name), like 'NEW-COMPOUND': \n"
-                                  "@input: ")
+        self.feature_name = input("Name the constructed feature (column name), like 'NEW-COMPOUND': \n" "@input: ")
 
     def input_expression(self):
-        expression = input("Build up new feature with the combination of 4 basic arithmatic operator,"
-                           " including '+', '-', '*', '/', '()'.\n"
-                           "Input example 1: a * b - c \n"
-                           "--> Step 1: Multiply a column with b column; \n"
-                           "--> Step 2: Subtract c from the result of Step 1; \n"
-                           "Input example 2: (d + 5 * f) / g \n"
-                           "--> Step 1: Multiply 5 with f; \n"
-                           "--> Step 2: Plus d column with the result of Step 1;\n"
-                           "--> Step 3: Divide the result of Step 1 by g; \n"
-                           # "Input example 3: (h ** 3) / (i ** (1/2)) \n"
-                           # "--> Step 1: Exponent calculation, h raised to the power of 3; \n"
-                           # "--> Step 2: Root calculation, find the square root of i; \n"
-                           # "--> Step 3: Divide the result of Step 1 by the result of Step 2; \n"
-                           "@input: ")
-        self._infix_expr = list(expression.replace(' ', ''))
+        expression = input(
+            "Build up new feature with the combination of 4 basic arithmatic operator,"
+            " including '+', '-', '*', '/', '()'.\n"
+            "Input example 1: a * b - c \n"
+            "--> Step 1: Multiply a column with b column; \n"
+            "--> Step 2: Subtract c from the result of Step 1; \n"
+            "Input example 2: (d + 5 * f) / g \n"
+            "--> Step 1: Multiply 5 with f; \n"
+            "--> Step 2: Plus d column with the result of Step 1;\n"
+            "--> Step 3: Divide the result of Step 1 by g; \n"
+            # "Input example 3: (h ** 3) / (i ** (1/2)) \n"
+            # "--> Step 1: Exponent calculation, h raised to the power of 3; \n"
+            # "--> Step 2: Root calculation, find the square root of i; \n"
+            # "--> Step 3: Divide the result of Step 1 by the result of Step 2; \n"
+            "@input: "
+        )
+        self._infix_expr = list(expression.replace(" ", ""))
 
     @staticmethod
     def _oper_priority_out(oper):
         return {
-            '+': 1, '-': 1,
-            '*': 2, '/': 2,
-            '(': 3, ')': 0,
+            "+": 1,
+            "-": 1,
+            "*": 2,
+            "/": 2,
+            "(": 3,
+            ")": 0,
         }[oper]
 
     @staticmethod
     def _oper_priority_in(oper):
-        return {
-            '+': 1, '-': 1,
-            '*': 2, '/': 2,
-            '(': 0, ')': 0
-        }[oper]
+        return {"+": 1, "-": 1, "*": 2, "/": 2, "(": 0, ")": 0}[oper]
 
     @staticmethod
     def _get_operator_fn(oper):
         return {
-            '+': operator.add,
-            '-': operator.sub,
-            '*': operator.mul,
-            '/': operator.truediv,
-            '%': operator.mod,
-            '^': operator.xor,
+            "+": operator.add,
+            "-": operator.sub,
+            "*": operator.mul,
+            "/": operator.truediv,
+            "%": operator.mod,
+            "^": operator.xor,
         }[oper]
 
     @staticmethod
@@ -131,14 +132,12 @@ class FeatureConstructor(object):
                 # then pop out the current top item in the stack and append it to the postfix expression.
                 # Outside the operator stack, '(' is the highest priority
                 # while inside the operator stack, it is the lowest priority.
-                while not oper_stack.is_empty() and \
-                        FeatureConstructor._oper_priority_out(self._infix_expr[i]) < \
-                        FeatureConstructor._oper_priority_in(oper_stack.Data[oper_stack.Top]):
+                while not oper_stack.is_empty() and FeatureConstructor._oper_priority_out(self._infix_expr[i]) < FeatureConstructor._oper_priority_in(oper_stack.Data[oper_stack.Top]):
                     # When the operator is ')', pop out all the items in the operator stack
                     # until meeting up '(' in the stack.
-                    if self._infix_expr[i] == ')':
+                    if self._infix_expr[i] == ")":
                         top_item = oper_stack.pop()
-                        while top_item != '(':
+                        while top_item != "(":
                             self._postfix_expr.append(top_item)
                             top_item = oper_stack.pop()
                         # release '(' parenthesis variable in the stack
@@ -149,7 +148,7 @@ class FeatureConstructor(object):
                         self._postfix_expr.append(oper_stack.pop())
 
                 # When the operator is ')', don't need to store it in the operator stack
-                if self._infix_expr[i] == ')':
+                if self._infix_expr[i] == ")":
                     continue
                 else:
                     oper_stack.push(self._infix_expr[i])

@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
-import numpy as np
 from typing import Dict, List
-from ....data.data_readiness import float_input, num_input, str_input
+
+import numpy as np
+
+from ....data.data_readiness import num_input, str_input
 from ....global_variable import SECTION
 
 
@@ -23,13 +25,13 @@ def polynomial_regression_manual_hyper_parameters() -> Dict:
     print("Please specify whether to include a bias term in the model. It is generally recommended to leave it set to True.")
     include_biases = ["True", "False"]
     include_bias = bool(str_input(include_biases, SECTION[2]))
-    hyper_parameters = {'degree': degree, 'interaction_only': interaction_only, 'include_bias': include_bias}
+    hyper_parameters = {"degree": degree, "interaction_only": interaction_only, "include_bias": include_bias}
     return hyper_parameters
 
 
 def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: List) -> None:
     """Show the formula of polynomial regression.
-    
+
     Parameters
     ----------
     coef : array
@@ -37,7 +39,7 @@ def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: List) -
 
     intercept : array
         Independent term in decision function.
-    
+
     features_name : list
         Name of the features.
     """
@@ -54,14 +56,14 @@ def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: List) -
         else:
             # add plus symbol if positive, maintain if negative, not append if zero
             if coef[i] > 0:
-                temp = '+' + str(coef[i]) + features_name[i]
+                temp = "+" + str(coef[i]) + features_name[i]
                 term.append(temp)
             elif coef[i] < 0:
                 temp = str(coef[i]) + features_name[i]
                 term.append(temp)
     if intercept[0] >= 0:
         # formula of polynomial regression
-        formula = ''.join(term) + '+' + str(intercept[0])
+        formula = "".join(term) + "+" + str(intercept[0])
     else:
-        formula = ''.join(term) + str(intercept[0])
-    print('y =', formula)
+        formula = "".join(term) + str(intercept[0])
+    print("y =", formula)

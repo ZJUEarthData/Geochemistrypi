@@ -1,31 +1,31 @@
-import sys
 import os
 import re
+import sys
+from typing import List, Optional, Tuple, Union
+
 import openpyxl.utils.exceptions
-from sklearn.model_selection import train_test_split
-from ..global_variable import BUILT_IN_DATASET_PATH
 import pandas as pd
-from typing import Optional, List, Tuple, Union
+from sklearn.model_selection import train_test_split
+
+from ..global_variable import BUILT_IN_DATASET_PATH
 
 # from utils.exceptions import InvalidFileError
 
 
-def read_data(file_name: Optional[str] = None, is_own_data: int = 2, prefix: Optional[str] = None,
-              slogan: Optional[str] = "@File: "):
+def read_data(file_name: Optional[str] = None, is_own_data: int = 2, prefix: Optional[str] = None, slogan: Optional[str] = "@File: "):
     """Read the data set."""
     if is_own_data == 1:
         while True:
             # Capture exception: The path is invalid -> doesn't exist or not xlsx format
             if os.path.exists(file_name):
-                if '.xlsx' in re.findall(r'.xlsx.*', file_name):
-                # if True:
+                if ".xlsx" in re.findall(r".xlsx.*", file_name):
+                    # if True:
                     data_path = file_name
                     break
                 else:
                     print("Caution: Please make sure the data is stored in xlsx format!")
             else:
-                print("Caution: The path is invalid. Please input the correct path including the"
-                      " stored path and suffix!")
+                print("Caution: The path is invalid. Please input the correct path including the" " stored path and suffix!")
     else:
         data_path = os.path.join(BUILT_IN_DATASET_PATH, file_name)
     try:
@@ -37,13 +37,11 @@ def read_data(file_name: Optional[str] = None, is_own_data: int = 2, prefix: Opt
         raise
     except FileNotFoundError as err:
         print(err)
-        print("Warning: please put your own data in the right place and input the completed data set name including"
-              " the stored path and suffix")
+        print("Warning: please put your own data in the right place and input the completed data set name including" " the stored path and suffix")
         raise
     except openpyxl.utils.exceptions.InvalidFileException as err:
         print(err)
-        print("Warning: please put your own data in the right place and input the completed data set name including"
-              " the stored path and suffix")
+        print("Warning: please put your own data in the right place and input the completed data set name including" " the stored path and suffix")
         raise
     except Exception:
         print(f"Unexpected error: {sys.exc_info()[0]} - check the last line of Traceback about the error information")
@@ -55,16 +53,16 @@ def basic_info(data: pd.DataFrame):
 
 
 def show_data_columns(columns_name, columns_index=None):
-    print('-' * 20)
+    print("-" * 20)
     print("Index - Column Name")
     if columns_index is None:
         for i, j in enumerate(columns_name):
-            print(i+1, "-", j)
+            print(i + 1, "-", j)
     else:
         # specify the designated column index
         for i, j in zip(columns_index, columns_name):
-            print(i+1, "-", j)
-    print('-' * 20)
+            print(i + 1, "-", j)
+    print("-" * 20)
 
 
 def select_columns(columns_range: Optional[str] = None) -> List[int]:
@@ -90,13 +88,15 @@ def select_columns(columns_range: Optional[str] = None) -> List[int]:
 
 
 def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
-    sub_data_set_columns_range = input('Select the data range you want to process.\n'
-                                       'Input format:\n'
-                                       'Format 1: "[**, **]; **; [**, **]", such as "[1, 3]; 7; [10, 13]" '
-                                       '--> you want to deal with the columns 1, 2, 3, 7, 10, 11, 12, 13 \n'
-                                       'Format 2: "xx", such as "7" --> you want to deal with the columns 7 \n'
-                                       '@input: ')
-    
+    sub_data_set_columns_range = input(
+        "Select the data range you want to process.\n"
+        "Input format:\n"
+        'Format 1: "[**, **]; **; [**, **]", such as "[1, 3]; 7; [10, 13]" '
+        "--> you want to deal with the columns 1, 2, 3, 7, 10, 11, 12, 13 \n"
+        'Format 2: "xx", such as "7" --> you want to deal with the columns 7 \n'
+        "@input: "
+    )
+
     while True:
         try:
             # column name
@@ -105,23 +105,23 @@ def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
         except SyntaxError:
             print("Warning: Please use English input method editor.")
             judge = True
-            sub_data_set_columns_range = input('@input: ')
+            sub_data_set_columns_range = input("@input: ")
         except NameError:
             print("Warning: Please follow the rules and re-enter.")
             judge = True
-            sub_data_set_columns_range = input('@input: ')
+            sub_data_set_columns_range = input("@input: ")
         except UnicodeDecodeError:
             print("Warning: Please use English input method editor.")
             judge = True
-            sub_data_set_columns_range = input('@input: ')
+            sub_data_set_columns_range = input("@input: ")
         except IndexError:
             print("Warning: Please follow the rules and re-enter.")
             judge = True
-            sub_data_set_columns_range = input('@input: ')
+            sub_data_set_columns_range = input("@input: ")
         except TypeError:
             print("Warning: Please follow the rules and re-enter.")
             judge = True
-            sub_data_set_columns_range = input('@input: ')
+            sub_data_set_columns_range = input("@input: ")
         else:
             data_checking = data.iloc[:, sub_data_set_columns_selected]
             for i in data_checking.columns.values:
@@ -131,15 +131,14 @@ def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
                 if v_value == len(df_test):
                     print(f"Warning: The selected column {df_test.columns.values} is an empty column!")
                     judge = True
-                elif df_test[test_columns[0]].dtype in ['int64', 'float64']:
+                elif df_test[test_columns[0]].dtype in ["int64", "float64"]:
                     continue
                 else:
-                    print(f"Warning: The data type of selected column {df_test.columns.values} is not numeric!"
-                          " Please make sure that the selected data type is numeric and re-enter.")
+                    print(f"Warning: The data type of selected column {df_test.columns.values} is not numeric!" " Please make sure that the selected data type is numeric and re-enter.")
                     judge = True
-            if judge == True:
-                sub_data_set_columns_range = input('@input: ')
-        if judge == False:
+            if judge is True:
+                sub_data_set_columns_range = input("@input: ")
+        if judge is False:
             break
 
     # select designated column
@@ -163,7 +162,7 @@ def num2option(items: List[str]) -> None:
         a series of items need to be enumerated
     """
     for i, j in enumerate(items):
-        print(str(i+1) + " - " + j)
+        print(str(i + 1) + " - " + j)
 
 
 def num_input(prefix: Optional[str] = None, slogan: Optional[str] = "@Number: ") -> int:
@@ -213,7 +212,7 @@ def limit_num_input(option_list: List[str], prefix: str, input_func: num_input) 
     while True:
         # in case that the option number is beyond the maximum
         option = input_func(prefix)
-        if option not in range(1, len(option_list)+1):
+        if option not in range(1, len(option_list) + 1):
             print("Caution: The number is invalid. Please enter the correct number inside the scope!")
         else:
             break
@@ -245,7 +244,7 @@ def float_input(default: float, prefix: Optional[str] = None, slogan: Optional[s
     """
     while True:
         option = input(f"({prefix}) ➜ {slogan}").strip()
-        if option.isdigit() or option.replace('.', '').isdigit():
+        if option.isdigit() or option.replace(".", "").isdigit():
             option = float(option)
             break
         elif len(option) == 0:
@@ -258,7 +257,7 @@ def float_input(default: float, prefix: Optional[str] = None, slogan: Optional[s
 
 def str_input(option_list: List[str], prefix: Optional[str] = None) -> str:
     """Get the string of the desired option.
-    
+
     Parameters
     ----------
     option_list : list
@@ -266,7 +265,7 @@ def str_input(option_list: List[str], prefix: Optional[str] = None) -> str:
 
     prefix : str, default=None
         It indicates which section the user currently is in on the UML, which is shown on the command-line console.
-    
+
     Returns
     -------
     option: str
@@ -274,7 +273,7 @@ def str_input(option_list: List[str], prefix: Optional[str] = None) -> str:
     """
     num2option(option_list)
     option_num = limit_num_input(option_list, prefix, num_input)
-    option = option_list[option_num-1]
+    option = option_list[option_num - 1]
     return option
 
 
@@ -298,22 +297,23 @@ def tuple_input(default: Tuple[int], prefix: Optional[str] = None, slogan: Optio
         A numeric tuple.
     """
     while True:
-        option = input('Determine the architecture of the deep neural network.\n'
-                       'Input format:\n'
-                       'Format 1: "(**,)", such as "(100,)"\n'
-                       '--> You want to set one hidden layer with 100 neurons for the deep neural network.\n'
-                       'Format 2: "(**, **)", such as "(50, 25)"\n'
-                       '--> You want to set two hidden layers in order with 50 neurons and 25 neurons respectively'
-                       ' for the deep neural network.\n'
-                       'Format 3: "(**, **, **)", such as "(64, 32, 8)"\n'
-                       '--> You want to set three hidden layers in order 64 neurons, 32 neurons and 8 neurons'
-                       ' respectively for the deep neural network.\n'
-                       f"({prefix}) ➜ {slogan}").strip()
+        option = input(
+            "Determine the architecture of the deep neural network.\n"
+            "Input format:\n"
+            'Format 1: "(**,)", such as "(100,)"\n'
+            "--> You want to set one hidden layer with 100 neurons for the deep neural network.\n"
+            'Format 2: "(**, **)", such as "(50, 25)"\n'
+            "--> You want to set two hidden layers in order with 50 neurons and 25 neurons respectively"
+            " for the deep neural network.\n"
+            'Format 3: "(**, **, **)", such as "(64, 32, 8)"\n'
+            "--> You want to set three hidden layers in order 64 neurons, 32 neurons and 8 neurons"
+            " respectively for the deep neural network.\n"
+            f"({prefix}) ➜ {slogan}"
+        ).strip()
         if len(option) == 0:
-             option = default
-             break
+            option = default
+            break
         else:
-             option = eval(option)
-             break
+            option = eval(option)
+            break
     return option
-

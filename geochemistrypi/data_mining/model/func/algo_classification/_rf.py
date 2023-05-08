@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
-import pandas as pd
 from typing import Dict
+
+import pandas as pd
+
 from ....data.data_readiness import num_input, str_input
 from ....global_variable import SECTION
 
@@ -29,15 +31,29 @@ def random_forest_manual_hyper_parameters() -> Dict:
     print("Please specify the number of features to consider when looking for the best split. A good starting range could be between 1 and the total number of features in the dataset.")
     print("It's recommended to start with a value of sqrt(n_features) or log2(n_features). Make sure to use integer values.")
     max_features = num_input(SECTION[2], "@Max Features: ")
-    print("Bootstrap: Whether bootstrap samples are used when building trees. Bootstrapping is a technique where a random subset of the data is sampled with replacement to create a new dataset of the same size as the original. This new dataset is then used to construct a decision tree in the ensemble. If False, the whole dataset is used to build each tree.")
+    print(
+        "Bootstrap: Whether bootstrap samples are used when building trees. Bootstrapping is a technique where a random subset of the data is sampled with replacement"
+        " to create a new dataset of the same size as the original. This new dataset is then used to construct a decision tree in the ensemble. If False, the whole dataset is used to build each tree."
+    )
     print("Please specify whether bootstrap samples are used when building trees. It is generally recommended to leave it set to True.")
     bootstraps = ["True", "Flase"]
     bootstrap = bool(str_input(bootstraps, SECTION[2]))
-    print("oob_score: Whether to use out-of-bag samples to estimate the generalization accuracy. When the oob_score hyperparameter is set to True, Extra Trees will use a random subset of the data to train each decision tree in the ensemble, and the remaining data that was not used for training (the out-of-bag samples) will be used to calculate the OOB score. ")
+    print(
+        "oob_score: Whether to use out-of-bag samples to estimate the generalization accuracy. When the oob_score hyperparameter is set to True, Extra Trees will use a random subset of the data"
+        " to train each decision tree in the ensemble, and the remaining data that was not used for training (the out-of-bag samples) will be used to calculate the OOB score. "
+    )
     print("Please specify whether to use out-of-bag samples to estimate the generalization accuracy. It is generally recommended to leave it set to True.")
     oob_scores = ["True", "Flase"]
     oob_score = bool(str_input(oob_scores, SECTION[2]))
-    hyper_parameters = {"n_estimators": n_estimators, "max_depth": max_depth, "min_samples_split": min_samples_split, "min_samples_leaf": min_samples_leaf, "max_features": max_features, "bootstrap": bootstrap, "oob_score": oob_score}
+    hyper_parameters = {
+        "n_estimators": n_estimators,
+        "max_depth": max_depth,
+        "min_samples_split": min_samples_split,
+        "min_samples_leaf": min_samples_leaf,
+        "max_features": max_features,
+        "bootstrap": bootstrap,
+        "oob_score": oob_score,
+    }
     return hyper_parameters
 
 
@@ -59,5 +75,5 @@ def feature_importances(X_train: pd.DataFrame, trained_model: object) -> None:
     importance = importance.sort_values(["importance"], ascending=True)
     importance["importance"] = (importance["importance"]).astype(float)
     importance = importance.sort_values(["importance"])
-    importance.set_index('feature', inplace=True)
-    importance.plot.barh(color='r', alpha=0.7, rot=0, figsize=(8, 8))
+    importance.set_index("feature", inplace=True)
+    importance.plot.barh(color="r", alpha=0.7, rot=0, figsize=(8, 8))

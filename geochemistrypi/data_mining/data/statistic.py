@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
-import pandas as pd
-import numpy as np
-from scipy.stats import wilcoxon, kruskal
 import random
 
+import numpy as np
+import pandas as pd
+from scipy.stats import kruskal, wilcoxon
 
-def test_once(df_orig: pd.DataFrame, df_impute: pd.DataFrame, test: str = 'wilcoxon') -> np.ndarray:
+
+def test_once(df_orig: pd.DataFrame, df_impute: pd.DataFrame, test: str = "wilcoxon") -> np.ndarray:
     """Do hypothesis testing on each pair-wise column once, non-parametric test.
     Null hypothesis: the distributions of the data set before and after imputing remain the same.
 
@@ -28,7 +29,7 @@ def test_once(df_orig: pd.DataFrame, df_impute: pd.DataFrame, test: str = 'wilco
     cols = df_orig.columns
     pvals = np.array([])
 
-    if test == 'wilcoxon':
+    if test == "wilcoxon":
         for c in cols:
             try:
                 stat, pval = wilcoxon(df_orig[c], df_impute[c])
@@ -36,16 +37,22 @@ def test_once(df_orig: pd.DataFrame, df_impute: pd.DataFrame, test: str = 'wilco
             except Exception:
                 pvals = np.append(pvals, 0)
 
-    if test == 'kruskal':
+    if test == "kruskal":
         for c in cols:
-            stat, pval = kruskal(df_orig[c], df_impute[c], nan_policy='omit')
+            stat, pval = kruskal(df_orig[c], df_impute[c], nan_policy="omit")
             pvals = np.append(pvals, pval)
 
     return pvals
 
 
-def monte_carlo_simulator(df_orig: pd.DataFrame, df_impute: pd.DataFrame, sample_size: int, iteration: int,
-                          test: str = 'wilcoxon', confidence: float = 0.05) -> None:
+def monte_carlo_simulator(
+    df_orig: pd.DataFrame,
+    df_impute: pd.DataFrame,
+    sample_size: int,
+    iteration: int,
+    test: str = "wilcoxon",
+    confidence: float = 0.05,
+) -> None:
     """Check which column rejects hypothesis testing, p value < significance level, to find whether
     the imputation change the distribution of the original data set.
 
@@ -92,6 +99,5 @@ def monte_carlo_simulator(df_orig: pd.DataFrame, df_impute: pd.DataFrame, sample
     print("Average p-value: ")
     print("\n".join("{} {}".format(x, y) for x, y in zip(df_orig.columns, col_res)))
     print("Note: 'p-value = 0' means imputation method doesn't apply to that column.")
-    print("The columns which rejects null hypothesis: ", end='')
-    print('None') if not rejected_col.size else print(*list(rejected_col))
-
+    print("The columns which rejects null hypothesis: ", end="")
+    print("None") if not rejected_col.size else print(*list(rejected_col))

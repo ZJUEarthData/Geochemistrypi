@@ -1,36 +1,36 @@
 # -*- coding: utf-8 -*-
-from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.tree import DecisionTreeRegressor, plot_tree
-from sklearn.ensemble import ExtraTreesRegressor, RandomForestRegressor
-from sklearn.svm import SVR
-from sklearn.neural_network import MLPRegressor
-from typing import Union, Optional, List, Dict, Callable, Tuple, Any
-from typing import Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
+
 import numpy as np
 import pandas as pd
 import xgboost
-from multipledispatch import dispatch
 from flaml import AutoML
+from multipledispatch import dispatch
+from sklearn.ensemble import ExtraTreesRegressor, RandomForestRegressor
+from sklearn.linear_model import LinearRegression
+from sklearn.neural_network import MLPRegressor
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.svm import SVR
+from sklearn.tree import DecisionTreeRegressor
 
 from ..global_variable import MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
 from ..utils.base import save_fig
 from ._base import WorkflowBase
-from .func.algo_regression._common import plot_predicted_value_evaluation, plot_true_vs_predicted, score, cross_validation
-from .func.algo_regression._polynomial_regression import show_formula, polynomial_regression_manual_hyper_parameters
-from .func.algo_regression._rf import feature_importance__, box_plot, random_forest_manual_hyper_parameters
-from .func.algo_regression._xgboost import feature_importance, histograms_feature_weights, permutation_importance_, xgboost_manual_hyper_parameters
-from .func.algo_regression._linear_regression import show_formula, plot_2d_graph, plot_3d_graph, linear_regression_manual_hyper_parameters
-from .func.algo_regression._extra_tree import feature_importances, extra_trees_manual_hyper_parameters
-from .func.algo_regression._svr import plot_2d_decision_boundary, svr_manual_hyper_parameters
-from .func.algo_regression._decision_tree import decision_tree_plot, decision_tree_manual_hyper_parameters
+from .func.algo_regression._common import cross_validation, plot_predicted_value_evaluation, plot_true_vs_predicted, score
+from .func.algo_regression._decision_tree import decision_tree_manual_hyper_parameters, decision_tree_plot
 from .func.algo_regression._deep_neural_network import deep_neural_network_manual_hyper_parameters
+from .func.algo_regression._extra_tree import extra_trees_manual_hyper_parameters, feature_importances
+from .func.algo_regression._linear_regression import linear_regression_manual_hyper_parameters, plot_2d_graph, plot_3d_graph, show_formula
+from .func.algo_regression._polynomial_regression import polynomial_regression_manual_hyper_parameters, show_formula
+from .func.algo_regression._rf import box_plot, feature_importance__, random_forest_manual_hyper_parameters
+from .func.algo_regression._svr import plot_2d_decision_boundary, svr_manual_hyper_parameters
+from .func.algo_regression._xgboost import feature_importance, histograms_feature_weights, permutation_importance_, xgboost_manual_hyper_parameters
 
 
 class RegressionWorkflowBase(WorkflowBase):
     """The base workflow class of regression algorithms."""
 
-    common_function = ['Model Score', 'Cross Validation', 'Model Prediction', 'Model Persistence']
+    common_function = ["Model Score", "Cross Validation", "Model Prediction", "Model Persistence"]
 
     def __init__(self) -> None:
         super().__init__()
@@ -55,8 +55,12 @@ class RegressionWorkflowBase(WorkflowBase):
             self.automl.fit(X_train=X, y_train=y, **self.settings)
         else:
             # When the model is not built-in in FLAML framework, use RAY + FLAML customization.
-            self.ray_tune(RegressionWorkflowBase.X_train, RegressionWorkflowBase.X_test,
-                          RegressionWorkflowBase.y_train, RegressionWorkflowBase.y_test)
+            self.ray_tune(
+                RegressionWorkflowBase.X_train,
+                RegressionWorkflowBase.X_test,
+                RegressionWorkflowBase.y_train,
+                RegressionWorkflowBase.y_test,
+            )
             self.ray_best_model.fit(X, y)
 
     @dispatch(object)
@@ -96,7 +100,7 @@ class RegressionWorkflowBase(WorkflowBase):
     def ray_tune(self, X_train, X_test, y_train, y_test) -> object:
         """The customized model of FLAML framework and RAY framework."""
         return object
-    
+
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
@@ -107,14 +111,14 @@ class RegressionWorkflowBase(WorkflowBase):
         """Plot the predicted value evaluation."""
         print("-----* Predicted Value Evaluation *-----")
         plot_predicted_value_evaluation(y_test, y_test_predict)
-        save_fig(f'Predicted Value Evaluation - {algorithm_name}', store_path)
+        save_fig(f"Predicted Value Evaluation - {algorithm_name}", store_path)
 
     @staticmethod
     def _plot_true_vs_predicted(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
         """Plot the true value vs. predicted value."""
         print("-----* True Value vs. Predicted Value *-----")
         plot_true_vs_predicted(y_test_predict, y_test, algorithm_name)
-        save_fig(f'True Value vs. Predicted Value - {algorithm_name}', store_path)
+        save_fig(f"True Value vs. Predicted Value - {algorithm_name}", store_path)
 
     @staticmethod
     def _score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> None:
@@ -138,22 +142,26 @@ class RegressionWorkflowBase(WorkflowBase):
         """Invoke all common application functions for classification algorithms by Scikit-learn framework."""
         self._score(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict)
         self._cross_validation(self.model, RegressionWorkflowBase.X_train, RegressionWorkflowBase.y_train, 10)
-        self._plot_predicted_value_evaluation(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict,
-                                              self.naming, MODEL_OUTPUT_IMAGE_PATH)
-        self._plot_true_vs_predicted(y_test_predict=RegressionWorkflowBase.y_test_predict,
-                                     y_test=RegressionWorkflowBase.y_test, algorithm_name=self.naming,
-                                     store_path=MODEL_OUTPUT_IMAGE_PATH)
+        self._plot_predicted_value_evaluation(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._plot_true_vs_predicted(
+            y_test_predict=RegressionWorkflowBase.y_test_predict,
+            y_test=RegressionWorkflowBase.y_test,
+            algorithm_name=self.naming,
+            store_path=MODEL_OUTPUT_IMAGE_PATH,
+        )
 
     @dispatch(bool)
     def common_components(self, is_automl: bool) -> None:
         """Invoke all common application functions for classification algorithms by FLAML framework."""
         self._score(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict)
         self._cross_validation(self.auto_model, RegressionWorkflowBase.X_train, RegressionWorkflowBase.y_train, 10)
-        self._plot_predicted_value_evaluation(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict,
-                                              self.naming, MODEL_OUTPUT_IMAGE_PATH)
-        self._plot_true_vs_predicted(y_test_predict=RegressionWorkflowBase.y_test_predict,
-                                     y_test=RegressionWorkflowBase.y_test, algorithm_name=self.naming,
-                                     store_path=MODEL_OUTPUT_IMAGE_PATH)
+        self._plot_predicted_value_evaluation(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._plot_true_vs_predicted(
+            y_test_predict=RegressionWorkflowBase.y_test_predict,
+            y_test=RegressionWorkflowBase.y_test,
+            algorithm_name=self.naming,
+            store_path=MODEL_OUTPUT_IMAGE_PATH,
+        )
 
 
 class PolynomialRegression(RegressionWorkflowBase):
@@ -167,11 +175,11 @@ class PolynomialRegression(RegressionWorkflowBase):
         degree: int = 2,
         interaction_only: bool = False,
         include_bias: bool = False,
-        order: str = 'C',
+        order: str = "C",
         fit_intercept: bool = True,
         normalize: bool = False,
         copy_X: bool = True,
-        n_jobs: Optional[int] = None
+        n_jobs: Optional[int] = None,
     ) -> None:
 
         super().__init__()
@@ -184,21 +192,14 @@ class PolynomialRegression(RegressionWorkflowBase):
         self.copy_X = copy_X
         self.n_jobs = n_jobs
 
-        self.model = LinearRegression(
-            fit_intercept=self.fit_intercept,
-            copy_X=self.copy_X,
-            n_jobs=self.n_jobs
-        )
+        self.model = LinearRegression(fit_intercept=self.fit_intercept, copy_X=self.copy_X, n_jobs=self.n_jobs)
 
         self._features_name = None
         self.naming = PolynomialRegression.name
 
     def poly(self, X_train: pd.DataFrame, X_test: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Polynomial features."""
-        poly_features = PolynomialFeatures(degree=self.degree,
-                                           include_bias=self.include_bias,
-                                           interaction_only=self.interaction_only,
-                                           order=self.order)
+        poly_features = PolynomialFeatures(degree=self.degree, include_bias=self.include_bias, interaction_only=self.interaction_only, order=self.order)
         X_train_poly = poly_features.fit_transform(X_train)
         X_test_poly = poly_features.fit_transform(X_test)
         try:
@@ -230,15 +231,11 @@ class XgboostRegression(RegressionWorkflowBase):
     """The automation workflow of using Xgboost algorithm to make insightful products."""
 
     name = "Xgboost"
-    special_function = ['Feature Importance']
+    special_function = ["Feature Importance"]
 
     # In fact, it's used for type hint in the original xgboost package.
     # Hence, we have to copy it here again. Just ignore it
-    _SklObjective = Optional[
-        Union[
-            str, Callable[[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]
-        ]
-    ]
+    _SklObjective = Optional[Union[str, Callable[[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]]]
 
     # TODO: find out the attributes importance_type effect
     def __init__(
@@ -249,7 +246,7 @@ class XgboostRegression(RegressionWorkflowBase):
         verbosity: Optional[int] = 1,
         objective: _SklObjective = None,
         booster: Optional[str] = None,
-        tree_method: Optional[str] = 'auto',
+        tree_method: Optional[str] = "auto",
         n_jobs: Optional[int] = None,
         gamma: Optional[float] = 0,
         min_child_weight: Optional[float] = None,
@@ -267,14 +264,14 @@ class XgboostRegression(RegressionWorkflowBase):
         num_parallel_tree: Optional[int] = 1,
         monotone_constraints: Optional[Union[Dict[str, int], str]] = None,
         interaction_constraints: Optional[Union[str, Sequence[Sequence[str]]]] = None,
-        importance_type: Optional[str] = 'gain',
+        importance_type: Optional[str] = "gain",
         gpu_id: Optional[int] = None,
         validate_parameters: Optional[bool] = None,
         predictor: Optional[str] = None,
-        #enable_categorical: bool = False,
+        # enable_categorical: bool = False,
         eval_metric: Optional[Union[str, List[str], Callable]] = None,
         early_stopping_rounds: Optional[int] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         """
         Parameters
@@ -314,7 +311,8 @@ class XgboostRegression(RegressionWorkflowBase):
             Choices: auto, exact, approx, hist, gpu_hist, this is a combination of commonly used updaters. For other updaters like refresh, set the parameter updater directly.
                 auto: Use heuristic to choose the fastest method.
                     For small dataset, exact greedy (exact) will be used.
-                    For larger dataset, approximate algorithm (approx) will be chosen. It’s recommended to try hist and gpu_hist for higher performance with large dataset. (gpu_hist)has support for external memory.
+                    For larger dataset, approximate algorithm (approx) will be chosen. It’s recommended to try hist and gpu_hist for higher performance with large dataset.
+                      (gpu_hist)has support for external memory.
                     Because old behavior is always use exact greedy in single machine, user will get a message when approximate algorithm is chosen to notify this choice.
                 exact: Exact greedy algorithm. Enumerates all split candidates.
                 approx: Approximate greedy algorithm using quantile sketch and gradient histogram.
@@ -473,7 +471,7 @@ class XgboostRegression(RegressionWorkflowBase):
         self.gpu_id = gpu_id
         self.validate_parameters = validate_parameters
         self.predictor = predictor
-        #self.enable_categorical = enable_categorical
+        # self.enable_categorical = enable_categorical
         self.eval_metric = eval_metric
         self.early_stopping_rounds = early_stopping_rounds
         if kwargs:
@@ -510,7 +508,7 @@ class XgboostRegression(RegressionWorkflowBase):
             predictor=self.predictor,
             # enable_categorical=self.enable_categorical,
             eval_metric=self.eval_metric,
-            early_stopping_rounds=self.early_stopping_rounds
+            early_stopping_rounds=self.early_stopping_rounds,
         )
 
         self.naming = XgboostRegression.name
@@ -520,9 +518,9 @@ class XgboostRegression(RegressionWorkflowBase):
         """The configuration to implement AutoML by FLAML framework."""
         configuration = {
             "time_budget": 10,  # total running time in seconds
-            "metric": 'r2',
-            "estimator_list": ['xgboost'],  # list of ML learners
-            "task": 'regression',  # task type
+            "metric": "r2",
+            "estimator_list": ["xgboost"],  # list of ML learners
+            "task": "regression",  # task type
             # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
             # "log_training_metric": True,  # whether to log training metric
         }
@@ -545,12 +543,19 @@ class XgboostRegression(RegressionWorkflowBase):
     @staticmethod
     def _histograms_feature_weights(X: pd.DataFrame, trained_model: object, image_config: dict, algorithm_name: str, store_path: str) -> None:
         """Histograms of feature weights plot."""
-        histograms_feature_weights(X, trained_model,image_config)
+        histograms_feature_weights(X, trained_model, image_config)
         save_fig(f"Regression - {algorithm_name} - Feature Importance Score", store_path)
 
     @staticmethod
-    def _permutation_importance(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object,
-                                image_config: dict, algorithm_name: str, store_path: str) -> None:
+    def _permutation_importance(
+        X: pd.DataFrame,
+        X_test: pd.DataFrame,
+        y_test: pd.DataFrame,
+        trained_model: object,
+        image_config: dict,
+        algorithm_name: str,
+        store_path: str,
+    ) -> None:
         """Permutation importance plot."""
         permutation_importance_(X, X_test, y_test, trained_model, image_config)
         save_fig(f"Regression - {algorithm_name} - Xgboost Feature Importance", store_path)
@@ -560,16 +565,30 @@ class XgboostRegression(RegressionWorkflowBase):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         self._feature_importance(XgboostRegression.X, self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         self._histograms_feature_weights(XgboostRegression.X, self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
-        self._permutation_importance(XgboostRegression.X, XgboostRegression.X_test, XgboostRegression.y_test,
-                                     self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._permutation_importance(
+            XgboostRegression.X,
+            XgboostRegression.X_test,
+            XgboostRegression.y_test,
+            self.model,
+            self.image_config,
+            self.naming,
+            MODEL_OUTPUT_IMAGE_PATH,
+        )
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
         self._feature_importance(XgboostRegression.X, self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         self._histograms_feature_weights(XgboostRegression.X, self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
-        self._permutation_importance(XgboostRegression.X, XgboostRegression.X_test, XgboostRegression.y_test,
-                                     self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._permutation_importance(
+            XgboostRegression.X,
+            XgboostRegression.X_test,
+            XgboostRegression.y_test,
+            self.auto_model,
+            self.image_config,
+            self.naming,
+            MODEL_OUTPUT_IMAGE_PATH,
+        )
 
 
 class DecisionTreeRegression(RegressionWorkflowBase):
@@ -580,8 +599,8 @@ class DecisionTreeRegression(RegressionWorkflowBase):
 
     def __init__(
         self,
-        criterion: str = 'squared_error',
-        splitter: str = 'best',
+        criterion: str = "squared_error",
+        splitter: str = "best",
         max_depth: Optional[int] = None,
         min_samples_split: Union[int, float] = 2,
         min_samples_leaf: Union[int, float] = 1,
@@ -590,7 +609,7 @@ class DecisionTreeRegression(RegressionWorkflowBase):
         random_state: Optional[int] = None,
         max_leaf_nodes: Optional[int] = None,
         min_impurity_decrease: float = 0.0,
-        ccp_alpha: float = 0.0
+        ccp_alpha: float = 0.0,
     ) -> None:
         """
         Parameters
@@ -605,17 +624,17 @@ class DecisionTreeRegression(RegressionWorkflowBase):
             splits, "absolute_error" for the mean absolute error, which minimizes
             the L1 loss using the median of each terminal node, and "poisson" which
             uses reduction in Poisson deviance to find splits.
-            
+
             .. versionadded:: 0.18
                Mean Absolute Error (MAE) criterion.
-               
+
             .. versionadded:: 0.24
                 Poisson deviance criterion.
-                
+
             .. deprecated:: 1.0
                 Criterion "mse" was deprecated in v1.0 and will be removed in
                 version 1.2. Use `criterion="squared_error"` which is equivalent.
-                
+
             .. deprecated:: 1.0
                 Criterion "mae" was deprecated in v1.0 and will be removed in
                 version 1.2. Use `criterion="absolute_error"` which is equivalent.
@@ -718,21 +737,21 @@ class DecisionTreeRegression(RegressionWorkflowBase):
         """
 
         super().__init__()
-        self.criterion = criterion,
-        self.splitter = splitter,
+        self.criterion = (criterion,)
+        self.splitter = (splitter,)
         # FIXME (Sany sanyhew1097618435@163.com): figure out why data type changes after assignment.
         # print("max_depth before: ", max_depth)
         # print("max_depth before type: ", type(max_depth))
-        self.max_depth = max_depth,
+        self.max_depth = (max_depth,)
         # print("max_depth after: ", self.max_depth)
         # print("max_depth after type: ", type(self.max_depth))
-        self.min_samples_split = min_samples_split,
-        self.min_samples_leaf = min_samples_leaf,
-        self.min_weight_fraction_leaf = min_weight_fraction_leaf,
-        self.max_features = max_features,
-        self.random_state = random_state,
-        self.max_leaf_nodes = max_leaf_nodes,
-        self.min_impurity_decrease = min_impurity_decrease,
+        self.min_samples_split = (min_samples_split,)
+        self.min_samples_leaf = (min_samples_leaf,)
+        self.min_weight_fraction_leaf = (min_weight_fraction_leaf,)
+        self.max_features = (max_features,)
+        self.random_state = (random_state,)
+        self.max_leaf_nodes = (max_leaf_nodes,)
+        self.min_impurity_decrease = (min_impurity_decrease,)
         self.ccp_alpha = ccp_alpha
 
         self.model = DecisionTreeRegressor(
@@ -746,35 +765,35 @@ class DecisionTreeRegression(RegressionWorkflowBase):
             random_state=self.random_state[0],
             max_leaf_nodes=self.max_leaf_nodes[0],
             min_impurity_decrease=self.min_impurity_decrease[0],
-            ccp_alpha=self.ccp_alpha
+            ccp_alpha=self.ccp_alpha,
         )
         self.naming = DecisionTreeRegression.name
         self.customized = True
-        self.customized_name = 'Decision Tree'
+        self.customized_name = "Decision Tree"
 
     @property
     def settings(self) -> Dict:
         """The configuration of Decision Tree to implement AutoML by FLAML framework."""
         configuration = {
             "time_budget": 10,  # total running time in seconds
-            "metric": 'r2',
+            "metric": "r2",
             "estimator_list": [self.customized_name],  # list of ML learners
-            "task": 'regression',  # task type
+            "task": "regression",  # task type
             # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
             # "log_training_metric": True,  # whether to log training metric
         }
         return configuration
-    
+
     @property
     def customization(self) -> object:
         """The customized Decision Tree of FLAML framework."""
-        from flaml.model import SKLearnEstimator
         from flaml import tune
         from flaml.data import REGRESSION
+        from flaml.model import SKLearnEstimator
         from sklearn.tree import DecisionTreeRegressor
 
         class MyDTRegression(SKLearnEstimator):
-            def __init__(self, task='regression', n_jobs=None, **config):
+            def __init__(self, task="regression", n_jobs=None, **config):
                 super().__init__(task, **config)
                 if task in REGRESSION:
                     self.estimator_class = DecisionTreeRegressor
@@ -782,19 +801,15 @@ class DecisionTreeRegression(RegressionWorkflowBase):
             @classmethod
             def search_space(cls, data_size, task):
                 space = {
-                    'criterion': {'domain': tune.choice(["squared_error", "friedman_mse", "absolute_error", "poisson"])},
-                    'max_depth': {'domain': tune.randint(lower=2, upper=20),
-                                  'init_value': 1,
-                                  'low_cost_init_value': 1},
-                    'min_samples_split': {'domain': tune.randint(lower=2, upper=10),
-                                          'init_value': 2,
-                                          'low_cost_init_value': 2},
-                    'min_samples_leaf': {'domain': tune.randint(lower=1, upper=10),
-                                         'init_value': 1,
-                                         'low_cost_init_value': 1},
-                    'max_features': {'domain': tune.randint(lower=1, upper=10),
-                                     'init_value': 1,
-                                     'low_cost_init_value': 1},
+                    "criterion": {"domain": tune.choice(["squared_error", "friedman_mse", "absolute_error", "poisson"])},
+                    "max_depth": {"domain": tune.randint(lower=2, upper=20), "init_value": 1, "low_cost_init_value": 1},
+                    "min_samples_split": {
+                        "domain": tune.randint(lower=2, upper=10),
+                        "init_value": 2,
+                        "low_cost_init_value": 2,
+                    },
+                    "min_samples_leaf": {"domain": tune.randint(lower=1, upper=10), "init_value": 1, "low_cost_init_value": 1},
+                    "max_features": {"domain": tune.randint(lower=1, upper=10), "init_value": 1, "low_cost_init_value": 1},
                 }
                 return space
 
@@ -817,17 +832,16 @@ class DecisionTreeRegression(RegressionWorkflowBase):
     def special_components(self):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         self._plot_tree_function(self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
-        
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
         self._plot_tree_function(self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
-        
+
 
 class ExtraTreesRegression(RegressionWorkflowBase):
     """The automation workflow of using Extra-Trees algorithm to make insightful products."""
-    
+
     name = "Extra-Trees"
     special_function = ["Feature Importance"]
 
@@ -838,11 +852,11 @@ class ExtraTreesRegression(RegressionWorkflowBase):
         max_depth: Optional[int] = None,
         min_samples_split: Union[int, float] = 2,
         min_samples_leaf: Union[int, float] = 1,
-        min_weight_fraction_leaf: float = 0.,
+        min_weight_fraction_leaf: float = 0.0,
         max_features: Union[int, float, str] = "auto",
         max_leaf_nodes: int = None,
-        min_impurity_decrease: float = 0.,
-    #  min_impurity_split=None,
+        min_impurity_decrease: float = 0.0,
+        #  min_impurity_split=None,
         bootstrap=False,
         oob_score=False,
         n_jobs=None,
@@ -850,7 +864,7 @@ class ExtraTreesRegression(RegressionWorkflowBase):
         verbose=0,
         warm_start=False,
         ccp_alpha: float = 0.0,
-        max_samples=None
+        max_samples=None,
     ) -> None:
         """
         Parameters
@@ -1012,7 +1026,7 @@ class ExtraTreesRegression(RegressionWorkflowBase):
         Scikit-learn API: sklearn.ensemble.ExtraTreesRegressor
         https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.ExtraTreesRegressor.html?highlight=extratreesregressor#sklearn.ensemble.ExtraTreesRegressor
         """
-        
+
         super().__init__()
         self.n_estimators = n_estimators
         self.criterion = criterion
@@ -1061,9 +1075,9 @@ class ExtraTreesRegression(RegressionWorkflowBase):
         """The configuration to implement AutoML by FLAML framework."""
         configuration = {
             "time_budget": 10,  # total running time in seconds
-            "metric": 'r2',
-            "estimator_list": ['extra_tree'],  # list of ML learners
-            "task": 'regression',  # task type
+            "metric": "r2",
+            "estimator_list": ["extra_tree"],  # list of ML learners
+            "task": "regression",  # task type
             # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
             # "log_training_metric": True,  # whether to log training metric
         }
@@ -1077,7 +1091,7 @@ class ExtraTreesRegression(RegressionWorkflowBase):
         return hyper_parameters
 
     @staticmethod
-    def _feature_importances(X_train: pd.DataFrame, trained_model: object,  image_config: dict, algorithm_name: str, store_path: str) -> None:
+    def _feature_importances(X_train: pd.DataFrame, trained_model: object, image_config: dict, algorithm_name: str, store_path: str) -> None:
         """Draw the feature importance bar diagram."""
         print("-----* Feature Importance *-----")
         feature_importances(X_train, trained_model, image_config)
@@ -1086,7 +1100,7 @@ class ExtraTreesRegression(RegressionWorkflowBase):
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        self._feature_importances(ExtraTreesRegression.X_train, self.model,  self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._feature_importances(ExtraTreesRegression.X_train, self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
@@ -1100,7 +1114,7 @@ class RandomForestRegression(RegressionWorkflowBase):
     name = "Random Forest"
     special_function = ["Feature Importance"]
 
-    def __init__(   
+    def __init__(
         self,
         n_estimators=100,
         criterion="mse",
@@ -1284,7 +1298,7 @@ class RandomForestRegression(RegressionWorkflowBase):
         Scikit-learn API: sklearn.ensemble.RandomForestRegressor
         https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html?highlight=randomforestregressor#sklearn.ensemble.RandomForestRegressor
         """
-        
+
         super().__init__()
         self.n_estimators = n_estimators
         self.criterion = criterion
@@ -1303,7 +1317,7 @@ class RandomForestRegression(RegressionWorkflowBase):
         self.warm_start = warm_start
         # self.class_weight = class_weight
         self.ccp_alpha = ccp_alpha
-        self.max_samples=max_samples
+        self.max_samples = max_samples
 
         self.model = RandomForestRegressor(
             n_estimators=self.n_estimators,
@@ -1332,9 +1346,9 @@ class RandomForestRegression(RegressionWorkflowBase):
         """The configuration to implement AutoML by FLAML framework."""
         configuration = {
             "time_budget": 10,  # total running time in seconds
-            "metric": 'r2',
-            "estimator_list": ['rf'],  # list of ML learners
-            "task": 'regression',  # task type
+            "metric": "r2",
+            "estimator_list": ["rf"],  # list of ML learners
+            "task": "regression",  # task type
             # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
             # "log_training_metric": True,  # whether to log training metric
         }
@@ -1348,16 +1362,30 @@ class RandomForestRegression(RegressionWorkflowBase):
         return hyper_parameters
 
     @staticmethod
-    def _feature_importances(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame,
-                             trained_model: object,  image_config: dict, algorithm_name: str, store_path: str) -> None:
+    def _feature_importances(
+        X: pd.DataFrame,
+        X_test: pd.DataFrame,
+        y_test: pd.DataFrame,
+        trained_model: object,
+        image_config: dict,
+        algorithm_name: str,
+        store_path: str,
+    ) -> None:
         """Feature importance plot."""
         print("-----* Feature Importance *-----")
         feature_importance__(X, X_test, y_test, trained_model, image_config)
         save_fig(f"Regression - {algorithm_name} - Feature Importance", store_path)
 
     @staticmethod
-    def _box_plot(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame,
-                 trained_model: object,  image_config: dict, algorithm_name: str, store_path: str) -> None:
+    def _box_plot(
+        X: pd.DataFrame,
+        X_test: pd.DataFrame,
+        y_test: pd.DataFrame,
+        trained_model: object,
+        image_config: dict,
+        algorithm_name: str,
+        store_path: str,
+    ) -> None:
         """Box plot."""
         print("-----* Box Plot *-----")
         box_plot(X, X_test, y_test, trained_model, image_config)
@@ -1366,35 +1394,59 @@ class RandomForestRegression(RegressionWorkflowBase):
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        self._feature_importances(RandomForestRegression.X, RandomForestRegression.X_test,
-                                  RandomForestRegression.y_test, self.model, self.image_config, self.naming,
-                                  MODEL_OUTPUT_IMAGE_PATH)
-        self._box_plot(RandomForestRegression.X, RandomForestRegression.X_test,
-                                  RandomForestRegression.y_test, self.model, self.image_config, self.naming,
-                                  MODEL_OUTPUT_IMAGE_PATH)
+        self._feature_importances(
+            RandomForestRegression.X,
+            RandomForestRegression.X_test,
+            RandomForestRegression.y_test,
+            self.model,
+            self.image_config,
+            self.naming,
+            MODEL_OUTPUT_IMAGE_PATH,
+        )
+        self._box_plot(
+            RandomForestRegression.X,
+            RandomForestRegression.X_test,
+            RandomForestRegression.y_test,
+            self.model,
+            self.image_config,
+            self.naming,
+            MODEL_OUTPUT_IMAGE_PATH,
+        )
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        self._feature_importances(RandomForestRegression.X, RandomForestRegression.X_test,
-                                  RandomForestRegression.y_test, self.auto_model, self.image_config, self.naming,
-                                  MODEL_OUTPUT_IMAGE_PATH)
-        self._box_plot(RandomForestRegression.X, RandomForestRegression.X_test,
-                                  RandomForestRegression.y_test, self.auto_model, self.image_config, self.naming,
-                                  MODEL_OUTPUT_IMAGE_PATH)
+        self._feature_importances(
+            RandomForestRegression.X,
+            RandomForestRegression.X_test,
+            RandomForestRegression.y_test,
+            self.auto_model,
+            self.image_config,
+            self.naming,
+            MODEL_OUTPUT_IMAGE_PATH,
+        )
+        self._box_plot(
+            RandomForestRegression.X,
+            RandomForestRegression.X_test,
+            RandomForestRegression.y_test,
+            self.auto_model,
+            self.image_config,
+            self.naming,
+            MODEL_OUTPUT_IMAGE_PATH,
+        )
 
 
 class SVMRegression(RegressionWorkflowBase):
     """The automation workflow of using SVR algorithm to make insightful products."""
 
     name = "Support Vector Machine"
-    special_function = ['Two-dimensional Decision Boundary Diagram']
+    special_function = ["Two-dimensional Decision Boundary Diagram"]
 
     def __init__(
         self,
-        kernel: str = 'rbf',
+        kernel: str = "rbf",
         degree: int = 3,
-        gamma: Union[str, float] = 'scale',
+        gamma: Union[str, float] = "scale",
         # coef0: float = 0.0,
         tol: float = 1e-3,
         C: float = 1.0,
@@ -1462,7 +1514,7 @@ class SVMRegression(RegressionWorkflowBase):
         Scikit-learn API: sklearn.svm.SVR
         https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVR.html
         """
-        
+
         super().__init__()
         self.kernel = kernel
         self.degree = degree
@@ -1487,21 +1539,21 @@ class SVMRegression(RegressionWorkflowBase):
             shrinking=self.shrinking,
             cache_size=self.cache_size,
             verbose=self.verbose,
-            max_iter=self.max_iter
+            max_iter=self.max_iter,
         )
 
         self.naming = SVMRegression.name
         self.customized = True
-        self.customized_name = 'SVR'
+        self.customized_name = "SVR"
 
     @property
     def settings(self) -> Dict:
         """The configuration of SVR to implement AutoML by FLAML framework."""
         configuration = {
             "time_budget": 10,  # total running time in seconds
-            "metric": 'r2',
+            "metric": "r2",
             "estimator_list": [self.customized_name],  # list of ML learners
-            "task": 'regression',  # task type
+            "task": "regression",  # task type
             # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
             # "log_training_metric": True,  # whether to log training metric
         }
@@ -1510,13 +1562,13 @@ class SVMRegression(RegressionWorkflowBase):
     @property
     def customization(self) -> object:
         """The customized SVR of FLAML framework."""
-        from flaml.model import SKLearnEstimator
         from flaml import tune
         from flaml.data import REGRESSION
+        from flaml.model import SKLearnEstimator
         from sklearn.svm import SVR
 
         class MySVMRegression(SKLearnEstimator):
-            def __init__(self, task='regression', n_jobs=None, **config):
+            def __init__(self, task="regression", n_jobs=None, **config):
                 super().__init__(task, **config)
                 if task in REGRESSION:
                     self.estimator_class = SVR
@@ -1524,28 +1576,12 @@ class SVMRegression(RegressionWorkflowBase):
             @classmethod
             def search_space(cls, data_size, task):
                 space = {
-                    'C': {
-                        'domain': tune.uniform(lower=1, upper=data_size[0]),
-                        'init_value': 1,
-                        'low_cost_init_value': 1
-                    },
-                    'kernel': {'domain': tune.choice(['poly', 'rbf', 'sigmoid'])},
-                    'gamma': {
-                        'domain': tune.uniform(lower=1e-5, upper=10),
-                        'init_value': 1e-1,
-                        'low_cost_init_value': 1e-1
-                    },
-                    'degree': {
-                        'domain': tune.quniform(lower=1, upper=5, q=1),
-                        'init_value': 3,
-                        'low_cost_init_value': 3
-                    },
-                    'coef0': {
-                        'domain': tune.uniform(lower=0, upper=1),
-                        'init_value': 0,
-                        'low_cost_init_value': 0
-                    },
-                    'shrinking': {'domain': tune.choice([True, False])},
+                    "C": {"domain": tune.uniform(lower=1, upper=data_size[0]), "init_value": 1, "low_cost_init_value": 1},
+                    "kernel": {"domain": tune.choice(["poly", "rbf", "sigmoid"])},
+                    "gamma": {"domain": tune.uniform(lower=1e-5, upper=10), "init_value": 1e-1, "low_cost_init_value": 1e-1},
+                    "degree": {"domain": tune.quniform(lower=1, upper=5, q=1), "init_value": 3, "low_cost_init_value": 3},
+                    "coef0": {"domain": tune.uniform(lower=0, upper=1), "init_value": 0, "low_cost_init_value": 0},
+                    "shrinking": {"domain": tune.choice([True, False])},
                 }
                 return space
 
@@ -1559,31 +1595,51 @@ class SVMRegression(RegressionWorkflowBase):
         return hyper_parameters
 
     @staticmethod
-    def _plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: Any,
-                                   image_config: dict, algorithm_name: str, store_path: str,
-                                   contour_data: Optional[List[np.ndarray]] = None,
-                                   labels: Optional[np.ndarray] = None) -> None:
+    def _plot_2d_decision_boundary(
+        X: pd.DataFrame,
+        X_test: pd.DataFrame,
+        y_test: pd.DataFrame,
+        trained_model: Any,
+        image_config: dict,
+        algorithm_name: str,
+        store_path: str,
+        contour_data: Optional[List[np.ndarray]] = None,
+        labels: Optional[np.ndarray] = None,
+    ) -> None:
         """Plot the decision boundary of the trained model with the testing data set below."""
         print("-----* Two-dimensional Decision Boundary Diagram *-----")
         plot_2d_decision_boundary(X, X_test, y_test, trained_model, image_config, algorithm_name)
-        save_fig(f'Regression - {algorithm_name} - Decision Boundary', store_path)
+        save_fig(f"Regression - {algorithm_name} - Decision Boundary", store_path)
 
     @dispatch()
     def special_components(self, **kwargs):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
 
         if SVMRegression.X.shape[1] == 2:
-            self._plot_2d_decision_boundary(SVMRegression.X, SVMRegression.X_test, SVMRegression.y_test,
-                                            self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+            self._plot_2d_decision_boundary(
+                SVMRegression.X,
+                SVMRegression.X_test,
+                SVMRegression.y_test,
+                self.model,
+                self.image_config,
+                self.naming,
+                MODEL_OUTPUT_IMAGE_PATH,
+            )
 
     @dispatch(bool)
     def special_components(self, is_automl: bool, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
 
         if SVMRegression.X.shape[1] == 2:
-            self._plot_2d_decision_boundary(SVMRegression.X, SVMRegression.X_test, SVMRegression.y_test,
-                                            self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
-
+            self._plot_2d_decision_boundary(
+                SVMRegression.X,
+                SVMRegression.X_test,
+                SVMRegression.y_test,
+                self.auto_model,
+                self.image_config,
+                self.naming,
+                MODEL_OUTPUT_IMAGE_PATH,
+            )
 
 
 class DNNRegression(RegressionWorkflowBase):
@@ -1595,11 +1651,11 @@ class DNNRegression(RegressionWorkflowBase):
     def __init__(
         self,
         hidden_layer_sizes: tuple = (50, 25, 5),
-        activation: str = 'relu',
-        solver: str ='adam',
+        activation: str = "relu",
+        solver: str = "adam",
         alpha: float = 0.0001,
-        batch_size: Union[int, str] = 'auto',
-        learning_rate: str = 'constant',
+        batch_size: Union[int, str] = "auto",
+        learning_rate: str = "constant",
         learning_rate_init: float = 0.001,
         max_iter: int = 200,
         shuffle: bool = True,
@@ -1800,7 +1856,7 @@ class DNNRegression(RegressionWorkflowBase):
             beta_1=self.beta_1,
             beta_2=self.beta_2,
             epsilon=self.epsilon,
-            n_iter_no_change=self.n_iter_no_change
+            n_iter_no_change=self.n_iter_no_change,
         )
 
         self.naming = DNNRegression.name
@@ -1820,7 +1876,7 @@ class DNNRegression(RegressionWorkflowBase):
 
         def evaluate(l1: int, l2: int, l3: int, batch: int) -> float:
             """The evaluation function by simulating a long-running ML experiment
-             to get the model's performance at every epoch."""
+            to get the model's performance at every epoch."""
             regr = customized_model(l1, l2, l3, batch)
             regr.fit(X_train, y_train)
             y_pred = regr.predict(X_test)
@@ -1830,7 +1886,7 @@ class DNNRegression(RegressionWorkflowBase):
 
         def objective(config: Dict) -> None:
             """Objective function takes a Tune config, evaluates the score of your experiment in a training loop,
-             and uses session.report to report the score back to Tune."""
+            and uses session.report to report the score back to Tune."""
             for step in range(config["steps"]):
                 score = evaluate(config["l1"], config["l2"], config["l3"], config["batch"])
                 session.report({"iterations": step, "mean_loss": score})
@@ -1840,17 +1896,14 @@ class DNNRegression(RegressionWorkflowBase):
             "l1": tune.randint(1, 20),
             "l2": tune.randint(1, 30),
             "l3": tune.randint(1, 20),
-            "batch": tune.randint(20, 100)
+            "batch": tune.randint(20, 100),
         }
 
         # Define the time budget in seconds.
         time_budget_s = 30
 
         # Integrate with FLAML's BlendSearch to implement hyper-parameters optimization .
-        algo = BlendSearch(
-            metric="mean_loss",
-            mode="min",
-            space=search_config)
+        algo = BlendSearch(metric="mean_loss", mode="min", space=search_config)
         algo.set_search_properties(config={"time_budget_s": time_budget_s})
         algo = ConcurrencyLimiter(algo, max_concurrent=4)
 
@@ -1870,9 +1923,8 @@ class DNNRegression(RegressionWorkflowBase):
         results = tuner.fit()
 
         # The hyper-parameters found to minimize the mean loss of the defined objective and the corresponding model.
-        best_result = results.get_best_result(metric='mean_loss', mode='min')
-        self.ray_best_model = customized_model(best_result.config['l1'], best_result.config['l2'],
-                                               best_result.config['l3'], best_result.config['batch'])
+        best_result = results.get_best_result(metric="mean_loss", mode="min")
+        self.ray_best_model = customized_model(best_result.config["l1"], best_result.config["l2"], best_result.config["l3"], best_result.config["batch"])
 
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
@@ -1886,7 +1938,7 @@ class DNNRegression(RegressionWorkflowBase):
         """Plot the learning curve of the trained model."""
         print("-----* Loss Record *-----")
         pd.DataFrame(trained_model.loss_curve_).plot(title="Loss")
-        save_fig(f'Loss Record - {algorithm_name}', store_path)
+        save_fig(f"Loss Record - {algorithm_name}", store_path)
 
     @dispatch()
     def special_components(self, **kwargs) -> None:
@@ -1905,13 +1957,7 @@ class LinearRegression2(RegressionWorkflowBase):
     name = "Linear Regression"
     special_function = ["Linear Regression Formula", "Two/Three-dimensional Linear Regression Image"]
 
-    def __init__(
-        self,
-        fit_intercept: bool = True,
-        normalize: bool = False,
-        copy_X: bool = True,
-        n_jobs: Optional[int] = None
-    ) -> None:
+    def __init__(self, fit_intercept: bool = True, normalize: bool = False, copy_X: bool = True, n_jobs: Optional[int] = None) -> None:
         """
         Parameters
         ----------
@@ -1930,10 +1976,10 @@ class LinearRegression2(RegressionWorkflowBase):
             .. deprecated:: 1.0
                `normalize` was deprecated in version 1.0 and will be
                removed in 1.2.
-        
+
         copy_X : bool, default=True
                         If True, X will be copied; else, it may be overwritten.
-        
+
         n_jobs : int, default=None
             The number of jobs to use for the computation. This will only provide
             speedup in case of sufficiently large problems, that is if firstly
@@ -1941,7 +1987,7 @@ class LinearRegression2(RegressionWorkflowBase):
             to `True`. ``None`` means 1 unless in a
             :obj:`joblib.parallel_backend` context. ``-1`` means using all
             processors. See :term:`Glossary <n_jobs>` for more details.
-        
+
         positive : bool, default=False
                         When set to ``True``, forces the coefficients to be positive. This
             option is only supported for dense arrays.
@@ -1958,12 +2004,7 @@ class LinearRegression2(RegressionWorkflowBase):
         self.copy_X = copy_X
         self.n_jobs = n_jobs
 
-        self.model = LinearRegression(
-            fit_intercept=self.fit_intercept,
-            copy_X=self.copy_X,
-            normalize=self.normalize,
-            n_jobs=self.n_jobs
-        )
+        self.model = LinearRegression(fit_intercept=self.fit_intercept, copy_X=self.copy_X, normalize=self.normalize, n_jobs=self.n_jobs)
 
         self.naming = LinearRegression2.name
 
@@ -1981,16 +2022,14 @@ class LinearRegression2(RegressionWorkflowBase):
         show_formula(coef, intercept, columns_name)
 
     @staticmethod
-    def _plot_2d_graph(feature_data: pd.DataFrame, target_data: pd.DataFrame, algorithm_name: str,
-                       store_path: str):
+    def _plot_2d_graph(feature_data: pd.DataFrame, target_data: pd.DataFrame, algorithm_name: str, store_path: str):
         """Plot the 2D graph of the linear regression model."""
         print("-----* Plot 2D Graph *-----")
         plot_2d_graph(feature_data, target_data)
         save_fig(f"2D Scatter Graph - {algorithm_name}", store_path)
 
     @staticmethod
-    def _plot_3d_graph(feature_data: pd.DataFrame, target_data: pd.DataFrame, algorithm_name: str,
-                       store_path: str):
+    def _plot_3d_graph(feature_data: pd.DataFrame, target_data: pd.DataFrame, algorithm_name: str, store_path: str):
         """Plot the 3D graph of the linear regression model."""
         print("-----* Plot 3D Graph *-----")
         plot_3d_graph(feature_data, target_data)
@@ -1998,30 +2037,49 @@ class LinearRegression2(RegressionWorkflowBase):
 
     def special_components(self, **kwargs):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        self._show_formula(coef=self.model.coef_, intercept=self.model.intercept_,
-                           columns_name=LinearRegression2.X.columns)
+        self._show_formula(coef=self.model.coef_, intercept=self.model.intercept_, columns_name=LinearRegression2.X.columns)
 
         columns_num = LinearRegression2.X.shape[1]
         if columns_num > 2:
             # choose two of dimensions to draw
             three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(LinearRegression2.X, 2)
-            self._plot_3d_graph(feature_data=three_dimen_data, target_data=LinearRegression2.y,
-                                algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
+            self._plot_3d_graph(
+                feature_data=three_dimen_data,
+                target_data=LinearRegression2.y,
+                algorithm_name=self.naming,
+                store_path=MODEL_OUTPUT_IMAGE_PATH,
+            )
             # choose one of dimensions to draw
             two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(LinearRegression2.X, 1)
-            self._plot_2d_graph(feature_data=two_dimen_data, target_data=LinearRegression2.y,
-                                algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
+            self._plot_2d_graph(
+                feature_data=two_dimen_data,
+                target_data=LinearRegression2.y,
+                algorithm_name=self.naming,
+                store_path=MODEL_OUTPUT_IMAGE_PATH,
+            )
         elif columns_num == 2:
             # choose one of dimensions to draw
             two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(LinearRegression2.X, 1)
-            self._plot_2d_graph(feature_data=two_dimen_data, target_data=LinearRegression2.y,
-                                algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
+            self._plot_2d_graph(
+                feature_data=two_dimen_data,
+                target_data=LinearRegression2.y,
+                algorithm_name=self.naming,
+                store_path=MODEL_OUTPUT_IMAGE_PATH,
+            )
             # no need to choose
-            self._plot_3d_graph(feature_data=LinearRegression2.X, target_data=LinearRegression2.y,
-                                algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
+            self._plot_3d_graph(
+                feature_data=LinearRegression2.X,
+                target_data=LinearRegression2.y,
+                algorithm_name=self.naming,
+                store_path=MODEL_OUTPUT_IMAGE_PATH,
+            )
         elif columns_num == 1:
             # no need to choose
-            self._plot_2d_graph(feature_data=LinearRegression2.X, target_data=LinearRegression2.y,
-                                algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
+            self._plot_2d_graph(
+                feature_data=LinearRegression2.X,
+                target_data=LinearRegression2.y,
+                algorithm_name=self.naming,
+                store_path=MODEL_OUTPUT_IMAGE_PATH,
+            )
         else:
             pass

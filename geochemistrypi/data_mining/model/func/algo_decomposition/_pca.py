@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
+from typing import Dict, List, Optional
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from typing import Optional, List, Dict
+
 from ....data.data_readiness import num_input, str_input
 from ....global_variable import SECTION
 
@@ -25,8 +27,7 @@ def pca_manual_hyper_parameters() -> Dict:
     return hyper_parameters
 
 
-def biplot(reduced_data: pd.DataFrame, pc: pd.DataFrame, algorithm_name: str,
-           labels: Optional[List[str]] = None) -> None:
+def biplot(reduced_data: pd.DataFrame, pc: pd.DataFrame, algorithm_name: str, labels: Optional[List[str]] = None) -> None:
     """Plot a compositional bi-plot for two principal components.
 
     Parameters
@@ -47,8 +48,8 @@ def biplot(reduced_data: pd.DataFrame, pc: pd.DataFrame, algorithm_name: str,
 
     x = reduced_data.iloc[:, 0]  # features' contributions for PC1
     y = reduced_data.iloc[:, 1]  # features' contributions for PC2
-    scalex = 1.0/(x.max() - x.min())
-    scaley = 1.0/(y.max() - y.min())
+    scalex = 1.0 / (x.max() - x.min())
+    scaley = 1.0 / (y.max() - y.min())
 
     # Draw a data point projection plot that is projected to
     # a two-dimensional plane using normal PCA
@@ -56,9 +57,7 @@ def biplot(reduced_data: pd.DataFrame, pc: pd.DataFrame, algorithm_name: str,
         legend = []
         classes = np.unique(labels)
         for i, label in enumerate(classes):
-            plt.scatter(x[labels == label] * scalex,
-                        y[labels == label] * scaley,
-                        linewidth=0.01)
+            plt.scatter(x[labels == label] * scalex, y[labels == label] * scaley, linewidth=0.01)
             legend.append("Label: {}".format(label))
         plt.legend(legend)
     else:
@@ -71,10 +70,16 @@ def biplot(reduced_data: pd.DataFrame, pc: pd.DataFrame, algorithm_name: str,
     # plot arrows as the variable contribution,
     # each variable has a score for PC1 and for PC2 respectively
     for i in range(n):
-        plt.arrow(0, 0, pc.iloc[i, 0], pc.iloc[i, 1],
-                  color='k', alpha=0.7, linewidth=1, )
-        plt.text(pc.iloc[i, 0]*1.01, pc.iloc[i, 1]*1.01, pc.index[i],
-                 ha='center', va='center', color='k', fontsize=12)
+        plt.arrow(
+            0,
+            0,
+            pc.iloc[i, 0],
+            pc.iloc[i, 1],
+            color="k",
+            alpha=0.7,
+            linewidth=1,
+        )
+        plt.text(pc.iloc[i, 0] * 1.01, pc.iloc[i, 1] * 1.01, pc.index[i], ha="center", va="center", color="k", fontsize=12)
 
     plt.xlabel(f"{pc.columns[0]}")
     plt.ylabel(f"{pc.columns[1]}")
@@ -82,8 +87,7 @@ def biplot(reduced_data: pd.DataFrame, pc: pd.DataFrame, algorithm_name: str,
     plt.grid()
 
 
-def triplot(reduced_data: pd.DataFrame, pc: pd.DataFrame, algorithm_name: str,
-            labels: Optional[List[str]] = None) -> None:
+def triplot(reduced_data: pd.DataFrame, pc: pd.DataFrame, algorithm_name: str, labels: Optional[List[str]] = None) -> None:
     """Plot a compositional tri-plot in 3d for three principal components.
 
     Parameters
@@ -105,14 +109,14 @@ def triplot(reduced_data: pd.DataFrame, pc: pd.DataFrame, algorithm_name: str,
     """
 
     plt.figure(figsize=(14, 12))
-    ax = plt.axes(projection='3d')
+    ax = plt.axes(projection="3d")
 
     x = reduced_data.iloc[:, 0]  # features' contributions for PC1
     y = reduced_data.iloc[:, 1]  # features' contributions for PC2
     z = reduced_data.iloc[:, 2]  # features' contributions for PC3
-    scalex = 1.0/(x.max() - x.min())
-    scaley = 1.0/(y.max() - y.min())
-    scalez = 1.0/(z.max() - z.min())
+    scalex = 1.0 / (x.max() - x.min())
+    scaley = 1.0 / (y.max() - y.min())
+    scalez = 1.0 / (z.max() - z.min())
 
     # Draw a data point projection plot that is projected to
     # a three-dimensional space using normal PCA
@@ -120,10 +124,7 @@ def triplot(reduced_data: pd.DataFrame, pc: pd.DataFrame, algorithm_name: str,
         legend = []
         classes = np.unique(labels)  # label type
         for i, label in enumerate(classes):
-            ax.scatter3D(x[labels == label] * scalex,
-                         y[labels == label] * scaley,
-                         z[labels == label] * scalez,
-                         linewidth=0.01)
+            ax.scatter3D(x[labels == label] * scalex, y[labels == label] * scaley, z[labels == label] * scalez, linewidth=0.01)
             # hyperparameter in plt.scatter(): c=colors[i], marker=markers[i]
             legend.append("Label: {}".format(label))
         ax.legend(legend)
@@ -132,7 +133,7 @@ def triplot(reduced_data: pd.DataFrame, pc: pd.DataFrame, algorithm_name: str,
 
     # the initial angle to draw the 3d plot
     azim = -60  # azimuth
-    elev = 30   # elevation
+    elev = 30  # elevation
     ax.view_init(elev, azim)  # set the angles
 
     # principal component's weight coefficient
@@ -142,10 +143,17 @@ def triplot(reduced_data: pd.DataFrame, pc: pd.DataFrame, algorithm_name: str,
     # plot arrows as the column_name contribution,
     # each column_name has a score for PC1, for PC2 and for PC3 respectively
     for i in range(n):
-        ax.quiver(0, 0, 0, pc.iloc[i, 0], pc.iloc[i, 1], pc.iloc[i, 2], color='k', alpha=0.7,
-                  linewidth=1, arrow_length_ratio=0.05)
-        ax.text(pc.iloc[i, 0] * 1.1, pc.iloc[i, 1] * 1.1, pc.iloc[i, 2] * 1.1, pc.index[i],
-                ha='center', va='center', color='k', fontsize=12)
+        ax.quiver(0, 0, 0, pc.iloc[i, 0], pc.iloc[i, 1], pc.iloc[i, 2], color="k", alpha=0.7, linewidth=1, arrow_length_ratio=0.05)
+        ax.text(
+            pc.iloc[i, 0] * 1.1,
+            pc.iloc[i, 1] * 1.1,
+            pc.iloc[i, 2] * 1.1,
+            pc.index[i],
+            ha="center",
+            va="center",
+            color="k",
+            fontsize=12,
+        )
 
     ax.set_xlabel(f"{pc.columns[0]}")
     ax.set_ylabel(f"{pc.columns[1]}")
