@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
-import matplotlib.pyplot as plt
-import pandas as pd
-import numpy as np
 import logging
-# import geopandas
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from mpl_toolkits.basemap import Basemap
 
-from ..utils.base import save_fig
 from ..global_variable import MAP_IMAGE_PATH
+from ..utils.base import save_fig
 
 logging.captureWarnings(True)
 
@@ -28,21 +27,21 @@ def map_projected(col: pd.Series, longitude: pd.DataFrame, latitude: pd.DataFram
         Latitude data of data items.
     """
     M = col
-    fig = plt.figure(figsize=(24,16),dpi=300)
-    plt.rcParams['font.sans-serif'] = 'Arial'
-    m = Basemap(projection = 'robin',lat_0=0,lon_0=0)
+    plt.figure(figsize=(24, 16), dpi=300)
+    plt.rcParams["font.sans-serif"] = "Arial"
+    m = Basemap(projection="robin", lat_0=0, lon_0=0)
     m.drawcoastlines()
     m.drawcountries()
-    m.drawmapboundary(fill_color='white')
-    parallels = np.arange(-90., 90., 45.)
+    m.drawmapboundary(fill_color="white")
+    parallels = np.arange(-90.0, 90.0, 45.0)
     m.drawparallels(parallels, labels=[True, True, True, False], fontsize=30)
-    meridians = np.arange(-180., 180., 60.)
+    meridians = np.arange(-180.0, 180.0, 60.0)
     m.drawmeridians(meridians, labels=[True, False, True, True], fontsize=30)
     lon, lat = m(list(longitude), list(latitude))
-    m.scatter(lon, lat, c=M, edgecolor='grey', marker='D', linewidths=0.5, vmax=3, vmin=0, s=25, alpha=0.3, cmap='BuPu')
+    m.scatter(lon, lat, c=M, edgecolor="grey", marker="D", linewidths=0.5, vmax=3, vmin=0, s=25, alpha=0.3, cmap="BuPu")
     cb = m.colorbar(pad=1)
     cb.ax.tick_params(labelsize=30)
-    cb.set_label('Counts', fontsize=50)
+    cb.set_label("Counts", fontsize=50)
     save_fig(f"Map Projection - {col.name}", MAP_IMAGE_PATH)
 
 

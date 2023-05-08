@@ -1,10 +1,11 @@
-from ..utils.base import save_fig
-from ..global_variable import STATISTIC_IMAGE_PATH
-import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
 import numpy as np
+import pandas as pd
+import seaborn as sns
 import statsmodels.api as sm
+
+from ..global_variable import STATISTIC_IMAGE_PATH
+from ..utils.base import save_fig
 
 
 def basic_statistic(data: pd.DataFrame) -> None:
@@ -41,7 +42,7 @@ def is_imputed(data: pd.DataFrame) -> bool:
 
 
 def ratio_null_vs_filled(data: pd.DataFrame) -> None:
-    print('The ratio of the null values in each column:')
+    print("The ratio of the null values in each column:")
     print("--" * 10)
     print(data.isnull().mean().sort_values(ascending=False))
     print("--" * 10)
@@ -61,7 +62,7 @@ def correlation_plot(col: pd.Index, df: pd.DataFrame) -> None:
     plot_df = df[col]
     plot_df_cor = plot_df.corr()
     plt.figure(figsize=(20, 20))
-    sns.heatmap(plot_df_cor, cmap='coolwarm', annot=True, linewidths=.5)
+    sns.heatmap(plot_df_cor, cmap="coolwarm", annot=True, linewidths=0.5)
     print("Successfully calculate the pair-wise correlation coefficient among the selected columns.")
     save_fig("Correlation Plot", STATISTIC_IMAGE_PATH)
 
@@ -78,9 +79,9 @@ def distribution_plot(col: pd.Index, df: pd.DataFrame) -> None:
         The data set.
     """
     n = int(np.sqrt(len(col))) + 1
-    plt.figure(figsize=(n*2, n*2))
+    plt.figure(figsize=(n * 2, n * 2))
     for i in range(len(col)):
-        plt.subplot(n, n, i+1)
+        plt.subplot(n, n, i + 1)
         plt.hist(df[col[i]])
         plt.title(col[i])
     print("Successfully draw the distribution plot of the selected columns.")
@@ -99,10 +100,10 @@ def logged_distribution_plot(col: pd.Index, df: pd.DataFrame) -> None:
         The data set.
     """
     n = int(np.sqrt(len(col))) + 1
-    plt.figure(figsize=(n*2, n*2))
+    plt.figure(figsize=(n * 2, n * 2))
     for i in range(len(col)):
-        plt.subplot(n, n, i+1)
-        plt.hist(df[col[i]].map(lambda x: np.log(x+1)))
+        plt.subplot(n, n, i + 1)
+        plt.hist(df[col[i]].map(lambda x: np.log(x + 1)))
         plt.title(col[i])
     print("Successfully draw the distribution plot after log transformation of the selected columns.")
     save_fig("Distribution Histogram After Log Transformation", STATISTIC_IMAGE_PATH)
@@ -123,12 +124,12 @@ def probability_plot(col: pd.Index, df_origin: pd.DataFrame, df_impute: pd.DataF
         The dataset after imputation.
     """
     r, c = len(col) // 4 + 1, 4
-    fig = plt.figure(figsize=(c*8, r*8))
+    fig = plt.figure(figsize=(c * 8, r * 8))
     for i in range(len(col)):
         feature = col[i]
         pp_origin = sm.ProbPlot(df_origin[feature].dropna(), fit=True)
         pp_impute = sm.ProbPlot(df_impute[feature], fit=True)
-        ax = fig.add_subplot(r, c, i+1)
+        ax = fig.add_subplot(r, c, i + 1)
         pp_origin.ppplot(line="45", other=pp_impute, ax=ax)
         plt.title(f"{feature}, origin data vs. imputed data")
     print("Successfully draw the respective probability plot (origin vs. impute) of the selected columns")

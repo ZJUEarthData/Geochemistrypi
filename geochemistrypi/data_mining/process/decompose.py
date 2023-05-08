@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-import pandas as pd
-from ..model.decomposition import DecompositionWorkflowBase, PCADecomposition
-from ..data.data_readiness import num_input
-from ..global_variable import SECTION, DATASET_OUTPUT_PATH
 from typing import Optional
+
+import pandas as pd
+
+from ..model.decomposition import DecompositionWorkflowBase, PCADecomposition
 
 
 class DecompositionModelSelection(object):
@@ -13,13 +13,19 @@ class DecompositionModelSelection(object):
         self.model = model
         self.dcp_workflow = DecompositionWorkflowBase()
 
-    def activate(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None, X_train: Optional[pd.DataFrame] = None,
-                 X_test: Optional[pd.DataFrame] = None, y_train: Optional[pd.DataFrame] = None,
-                 y_test: Optional[pd.DataFrame] = None) -> None:
+    def activate(
+        self,
+        X: pd.DataFrame,
+        y: Optional[pd.DataFrame] = None,
+        X_train: Optional[pd.DataFrame] = None,
+        X_test: Optional[pd.DataFrame] = None,
+        y_train: Optional[pd.DataFrame] = None,
+        y_test: Optional[pd.DataFrame] = None,
+    ) -> None:
         """Train by Scikit-learn framework."""
 
         self.dcp_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
-        
+
         if self.model == "Principal Component Analysis":
             hyper_parameters = PCADecomposition.manual_hyper_parameters()
             self.dcp_workflow = PCADecomposition(n_components=hyper_parameters["n_components"], svd_solver=hyper_parameters["svd_solver"])

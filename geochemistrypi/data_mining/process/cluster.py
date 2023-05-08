@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
-import pandas as pd
 from typing import Optional
 
-from ..data.data_readiness import num_input, float_input, str_input
-from ..model.clustering import KMeansClustering, DBSCANClustering, ClusteringWorkflowBase
-from ..global_variable import SECTION
+import pandas as pd
 
+from ..model.clustering import ClusteringWorkflowBase, DBSCANClustering, KMeansClustering
 
 
 class ClusteringModelSelection(object):
@@ -15,19 +13,38 @@ class ClusteringModelSelection(object):
         self.model = model
         self.clt_workflow = ClusteringWorkflowBase()
 
-    def activate(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None, X_train: Optional[pd.DataFrame] = None,
-                 X_test: Optional[pd.DataFrame] = None, y_train: Optional[pd.DataFrame] = None,
-                 y_test: Optional[pd.DataFrame] = None) -> None:
+    def activate(
+        self,
+        X: pd.DataFrame,
+        y: Optional[pd.DataFrame] = None,
+        X_train: Optional[pd.DataFrame] = None,
+        X_test: Optional[pd.DataFrame] = None,
+        y_train: Optional[pd.DataFrame] = None,
+        y_test: Optional[pd.DataFrame] = None,
+    ) -> None:
         """Train by Scikit-learn framework."""
 
         self.clt_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
 
         if self.model == "KMeans":
             hyper_parameters = KMeansClustering.manual_hyper_parameters()
-            self.clt_workflow = KMeansClustering(n_clusters=hyper_parameters["n_clusters"], init=hyper_parameters["init"], max_iter=hyper_parameters["max_iter"], tol=hyper_parameters["tol"], algorithm=hyper_parameters["algorithm"])
+            self.clt_workflow = KMeansClustering(
+                n_clusters=hyper_parameters["n_clusters"],
+                init=hyper_parameters["init"],
+                max_iter=hyper_parameters["max_iter"],
+                tol=hyper_parameters["tol"],
+                algorithm=hyper_parameters["algorithm"],
+            )
         elif self.model == "DBSCAN":
             hyper_parameters = DBSCANClustering.manual_hyper_parameters()
-            self.clt_workflow = DBSCANClustering(eps=hyper_parameters["eps"], min_samples=hyper_parameters["min_samples"], metric=hyper_parameters["metric"], algorithm=hyper_parameters["algorithm"], leaf_size=hyper_parameters["leaf_size"], p=hyper_parameters["p"])
+            self.clt_workflow = DBSCANClustering(
+                eps=hyper_parameters["eps"],
+                min_samples=hyper_parameters["min_samples"],
+                metric=hyper_parameters["metric"],
+                algorithm=hyper_parameters["algorithm"],
+                leaf_size=hyper_parameters["leaf_size"],
+                p=hyper_parameters["p"],
+            )
         elif self.model == "":
             pass
 
@@ -42,5 +59,3 @@ class ClusteringModelSelection(object):
 
         # Save the trained model
         self.clt_workflow.save_model()
-
-

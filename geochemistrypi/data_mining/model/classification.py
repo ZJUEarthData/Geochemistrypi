@@ -1,36 +1,35 @@
 # -*- coding: utf-8 -*-
-# import sys
+from typing import Any, Callable, Dict, List, Literal, Optional, Sequence, Tuple, Union
+
 import numpy as np
 import pandas as pd
-from sklearn.svm import SVC
-from sklearn.metrics import classification_report
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
-from sklearn.neural_network import MLPClassifier
-from sklearn.linear_model import LogisticRegression
-from typing import Union, Optional, List, Dict, Callable, Tuple, Any, Sequence, Set, Literal
 import xgboost
-from multipledispatch import dispatch
 from flaml import AutoML
+from multipledispatch import dispatch
+from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report
+from sklearn.neural_network import MLPClassifier
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
 
-from ..utils.base import save_fig
 from ..global_variable import MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
+from ..utils.base import save_fig
 from ._base import WorkflowBase
-from .func.algo_classification._common import confusion_matrix_plot, contour_data, plot_precision_recall, plot_ROC,\
-    cross_validation
-from .func.algo_classification._svm import plot_2d_decision_boundary, svc_manual_hyper_parameters
-from .func.algo_classification._xgboost import feature_importance_map, feature_importance_value, \
-    feature_weights_histograms, xgboost_manual_hyper_parameters
-from .func.algo_classification._decision_tree import decision_tree_plot, decision_tree_manual_hyper_parameters
+from .func.algo_classification._common import confusion_matrix_plot, cross_validation, plot_precision_recall, plot_ROC
+from .func.algo_classification._decision_tree import decision_tree_manual_hyper_parameters, decision_tree_plot
+from .func.algo_classification._deep_neural_network import deep_neural_network_manual_hyper_parameters
+from .func.algo_classification._extra_trees import extra_trees_manual_hyper_parameters
 from .func.algo_classification._logistic_regression import logistic_importance_plot, logistic_regression_manual_hyper_parameters
 from .func.algo_classification._rf import feature_importances, random_forest_manual_hyper_parameters
-from .func.algo_classification._extra_trees import extra_trees_manual_hyper_parameters
-from .func.algo_classification._deep_neural_network import deep_neural_network_manual_hyper_parameters
+from .func.algo_classification._svm import plot_2d_decision_boundary, svc_manual_hyper_parameters
+from .func.algo_classification._xgboost import feature_importance_map, feature_importance_value, feature_weights_histograms, xgboost_manual_hyper_parameters
+
 
 class ClassificationWorkflowBase(WorkflowBase):
     """The base workflow class of classification algorithms."""
 
-    common_function = ["Model Score", "Confusion Matrix", 'Cross Validation', 'Model Prediction', 'Model Persistence']
+    common_function = ["Model Score", "Confusion Matrix", "Cross Validation", "Model Prediction", "Model Persistence"]
 
     def __init__(self) -> None:
         super().__init__()
@@ -55,8 +54,12 @@ class ClassificationWorkflowBase(WorkflowBase):
             self.automl.fit(X_train=X, y_train=y, **self.settings)
         else:
             # When the model is not built-in in FLAML framework, use RAY + FLAML customization.
-            self.ray_tune(ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.X_test,
-                          ClassificationWorkflowBase.y_train, ClassificationWorkflowBase.y_test)
+            self.ray_tune(
+                ClassificationWorkflowBase.X_train,
+                ClassificationWorkflowBase.X_test,
+                ClassificationWorkflowBase.y_train,
+                ClassificationWorkflowBase.y_test,
+            )
             self.ray_best_model.fit(X, y)
 
     @dispatch(object)
@@ -112,8 +115,7 @@ class ClassificationWorkflowBase(WorkflowBase):
         cross_validation(trained_model, X_train, y_train, cv_num=cv_num)
 
     @staticmethod
-    def _confusion_matrix_plot(y_test: pd.DataFrame, y_test_predict: pd.DataFrame,
-                               trained_model: object, algorithm_name: str, store_path: str) -> None:
+    def _confusion_matrix_plot(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, trained_model: object, algorithm_name: str, store_path: str) -> None:
         """Plot the confusion matrix of the model."""
         print("-----* Confusion Matrix *-----")
         confusion_matrix_plot(y_test, y_test_predict, trained_model)
@@ -122,35 +124,45 @@ class ClassificationWorkflowBase(WorkflowBase):
     @staticmethod
     def _contour_data(X: pd.DataFrame, trained_model: Any) -> Tuple[List[np.ndarray], np.ndarray]:
         """Build up coordinate matrices as the data of contour plot."""
-        return contour_data(X, trained_model)
+        # return contour_data(X, trained_model)
 
     @dispatch()
     def common_components(self) -> None:
         """Invoke all common application functions for classification algorithms by Scikit-learn framework."""
         self._score(ClassificationWorkflowBase.y_test, ClassificationWorkflowBase.y_test_predict)
         self._cross_validation(self.model, ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.y_train, 10)
-        self._confusion_matrix_plot(ClassificationWorkflowBase.y_test, ClassificationWorkflowBase.y_test_predict,
-                                    self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._confusion_matrix_plot(
+            ClassificationWorkflowBase.y_test,
+            ClassificationWorkflowBase.y_test_predict,
+            self.model,
+            self.naming,
+            MODEL_OUTPUT_IMAGE_PATH,
+        )
 
     @dispatch(bool)
     def common_components(self, is_automl: bool) -> None:
         """Invoke all common application functions for classification algorithms by FLAML framework."""
         self._score(ClassificationWorkflowBase.y_test, ClassificationWorkflowBase.y_test_predict)
         self._cross_validation(self.auto_model, ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.y_train, 10)
-        self._confusion_matrix_plot(ClassificationWorkflowBase.y_test, ClassificationWorkflowBase.y_test_predict,
-                                    self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._confusion_matrix_plot(
+            ClassificationWorkflowBase.y_test,
+            ClassificationWorkflowBase.y_test_predict,
+            self.auto_model,
+            self.naming,
+            MODEL_OUTPUT_IMAGE_PATH,
+        )
 
 
 class SVMClassification(ClassificationWorkflowBase):
     """The automation workflow of using SVC algorithm to make insightful products."""
 
     name = "Support Vector Machine"
-    special_function = ['Two-dimensional Decision Boundary Diagram', 'Precision_Recall_Curve', 'ROC Curve']
+    special_function = ["Two-dimensional Decision Boundary Diagram", "Precision_Recall_Curve", "ROC Curve"]
 
     def __init__(
         self,
         C: float = 1.0,
-        kernel: Union[str, Callable] = 'rbf',
+        kernel: Union[str, Callable] = "rbf",
         degree: int = 3,
         gamma: Union[str, float] = "scale",
         coef0: float = 0.0,
@@ -161,9 +173,9 @@ class SVMClassification(ClassificationWorkflowBase):
         class_weight: Union[dict, str, None] = None,
         verbose: bool = False,
         max_iter: int = -1,
-        decision_function_shape: Literal['ovo', 'ovr'] = "ovr",
+        decision_function_shape: Literal["ovo", "ovr"] = "ovr",
         break_ties: bool = False,
-        random_state: Optional[int] = None
+        random_state: Optional[int] = None,
     ) -> None:
         """
         Parameters
@@ -300,21 +312,21 @@ class SVMClassification(ClassificationWorkflowBase):
             max_iter=self.max_iter,
             decision_function_shape=self.decision_function_shape,
             break_ties=self.break_ties,
-            random_state=self.random_state
+            random_state=self.random_state,
         )
-        
+
         self.naming = SVMClassification.name
         self.customized = True
-        self.customized_name = 'SVC'
+        self.customized_name = "SVC"
 
     @property
     def settings(self) -> Dict:
         """The configuration of SVC to implement AutoML by FLAML framework."""
         configuration = {
             "time_budget": 10,  # total running time in seconds
-            "metric": 'accuracy',
+            "metric": "accuracy",
             "estimator_list": [self.customized_name],  # list of ML learners
-            "task": 'classification',  # task type
+            "task": "classification",  # task type
             # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
             # "log_training_metric": True,  # whether to log training metric
         }
@@ -323,13 +335,13 @@ class SVMClassification(ClassificationWorkflowBase):
     @property
     def customization(self) -> object:
         """The customized SVC of FLAML framework."""
-        from flaml.model import SKLearnEstimator
         from flaml import tune
         from flaml.data import CLASSIFICATION
+        from flaml.model import SKLearnEstimator
         from sklearn.svm import SVC
 
         class MySVMClassification(SKLearnEstimator):
-            def __init__(self, task='binary', n_jobs=None, **config):
+            def __init__(self, task="binary", n_jobs=None, **config):
                 super().__init__(task, **config)
                 if task in CLASSIFICATION:
                     self.estimator_class = SVC
@@ -337,28 +349,12 @@ class SVMClassification(ClassificationWorkflowBase):
             @classmethod
             def search_space(cls, data_size, task):
                 space = {
-                    'C': {
-                        'domain': tune.uniform(lower=1, upper=data_size[0]),
-                        'init_value': 1,
-                        'low_cost_init_value': 1
-                    },
-                    'kernel': {'domain': tune.choice(['poly', 'rbf', 'sigmoid'])},
-                    'gamma': {
-                        'domain': tune.uniform(lower=1e-5, upper=10),
-                        'init_value': 1e-1,
-                        'low_cost_init_value': 1e-1
-                    },
-                    'degree': {
-                        'domain': tune.quniform(lower=1, upper=5, q=1),
-                        'init_value': 3,
-                        'low_cost_init_value': 3
-                    },
-                    'coef0': {
-                        'domain': tune.uniform(lower=0, upper=1),
-                        'init_value': 0,
-                        'low_cost_init_value': 0
-                    },
-                    'shrinking': {'domain': tune.choice([True, False])},
+                    "C": {"domain": tune.uniform(lower=1, upper=data_size[0]), "init_value": 1, "low_cost_init_value": 1},
+                    "kernel": {"domain": tune.choice(["poly", "rbf", "sigmoid"])},
+                    "gamma": {"domain": tune.uniform(lower=1e-5, upper=10), "init_value": 1e-1, "low_cost_init_value": 1e-1},
+                    "degree": {"domain": tune.quniform(lower=1, upper=5, q=1), "init_value": 3, "low_cost_init_value": 3},
+                    "coef0": {"domain": tune.uniform(lower=0, upper=1), "init_value": 0, "low_cost_init_value": 0},
+                    "shrinking": {"domain": tune.choice([True, False])},
                 }
                 return space
 
@@ -372,39 +368,61 @@ class SVMClassification(ClassificationWorkflowBase):
         return hyper_parameters
 
     @staticmethod
-    def _plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: Any,
-                                   image_config: dict, algorithm_name: str, store_path: str,
-                                   contour_data: Optional[List[np.ndarray]] = None,
-                                   labels: Optional[np.ndarray] = None) -> None:
+    def _plot_2d_decision_boundary(
+        X: pd.DataFrame,
+        X_test: pd.DataFrame,
+        y_test: pd.DataFrame,
+        trained_model: Any,
+        image_config: dict,
+        algorithm_name: str,
+        store_path: str,
+        contour_data: Optional[List[np.ndarray]] = None,
+        labels: Optional[np.ndarray] = None,
+    ) -> None:
         """Plot the decision boundary of the trained model with the testing data set below."""
         print("-----* Two-dimensional Decision Boundary Diagram *-----")
         plot_2d_decision_boundary(X, X_test, y_test, trained_model, image_config, algorithm_name)
-        save_fig(f'Classification - {algorithm_name} - Decision Boundary', store_path)
+        save_fig(f"Classification - {algorithm_name} - Decision Boundary", store_path)
 
     @staticmethod
-    def _plot_precision_recall( X_train: pd.DataFrame, y_train: pd.DataFrame,
-                                trained_model: object, algorithm_name: str, store_path: str) -> None:
+    def _plot_precision_recall(X_train: pd.DataFrame, y_train: pd.DataFrame, trained_model: object, algorithm_name: str, store_path: str) -> None:
         print("-----* Precision and Recall Versus the Decision Threshold *-----")
         plot_precision_recall(X_train, y_train, trained_model, algorithm_name)
-        save_fig(f'Precision_Recall_Curve - {algorithm_name}', store_path)
+        save_fig(f"Precision_Recall_Curve - {algorithm_name}", store_path)
 
     @staticmethod
-    def _plot_ROC(X_train: pd.DataFrame, y_train: pd.DataFrame,
-                  trained_model: object, algorithm_name: str, store_path: str) -> None:
+    def _plot_ROC(X_train: pd.DataFrame, y_train: pd.DataFrame, trained_model: object, algorithm_name: str, store_path: str) -> None:
         print("-----* ROC Curve *-----")
         plot_ROC(X_train, y_train, trained_model, algorithm_name)
-        save_fig(f'ROC_Curve - {algorithm_name}', store_path)
+        save_fig(f"ROC_Curve - {algorithm_name}", store_path)
 
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        self._plot_precision_recall(ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.y_train,
-                                    self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
-        self._plot_ROC(ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.y_train,
-                       self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._plot_precision_recall(
+            ClassificationWorkflowBase.X_train,
+            ClassificationWorkflowBase.y_train,
+            self.model,
+            self.naming,
+            MODEL_OUTPUT_IMAGE_PATH,
+        )
+        self._plot_ROC(
+            ClassificationWorkflowBase.X_train,
+            ClassificationWorkflowBase.y_train,
+            self.model,
+            self.naming,
+            MODEL_OUTPUT_IMAGE_PATH,
+        )
         if SVMClassification.X.shape[1] == 2:
-            self._plot_2d_decision_boundary(SVMClassification.X, SVMClassification.X_test, SVMClassification.y_test,
-                                            self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+            self._plot_2d_decision_boundary(
+                SVMClassification.X,
+                SVMClassification.X_test,
+                SVMClassification.y_test,
+                self.model,
+                self.image_config,
+                self.naming,
+                MODEL_OUTPUT_IMAGE_PATH,
+            )
 
             # TODO(Sany sanyhew1097618435@163.com): Check whether 3d decision boundary makes sense.
             #  If it does, use the code below.
@@ -417,13 +435,30 @@ class SVMClassification(ClassificationWorkflowBase):
     @dispatch(bool)
     def special_components(self, is_automl: bool, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        self._plot_precision_recall(ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.y_train,
-                                    self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
-        self._plot_ROC(ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.y_train,
-                       self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._plot_precision_recall(
+            ClassificationWorkflowBase.X_train,
+            ClassificationWorkflowBase.y_train,
+            self.auto_model,
+            self.naming,
+            MODEL_OUTPUT_IMAGE_PATH,
+        )
+        self._plot_ROC(
+            ClassificationWorkflowBase.X_train,
+            ClassificationWorkflowBase.y_train,
+            self.auto_model,
+            self.naming,
+            MODEL_OUTPUT_IMAGE_PATH,
+        )
         if SVMClassification.X.shape[1] == 2:
-            self._plot_2d_decision_boundary(SVMClassification.X, SVMClassification.X_test, SVMClassification.y_test,
-                                            self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+            self._plot_2d_decision_boundary(
+                SVMClassification.X,
+                SVMClassification.X_test,
+                SVMClassification.y_test,
+                self.auto_model,
+                self.image_config,
+                self.naming,
+                MODEL_OUTPUT_IMAGE_PATH,
+            )
 
 
 class DecisionTreeClassification(ClassificationWorkflowBase):
@@ -434,8 +469,8 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
 
     def __init__(
         self,
-        criterion: str = 'gini',
-        splitter: str = 'best',
+        criterion: str = "gini",
+        splitter: str = "best",
         max_depth: Optional[int] = 3,
         min_samples_split: Union[int, float] = 2,
         min_samples_leaf: Union[int, float] = 1,
@@ -445,7 +480,7 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
         max_leaf_nodes: Optional[int] = None,
         min_impurity_decrease: float = 0.0,
         class_weight: Union[dict, List[dict], str, None] = None,
-        ccp_alpha: float = 0.0
+        ccp_alpha: float = 0.0,
     ) -> None:
         """
         Parameters
@@ -606,36 +641,36 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
             max_leaf_nodes=self.max_leaf_nodes,
             min_impurity_decrease=self.min_impurity_decrease,
             class_weight=self.class_weight,
-            ccp_alpha=self.ccp_alpha
+            ccp_alpha=self.ccp_alpha,
         )
 
         self.naming = DecisionTreeClassification.name
         self.customized = True
-        self.customized_name = 'Decision Tree'
+        self.customized_name = "Decision Tree"
 
     @property
     def settings(self) -> Dict:
         """The configuration of Decision Tree to implement AutoML by FLAML framework."""
         configuration = {
             "time_budget": 10,  # total running time in seconds
-            "metric": 'accuracy',
+            "metric": "accuracy",
             "estimator_list": [self.customized_name],  # list of ML learners
-            "task": 'classification',  # task type
+            "task": "classification",  # task type
             # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
             # "log_training_metric": True,  # whether to log training metric
         }
         return configuration
-    
+
     @property
     def customization(self) -> object:
         """The customized Decision Tree of FLAML framework."""
-        from flaml.model import SKLearnEstimator
         from flaml import tune
         from flaml.data import CLASSIFICATION
+        from flaml.model import SKLearnEstimator
         from sklearn.tree import DecisionTreeClassifier
 
         class MyDTClassification(SKLearnEstimator):
-            def __init__(self, task='binary', n_jobs=None, **config):
+            def __init__(self, task="binary", n_jobs=None, **config):
                 super().__init__(task, **config)
                 if task in CLASSIFICATION:
                     self.estimator_class = DecisionTreeClassifier
@@ -643,19 +678,15 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
             @classmethod
             def search_space(cls, data_size, task):
                 space = {
-                    'criterion': {'domain': tune.choice(['gini', 'entropy', 'log_loss'])},
-                    'max_depth': {'domain': tune.randint(lower=2, upper=20),
-                                  'init_value': 1,
-                                  'low_cost_init_value': 1},
-                    'min_samples_split': {'domain': tune.randint(lower=2, upper=10),
-                                          'init_value': 2,
-                                          'low_cost_init_value': 2},
-                    'min_samples_leaf': {'domain': tune.randint(lower=1, upper=10),
-                                         'init_value': 1,
-                                         'low_cost_init_value': 1},
-                    'max_features': {'domain': tune.randint(lower=1, upper=10),
-                                     'init_value': 1,
-                                     'low_cost_init_value': 1},
+                    "criterion": {"domain": tune.choice(["gini", "entropy", "log_loss"])},
+                    "max_depth": {"domain": tune.randint(lower=2, upper=20), "init_value": 1, "low_cost_init_value": 1},
+                    "min_samples_split": {
+                        "domain": tune.randint(lower=2, upper=10),
+                        "init_value": 2,
+                        "low_cost_init_value": 2,
+                    },
+                    "min_samples_leaf": {"domain": tune.randint(lower=1, upper=10), "init_value": 1, "low_cost_init_value": 1},
+                    "max_features": {"domain": tune.randint(lower=1, upper=10), "init_value": 1, "low_cost_init_value": 1},
                 }
                 return space
 
@@ -675,49 +706,68 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
         save_fig(f"Classification - {algorithm_name} - Tree Graph", store_path)
 
     @staticmethod
-    def _plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: Any,
-                                   image_config: dict, algorithm_name: str, store_path: str,
-                                   contour_data: Optional[List[np.ndarray]] = None,
-                                   labels: Optional[np.ndarray] = None) -> None:
+    def _plot_2d_decision_boundary(
+        X: pd.DataFrame,
+        X_test: pd.DataFrame,
+        y_test: pd.DataFrame,
+        trained_model: Any,
+        image_config: dict,
+        algorithm_name: str,
+        store_path: str,
+        contour_data: Optional[List[np.ndarray]] = None,
+        labels: Optional[np.ndarray] = None,
+    ) -> None:
         """Plot the decision boundary of the trained model with the testing data set below."""
         print("-----* Two-dimensional Decision Boundary Diagram *-----")
         plot_2d_decision_boundary(X, X_test, y_test, trained_model, image_config, algorithm_name)
-        save_fig(f'Classification - {algorithm_name} - Decision Boundary', store_path)
+        save_fig(f"Classification - {algorithm_name} - Decision Boundary", store_path)
 
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         self.plot_tree_function(self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         if DecisionTreeClassification.X.shape[1] == 2:
-            self._plot_2d_decision_boundary(DecisionTreeClassification.X, DecisionTreeClassification.X_test,
-                                              DecisionTreeClassification.y_test,
-                                              self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+            self._plot_2d_decision_boundary(
+                DecisionTreeClassification.X,
+                DecisionTreeClassification.X_test,
+                DecisionTreeClassification.y_test,
+                self.model,
+                self.image_config,
+                self.naming,
+                MODEL_OUTPUT_IMAGE_PATH,
+            )
 
     @dispatch(bool)
     def special_components(self, is_automl: bool, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
         self.plot_tree_function(self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         if DecisionTreeClassification.X.shape[1] == 2:
-            self._plot_2d_decision_boundary(DecisionTreeClassification.X, DecisionTreeClassification.X_test,
-                                              DecisionTreeClassification.y_test,
-                                              self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+            self._plot_2d_decision_boundary(
+                DecisionTreeClassification.X,
+                DecisionTreeClassification.X_test,
+                DecisionTreeClassification.y_test,
+                self.auto_model,
+                self.image_config,
+                self.naming,
+                MODEL_OUTPUT_IMAGE_PATH,
+            )
 
 
 class RandomForestClassification(ClassificationWorkflowBase):
     """The automation workflow of using Random Forest algorithm to make insightful products."""
 
     name = "Random Forest"
-    special_function = ['Feature Importance', "Random Forest's Tree Plot", "Drawing Decision Surfaces Plot"]
+    special_function = ["Feature Importance", "Random Forest's Tree Plot", "Drawing Decision Surfaces Plot"]
 
     def __init__(
         self,
         n_estimators: int = 100,
-        criterion: str = 'gini',
+        criterion: str = "gini",
         max_depth: Optional[int] = 4,
         min_samples_split: Union[int, float] = 4,
         min_samples_leaf: Union[int, float] = 1,
         min_weight_fraction_leaf: float = 0.0,
-        max_features: Union[str, int, float] = 'sqrt',
+        max_features: Union[str, int, float] = "sqrt",
         max_leaf_nodes: Optional[int] = 3,
         min_impurity_decrease: float = 0.0,
         bootstrap: bool = True,
@@ -728,7 +778,7 @@ class RandomForestClassification(ClassificationWorkflowBase):
         warm_start: bool = False,
         class_weight: Union[str, dict, list[dict], None] = None,
         ccp_alpha: float = 0.0,
-        max_samples: Union[int, float] = 10
+        max_samples: Union[int, float] = 10,
     ) -> None:
         """
         A random forest classifier.
@@ -931,7 +981,7 @@ class RandomForestClassification(ClassificationWorkflowBase):
         self.class_weight = class_weight
         self.ccp_alpha = ccp_alpha
         self.max_samples = max_samples
-        
+
         self.model = RandomForestClassifier(
             n_estimators=self.n_estimators,
             criterion=self.criterion,
@@ -950,7 +1000,7 @@ class RandomForestClassification(ClassificationWorkflowBase):
             warm_start=self.warm_start,
             class_weight=self.class_weight,
             ccp_alpha=self.ccp_alpha,
-            max_samples=self.max_samples
+            max_samples=self.max_samples,
         )
 
         self.naming = RandomForestClassification.name
@@ -960,9 +1010,9 @@ class RandomForestClassification(ClassificationWorkflowBase):
         """The configuration to implement AutoML by FLAML framework."""
         configuration = {
             "time_budget": 10,  # total running time in seconds
-            "metric": 'accuracy',
-            "estimator_list": ['rf'],  # list of ML learners
-            "task": 'classification',  # task type
+            "metric": "accuracy",
+            "estimator_list": ["rf"],  # list of ML learners
+            "task": "classification",  # task type
             # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
             # "log_training_metric": True,  # whether to log training metric
         }
@@ -976,8 +1026,7 @@ class RandomForestClassification(ClassificationWorkflowBase):
         return hyper_parameters
 
     @staticmethod
-    def _feature_importances(X_train: pd.DataFrame, trained_model: object, algorithm_name: str,
-                             store_path: str) -> None:
+    def _feature_importances(X_train: pd.DataFrame, trained_model: object, algorithm_name: str, store_path: str) -> None:
         """Draw the feature importance bar diagram."""
         print("-----* Feature Importance *-----")
         feature_importances(X_train, trained_model)
@@ -991,8 +1040,15 @@ class RandomForestClassification(ClassificationWorkflowBase):
         save_fig(f"Classification - {algorithm_name} - Tree Graph", store_path)
 
     @staticmethod
-    def _plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object,
-                                   image_config: dict, algorithm_name: str, store_path: str) -> None:
+    def _plot_2d_decision_boundary(
+        X: pd.DataFrame,
+        X_test: pd.DataFrame,
+        y_test: pd.DataFrame,
+        trained_model: object,
+        image_config: dict,
+        algorithm_name: str,
+        store_path: str,
+    ) -> None:
         """Plot the decision boundary of the trained model with the testing data set below."""
         print("-----* Two-dimensional Decision Boundary Diagram *-----")
         plot_2d_decision_boundary(X, X_test, y_test, trained_model, image_config, algorithm_name)
@@ -1004,33 +1060,40 @@ class RandomForestClassification(ClassificationWorkflowBase):
         self._feature_importances(RandomForestClassification.X_train, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         self._tree_plot(self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         if RandomForestClassification.X.shape[1] == 2:
-            self._plot_2d_decision_boundary(RandomForestClassification.X, RandomForestClassification.X_test,
-                                            RandomForestClassification.y_test, self.model, self.image_config, self.naming,
-                                            MODEL_OUTPUT_IMAGE_PATH)
+            self._plot_2d_decision_boundary(
+                RandomForestClassification.X,
+                RandomForestClassification.X_test,
+                RandomForestClassification.y_test,
+                self.model,
+                self.image_config,
+                self.naming,
+                MODEL_OUTPUT_IMAGE_PATH,
+            )
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        self._feature_importances(RandomForestClassification.X_train, self.auto_model, self.naming,
-                                  MODEL_OUTPUT_IMAGE_PATH)
+        self._feature_importances(RandomForestClassification.X_train, self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         self._tree_plot(self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         if RandomForestClassification.X.shape[1] == 2:
-            self._plot_2d_decision_boundary(RandomForestClassification.X, RandomForestClassification.X_test,
-                                            RandomForestClassification.y_test, self.auto_model, self.image_config, self.naming,
-                                            MODEL_OUTPUT_IMAGE_PATH)
+            self._plot_2d_decision_boundary(
+                RandomForestClassification.X,
+                RandomForestClassification.X_test,
+                RandomForestClassification.y_test,
+                self.auto_model,
+                self.image_config,
+                self.naming,
+                MODEL_OUTPUT_IMAGE_PATH,
+            )
 
 
 class XgboostClassification(ClassificationWorkflowBase):
     """The automation workflow of using Xgboost algorithm to make insightful products."""
 
     # https: // xgboost.readthedocs.io / en / stable / python / python_api.html  # module-xgboost.sklearn
-    _SklObjective = Optional[
-        Union[
-            str, Callable[[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]
-        ]
-    ]
+    _SklObjective = Optional[Union[str, Callable[[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]]]
     name = "Xgboost"
-    special_function = ['Feature Importance']
+    special_function = ["Feature Importance"]
 
     def __init__(
         self,
@@ -1061,14 +1124,14 @@ class XgboostClassification(ClassificationWorkflowBase):
         num_parallel_tree: Optional[int] = None,
         monotone_constraints: Optional[Union[Dict[str, int], str]] = None,
         interaction_constraints: Optional[Union[str, Sequence[Sequence[str]]]] = None,
-        importance_type: Optional[str] = 'weight',
+        importance_type: Optional[str] = "weight",
         gpu_id: Optional[int] = None,
         validate_parameters: Optional[bool] = None,
         predictor: Optional[str] = None,
         # enable_categorical: bool = False,
         eval_metric: Optional[Union[str, List[str], Callable]] = None,
         early_stopping_rounds: Optional[int] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ):
         """
         Parameters
@@ -1108,7 +1171,8 @@ class XgboostClassification(ClassificationWorkflowBase):
             Choices: auto, exact, approx, hist, gpu_hist, this is a combination of commonly used updaters. For other updaters like refresh, set the parameter updater directly.
                 auto: Use heuristic to choose the fastest method.
                     For small dataset, exact greedy (exact) will be used.
-                    For larger dataset, approximate algorithm (approx) will be chosen. It’s recommended to try hist and gpu_hist for higher performance with large dataset. (gpu_hist)has support for external memory.
+                    For larger dataset, approximate algorithm (approx) will be chosen. It’s recommended to try hist and gpu_hist for higher performance with large dataset.
+                      (gpu_hist)has support for external memory.
                     Because old behavior is always use exact greedy in single machine, user will get a message when approximate algorithm is chosen to notify this choice.
                 exact: Exact greedy algorithm. Enumerates all split candidates.
                 approx: Approximate greedy algorithm using quantile sketch and gradient histogram.
@@ -1318,9 +1382,9 @@ class XgboostClassification(ClassificationWorkflowBase):
         """The configuration to implement AutoML by FLAML framework."""
         configuration = {
             "time_budget": 10,  # total running time in seconds
-            "metric": 'accuracy',
-            "estimator_list": ['xgboost'],  # list of ML learners
-            "task": 'classification',  # task type
+            "metric": "accuracy",
+            "estimator_list": ["xgboost"],  # list of ML learners
+            "task": "classification",  # task type
             # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
             # "log_training_metric": True,  # whether to log training metric
         }
@@ -1334,14 +1398,13 @@ class XgboostClassification(ClassificationWorkflowBase):
         return hyper_parameters
 
     @staticmethod
-    def _feature_importance_series(data: pd.DataFrame, trained_model: any, algorithm_name: str, image_config: dict,
-                                   store_path: str) -> None:
+    def _feature_importance_series(data: pd.DataFrame, trained_model: any, algorithm_name: str, image_config: dict, store_path: str) -> None:
         """Plot feature importance series."""
         print("-----* Feature Importance *-----")
         feature_importance_value(data, trained_model)
         feature_weights_histograms(trained_model, image_config, algorithm_name)
         save_fig(f"Classification - {algorithm_name} - Feature Weights Histograms Plot", store_path)
-        feature_importance_map(trained_model, image_config,algorithm_name)
+        feature_importance_map(trained_model, image_config, algorithm_name)
         save_fig(f"Classification - {algorithm_name} - Feature Importance Map Plot", store_path)
 
     @dispatch()
@@ -1374,11 +1437,11 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
     """The automation workflow of using Logistic Regression algorithm to make insightful products."""
 
     name = "Logistic Regression"
-    special_function = ['Feature Importance', 'Precision_Recall_Curve', 'ROC Curve']
+    special_function = ["Feature Importance", "Precision_Recall_Curve", "ROC Curve"]
 
     def __init__(
         self,
-        penalty: str = 'l2',
+        penalty: str = "l2",
         dual: bool = False,
         tol: float = 0.0001,
         C: float = 1.0,
@@ -1386,13 +1449,13 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
         intercept_scaling: float = 1,
         class_weight: Optional[Union[Dict, str]] = None,
         random_state: Optional[int] = None,
-        solver: str = 'lbfgs',
+        solver: str = "lbfgs",
         max_iter: int = 100,
-        multi_class: str = 'auto',
+        multi_class: str = "auto",
         verbose: int = 0,
         warm_start: bool = False,
         n_jobs: int = None,
-        l1_ratio: float = None
+        l1_ratio: float = None,
     ) -> None:
         """
         Parameters
@@ -1587,9 +1650,9 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
         """The configuration to implement AutoML by FLAML framework."""
         configuration = {
             "time_budget": 10,  # total running time in seconds
-            "metric": 'accuracy',
-            "estimator_list": ['lrl2'],  # list of ML learners
-            "task": 'classification',  # task type
+            "metric": "accuracy",
+            "estimator_list": ["lrl2"],  # list of ML learners
+            "task": "classification",  # task type
             # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
             # "log_training_metric": True,  # whether to log training metric
         }
@@ -1610,39 +1673,57 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
         save_fig("LogisticRegression_feature_importance", store_path)
 
     @staticmethod
-    def _plot_precision_recall(X_train: pd.DataFrame, y_train: pd.DataFrame,
-                               trained_model: object, algorithm_name: str, store_path: str) -> None:
+    def _plot_precision_recall(X_train: pd.DataFrame, y_train: pd.DataFrame, trained_model: object, algorithm_name: str, store_path: str) -> None:
         """Plot the precision-recall curve."""
         print("-----* Precision and Recall Versus the Decision Threshold *-----")
         plot_precision_recall(X_train, y_train, trained_model, algorithm_name)
-        save_fig(f'Precision_Recall_Curve - {algorithm_name}', store_path)
+        save_fig(f"Precision_Recall_Curve - {algorithm_name}", store_path)
 
     @staticmethod
-    def _plot_ROC(X_train: pd.DataFrame, y_train: pd.DataFrame,
-                  trained_model: object, algorithm_name: str, store_path: str) -> None:
+    def _plot_ROC(X_train: pd.DataFrame, y_train: pd.DataFrame, trained_model: object, algorithm_name: str, store_path: str) -> None:
         """Plot the ROC curve."""
         print("-----* ROC Curve *-----")
         plot_ROC(X_train, y_train, trained_model, algorithm_name)
-        save_fig(f'ROC_Curve - {algorithm_name}', store_path)
+        save_fig(f"ROC_Curve - {algorithm_name}", store_path)
 
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         self._feature_importance(LogisticRegressionClassification.X, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
-        self._plot_precision_recall(LogisticRegressionClassification.X_train, LogisticRegressionClassification.y_train,
-                                    self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
-        self._plot_ROC(LogisticRegressionClassification.X_train, LogisticRegressionClassification.y_train,
-                       self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._plot_precision_recall(
+            LogisticRegressionClassification.X_train,
+            LogisticRegressionClassification.y_train,
+            self.model,
+            self.naming,
+            MODEL_OUTPUT_IMAGE_PATH,
+        )
+        self._plot_ROC(
+            LogisticRegressionClassification.X_train,
+            LogisticRegressionClassification.y_train,
+            self.model,
+            self.naming,
+            MODEL_OUTPUT_IMAGE_PATH,
+        )
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
         self._feature_importance(LogisticRegressionClassification.X, self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
-        self._plot_precision_recall(LogisticRegressionClassification.X_train, LogisticRegressionClassification.y_train,
-                                    self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
-        self._plot_ROC(LogisticRegressionClassification.X_train, LogisticRegressionClassification.y_train,
-                       self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
-        
+        self._plot_precision_recall(
+            LogisticRegressionClassification.X_train,
+            LogisticRegressionClassification.y_train,
+            self.auto_model,
+            self.naming,
+            MODEL_OUTPUT_IMAGE_PATH,
+        )
+        self._plot_ROC(
+            LogisticRegressionClassification.X_train,
+            LogisticRegressionClassification.y_train,
+            self.auto_model,
+            self.naming,
+            MODEL_OUTPUT_IMAGE_PATH,
+        )
+
 
 class DNNClassification(ClassificationWorkflowBase):
     """The automation workflow of using Deep Neural Network algorithm to make insightful products."""
@@ -1710,12 +1791,12 @@ class DNNClassification(ClassificationWorkflowBase):
         alpha : float, default=0.0001
             Strength of the L2 regularization term. The L2 regularization term
             is divided by the sample size when added to the loss.
-        
+
         batch_size : int, default='auto'
             Size of minibatches for stochastic optimizers.
             If the solver is 'lbfgs', the classifier will not use minibatch.
             When set to "auto", `batch_size=min(200, n_samples)`.
-        
+
         learning_rate : {'constant', 'invscaling', 'adaptive'}, default='constant'
             Learning rate schedule for weight updates.
             - 'constant' is a constant learning rate given by
@@ -1729,56 +1810,56 @@ class DNNClassification(ClassificationWorkflowBase):
             least tol, or fail to increase validation score by at least tol if
             'early_stopping' is on, the current learning rate is divided by 5.
             Only used when ``solver='sgd'``.
-        
+
         learning_rate_init : float, default=0.001
             The initial learning rate used. It controls the step-size
             in updating the weights. Only used when solver='sgd' or 'adam'.
-        
+
         power_t : float, default=0.5
             The exponent for inverse scaling learning rate.
             It is used in updating effective learning rate when the learning_rate
             is set to 'invscaling'. Only used when solver='sgd'.
-        
+
         max_iter : int, default=200
             Maximum number of iterations. The solver iterates until convergence
             (determined by 'tol') or this number of iterations. For stochastic
             solvers ('sgd', 'adam'), note that this determines the number of epochs
             (how many times each data point will be used), not the number of
             gradient steps.
-        
+
         shuffle : bool, default=True
             Whether to shuffle samples in each iteration. Only used when
             solver='sgd' or 'adam'.
-        
+
         random_state : int, RandomState instance, default=None
             Determines random number generation for weights and bias
             initialization, train-test split if early stopping is used, and batch
             sampling when solver='sgd' or 'adam'.
             Pass an int for reproducible results across multiple function calls.
             See :term:`Glossary <random_state>`.
-        
+
         tol : float, default=1e-4
             Tolerance for the optimization. When the loss or score is not improving
             by at least ``tol`` for ``n_iter_no_change`` consecutive iterations,
             unless ``learning_rate`` is set to 'adaptive', convergence is
             considered to be reached and training stops.
-        
+
         verbose : bool, default=False
             Whether to print progress messages to stdout.
-        
+
         warm_start : bool, default=False
             When set to True, reuse the solution of the previous
             call to fit as initialization, otherwise, just erase the
             previous solution. See :term:`the Glossary <warm_start>`.
-        
+
         momentum : float, default=0.9
             Momentum for gradient descent update. Should be between 0 and 1. Only
             used when solver='sgd'.
-        
+
         nesterovs_momentum : bool, default=True
             Whether to use Nesterov's momentum. Only used when solver='sgd' and
             momentum > 0.
-        
+
         early_stopping : bool, default=False
             Whether to use early stopping to terminate training when validation
             score is not improving. If set to true, it will automatically set
@@ -1790,28 +1871,28 @@ class DNNClassification(ClassificationWorkflowBase):
             loss does not improve by more than tol for n_iter_no_change consecutive
             passes over the training set.
             Only effective when solver='sgd' or 'adam'.
-        
+
         validation_fraction : float, default=0.1
             The proportion of training data to set aside as validation set for
             early stopping. Must be between 0 and 1.
             Only used if early_stopping is True.
-        
+
         beta_1 : float, default=0.9
             Exponential decay rate for estimates of first moment vector in adam,
             should be in [0, 1). Only used when solver='adam'.
-        
+
         beta_2 : float, default=0.999
             Exponential decay rate for estimates of second moment vector in adam,
             should be in [0, 1). Only used when solver='adam'.
-        
+
         epsilon : float, default=1e-8
             Value for numerical stability in adam. Only used when solver='adam'.
-        
+
         n_iter_no_change : int, default=10
             Maximum number of epochs to not meet ``tol`` improvement.
             Only effective when solver='sgd' or 'adam'.
             .. versionadded:: 0.20
-        
+
         max_fun : int, default=15000
             Only used when solver='lbfgs'. Maximum number of loss function calls.
             The solver iterates until convergence (determined by 'tol'), number
@@ -1827,55 +1908,55 @@ class DNNClassification(ClassificationWorkflowBase):
         """
 
         super().__init__()
-        self.hidden_layer_sizes = hidden_layer_sizes,
-        self.activation = activation,
-        self.solver = solver,
-        self.alpha = alpha,
-        self.batch_size = batch_size,
-        self.learning_rate = learning_rate,
-        self.learning_rate_init = learning_rate_init,
-        self.power_t = power_t,
-        self.max_iter = max_iter,
-        self.shuffle = shuffle,
-        self.random_state = random_state,
-        self.tol = tol,
-        self.verbose = verbose,
-        self.warm_start = warm_start,
-        self.momentum = momentum,
-        self.nesterovs_momentum = nesterovs_momentum,
-        self.early_stopping = early_stopping,
-        self.validation_fraction = validation_fraction,
-        self.beta_1 = beta_1,
-        self.beta_2 = beta_2,
-        self.epsilon = epsilon,
-        self.n_iter_no_change = n_iter_no_change,
-        self.max_fun = max_fun,
+        self.hidden_layer_sizes = (hidden_layer_sizes,)
+        self.activation = (activation,)
+        self.solver = (solver,)
+        self.alpha = (alpha,)
+        self.batch_size = (batch_size,)
+        self.learning_rate = (learning_rate,)
+        self.learning_rate_init = (learning_rate_init,)
+        self.power_t = (power_t,)
+        self.max_iter = (max_iter,)
+        self.shuffle = (shuffle,)
+        self.random_state = (random_state,)
+        self.tol = (tol,)
+        self.verbose = (verbose,)
+        self.warm_start = (warm_start,)
+        self.momentum = (momentum,)
+        self.nesterovs_momentum = (nesterovs_momentum,)
+        self.early_stopping = (early_stopping,)
+        self.validation_fraction = (validation_fraction,)
+        self.beta_1 = (beta_1,)
+        self.beta_2 = (beta_2,)
+        self.epsilon = (epsilon,)
+        self.n_iter_no_change = (n_iter_no_change,)
+        self.max_fun = (max_fun,)
 
         # FIXME (Sany sanyhew1097618435@163.com): figure out why data type changes after assignment.
         self.model = MLPClassifier(
-            hidden_layer_sizes = self.hidden_layer_sizes[0],
-            activation = self.activation[0],
-            alpha = self.alpha[0],
-            batch_size = self.batch_size[0],
-            learning_rate = self.learning_rate[0],
-            learning_rate_init = self.learning_rate_init[0],
-            power_t = self.power_t[0],
-            max_iter = self.max_iter[0],
-            shuffle = self.shuffle[0],
-            random_state = self.random_state[0],
-            tol = self.tol[0],
-            verbose = self.verbose[0],
-            warm_start = self.warm_start[0],
-            momentum = self.momentum[0],
-            solver = self.solver[0],
-            nesterovs_momentum = self.nesterovs_momentum[0],
-            early_stopping = self.early_stopping[0],
-            validation_fraction = self.validation_fraction[0],
-            beta_1 = self.beta_1[0],
-            beta_2 = self.beta_2[0],
-            epsilon = self.epsilon[0],
-            n_iter_no_change = self.n_iter_no_change[0],
-            max_fun = self.max_fun[0],
+            hidden_layer_sizes=self.hidden_layer_sizes[0],
+            activation=self.activation[0],
+            alpha=self.alpha[0],
+            batch_size=self.batch_size[0],
+            learning_rate=self.learning_rate[0],
+            learning_rate_init=self.learning_rate_init[0],
+            power_t=self.power_t[0],
+            max_iter=self.max_iter[0],
+            shuffle=self.shuffle[0],
+            random_state=self.random_state[0],
+            tol=self.tol[0],
+            verbose=self.verbose[0],
+            warm_start=self.warm_start[0],
+            momentum=self.momentum[0],
+            solver=self.solver[0],
+            nesterovs_momentum=self.nesterovs_momentum[0],
+            early_stopping=self.early_stopping[0],
+            validation_fraction=self.validation_fraction[0],
+            beta_1=self.beta_1[0],
+            beta_2=self.beta_2[0],
+            epsilon=self.epsilon[0],
+            n_iter_no_change=self.n_iter_no_change[0],
+            max_fun=self.max_fun[0],
         )
 
         self.naming = DNNClassification.name
@@ -1895,7 +1976,7 @@ class DNNClassification(ClassificationWorkflowBase):
 
         def evaluate(l1: int, l2: int, l3: int, batch: int) -> float:
             """The evaluation function by simulating a long-running ML experiment
-             to get the model's performance at every epoch."""
+            to get the model's performance at every epoch."""
             clfr = customized_model(l1, l2, l3, batch)
             clfr.fit(X_train, y_train)
             y_pred = clfr.predict(X_test)
@@ -1904,7 +1985,7 @@ class DNNClassification(ClassificationWorkflowBase):
 
         def objective(config: Dict) -> None:
             """Objective function takes a Tune config, evaluates the score of your experiment in a training loop,
-             and uses session.report to report the score back to Tune."""
+            and uses session.report to report the score back to Tune."""
             for step in range(config["steps"]):
                 score = evaluate(config["l1"], config["l2"], config["l3"], config["batch"])
                 session.report({"iterations": step, "mean_loss": score})
@@ -1914,17 +1995,14 @@ class DNNClassification(ClassificationWorkflowBase):
             "l1": tune.randint(1, 20),
             "l2": tune.randint(1, 30),
             "l3": tune.randint(1, 20),
-            "batch": tune.randint(20, 100)
+            "batch": tune.randint(20, 100),
         }
 
         # Define the time budget in seconds.
         time_budget_s = 30
 
         # Integrate with FLAML's BlendSearch to implement hyper-parameters optimization .
-        algo = BlendSearch(
-            metric="mean_loss",
-            mode="min",
-            space=search_config)
+        algo = BlendSearch(metric="mean_loss", mode="min", space=search_config)
         algo.set_search_properties(config={"time_budget_s": time_budget_s})
         algo = ConcurrencyLimiter(algo, max_concurrent=4)
 
@@ -1944,10 +2022,8 @@ class DNNClassification(ClassificationWorkflowBase):
         results = tuner.fit()
 
         # The hyper-parameters found to minimize the mean loss of the defined objective and the corresponding model.
-        best_result = results.get_best_result(metric='mean_loss', mode='min')
-        self.ray_best_model = customized_model(best_result.config['l1'], best_result.config['l2'],
-                                               best_result.config['l3'], best_result.config['batch'])
-
+        best_result = results.get_best_result(metric="mean_loss", mode="min")
+        self.ray_best_model = customized_model(best_result.config["l1"], best_result.config["l2"], best_result.config["l3"], best_result.config["batch"])
 
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
@@ -2002,18 +2078,18 @@ class ExtraTreesClassification(ClassificationWorkflowBase):
             .. versionchanged:: 0.22
             The default value of ``n_estimators`` changed from 10 to 100
             in 0.22.
-            
+
         criterion : {"gini", "entropy", "log_loss"}, default="gini"
             The function to measure the quality of a split. Supported criteria are
             "gini" for the Gini impurity and "log_loss" and "entropy" both for the
             Shannon information gain, see :ref:`tree_mathematical_formulation`.
             Note: This parameter is tree-specific.
-        
+
         max_depth : int, default=None
             The maximum depth of the tree. If None, then nodes are expanded until
             all leaves are pure or until all leaves contain less than
             min_samples_split samples.
-        
+
         min_samples_split : int or float, default=2
             The minimum number of samples required to split an internal node:
             - If int, then consider `min_samples_split` as the minimum number.
@@ -2022,7 +2098,7 @@ class ExtraTreesClassification(ClassificationWorkflowBase):
             number of samples for each split.
             .. versionchanged:: 0.18
             Added float values for fractions.
-        
+
         min_samples_leaf : int or float, default=1
             The minimum number of samples required to be at a leaf node.
             A split point at any depth will only be considered if it leaves at
@@ -2035,12 +2111,12 @@ class ExtraTreesClassification(ClassificationWorkflowBase):
             number of samples for each node.
             .. versionchanged:: 0.18
             Added float values for fractions.
-        
+
         min_weight_fraction_leaf : float, default=0.0
             The minimum weighted fraction of the sum total of weights (of all
             the input samples) required to be at a leaf node. Samples have
             equal weight when sample_weight is not provided.
-        
+
         max_features : {"sqrt", "log2", None}, int or float, default="sqrt"
             The number of features to consider when looking for the best split:
             - If int, then consider `max_features` features at each split.
@@ -2059,12 +2135,12 @@ class ExtraTreesClassification(ClassificationWorkflowBase):
             Note: the search for a split does not stop until at least one
             valid partition of the node samples is found, even if it requires to
             effectively inspect more than ``max_features`` features.
-        
+
         max_leaf_nodes : int, default=None
             Grow trees with ``max_leaf_nodes`` in best-first fashion.
             Best nodes are defined as relative reduction in impurity.
             If None then unlimited number of leaf nodes.
-        
+
         min_impurity_decrease : float, default=0.0
             A node will be split if this split induces a decrease of the impurity
             greater than or equal to this value.
@@ -2077,22 +2153,22 @@ class ExtraTreesClassification(ClassificationWorkflowBase):
             ``N``, ``N_t``, ``N_t_R`` and ``N_t_L`` all refer to the weighted sum,
             if ``sample_weight`` is passed.
             .. versionadded:: 0.19
-        
+
         bootstrap : bool, default=False
             Whether bootstrap samples are used when building trees. If False, the
             whole dataset is used to build each tree.
-        
+
         oob_score : bool, default=False
             Whether to use out-of-bag samples to estimate the generalization score.
             Only available if bootstrap=True.
-        
+
         n_jobs : int, default=None
             The number of jobs to run in parallel. :meth:`fit`, :meth:`predict`,
             :meth:`decision_path` and :meth:`apply` are all parallelized over the
             trees. ``None`` means 1 unless in a :obj:`joblib.parallel_backend`
             context. ``-1`` means using all processors. See :term:`Glossary
             <n_jobs>` for more details.
-        
+
         random_state : int, RandomState instance or None, default=None
             Controls 3 sources of randomness:
             - the bootstrapping of the samples used when building trees
@@ -2101,16 +2177,16 @@ class ExtraTreesClassification(ClassificationWorkflowBase):
             split at each node (if ``max_features < n_features``)
             - the draw of the splits for each of the `max_features`
             See :term:`Glossary <random_state>` for details.
-        
+
         verbose : int, default=0
             Controls the verbosity when fitting and predicting.
-        
+
         warm_start : bool, default=False
             When set to ``True``, reuse the solution of the previous call to fit
             and add more estimators to the ensemble, otherwise, just fit a whole
             new forest. See :term:`Glossary <warm_start>` and
             :ref:`gradient_boosting_warm_start` for details.
-        
+
         class_weight : {"balanced", "balanced_subsample"}, dict or list of dicts, \
                 default=None
             Weights associated with classes in the form ``{class_label: weight}``.
@@ -2131,14 +2207,14 @@ class ExtraTreesClassification(ClassificationWorkflowBase):
             For multi-output, the weights of each column of y will be multiplied.
             Note that these weights will be multiplied with sample_weight (passed
             through the fit method) if sample_weight is specified.
-        
+
         ccp_alpha : non-negative float, default=0.0
             Complexity parameter used for Minimal Cost-Complexity Pruning. The
             subtree with the largest cost complexity that is smaller than
             ``ccp_alpha`` will be chosen. By default, no pruning is performed. See
             :ref:`minimal_cost_complexity_pruning` for details.
             .. versionadded:: 0.22
-        
+
         max_samples : int or float, default=None
             If bootstrap is True, the number of samples to draw from X
             to train each base estimator.
@@ -2147,7 +2223,7 @@ class ExtraTreesClassification(ClassificationWorkflowBase):
             - If float, then draw `max_samples * X.shape[0]` samples. Thus,
             `max_samples` should be in the interval `(0.0, 1.0]`.
             .. versionadded:: 0.22
-        
+
         References
         ----------
         Scikit-learn API: sklearn.ensemble.ExtraTreesClassifier
@@ -2202,9 +2278,9 @@ class ExtraTreesClassification(ClassificationWorkflowBase):
         """The configuration to implement AutoML by FLAML framework."""
         configuration = {
             "time_budget": 10,  # total running time in seconds
-            "metric": 'accuracy',
-            "estimator_list": ['extra_tree'],  # list of ML learners
-            "task": 'classification',  # task type
+            "metric": "accuracy",
+            "estimator_list": ["extra_tree"],  # list of ML learners
+            "task": "classification",  # task type
             # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
             # "log_training_metric": True,  # whether to log training metric
         }

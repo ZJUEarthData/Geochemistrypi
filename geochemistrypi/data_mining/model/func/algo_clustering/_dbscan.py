@@ -1,7 +1,9 @@
-import matplotlib.pyplot as plt
-import pandas as pd
-import numpy as np
 from typing import Dict
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
 from ....data.data_readiness import float_input, num_input, str_input
 from ....global_variable import SECTION
 
@@ -35,9 +37,15 @@ def dbscan_manual_hyper_parameters() -> Dict:
         print("P: The power of the Minkowski metric to be used to calculate distance between points.")
         print("Please specify the power of the Minkowski metric. A good starting range could be between 1 and 2, such as 2.")
         p = num_input(SECTION[2], "P: ")
-    hyper_parameters = {"eps": eps, "min_samples": min_samples, "metric": metric, "algorithm": algorithm, "leaf_size": leaf_size, "p": p}
+    hyper_parameters = {
+        "eps": eps,
+        "min_samples": min_samples,
+        "metric": metric,
+        "algorithm": algorithm,
+        "leaf_size": leaf_size,
+        "p": p,
+    }
     return hyper_parameters
-
 
 
 def dbscan_result_plot(data: pd.DataFrame, trained_model: any, image_config: dict, algorithm_name: str) -> None:
@@ -71,8 +79,7 @@ def dbscan_result_plot(data: pd.DataFrame, trained_model: any, image_config: dic
     unique_labels = set(labels)
 
     # create drawing canvas
-    fig, ax = plt.subplots(figsize=(image_config['width'], image_config['height']), dpi=image_config['dpi'])
-
+    fig, ax = plt.subplots(figsize=(image_config["width"], image_config["height"]), dpi=image_config["dpi"])
 
     # draw the main content
     colors = [plt.cm.Spectral(each) for each in np.linspace(0, 1, len(unique_labels))]
@@ -81,13 +88,25 @@ def dbscan_result_plot(data: pd.DataFrame, trained_model: any, image_config: dic
             col = [0, 0, 0, 1]
         class_member_mask = labels == k
         xy = data[class_member_mask & core_samples_mask]
-        ax.plot(xy.iloc[:, 0], xy.iloc[:, 1], image_config['marker_angle'], markerfacecolor=tuple(col),
-                markeredgecolor=image_config['edgecolor'], markersize=image_config['markersize1'],
-                alpha=image_config['alpha1'])
+        ax.plot(
+            xy.iloc[:, 0],
+            xy.iloc[:, 1],
+            image_config["marker_angle"],
+            markerfacecolor=tuple(col),
+            markeredgecolor=image_config["edgecolor"],
+            markersize=image_config["markersize1"],
+            alpha=image_config["alpha1"],
+        )
         xy = data[class_member_mask & ~core_samples_mask]
-        ax.plot(xy.iloc[:, 0], xy.iloc[:, 1], image_config['marker_circle'], markerfacecolor=tuple(col),
-                markeredgecolor=image_config['edgecolor'], markersize=image_config['markersize2'],
-                alpha=image_config['alpha2'])
+        ax.plot(
+            xy.iloc[:, 0],
+            xy.iloc[:, 1],
+            image_config["marker_circle"],
+            markerfacecolor=tuple(col),
+            markeredgecolor=image_config["edgecolor"],
+            markersize=image_config["markersize2"],
+            alpha=image_config["alpha2"],
+        )
 
     # automatically optimize picture layout structure
     fig.tight_layout()
@@ -98,15 +117,23 @@ def dbscan_result_plot(data: pd.DataFrame, trained_model: any, image_config: dic
     ax.axis([xmin - x_adjustment, xmax + x_adjustment, ymin - y_adjustment, ymax + y_adjustment])
 
     # convert the font of the axes
-    plt.tick_params(labelsize=image_config['labelsize'])  # adjust the font size of the axis label
+    plt.tick_params(labelsize=image_config["labelsize"])  # adjust the font size of the axis label
     # plt.setp(ax.get_xticklabels(), rotation=image_config['xrotation'], ha=image_config['xha'],
     #          rotation_mode="anchor")  # axis label rotation Angle
     # plt.setp(ax.get_yticklabels(), rotation=image_config['rot'], ha=image_config['yha'],
     #          rotation_mode="anchor")  # axis label rotation Angle
     x1_label = ax.get_xticklabels()  # adjust the axis label font
-    [x1_label_temp.set_fontname(image_config['axislabelfont']) for x1_label_temp in x1_label]
+    [x1_label_temp.set_fontname(image_config["axislabelfont"]) for x1_label_temp in x1_label]
     y1_label = ax.get_yticklabels()
-    [y1_label_temp.set_fontname(image_config['axislabelfont']) for y1_label_temp in y1_label]
+    [y1_label_temp.set_fontname(image_config["axislabelfont"]) for y1_label_temp in y1_label]
 
-    ax.set_title(label=algorithm_name, fontdict={"size": image_config['title_size'], "color": image_config['title_color'],
-                           "family": image_config['title_font']}, loc=image_config['title_location'], pad=image_config['title_pad'])
+    ax.set_title(
+        label=algorithm_name,
+        fontdict={
+            "size": image_config["title_size"],
+            "color": image_config["title_color"],
+            "family": image_config["title_font"],
+        },
+        loc=image_config["title_location"],
+        pad=image_config["title_pad"],
+    )

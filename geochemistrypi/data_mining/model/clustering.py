@@ -1,25 +1,22 @@
 # -*- coding: utf-8 -*-
+from typing import Dict, Optional, Union
+
 import numpy as np
 import pandas as pd
 from sklearn import metrics
-from sklearn.cluster import KMeans
-from sklearn.cluster import DBSCAN
-from sklearn.cluster import AffinityPropagation
-from typing import Optional, Union, Dict
+from sklearn.cluster import DBSCAN, AffinityPropagation, KMeans
 
-from ..utils.base import save_data
-from ..utils.base import save_fig
-from ..global_variable import MODEL_OUTPUT_IMAGE_PATH
-from ..global_variable import DATASET_OUTPUT_PATH
+from ..global_variable import DATASET_OUTPUT_PATH, MODEL_OUTPUT_IMAGE_PATH
+from ..utils.base import save_data, save_fig
 from ._base import WorkflowBase
-from .func.algo_clustering._kmeans import plot_silhouette_diagram, scatter2d, scatter3d, kmeans_manual_hyper_parameters
-from .func.algo_clustering._dbscan import dbscan_result_plot, dbscan_manual_hyper_parameters
+from .func.algo_clustering._dbscan import dbscan_manual_hyper_parameters, dbscan_result_plot
+from .func.algo_clustering._kmeans import kmeans_manual_hyper_parameters, plot_silhouette_diagram, scatter2d, scatter3d
 
 
 class ClusteringWorkflowBase(WorkflowBase):
     """The base workflow class of clustering algorithms."""
 
-    common_function = ['Cluster Centers', 'Cluster Labels', 'Model Persistence']
+    common_function = ["Cluster Centers", "Cluster Labels", "Model Persistence"]
 
     def __init__(self):
         super().__init__()
@@ -39,14 +36,14 @@ class ClusteringWorkflowBase(WorkflowBase):
     def get_cluster_centers(self) -> np.ndarray:
         """Get the cluster centers."""
         print("-----* Clustering Centers *-----")
-        print(getattr(self.model, 'cluster_centers_', 'This class don not have cluster_centers_'))
-        return getattr(self.model, 'cluster_centers_', 'This class don not have cluster_centers_')
+        print(getattr(self.model, "cluster_centers_", "This class don not have cluster_centers_"))
+        return getattr(self.model, "cluster_centers_", "This class don not have cluster_centers_")
 
     def get_labels(self):
         """Get the cluster labels."""
         print("-----* Clustering Labels *-----")
-        #self.X['clustering result'] = self.model.labels_
-        self.clustering_result = pd.DataFrame(self.model.labels_, columns=['clustering result'])
+        # self.X['clustering result'] = self.model.labels_
+        self.clustering_result = pd.DataFrame(self.model.labels_, columns=["clustering result"])
         print(self.clustering_result)
         save_data(self.clustering_result, f"{self.naming}'s result", DATASET_OUTPUT_PATH)
 
@@ -55,7 +52,7 @@ class KMeansClustering(ClusteringWorkflowBase):
     """The automation workflow of using KMeans algorithm to make insightful products."""
 
     name = "KMeans"
-    special_function = ['KMeans Score']
+    special_function = ["KMeans Score"]
 
     def __init__(
         self,
@@ -67,7 +64,7 @@ class KMeansClustering(ClusteringWorkflowBase):
         verbose=0,
         random_state=None,
         copy_x=True,
-        algorithm="auto"
+        algorithm="auto",
     ) -> None:
         """
         Parameters
@@ -161,7 +158,7 @@ class KMeansClustering(ClusteringWorkflowBase):
             verbose=self.verbose,
             random_state=self.random_state,
             copy_x=self.copy_x,
-            algorithm=self.algorithm
+            algorithm=self.algorithm,
         )
 
         self.naming = KMeansClustering.name
@@ -181,8 +178,14 @@ class KMeansClustering(ClusteringWorkflowBase):
         print("Silhouette Score: ", metrics.silhouette_score(self.X, self.model.labels_))
 
     @staticmethod
-    def _plot_silhouette_diagram(data: pd.DataFrame, cluster_labels: pd.DataFrame, cluster_centers_: np.ndarray,
-                                 n_clusters: int, algorithm_name: str, store_path: str) -> None:
+    def _plot_silhouette_diagram(
+        data: pd.DataFrame,
+        cluster_labels: pd.DataFrame,
+        cluster_centers_: np.ndarray,
+        n_clusters: int,
+        algorithm_name: str,
+        store_path: str,
+    ) -> None:
         """Plot the silhouette diagram of the clustering result."""
         print("-----* Silhouette Diagram *-----")
         plot_silhouette_diagram(data, cluster_labels, cluster_centers_, n_clusters, algorithm_name)
@@ -205,32 +208,57 @@ class KMeansClustering(ClusteringWorkflowBase):
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         self._get_scores()
-        self._plot_silhouette_diagram(data=self.X, cluster_labels=self.clustering_result['clustering result'],
-                                      cluster_centers_=self.get_cluster_centers(), n_clusters=self.n_clusters,
-                                      algorithm_name=self.naming, store_path=MODEL_OUTPUT_IMAGE_PATH)
+        self._plot_silhouette_diagram(
+            data=self.X,
+            cluster_labels=self.clustering_result["clustering result"],
+            cluster_centers_=self.get_cluster_centers(),
+            n_clusters=self.n_clusters,
+            algorithm_name=self.naming,
+            store_path=MODEL_OUTPUT_IMAGE_PATH,
+        )
         # Draw graphs when the number of principal components > 3
         if self.X.shape[1] >= 3:
             # choose two of dimensions to draw
             two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(self.X, 2)
-            self._scatter2d(data=two_dimen_data, cluster_labels=self.clustering_result['clustering result'], algorithm_name=self.naming,
-                            store_path=MODEL_OUTPUT_IMAGE_PATH)
+            self._scatter2d(
+                data=two_dimen_data,
+                cluster_labels=self.clustering_result["clustering result"],
+                algorithm_name=self.naming,
+                store_path=MODEL_OUTPUT_IMAGE_PATH,
+            )
 
             # choose three of dimensions to draw
             three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(self.X, 3)
-            self._scatter3d(data=three_dimen_data, cluster_labels=self.clustering_result['clustering result'], algorithm_name=self.naming,
-                            store_path=MODEL_OUTPUT_IMAGE_PATH)
+            self._scatter3d(
+                data=three_dimen_data,
+                cluster_labels=self.clustering_result["clustering result"],
+                algorithm_name=self.naming,
+                store_path=MODEL_OUTPUT_IMAGE_PATH,
+            )
         elif self.X.shape[1] == 3:
             # choose two of dimensions to draw
             two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(self.X, 2)
-            self._scatter2d(data=two_dimen_data, cluster_labels=self.clustering_result['clustering result'], algorithm_name=self.naming,
-                            store_path=MODEL_OUTPUT_IMAGE_PATH)
+            self._scatter2d(
+                data=two_dimen_data,
+                cluster_labels=self.clustering_result["clustering result"],
+                algorithm_name=self.naming,
+                store_path=MODEL_OUTPUT_IMAGE_PATH,
+            )
 
             # no need to choose
-            self._scatter3d(data=self.X, cluster_labels=self.clustering_result['clustering result'], algorithm_name=self.naming,
-                            store_path=MODEL_OUTPUT_IMAGE_PATH)
+            self._scatter3d(
+                data=self.X,
+                cluster_labels=self.clustering_result["clustering result"],
+                algorithm_name=self.naming,
+                store_path=MODEL_OUTPUT_IMAGE_PATH,
+            )
         elif self.X.shape[1] == 2:
-            self._scatter2d(data=self.X, cluster_labels=self.clustering_result['clustering result'], algorithm_name=self.naming,
-                            store_path=MODEL_OUTPUT_IMAGE_PATH)
+            self._scatter2d(
+                data=self.X,
+                cluster_labels=self.clustering_result["clustering result"],
+                algorithm_name=self.naming,
+                store_path=MODEL_OUTPUT_IMAGE_PATH,
+            )
         else:
             pass
 
@@ -239,7 +267,7 @@ class DBSCANClustering(ClusteringWorkflowBase):
     """The automation workflow of using DBSCAN algorithm to make insightful products."""
 
     name = "DBSCAN"
-    special_function = ['Virtualization of Result in 2D Graph']
+    special_function = ["Virtualization of Result in 2D Graph"]
 
     def __init__(
         self,
@@ -256,13 +284,16 @@ class DBSCANClustering(ClusteringWorkflowBase):
         Parameters
         ----------
         eps : float, default=0.5
-        The maximum distance between two samples for one to be considered as in the neighborhood of the other. This is not a maximum bound on the distances of points within a cluster. This is the most important DBSCAN parameter to choose appropriately for your data set and distance function.
+        The maximum distance between two samples for one to be considered as in the neighborhood of the other. This is not a maximum bound on the distances of points within a cluster.
+          This is the most important DBSCAN parameter to choose appropriately for your data set and distance function.
 
         min_samples : int, default=5
         The number of samples (or total weight) in a neighborhood for a point to be considered as a core point. This includes the point itself.
 
         metric : str, or callable, default=’euclidean’
-        The metric to use when calculating distance between instances in a feature array. If metric is a string or callable, it must be one of the options allowed by sklearn.metrics.pairwise_distances for its metric parameter. If metric is “precomputed”, X is assumed to be a distance matrix and must be square. X may be a sparse graph, in which case only “nonzero” elements may be considered neighbors for DBSCAN.
+        The metric to use when calculating distance between instances in a feature array. If metric is a string or callable, it must be one of the options allowed by sklearn.metrics.pairwise_distances
+          for its metric parameter.
+          If metric is “precomputed”, X is assumed to be a distance matrix and must be square. X may be a sparse graph, in which case only “nonzero” elements may be considered neighbors for DBSCAN.
 
         New in version 0.17: metric precomputed to accept precomputed sparse matrix.
 
@@ -275,7 +306,8 @@ class DBSCANClustering(ClusteringWorkflowBase):
         The algorithm to be used by the NearestNeighbors module to compute pointwise distances and find nearest neighbors. See NearestNeighbors module documentation for details.
 
         leaf_size : int, default=30
-        Leaf size passed to BallTree or cKDTree. This can affect the speed of the construction and query, as well as the memory required to store the tree. The optimal value depends on the nature of the problem.
+        Leaf size passed to BallTree or cKDTree. This can affect the speed of the construction and query, as well as the memory required to store the tree. The optimal value depends
+          on the nature of the problem.
 
         p : float, default=None
         The power of the Minkowski metric to be used to calculate distance between points. If None, then p=2 (equivalent to the Euclidean distance).
@@ -307,7 +339,7 @@ class DBSCANClustering(ClusteringWorkflowBase):
             algorithm=self.algorithm,
             leaf_size=self.leaf_size,
             p=self.p,
-            n_jobs=self.n_jobs
+            n_jobs=self.n_jobs,
         )
 
         self.naming = DBSCANClustering.name
@@ -324,26 +356,33 @@ class DBSCANClustering(ClusteringWorkflowBase):
         """Plot the clustering result in 2D graph."""
         print("-------** DBSCAN Clustering Result 2D Plot **----------")
         dbscan_result_plot(X, trained_model, imag_config, algorithm_name)
-        save_fig(f'Plot - {algorithm_name} - 2D', store_path)
+        save_fig(f"Plot - {algorithm_name} - 2D", store_path)
 
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        self._clustering_result_plot(X=self.X, trained_model=self.model, algorithm_name=self.naming, imag_config=self.image_config, store_path=MODEL_OUTPUT_IMAGE_PATH)
+        self._clustering_result_plot(
+            X=self.X,
+            trained_model=self.model,
+            algorithm_name=self.naming,
+            imag_config=self.image_config,
+            store_path=MODEL_OUTPUT_IMAGE_PATH,
+        )
 
 
 class AffinityPropagationClustering(ClusteringWorkflowBase):
     name = "AffinityPropagation"
 
-    def __init__(self,
-                 *,
-                 damping=0.5,
-                 max_iter=200,
-                 convergence_iter=15,
-                 copy=True,
-                 preference=None,
-                 affinity="euclidean",
-                 verbose=False,
-                 random_state=None,
+    def __init__(
+        self,
+        *,
+        damping=0.5,
+        max_iter=200,
+        convergence_iter=15,
+        copy=True,
+        preference=None,
+        affinity="euclidean",
+        verbose=False,
+        random_state=None,
     ):
 
         super().__init__()
@@ -355,15 +394,15 @@ class AffinityPropagationClustering(ClusteringWorkflowBase):
         self.preference = preference
         self.affinity = affinity
         self.random_state = random_state
-        self.model = AffinityPropagation(damping = self.damping,
-                                         max_iter = self.max_iter,
-                                         convergence_iter = self.convergence_iter,
-                                         copy = self.copy,
-                                         preference=None,
-                                         affinity="euclidean",
-                                         verbose=False,
-                                         random_state=None,
-
+        self.model = AffinityPropagation(
+            damping=self.damping,
+            max_iter=self.max_iter,
+            convergence_iter=self.convergence_iter,
+            copy=self.copy,
+            preference=None,
+            affinity="euclidean",
+            verbose=False,
+            random_state=None,
         )
         self.naming = AffinityPropagationClustering.name
 
@@ -388,9 +427,6 @@ class WardHierarchicalClustering(ClusteringWorkflowBase):
 class AgglomerativeClustering(ClusteringWorkflowBase):
     name = "Agglomerative"
     pass
-
-
-
 
 
 class OPTICSClustering(ClusteringWorkflowBase):

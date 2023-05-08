@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 from typing import Dict
+
 import numpy as np
 import pandas as pd
 import xgboost
 from matplotlib import pyplot as plt
 from sklearn.inspection import permutation_importance
+
 from ....data.data_readiness import float_input, num_input
 from ....global_variable import SECTION
+
 
 def xgboost_manual_hyper_parameters() -> Dict:
     """Manually set hyperparameters.
@@ -36,7 +39,15 @@ def xgboost_manual_hyper_parameters() -> Dict:
     print("Lambda: L2 regularization term on weights.")
     print("Please specify the L2 regularization term on weights. A good starting range could be between 0 and 1.0, such as 1.")
     lambd = float_input(1, SECTION[2], "@Lambda: ")
-    hyper_parameters = {'n_estimators': n_estimators, 'learning_rate': learning_rate, 'max_depth': max_depth, 'subsample': subsample, 'colsample_bytree': colsample_bytree, 'alpha': alpha, 'lambd': lambd}
+    hyper_parameters = {
+        "n_estimators": n_estimators,
+        "learning_rate": learning_rate,
+        "max_depth": max_depth,
+        "subsample": subsample,
+        "colsample_bytree": colsample_bytree,
+        "alpha": alpha,
+        "lambd": lambd,
+    }
     return hyper_parameters
 
 
@@ -56,7 +67,7 @@ def feature_importance(X: pd.DataFrame, trained_model: object, image_config: dic
     # print the feature importance value orderly
     for feature_name, score in zip(list(columns_name), trained_model.feature_importances_):
         print(feature_name, ":", score)
-    plt.figure(figsize=(image_config['width'], image_config['height']),dpi=image_config['dpi'])
+    plt.figure(figsize=(image_config["width"], image_config["height"]), dpi=image_config["dpi"])
     plt.bar(range(len(columns_name)), trained_model.feature_importances_, tick_label=columns_name)
 
 
@@ -72,8 +83,8 @@ def histograms_feature_weights(X: pd.DataFrame, trained_model: object, image_con
         The sklearn algorithm model trained with X_train data.
     """
 
-    columns_name = X.columns
-    plt.rcParams["figure.figsize"] = (image_config['width'], image_config['height'])
+    # columns_name = X.columns
+    plt.rcParams["figure.figsize"] = (image_config["width"], image_config["height"])
     xgboost.plot_importance(trained_model)
 
 
@@ -96,10 +107,8 @@ def permutation_importance_(X: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.Da
     """
 
     columns_name = X.columns
-    plt.figure(figsize=(image_config['width'], image_config['height']),dpi=image_config['dpi'])
-    result = permutation_importance(trained_model, X_test,
-                                    y_test, n_repeats=10,
-                                    random_state=42, n_jobs=2)
+    plt.figure(figsize=(image_config["width"], image_config["height"]), dpi=image_config["dpi"])
+    result = permutation_importance(trained_model, X_test, y_test, n_repeats=10, random_state=42, n_jobs=2)
     sorted_idx = result.importances_mean.argsort()
     plt.boxplot(
         result.importances[sorted_idx].T,

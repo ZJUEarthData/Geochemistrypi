@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 import os
-import pandas as pd
-import numpy as np
-import joblib
 import pickle
-from typing import Dict, Optional
-from typing import Tuple, List, Union
 from abc import ABCMeta, abstractmethod
-from multipledispatch import dispatch
 from datetime import date
+from typing import Dict, List, Optional, Tuple, Union
 
-from ..data.data_readiness import num2option, num_input, limit_num_input, create_sub_data_set, show_data_columns
-from ..global_variable import SECTION, MODEL_PATH
+import joblib
+import numpy as np
+import pandas as pd
+from multipledispatch import dispatch
+
+from ..data.data_readiness import limit_num_input, num2option, num_input, show_data_columns
+from ..global_variable import MODEL_PATH, SECTION
 from ..utils.base import save_data
 
 
@@ -47,55 +47,55 @@ class WorkflowBase(metaclass=ABCMeta):
     def image_config(self):
         return {
             # Picture layout
-            'width': 16,  # number of subgraph rows
-            'height': 9,  # number of subgraph columns
-            'dpi': 360,  # resolution
+            "width": 16,  # number of subgraph rows
+            "height": 9,  # number of subgraph columns
+            "dpi": 360,  # resolution
             # Main content
-            'cmap': 'coolwarm_r',  # color setting
-            'cmap2': 'Wistia',
-            'marker_angle': '^',  # point type
-            'marker_circle': 'o',  # point type
-            'edgecolor': 'w',  # point edge color
-            'markersize1': 18,  # point size
-            'markersize2': 6,
-            'alpha1': 0.4,  # point transparency
-            'alpha2': 0.95,
-            'linestyle': '-',
+            "cmap": "coolwarm_r",  # color setting
+            "cmap2": "Wistia",
+            "marker_angle": "^",  # point type
+            "marker_circle": "o",  # point type
+            "edgecolor": "w",  # point edge color
+            "markersize1": 18,  # point size
+            "markersize2": 6,
+            "alpha1": 0.4,  # point transparency
+            "alpha2": 0.95,
+            "linestyle": "-",
             # bar
-            'bar_color': 'blue',
-            'bar_align': 'center',
-            'bar_x': range(len(self.X.columns)),  # the sequence of horizontal coordinates of the bar
-            'bar_height': None,  # the height(s) of the bars
-            'bar_label': self.X.columns,  # The label on the X-axis
-            'bar_width': 0.3,  # the width(s) of the bars
-            'bottom': 0,  # the y coordinate(s) of the bars bases
+            "bar_color": "blue",
+            "bar_align": "center",
+            "bar_x": range(len(self.X.columns)),  # the sequence of horizontal coordinates of the bar
+            "bar_height": None,  # the height(s) of the bars
+            "bar_label": self.X.columns,  # The label on the X-axis
+            "bar_width": 0.3,  # the width(s) of the bars
+            "bottom": 0,  # the y coordinate(s) of the bars bases
             # Convert the font of the axes
-            'labelsize': 5,  # the font size of the axis label
-            'xrotation': 0,  # x axis label rotation Angle
-            'xha': 'center',  # x axis 'ha'
-            'rot': 90,  # y axis label rotation Angle
-            'yha': 'center',  # y axis 'ha'
-            'axislabelfont': 'Times New Roman',  # axis label font
+            "labelsize": 5,  # the font size of the axis label
+            "xrotation": 0,  # x axis label rotation Angle
+            "xha": "center",  # x axis 'ha'
+            "rot": 90,  # y axis label rotation Angle
+            "yha": "center",  # y axis 'ha'
+            "axislabelfont": "Times New Roman",  # axis label font
             # Picture title adjustment
-            'title_label': self.naming,  # picture name
-            'title_size': 15,  # title font size
-            'title_color': 'k',
-            'title_location': 'center',
-            'title_font': "Times New Roman",
-            'title_pad': 2,
+            "title_label": self.naming,  # picture name
+            "title_size": 15,  # title font size
+            "title_color": "k",
+            "title_location": "center",
+            "title_font": "Times New Roman",
+            "title_pad": 2,
             # Tree parameter
-            'max_depth': None,  # The maximum depth of the representation
-            'feature_names': None,  # Names of each of the features
-            'class_names': ["class" + str(i) for i in range(1, 1000)],  # Names of each of the target classes in ascending numerical order
-            'label': 'all',  # Whether to show informative labels for impurity, etc
-            'filled': True,  # color filling
-            'impurity': True,  # When set to True, show the impurity at each node
-            'node_ids': None,  # When set to True, show the ID number on each node
-            'proportion': False,  # When set to True, change the display of ‘values’ and/or ‘samples’ to be proportions and percentages respectively
-            'rounded': True,  # When set to True, draw node boxes with rounded corners and use Helvetica fonts instead of Times-Roman
-            'precision': 3,  # Number of digits of precision for floating point in the values of impurity, threshold and value attributes of each node
-            'ax': None,  # axes to plot to.
-            'fontsize': None  # size of text font
+            "max_depth": None,  # The maximum depth of the representation
+            "feature_names": None,  # Names of each of the features
+            "class_names": ["class" + str(i) for i in range(1, 1000)],  # Names of each of the target classes in ascending numerical order
+            "label": "all",  # Whether to show informative labels for impurity, etc
+            "filled": True,  # color filling
+            "impurity": True,  # When set to True, show the impurity at each node
+            "node_ids": None,  # When set to True, show the ID number on each node
+            "proportion": False,  # When set to True, change the display of ‘values’ and/or ‘samples’ to be proportions and percentages respectively
+            "rounded": True,  # When set to True, draw node boxes with rounded corners and use Helvetica fonts instead of Times-Roman
+            "precision": 3,  # Number of digits of precision for floating point in the values of impurity, threshold and value attributes of each node
+            "ax": None,  # axes to plot to.
+            "fontsize": None,  # size of text font
         }
 
     @abstractmethod
@@ -132,8 +132,7 @@ class WorkflowBase(metaclass=ABCMeta):
         return dict()
 
     @staticmethod
-    def score(y_true: Union[pd.DataFrame, np.ndarray], y_predict: Union[pd.DataFrame, np.ndarray])\
-            -> Union[int, float]:
+    def score(y_true: Union[pd.DataFrame, np.ndarray], y_predict: Union[pd.DataFrame, np.ndarray]) -> Union[int, float]:
         """The interface for the child classes."""
         return float()
 
@@ -167,25 +166,27 @@ class WorkflowBase(metaclass=ABCMeta):
         data = pd.DataFrame(data)
         selected_axis_index = []
         selected_axis_name = []
-        for i in range(1, dimensions+1):
+        for i in range(1, dimensions + 1):
             num2option(data.columns)
-            print(f'Choose dimension - {i} data:')
+            print(f"Choose dimension - {i} data:")
             index_axis = limit_num_input(data.columns, SECTION[3], num_input)
-            selected_axis_index.append(index_axis-1)
-            selected_axis_name.append(data.columns[index_axis-1])
+            selected_axis_index.append(index_axis - 1)
+            selected_axis_name.append(data.columns[index_axis - 1])
         selected_axis_data = data.loc[:, selected_axis_name]
-        print(f"The Selected Data Dimension:")
+        print("The Selected Data Dimension:")
         show_data_columns(selected_axis_name)
         return selected_axis_index, selected_axis_data
 
     @staticmethod
-    def data_upload(X: Optional[pd.DataFrame] = None,
-                    y: Optional[pd.DataFrame] = None,
-                    X_train: Optional[pd.DataFrame] = None,
-                    X_test: Optional[pd.DataFrame] = None,
-                    y_train: Optional[pd.DataFrame] = None,
-                    y_test: Optional[pd.DataFrame] = None,
-                    y_test_predict: Optional[pd.DataFrame] = None) -> None:
+    def data_upload(
+        X: Optional[pd.DataFrame] = None,
+        y: Optional[pd.DataFrame] = None,
+        X_train: Optional[pd.DataFrame] = None,
+        X_test: Optional[pd.DataFrame] = None,
+        y_train: Optional[pd.DataFrame] = None,
+        y_test: Optional[pd.DataFrame] = None,
+        y_test_predict: Optional[pd.DataFrame] = None,
+    ) -> None:
         """This method loads the required data into the base class's attributes."""
         if X is not None:
             WorkflowBase.X = X
@@ -217,10 +218,10 @@ class WorkflowBase(metaclass=ABCMeta):
         pickle_path = os.path.join(MODEL_PATH, pickle_filename)
         joblib_filename = filename + ".joblib"
         joblib_path = os.path.join(MODEL_PATH, joblib_filename)
-        with open(pickle_path, 'wb') as fp:
+        with open(pickle_path, "wb") as fp:
             pickle.dump(self.model, fp)
         print(f"Successfully store the trained model '{self.naming}' in '{pickle_filename}' in {MODEL_PATH}.")
-        with open(joblib_path, 'wb') as fj:
+        with open(joblib_path, "wb") as fj:
             joblib.dump(self.model, fj)
         print(f"Successfully store the trained model '{self.naming}' in '{joblib_filename}' in {MODEL_PATH}.")
 
@@ -233,10 +234,10 @@ class WorkflowBase(metaclass=ABCMeta):
         pickle_path = os.path.join(MODEL_PATH, pickle_filename)
         joblib_filename = filename + ".joblib"
         joblib_path = os.path.join(MODEL_PATH, joblib_filename)
-        with open(pickle_path, 'wb') as fp:
+        with open(pickle_path, "wb") as fp:
             pickle.dump(self.auto_model, fp)
         print(f"Successfully store the trained model '{self.naming}' in '{pickle_filename}' in {MODEL_PATH}.")
-        with open(joblib_path, 'wb') as fj:
+        with open(joblib_path, "wb") as fj:
             joblib.dump(self.auto_model, fj)
         print(f"Successfully store the trained model '{self.naming}' in '{joblib_filename}' in {MODEL_PATH}.")
 

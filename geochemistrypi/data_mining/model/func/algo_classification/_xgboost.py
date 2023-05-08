@@ -1,9 +1,12 @@
-import matplotlib.pyplot as plt
-import xgboost
-import pandas as pd
 from typing import Dict
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import xgboost
+
 from ....data.data_readiness import float_input, num_input
 from ....global_variable import SECTION
+
 
 def xgboost_manual_hyper_parameters() -> Dict:
     """Manually set hyperparameters.
@@ -33,7 +36,15 @@ def xgboost_manual_hyper_parameters() -> Dict:
     print("Lambda: L2 regularization term on weights.")
     print("Please specify the L2 regularization term on weights. A good starting range could be between 0 and 1.0, such as 1.")
     lambd = float_input(1, SECTION[2], "@Lambda: ")
-    hyper_parameters = {'n_estimators': n_estimators, 'learning_rate': learning_rate, 'max_depth': max_depth, 'subsample': subsample, 'colsample_bytree': colsample_bytree, 'alpha': alpha, 'lambd': lambd}
+    hyper_parameters = {
+        "n_estimators": n_estimators,
+        "learning_rate": learning_rate,
+        "max_depth": max_depth,
+        "subsample": subsample,
+        "colsample_bytree": colsample_bytree,
+        "alpha": alpha,
+        "lambd": lambd,
+    }
     return hyper_parameters
 
 
@@ -92,9 +103,15 @@ def feature_weights_histograms(trained_model: any, image_config: dict, algorithm
     """
 
     # create drawing canvas
-    fig, ax = plt.subplots(figsize=(image_config['width'], image_config['height']), dpi=image_config['dpi'])
+    fig, ax = plt.subplots(figsize=(image_config["width"], image_config["height"]), dpi=image_config["dpi"])
 
-    ax.bar(image_config['bar_x'], trained_model.feature_importances_, tick_label=image_config['bar_label'], width=image_config['bar_width'], bottom=image_config['bottom'])
+    ax.bar(
+        image_config["bar_x"],
+        trained_model.feature_importances_,
+        tick_label=image_config["bar_label"],
+        width=image_config["bar_width"],
+        bottom=image_config["bottom"],
+    )
 
     # automatically optimize picture layout structure
     fig.tight_layout()
@@ -105,19 +122,26 @@ def feature_weights_histograms(trained_model: any, image_config: dict, algorithm
     ax.axis([xmin - x_adjustment, xmax + x_adjustment, ymin - y_adjustment, ymax + y_adjustment])
 
     # convert the font of the axes
-    plt.tick_params(labelsize=image_config['labelsize'])  # adjust the font size of the axis label
+    plt.tick_params(labelsize=image_config["labelsize"])  # adjust the font size of the axis label
     # plt.setp(ax.get_xticklabels(), rotation=image_config['xrotation'], ha=image_config['xha'],
     #          rotation_mode="anchor")  # axis label rotation Angle
     # plt.setp(ax.get_yticklabels(), rotation=image_config['rot'], ha=image_config['yha'],
     #          rotation_mode="anchor")  # axis label rotation Angle
     x1_label = ax.get_xticklabels()  # adjust the axis label font
-    [x1_label_temp.set_fontname(image_config['axislabelfont']) for x1_label_temp in x1_label]
+    [x1_label_temp.set_fontname(image_config["axislabelfont"]) for x1_label_temp in x1_label]
     y1_label = ax.get_yticklabels()
-    [y1_label_temp.set_fontname(image_config['axislabelfont']) for y1_label_temp in y1_label]
+    [y1_label_temp.set_fontname(image_config["axislabelfont"]) for y1_label_temp in y1_label]
 
-    ax.set_title(label=algorithm_name, fontdict={"size": image_config['title_size'], "color": image_config['title_color'],
-                "family": image_config['title_font']}, loc=image_config['title_location'],
-                pad=image_config['title_pad'])
+    ax.set_title(
+        label=algorithm_name,
+        fontdict={
+            "size": image_config["title_size"],
+            "color": image_config["title_color"],
+            "family": image_config["title_font"],
+        },
+        loc=image_config["title_location"],
+        pad=image_config["title_pad"],
+    )
 
 
 def feature_importance_map(trained_model: any, image_config: dict, algorithm_name: str) -> None:
@@ -142,10 +166,10 @@ def feature_importance_map(trained_model: any, image_config: dict, algorithm_nam
     https://xgboost.readthedocs.io/en/stable/
     """
     # create drawing canvas
-    fig, ax = plt.subplots(figsize=(image_config['width'], image_config['height']), dpi=image_config['dpi'])
+    fig, ax = plt.subplots(figsize=(image_config["width"], image_config["height"]), dpi=image_config["dpi"])
 
     # draw the main content
-    xgboost.plot_importance(booster=trained_model, ax=image_config['ax'], height=image_config['bar_width'])
+    xgboost.plot_importance(booster=trained_model, ax=image_config["ax"], height=image_config["bar_width"])
 
     # automatically optimize picture layout structure
     fig.tight_layout()
@@ -156,17 +180,23 @@ def feature_importance_map(trained_model: any, image_config: dict, algorithm_nam
     ax.axis([xmin - x_adjustment, xmax + x_adjustment, ymin - y_adjustment, ymax + y_adjustment])
 
     # convert the font of the axes
-    plt.tick_params(labelsize=image_config['labelsize'])  # adjust the font size of the axis label
+    plt.tick_params(labelsize=image_config["labelsize"])  # adjust the font size of the axis label
     # plt.setp(ax.get_xticklabels(), rotation=image_config['xrotation'], ha=image_config['xha'],
     #          rotation_mode="anchor")  # axis label rotation Angle
     # plt.setp(ax.get_yticklabels(), rotation=image_config['rot'], ha=image_config['yha'],
     #          rotation_mode="anchor")  # axis label rotation Angle
     x1_label = ax.get_xticklabels()  # adjust the axis label font
-    [x1_label_temp.set_fontname(image_config['axislabelfont']) for x1_label_temp in x1_label]
+    [x1_label_temp.set_fontname(image_config["axislabelfont"]) for x1_label_temp in x1_label]
     y1_label = ax.get_yticklabels()
-    [y1_label_temp.set_fontname(image_config['axislabelfont']) for y1_label_temp in y1_label]
+    [y1_label_temp.set_fontname(image_config["axislabelfont"]) for y1_label_temp in y1_label]
 
-    ax.set_title(label=algorithm_name,
-                 fontdict={"size": image_config['title_size'], "color": image_config['title_color'],
-                           "family": image_config['title_font']}, loc=image_config['title_location'],
-                 pad=image_config['title_pad'])
+    ax.set_title(
+        label=algorithm_name,
+        fontdict={
+            "size": image_config["title_size"],
+            "color": image_config["title_color"],
+            "family": image_config["title_font"],
+        },
+        loc=image_config["title_location"],
+        pad=image_config["title_pad"],
+    )

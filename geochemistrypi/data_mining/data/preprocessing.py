@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from typing import List
+
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
@@ -23,9 +24,9 @@ def feature_scaler(X: pd.DataFrame, method: List[str], method_idx: int) -> pd.Da
     X_scaled : np.ndarray
         The dataset after imputing.
     """
-    if method[method_idx] == 'Min-max Scaling':
+    if method[method_idx] == "Min-max Scaling":
         scaler = MinMaxScaler()
         return scaler.fit_transform(X)
-    elif method[method_idx] == 'Standardization':
+    elif method[method_idx] == "Standardization":
         scaler = StandardScaler()
         return scaler.fit_transform(X)

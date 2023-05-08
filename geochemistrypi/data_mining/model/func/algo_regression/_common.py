@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 import matplotlib.pyplot as plt
-import pandas as pd
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, explained_variance_score
-from sklearn.model_selection import cross_validate
 import numpy as np
+import pandas as pd
+from sklearn.metrics import explained_variance_score, mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import cross_validate
 
 
 def score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> None:
@@ -42,35 +42,38 @@ def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.D
         Determines the cross-validation splitting strategy.
     """
 
-    scores = cross_validate(trained_model, X_train, y_train,
-                            scoring=('neg_root_mean_squared_error',
-                                     'neg_mean_absolute_error',
-                                     'r2',
-                                     'explained_variance'),
-                            cv=cv_num)
+    scores = cross_validate(
+        trained_model,
+        X_train,
+        y_train,
+        scoring=("neg_root_mean_squared_error", "neg_mean_absolute_error", "r2", "explained_variance"),
+        cv=cv_num,
+    )
     # the keys follow the returns of cross_validate in scikit-learn
-    scores2display = {'fit_time': 'Fit Time',
-                      'score_time': 'Score Time',
-                      'test_neg_root_mean_squared_error': 'Root Mean Square Error',
-                      'test_neg_mean_absolute_error': 'Mean Absolute Error',
-                      'test_r2': 'R2 Score',
-                      'test_explained_variance': 'Explained Variance Score'}
+    scores2display = {
+        "fit_time": "Fit Time",
+        "score_time": "Score Time",
+        "test_neg_root_mean_squared_error": "Root Mean Square Error",
+        "test_neg_mean_absolute_error": "Mean Absolute Error",
+        "test_r2": "R2 Score",
+        "test_explained_variance": "Explained Variance Score",
+    }
     for key, values in scores.items():
         print("*", scores2display[key], "*")
-        if (key == 'test_neg_root_mean_squared_error') or (key == 'test_neg_mean_absolute_error'):
+        if (key == "test_neg_root_mean_squared_error") or (key == "test_neg_mean_absolute_error"):
             display_cross_validation_scores(-values)
         else:
             display_cross_validation_scores(values)
-        print('-------------')
+        print("-------------")
 
 
 def plot_predicted_value_evaluation(y_test: pd.DataFrame, y_test_predict: pd.DataFrame) -> None:
     plt.figure(figsize=(4, 4))
-    plt.scatter(y_test, y_test_predict, color='gold', alpha=0.3)
-    plt.plot([y_test.min(), y_test.max()], [y_test_predict.min(),y_test_predict.max()], '-r', linewidth=1)
-    plt.title('Predicted image')
-    plt.xlabel('y_test')
-    plt.ylabel('y_test_predict')
+    plt.scatter(y_test, y_test_predict, color="gold", alpha=0.3)
+    plt.plot([y_test.min(), y_test.max()], [y_test_predict.min(), y_test_predict.max()], "-r", linewidth=1)
+    plt.title("Predicted image")
+    plt.xlabel("y_test")
+    plt.ylabel("y_test_predict")
 
 
 def plot_true_vs_predicted(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, algorithm_name: str):
@@ -88,7 +91,7 @@ def plot_true_vs_predicted(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, a
 
     y_test.index = range(len(y_test))
     plt.figure(figsize=(8, 6))
-    plt.plot(y_test_predict, color='red', label='predict')
-    plt.plot(y_test, color='gold', label='true')
+    plt.plot(y_test_predict, color="red", label="predict")
+    plt.plot(y_test, color="gold", label="true")
     plt.legend()
-    plt.title(f'Ground Truth v.s. Prediction - {algorithm_name}')
+    plt.title(f"Ground Truth v.s. Prediction - {algorithm_name}")

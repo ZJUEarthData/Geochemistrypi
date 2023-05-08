@@ -1,0 +1,53 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+
+repos:
+  - repo: https://github.com/psf/black
+    rev: 22.10.0
+    hooks:
+      - id: black
+        name: Code Formatter
+        description: Apply the Black code formatter
+        files: \.(py|pyx)$
+        args: [--line-length=200]
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        name: Import formatter
+        description: Sorts Python imports
+        files: \.(py|pyx)$
+        args: [--line-length=200, --profile=black]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.0.1
+    hooks:
+      - id: trailing-whitespace
+        name: Trailing Whitespace Checker
+        description: Checks for and removes trailing whitespace from files.
+        files: \.(py|md|txt)$
+      - id: end-of-file-fixer
+        name: End-of-file Fixer
+        description: Ensures that files end with a newline.
+        files: \.(py|md|txt)$
+      - id: check-yaml
+        name: YAML Checker
+        description: Checks for syntax errors in YAML files.
+        files: \.(yml|yaml)$
+      - id: check-added-large-files
+        name: Large Files Checker
+        description: Checks for large files added to git.
+        types: [file]
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.0.0
+    hooks:
+      - id: flake8
+        name: Flake8 Linter
+        description: Check Python code for style and possible errors
+        files: \.(py|pyx)$
+        # args: [--max-line-length=200, --max-complexity=100, --ignore=F811,W605]
+        # Use config file to pass multiple values to the argument
+        args: [--config=.flake8]
+
