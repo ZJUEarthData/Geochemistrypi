@@ -6,7 +6,12 @@
 <img src="https://img.shields.io/github/license/ZJUEarthData/geochemistrypi">
 <img src="https://img.shields.io/github/v/release/ZJUEarthData/geochemistrypi?include_prereleases">
 <img src="https://static.pepy.tech/personalized-badge/geochemistrypi?period=total&units=international_system&left_color=grey&right_color=green&left_text=Downloads">
+
+
+<img src="https://img.shields.io/pypi/pyversions/geochemistrypi">
 </p>
+
+
 
 
 Geochemistry π is **a Python framework** for data-driven geochemistry discovery. It provides an extendable tool and one-stop shop for **geochemical data analysis** on tabular data.
