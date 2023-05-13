@@ -205,8 +205,9 @@ def pipeline(file_name: str) -> None:
             feature_built.index2name()
             feature_built.name_feature()
             feature_built.input_expression()
-            feature_built.infix_expr2postfix_expr()
-            feature_built.eval_expression()
+            feature_built.evaluate()
+            # feature_built.infix_expr2postfix_expr()
+            # feature_built.eval_expression()
             clear_output()
             # update the original data with a new feature
             data_processed_imputed = feature_built.create_data_set()
