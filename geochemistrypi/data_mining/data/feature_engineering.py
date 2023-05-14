@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import string
+
 import numpy as np
 import pandas
-import re
 
 # class Stack(object):
 #     """Create a stack."""
@@ -43,7 +43,7 @@ class FeatureConstructor(object):
     oper = "+-*/^(),."
     # parenthesis = ['(', ')']
     alphabet = string.ascii_letters
-    cal_words = ['pow', 'sin', 'cos', 'tan', 'pi', 'mean', 'std', 'var', 'log']
+    cal_words = ["pow", "sin", "cos", "tan", "pi", "mean", "std", "var", "log"]
 
     def __init__(self, data):
         self.feature_name = None
@@ -61,7 +61,7 @@ class FeatureConstructor(object):
         columns_name = self.data.columns
         print("Selected data set:")
         for i in range(len(columns_name)):
-            print(FeatureConstructor.alphabet[i] + ' - ' + columns_name[i])
+            print(FeatureConstructor.alphabet[i] + " - " + columns_name[i])
             self.map_dict[FeatureConstructor.alphabet[i]] = columns_name[i]
 
     def _get_column(self, index):
@@ -69,66 +69,70 @@ class FeatureConstructor(object):
 
     def name_feature(self):
         while True:
-            self.feature_name = input("Name the constructed feature (column name), like 'NEW-COMPOUND': \n"
-                                  "@input: ")
-            if len(self.feature_name)==0:
+            self.feature_name = input("Name the constructed feature (column name), like 'NEW-COMPOUND': \n" "@input: ")
+            if len(self.feature_name) == 0:
                 print("Sorry!You haven't named it yet!")
             else:
                 break
 
     def input_expression(self):
-        expression = input("Build up new feature with the combination of 4 basic arithmatic operator,"
-                                   " including '+', '-', '*', '/', '()'.\n"
-                                   "Input example 1: a * b - c \n"
-                                   "--> Step 1: Multiply a column with b column; \n"
-                                   "--> Step 2: Subtract c from the result of Step 1; \n"
-                                   "Input example 2: (d + 5 * f) / g \n"
-                                   "--> Step 1: Multiply 5 with f; \n"
-                                   "--> Step 2: Plus d column with the result of Step 1;\n"
-                                   "--> Step 3: Divide the result of Step 1 by g; \n"
-                                   "Now we've added new computing capabilities:\n"
-                                   "You can use pow(x,y) to perform power operations.\n"
-                                   "You can use mean(x) to calculate the average value.\n"
-                                   "You can use log(x) for logarithms with base e.\n"                                   
-                                   # "Input example 3: (h ** 3) / (i ** (1/2)) \n"
-                                   # "--> Step 1: Exponent calculation, h raised to the power of 3; \n"
-                                   # "--> Step 2: Root calculation, find the square root of i; \n"
-                                   # "--> Step 3: Divide the result of Step 1 by the result of Step 2; \n"
-                                   "@input: ")
+        expression = input(
+            "Build up new feature with the combination of 4 basic arithmatic operator,"
+            " including '+', '-', '*', '/', '()'.\n"
+            "Input example 1: a * b - c \n"
+            "--> Step 1: Multiply a column with b column; \n"
+            "--> Step 2: Subtract c from the result of Step 1; \n"
+            "Input example 2: (d + 5 * f) / g \n"
+            "--> Step 1: Multiply 5 with f; \n"
+            "--> Step 2: Plus d column with the result of Step 1;\n"
+            "--> Step 3: Divide the result of Step 1 by g; \n"
+            "Now we've added new computing capabilities:\n"
+            "You can use pow(x,y) to perform power operations.\n"
+            "You can use mean(x) to calculate the average value.\n"
+            "You can use log(x) for logarithms with base e.\n"
+            # "Input example 3: (h ** 3) / (i ** (1/2)) \n"
+            # "--> Step 1: Exponent calculation, h raised to the power of 3; \n"
+            # "--> Step 2: Root calculation, find the square root of i; \n"
+            # "--> Step 3: Divide the result of Step 1 by the result of Step 2; \n"
+            "@input: "
+        )
         while True:
-            self._infix_expr = expression.replace(' ', '')
+            self._infix_expr = expression.replace(" ", "")
             if not all(c.isdigit() or c.isspace() or c in FeatureConstructor.oper or c in FeatureConstructor.alphabet for c in self._infix_expr):
                 print("There's something wrong with the input !\n")
-                expression = input("Build up new feature with the combination of 4 basic arithmatic operator,"
-                                   " including '+', '-', '*', '/', '()'.\n"
-                                   "Input example 1: a * b - c \n"
-                                   "--> Step 1: Multiply a column with b column; \n"
-                                   "--> Step 2: Subtract c from the result of Step 1; \n"
-                                   "Input example 2: (d + 5 * f) / g \n"
-                                   "--> Step 1: Multiply 5 with f; \n"
-                                   "--> Step 2: Plus d column with the result of Step 1;\n"
-                                   "--> Step 3: Divide the result of Step 1 by g; \n"
-                                   "Now we've added new computing capabilities:\n"
-                                   "You can use pow(x,y) to perform power operations.\n"
-                                   "You can use mean(x) to calculate the average value.\n"
-                                   "You can use log(x) for logarithms with base e.\n"                                   
-                                   # "Input example 3: (h ** 3) / (i ** (1/2)) \n"
-                                   # "--> Step 1: Exponent calculation, h raised to the power of 3; \n"
-                                   # "--> Step 2: Root calculation, find the square root of i; \n"
-                                   # "--> Step 3: Divide the result of Step 1 by the result of Step 2; \n"
-                                   "@input: ")
+                expression = input(
+                    "Build up new feature with the combination of 4 basic arithmatic operator,"
+                    " including '+', '-', '*', '/', '()'.\n"
+                    "Input example 1: a * b - c \n"
+                    "--> Step 1: Multiply a column with b column; \n"
+                    "--> Step 2: Subtract c from the result of Step 1; \n"
+                    "Input example 2: (d + 5 * f) / g \n"
+                    "--> Step 1: Multiply 5 with f; \n"
+                    "--> Step 2: Plus d column with the result of Step 1;\n"
+                    "--> Step 3: Divide the result of Step 1 by g; \n"
+                    "Now we've added new computing capabilities:\n"
+                    "You can use pow(x,y) to perform power operations.\n"
+                    "You can use mean(x) to calculate the average value.\n"
+                    "You can use log(x) for logarithms with base e.\n"
+                    # "Input example 3: (h ** 3) / (i ** (1/2)) \n"
+                    # "--> Step 1: Exponent calculation, h raised to the power of 3; \n"
+                    # "--> Step 2: Root calculation, find the square root of i; \n"
+                    # "--> Step 3: Divide the result of Step 1 by the result of Step 2; \n"
+                    "@input: "
+                )
             else:
                 break
 
     def evaluate(self):
         self.letter_map()
-        self._infix_expr = self._infix_expr.replace('sin', 'np.sin')
-        self._infix_expr = self._infix_expr.replace('cos', 'np.cos')
-        self._infix_expr = self._infix_expr.replace('tan', 'np.tan')
-        self._infix_expr = self._infix_expr.replace('pi', 'np.pi')
-        self._infix_expr = self._infix_expr.replace('pow', 'np.power')
-        self._infix_expr = self._infix_expr.replace('mean', 'np.mean')
-        self._infix_expr = self._infix_expr.replace('log', 'np.log')
+        np.array(["dummy"])  # dummy array to skip the flake8 warning - F401 'numpy as np' imported but unused'
+        self._infix_expr = self._infix_expr.replace("sin", "np.sin")
+        self._infix_expr = self._infix_expr.replace("cos", "np.cos")
+        self._infix_expr = self._infix_expr.replace("tan", "np.tan")
+        self._infix_expr = self._infix_expr.replace("pi", "np.pi")
+        self._infix_expr = self._infix_expr.replace("pow", "np.power")
+        self._infix_expr = self._infix_expr.replace("mean", "np.mean")
+        self._infix_expr = self._infix_expr.replace("log", "np.log")
         try:
             self._result = eval(self._infix_expr)
             self._result.name = self.feature_name
@@ -139,13 +143,13 @@ class FeatureConstructor(object):
 
     def letter_map(self):
         new_text = ""
-        test_text = ''.join(ch for ch in self._infix_expr if ch not in set(' '))
+        test_text = "".join(ch for ch in self._infix_expr if ch not in set(" "))
         for words in FeatureConstructor.cal_words:
             if words in test_text:
-                test_text = test_text.replace(words, ";"+words+";")
+                test_text = test_text.replace(words, ";" + words + ";")
         new_text = test_text
         self._infix_expr = ""
-        if new_text[0] == ';':
+        if new_text[0] == ";":
             new_text = new_text[1:]
         for word in new_text.split(";"):
             if word in FeatureConstructor.cal_words:
@@ -153,7 +157,7 @@ class FeatureConstructor(object):
             else:
                 for ww in word:
                     if ww in FeatureConstructor.alphabet:
-                        self._infix_expr += str("self.data['"+self._get_column(ww)+"']")
+                        self._infix_expr += str("self.data['" + self._get_column(ww) + "']")
                     else:
                         self._infix_expr += ww
 
