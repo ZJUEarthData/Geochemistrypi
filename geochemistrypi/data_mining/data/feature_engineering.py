@@ -2,10 +2,7 @@
 import string
 
 import numpy as np
-import pandas
 
-# class Stack(object):
-#     """Create a stack."""
 #
 #     Error = -1
 #
@@ -36,6 +33,11 @@ import pandas
 #             self.Data[self.Top] = None
 #             self.Top -= 1
 #             return item
+import pandas
+import pandas as pd
+
+# class Stack(object):
+#     """Create a stack."""
 
 
 class FeatureConstructor(object):
@@ -132,10 +134,16 @@ class FeatureConstructor(object):
         self._infix_expr = self._infix_expr.replace("pi", "np.pi")
         self._infix_expr = self._infix_expr.replace("pow", "np.power")
         self._infix_expr = self._infix_expr.replace("mean", "np.mean")
+        self._infix_expr = self._infix_expr.replace("std", "np.std")
+        self._infix_expr = self._infix_expr.replace("var", "np.var")
         self._infix_expr = self._infix_expr.replace("log", "np.log")
         try:
             self._result = eval(self._infix_expr)
-            self._result.name = self.feature_name
+            if isinstance(self._result, pd.DataFrame) or isinstance(self._result, pd.Series):
+                self._result.name = self.feature_name
+            else:
+                self._result = pd.Series([self._result for i in range(self.data.shape[0])])
+                self._result.name = self.feature_name
         except SyntaxError:
             print("The expression contains a syntax error.")
         except ZeroDivisionError:
