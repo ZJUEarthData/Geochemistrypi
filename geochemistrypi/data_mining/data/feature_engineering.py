@@ -2,11 +2,10 @@
 import string
 
 import numpy as np
-import pandas
+import pandas as pd
 
 # class Stack(object):
 #     """Create a stack."""
-#
 #     Error = -1
 #
 #     def __init__(self, MaxSize):
@@ -132,10 +131,16 @@ class FeatureConstructor(object):
         self._infix_expr = self._infix_expr.replace("pi", "np.pi")
         self._infix_expr = self._infix_expr.replace("pow", "np.power")
         self._infix_expr = self._infix_expr.replace("mean", "np.mean")
+        self._infix_expr = self._infix_expr.replace("std", "np.std")
+        self._infix_expr = self._infix_expr.replace("var", "np.var")
         self._infix_expr = self._infix_expr.replace("log", "np.log")
         try:
             self._result = eval(self._infix_expr)
-            self._result.name = self.feature_name
+            if isinstance(self._result, pd.DataFrame) or isinstance(self._result, pd.Series):
+                self._result.name = self.feature_name
+            else:
+                self._result = pd.Series([self._result for i in range(self.data.shape[0])])
+                self._result.name = self.feature_name
         except SyntaxError:
             print("The expression contains a syntax error.")
         except ZeroDivisionError:
@@ -267,7 +272,7 @@ class FeatureConstructor(object):
     def create_data_set(self):
         print(f'Successfully construct a new feature "{self.feature_name}".')
         print(self._result)
-        return pandas.concat([self.data, self._result], axis=1)
+        return pd.concat([self.data, self._result], axis=1)
 
     # TODO: Is the scope of input right?
     def check_data_scope(self):
