@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "geochemistrypi"
-version = "0.2.1"
+version = "0.3.1dev6"
 authors = [
   { name="Can He", email="sanyhew1097618435@163.com" },
 ]
@@ -14,7 +14,7 @@ readme = "README.md"
 license = { file="LICENSE" }
 requires-python = "~=3.9"
 classifiers = [
-    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
@@ -41,6 +41,9 @@ dependencies = [
     "sphinx",                # required to build docs
     "furo",                  # required to build docs, html theme
     "pre-commit",            # required to run pre-commit
+    "rich",                  # color print
+    "fastapi",               # backend framework
+    "uvicorn",               # required to run uvicorn
 ]
 
 [tool.black]

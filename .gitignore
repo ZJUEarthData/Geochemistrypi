@@ -11,7 +11,7 @@
 **/trained_models
 
 # log
-test.log
+*.log
 
 # OS
 .DS_Store
@@ -32,3 +32,16 @@ __pycache__
 # Python Virtual Environment
 venv_geo/*
 venv_geo
+
+# Ignore all text files
+*.txt
+
+# Web Dependency
+node_modules
+
+# yarn v2
+yarn.lock
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz

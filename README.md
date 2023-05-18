@@ -6,12 +6,14 @@
 <img src="https://img.shields.io/github/license/ZJUEarthData/geochemistrypi">
 <img src="https://img.shields.io/github/v/release/ZJUEarthData/geochemistrypi?include_prereleases">
 <img src="https://static.pepy.tech/personalized-badge/geochemistrypi?period=total&units=international_system&left_color=grey&right_color=green&left_text=Downloads">
-
-
 <img src="https://img.shields.io/pypi/pyversions/geochemistrypi">
 </p>
 
+---
+**Documentation**: <a href="https://geochemistrypy.readthedocs.io" target="_blank">https://geochemistrypy.readthedocs.io</a>
 
+**Source Code**: <a href="https://github.com/ZJUEarthData/geochemistrypi" target="_blank">https://github.com/ZJUEarthData/geochemistrypi</a>
+___
 
 
 Geochemistry π is **a Python framework** for data-driven geochemistry discovery. It provides an extendable tool and one-stop shop for **geochemical data analysis** on tabular data.
@@ -22,7 +24,7 @@ Key features are:
 + **Easy to use:** The automation of data mining process provides the users with simple number options to choose.
 + **Extensible:** It allows appending new algorithms through Scikit-learn with augmented AutoML functionality by FLAML and Ray.
 
-Official Website: https://geochemistrypy.readthedocs.io/en/latest/Introduction/Introduction.html
+
 
 Latest Update: follow up by clicking `Starred` and  `Watch` on our [GitHub repository](https://github.com/ZJUEarthData/geochemistrypi), then get email notifications of the newest features automatically.
 
