@@ -46,6 +46,7 @@ class RegressionWorkflowBase(WorkflowBase):
     @dispatch(object, object, bool)
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None, is_automl: bool = False) -> None:
         """Fit the model by FLAML framework and RAY framework."""
+        # print(f"-*-*- {self.naming} - AutoML -*-*-.")
         if self.naming not in RAY_FLAML:
             self.automl = AutoML()
             if self.customized:  # When the model is not built-in in FLAML framwork, use FLAML customization.
@@ -521,7 +522,7 @@ class XgboostRegression(RegressionWorkflowBase):
             "metric": "r2",
             "estimator_list": ["xgboost"],  # list of ML learners
             "task": "regression",  # task type
-            # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
+            # "log_file_name": f"{self.naming} - automl.log",  # flaml log file
             # "log_training_metric": True,  # whether to log training metric
         }
         return configuration

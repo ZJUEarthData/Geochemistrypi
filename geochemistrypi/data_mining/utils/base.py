@@ -17,6 +17,8 @@ def clear_output() -> None:
         else:
             os.system("clear")  # for Linux and macOS
 
+    print("")
+
 
 def save_fig(fig_name: str, image_path: str, tight_layout: bool = True) -> None:
     """Save the figure.
