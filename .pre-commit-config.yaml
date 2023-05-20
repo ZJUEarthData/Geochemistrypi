@@ -6,10 +6,11 @@ repos:
     rev: 22.10.0
     hooks:
       - id: black
-        name: Code Formatter
+        name: Python Code Formatter
         description: Apply the Black code formatter
         files: \.(py|pyx)$
         args: [--line-length=200]
+        exclude: ^node_modules/
 
   - repo: https://github.com/pycqa/isort
     rev: 5.12.0
@@ -19,6 +20,7 @@ repos:
         description: Sorts Python imports
         files: \.(py|pyx)$
         args: [--line-length=200, --profile=black]
+        exclude: ^node_modules/
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.0.1
@@ -27,18 +29,22 @@ repos:
         name: Trailing Whitespace Checker
         description: Checks for and removes trailing whitespace from files.
         files: \.(py|md|txt)$
+        exclude: ^node_modules/
       - id: end-of-file-fixer
         name: End-of-file Fixer
         description: Ensures that files end with a newline.
         files: \.(py|md|txt)$
+        exclude: ^node_modules/
       - id: check-yaml
         name: YAML Checker
         description: Checks for syntax errors in YAML files.
         files: \.(yml|yaml)$
+        exclude: ^node_modules/
       - id: check-added-large-files
         name: Large Files Checker
         description: Checks for large files added to git.
         types: [file]
+        exclude: ^node_modules/
 
   - repo: https://github.com/pycqa/flake8
     rev: 6.0.0
@@ -50,4 +56,26 @@ repos:
         # args: [--max-line-length=200, --max-complexity=100, --ignore=F811,W605]
         # Use config file to pass multiple values to the argument
         args: [--config=.flake8]
+        exclude: ^node_modules/
+
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v2.7.1
+    hooks:
+      - id: prettier
+        name: Frontend Code Formatter
+        description: Apply the Prettier code formatter
+        files: \.(js|jsx|css|ts|tsx)$
+        args: [--write, --semi=true, --single-quote=true, --trailing-comma=all, --print-width=200, --tab-width=4, --jsx-single-quote=false]
+        exclude: ^node_modules/
+
+  # Problem: some dependencies cannot be installed with pre-commit
+  # - repo: https://github.com/pre-commit/mirrors-eslint
+  #   rev: v7.32.0
+  #   hooks:
+  #     - id: eslint
+  #       name: ESlint Linter
+  #       description: Check Frontend code for style and possible errors
+  #       files: \.(js|jsx|ts|tsx)$
+  #       additional_dependencies: [eslint-config-prettier@8.8.0, eslint@4.15.0, eslint-plugin-react, eslint-plugin-react-hooks, '@typescript-eslint/parser', '@typescript-eslint/eslint-plugin', eslint-plugin-jsx-a11y, eslint-plugin-import, eslint-plugin-prettier]
+  #       exclude: ^node_modules/
 
