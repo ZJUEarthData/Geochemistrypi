@@ -3,7 +3,7 @@ from typing import Optional
 
 import pandas as pd
 
-from ..model.decomposition import DecompositionWorkflowBase, PCADecomposition
+from ..model.decomposition import DecompositionWorkflowBase, PCADecomposition, TSNEDecomposition
 
 
 class DecompositionModelSelection(object):
@@ -29,11 +29,19 @@ class DecompositionModelSelection(object):
         if self.model == "Principal Component Analysis":
             hyper_parameters = PCADecomposition.manual_hyper_parameters()
             self.dcp_workflow = PCADecomposition(n_components=hyper_parameters["n_components"], svd_solver=hyper_parameters["svd_solver"])
+        elif self.model == "T-SNE":
+            hyper_parameters = TSNEDecomposition.manual_hyper_parameters()
+            self.dcp_workflow = TSNEDecomposition(
+                n_components=hyper_parameters["n_components"],
+                perplexity=hyper_parameters["perplexity"],
+                learning_rate=hyper_parameters["learning_rate"],
+                n_iter=hyper_parameters["n_iter"],
+                early_exaggeration=hyper_parameters["early_exaggeration"],
+            )
 
         # common components for every decomposition algorithm
         self.dcp_workflow.show_info()
-        self.dcp_workflow.fit(X)
-        X_reduced = self.dcp_workflow.transform(X)
+        X_reduced = self.dcp_workflow.fit_transform(X)
         self.dcp_workflow.data_upload(X=X)
 
         # special components of different algorithms
