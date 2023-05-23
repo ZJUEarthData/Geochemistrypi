@@ -1,7 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .routers import data
+
 app = FastAPI()
+
+app.include_router(data.router)
 
 origins = [
     "http://localhost:3000",
