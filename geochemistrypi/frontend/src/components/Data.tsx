@@ -1,9 +1,11 @@
 import React, { ChangeEvent, useState, useEffect } from 'react';
 import axios from 'axios';
+import DataFrame from './DataFrame';
 
 const DataUploadButton = () => {
     const [file, setFile] = useState<File | null>(null);
     const [show, setShow] = useState<boolean>(false);
+    const [processedData, setProcessedData] = useState<any[]>([]);
 
     const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
         const selectedFile = event.target.files?.[0];
@@ -20,7 +22,8 @@ const DataUploadButton = () => {
                         'Content-Type': 'multipart/form-data',
                     },
                 });
-                console.log(response);
+                // console.log(typeof JSON.parse(response.data));
+                setProcessedData(JSON.parse(response.data));
             } catch (error) {
                 console.log(error);
             }
@@ -46,6 +49,7 @@ const DataUploadButton = () => {
             </button>
             {show && <hr />}
             {show && <p>File uploaded!</p>}
+            {processedData.length > 0 && <DataFrame data={processedData} />}
         </div>
     );
 };
