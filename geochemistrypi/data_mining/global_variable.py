@@ -54,7 +54,7 @@ CLASSIFICATION_MODELS = [
     "Deep Neural Network",
 ]
 CLUSTERING_MODELS = ["KMeans", "DBSCAN"]
-DECOMPOSITION_MODELS = ["Principal Component Analysis"]
+DECOMPOSITION_MODELS = ["Principal Component Analysis", "T-SNE"]
 
 # Special AutoML models
 NON_AUTOML_MODELS = ["Linear Regression", "Polynomial Regression"]

@@ -33,8 +33,9 @@ __pycache__
 venv_geo/*
 venv_geo
 
-# Ignore all text files
-*.txt
+# Ignore text files for the report
+report.txt
+output.txt
 
 # Web Dependency
 node_modules
