@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "geochemistrypi"
-version = "0.3.1dev6"
+version = "0.3.1dev13"
 authors = [
   { name="Can He", email="sanyhew1097618435@163.com" },
 ]
@@ -44,6 +44,8 @@ dependencies = [
     "rich",                  # color print
     "fastapi",               # backend framework
     "uvicorn",               # required to run uvicorn
+    "python-multipart",      # required to run uvicorn
+    "dash",                  # required to run dash
 ]
 
 [tool.black]

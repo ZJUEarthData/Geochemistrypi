@@ -17,7 +17,7 @@ const DataUploadButton = () => {
             const formData = new FormData();
             formData.append('data', new Blob([file], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
             try {
-                const response = await axios.post('http://0.0.0.0:8000/data/upload', formData, {
+                const response = await axios.post('http://0.0.0.0:8000/data-mining/upload', formData, {
                     headers: {
                         'Content-Type': 'multipart/form-data',
                     },
@@ -40,16 +40,32 @@ const DataUploadButton = () => {
         }
     };
 
+    const containerStyle: React.CSSProperties = {
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+    };
+
+    const buttonStyle: React.CSSProperties = {
+        // width: '100px',
+        // height: '50px',
+    };
+
     return (
-        <div>
-            <h2>Upload Data</h2>
+        <div style={containerStyle}>
+            <h2>Geochemistry Pi - Data Uploading</h2>
+            <br />
             <input type="file" accept=".xlsx" onChange={handleFileChange} />
-            <button type="submit" disabled={!file} onClick={handleFileUpload}>
+            <br />
+            <button type="submit" disabled={!file} onClick={handleFileUpload} style={buttonStyle}>
                 Upload
             </button>
             {show && <hr />}
             {show && <p>File uploaded!</p>}
-            {processedData.length > 0 && <DataFrame data={processedData} />}
+            {/* {processedData.length > 0 && <DataFrame data={processedData} />} */}
+            {show && <button onClick={() => (window.location.href = 'http://127.0.0.1:8000/dash/')}>Visualize</button>}
         </div>
     );
 };

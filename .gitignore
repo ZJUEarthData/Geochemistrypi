@@ -46,3 +46,6 @@ yarn.lock
 .yarn/unplugged
 .yarn/build-state.yml
 .yarn/install-state.gz
+
+# fake database
+**/fake_database

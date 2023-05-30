@@ -9,7 +9,6 @@ const HomePage = () => {
 
     return (
         <div>
-            <h1>Home</h1>
             <DataUploadButton />
             <Toaster />
         </div>

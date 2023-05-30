@@ -43,7 +43,9 @@ os.makedirs(GEO_IMAGE_PATH, exist_ok=True)
 os.makedirs(MODEL_PATH, exist_ok=True)
 
 
-def pipeline(file_name: str) -> None:
+def cli_pipeline(file_name: str) -> None:
+    """The command line interface for GeochemistryPy."""
+
     print("Geochemistry Py v0.2.1 - Beta Version")
     print("....... Initializing .......")
     logger = log(OUTPUT_PATH, "inner_test.log")

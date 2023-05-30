@@ -8,13 +8,14 @@ from typing import Optional
 import typer
 
 from ._version import __version__
-from .data_mining.pipeline import pipeline
+from .data_mining.cli_pipeline import cli_pipeline
 
 app = typer.Typer()
 
 CURRENT_PATH = os.path.dirname(os.path.realpath(__file__))
 FRONTEND_PATH = os.path.join(CURRENT_PATH, "frontend")
-BACKEND_PATH = os.path.join(CURRENT_PATH, "backend")
+BACKEND_PATH = os.path.join(CURRENT_PATH, "start_dash_pipeline.py")
+PIPELINE_PATH = os.path.join(CURRENT_PATH, "start_cli_pipeline.py")
 
 
 def _version_callback(value: bool) -> None:
@@ -38,7 +39,7 @@ def data_mining(data: str = "", web: bool = False):
     """Apply data mining technique with supervised learning and unsupervised learning methods."""
 
     def start_backend():
-        start_backend_command = f"cd {BACKEND_PATH} && python start.py"
+        start_backend_command = f"python {BACKEND_PATH}"
         subprocess.run(start_backend_command, shell=True)
 
     def start_frontend():
@@ -55,7 +56,7 @@ def data_mining(data: str = "", web: bool = False):
         backend_thread.join()
         frontend_thread.join()
     else:
-        pipeline(data)
+        cli_pipeline(data)
 
 
 @app.command()
