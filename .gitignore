@@ -49,3 +49,6 @@ yarn.lock
 
 # fake database
 **/fake_database
+
+# docs/build
+docs/build/*
