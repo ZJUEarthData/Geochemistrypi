@@ -7,6 +7,12 @@ const DataUploadButton = () => {
     const [show, setShow] = useState<boolean>(false);
     const [processedData, setProcessedData] = useState<any[]>([]);
 
+    // Get the hostname of the current page
+    const hostname = window.location.hostname;
+    const backendPort = '8000';
+    let baseURL = window.location.protocol + '//' + hostname + ':' + backendPort;
+    const dashURL = baseURL + '/dash/';
+
     const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
         const selectedFile = event.target.files?.[0];
         setFile(selectedFile || null);
@@ -65,7 +71,7 @@ const DataUploadButton = () => {
             {show && <hr />}
             {show && <p>File uploaded!</p>}
             {/* {processedData.length > 0 && <DataFrame data={processedData} />} */}
-            {show && <button onClick={() => (window.location.href = 'http://127.0.0.1:8000/dash/')}>Visualize</button>}
+            {show && <button onClick={() => (window.location.href = dashURL)}>Visualize</button>}
         </div>
     );
 };
