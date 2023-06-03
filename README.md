@@ -10,7 +10,7 @@
 </p>
 
 ---
-**Documentation**: <a href="https://geochemistrypy.readthedocs.io" target="_blank">https://geochemistrypy.readthedocs.io</a>
+**Documentation**: <a href="https://geochemistrypi.readthedocs.io" target="_blank">https://geochemistrypi.readthedocs.io</a>
 
 **Source Code**: <a href="https://github.com/ZJUEarthData/geochemistrypi" target="_blank">https://github.com/ZJUEarthData/geochemistrypi</a>
 ___
