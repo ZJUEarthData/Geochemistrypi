@@ -20,3 +20,4 @@ fastapi
 uvicorn
 python-multipart
 dash
+cartopy
