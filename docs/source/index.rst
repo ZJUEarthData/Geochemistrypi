@@ -50,9 +50,6 @@ Welcome to Geochemistry π
    Contributing/Contributor.md
 
 .. toctree::
-   :caption: References
-
-.. toctree::
    :maxdepth: 2
    :caption: User Guide
 
@@ -60,7 +57,13 @@ Welcome to Geochemistry π
 
 .. toctree::
    :maxdepth: 2
-   :caption: APi
+   :caption: Developer Guide
+
+   Developer/Git.md
+
+.. toctree::
+   :maxdepth: 2
+   :caption: API
 
    python_apis/api.rst
 
