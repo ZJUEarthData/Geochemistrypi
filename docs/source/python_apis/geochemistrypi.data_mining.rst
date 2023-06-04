@@ -25,6 +25,22 @@ geochemistrypi.data\_mining.UI module
    :undoc-members:
    :show-inheritance:
 
+geochemistrypi.data\_mining.cli\_pipeline module
+------------------------------------------------
+
+.. automodule:: geochemistrypi.data_mining.cli_pipeline
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+geochemistrypi.data\_mining.dash\_pipeline module
+-------------------------------------------------
+
+.. automodule:: geochemistrypi.data_mining.dash_pipeline
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 geochemistrypi.data\_mining.global\_variable module
 ---------------------------------------------------
 
@@ -33,10 +49,10 @@ geochemistrypi.data\_mining.global\_variable module
    :undoc-members:
    :show-inheritance:
 
-geochemistrypi.data\_mining.pipeline module
--------------------------------------------
+geochemistrypi.data\_mining.router module
+-----------------------------------------
 
-.. automodule:: geochemistrypi.data_mining.pipeline
+.. automodule:: geochemistrypi.data_mining.router
    :members:
    :undoc-members:
    :show-inheritance:

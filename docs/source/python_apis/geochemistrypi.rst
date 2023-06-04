@@ -20,10 +20,18 @@ geochemistrypi.cli module
    :undoc-members:
    :show-inheritance:
 
-geochemistrypi.main module
---------------------------
+geochemistrypi.start\_cli\_pipeline module
+------------------------------------------
 
-.. automodule:: geochemistrypi.main
+.. automodule:: geochemistrypi.start_cli_pipeline
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+geochemistrypi.start\_dash\_pipeline module
+-------------------------------------------
+
+.. automodule:: geochemistrypi.start_dash_pipeline
    :members:
    :undoc-members:
    :show-inheritance:
