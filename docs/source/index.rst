@@ -59,6 +59,7 @@ Welcome to Geochemistry π
    :maxdepth: 2
    :caption: Developer Guide
 
+   Developer/Deployment.md
    Developer/Git.md
 
 .. toctree::
