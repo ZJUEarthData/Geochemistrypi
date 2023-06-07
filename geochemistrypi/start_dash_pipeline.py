@@ -1,13 +1,19 @@
 import uvicorn
+from auth import models as auth_models
+from auth import router as auth_router
 from data_mining import router as data_mining_router
 from data_mining.dash_pipeline import dash_pipeline
+from database import engine
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.wsgi import WSGIMiddleware
 
+auth_models.Base.metadata.create_all(bind=engine)
+
 app = FastAPI()
 
 app.include_router(data_mining_router.router)
+app.include_router(auth_router.router)
 
 origins = [
     "http://localhost:3000",

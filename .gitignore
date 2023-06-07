@@ -52,3 +52,6 @@ yarn.lock
 
 # docs/build
 docs/build
+
+# sqlite database
+*.db
