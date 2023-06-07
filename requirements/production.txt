@@ -20,3 +20,7 @@ fastapi
 uvicorn
 python-multipart
 dash
+sqlalchemy
+passlib
+python-jose[cryptography]
+bcrypt
