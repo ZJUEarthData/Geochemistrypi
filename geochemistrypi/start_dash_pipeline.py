@@ -1,6 +1,6 @@
 import uvicorn
-from auth import models as auth_models
 from auth import router as auth_router
+from auth import sql_models as auth_models
 from data_mining import router as data_mining_router
 from data_mining.dash_pipeline import dash_pipeline
 from database import engine

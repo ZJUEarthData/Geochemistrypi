@@ -32,7 +32,7 @@ async def read_users_me(current_user: User = Depends(get_current_active_user)):
 
 
 @router.get("/{user_id}", response_model=User)
-async def read_user(user_id: str, db: Session = Depends(get_db)):
+async def read_user(user_id: int, db: Session = Depends(get_db)):
     db_user = get_user_by_id(db, user_id)
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")

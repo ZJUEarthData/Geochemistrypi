@@ -1,7 +1,16 @@
 import os
 
 import pandas as pd
-from fastapi import APIRouter, UploadFile
+from database import get_db
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
+
+from .service import read_all_datasets, remove_dataset, upload_dataset
+
+# import subprocess
+
+
+# from fastapi.responses import PlainTextResponse
+
 
 # Mock the database
 CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -14,10 +23,17 @@ router = APIRouter(
 )
 
 
-@router.post("/upload")
-async def upload_data(data: UploadFile):
-    contents = await data.read()
-    df = pd.read_excel(contents)
+@router.post("/{user_id}/upload-dataset")
+async def post_dataset(user_id: int, dataset: UploadFile, db=Depends(get_db)):
+    dataset_name = dataset.filename
+    data = await dataset.read()
+    df = pd.read_excel(data)
+    json_df = df.to_json(orient="records")
+    try:
+        db_dataset = upload_dataset(db=db, user_id=user_id, dataset_name=dataset_name, json_dataset=json_df)
+    except Exception:
+        raise HTTPException(status_code=429, detail="User has reached maximum number of uploads")
+
     # print(df)
     os.makedirs(FAKE_DATABASE_DIR, exist_ok=True)
     df.to_excel(os.path.join(FAKE_DATABASE_DIR, "user_data.xlsx"))
@@ -28,7 +44,21 @@ async def upload_data(data: UploadFile):
     # print(type(processed_data))
     # return processed_data
 
-    return {"message": "Data uploaded successfully"}
+    return {"message": "Data uploaded successfully", "uploaded_dataset": db_dataset}
+
+
+@router.delete("/{user_id}/delete-dataset")
+async def delete_dataset(user_id: int, dataset_id: int, db=Depends(get_db)):
+    try:
+        db_dataset = remove_dataset(db=db, user_id=user_id, dataset_id=dataset_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    return {"message": "Dataset deleted successfully", "removed_dataset": db_dataset}
+
+
+@router.get("/{user_id}/get-all-dataset")
+async def get_all_datasets(user_id: int, db=Depends(get_db)):
+    return read_all_datasets(db=db, user_id=user_id)
 
 
 @router.get("/get-raw-data")
@@ -49,3 +79,10 @@ async def get_data():
 #     # Process the uploaded file as needed
 #     # e.g., save it to a specific location or perform data processing
 #     return {'message': 'Data uploaded successfully'}
+
+
+# @router.get("/execute-command")
+# async def execute_command(command: str):
+#     process = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
+#     output, _ = process.communicate()
+#     return PlainTextResponse(output.decode())
