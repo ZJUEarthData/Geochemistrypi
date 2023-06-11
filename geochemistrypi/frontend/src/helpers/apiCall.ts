@@ -24,6 +24,7 @@ export const postLogin = async (email: string, password: string) => {
 
 export const postDataset = async (dataset: File, userID: number) => {
     const formData = new FormData();
-    formData.append('dataset', new Blob([dataset], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    // console.log(dataset.name);
+    formData.append('dataset', new Blob([dataset], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), dataset.name);
     return postData(`/data-mining/${userID}/upload-dataset`, formData, null, 'multipart/form-data');
 };

@@ -1,9 +1,10 @@
 import React, { ChangeEvent, useState, useEffect } from 'react';
-import axios from 'axios';
-import DataFrame from './DataFrame';
+// import axios from 'axios';
+// import DataFrame from './DataFrame';
 import { postDataset } from '../helpers/apiCall';
 // import { Cookies } from 'react-cookie';
 import { useCookies } from 'react-cookie';
+import { toast } from 'react-hot-toast';
 
 const DatasetUploadButton = () => {
     const [dataset, setDataset] = useState<File | null>(null);
@@ -18,38 +19,44 @@ const DatasetUploadButton = () => {
     const dashURL = baseURL + '/dash/';
 
     const handleDatasetChange = (event: ChangeEvent<HTMLInputElement>) => {
-        const selectedFile = event.target.files?.[0];
-        setDataset(selectedFile || null);
+        const selectedDataset = event.target.files?.[0];
+        setDataset(selectedDataset || null);
     };
 
-    const postFile = async () => {
+    // const postFile = async () => {
+    //     if (dataset) {
+    //         const formData = new FormData();
+    //         formData.append('data', new Blob([dataset], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    //         try {
+    //             const response = await axios.post('http://0.0.0.0:8000/data-mining/upload', formData, {
+    //                 headers: {
+    //                     'Content-Type': 'multipart/form-data',
+    //                 },
+    //             });
+    //             // console.log(typeof JSON.parse(response.data));
+    //             setProcessedData(JSON.parse(response.data));
+    //         } catch (error) {
+    //             console.log(error);
+    //         }
+    //     } else {
+    //         console.log('No file selected');
+    //     }
+    // };
+
+    const handleDatasetUpload = async () => {
+        // console.log(file);
         if (dataset) {
-            const formData = new FormData();
-            formData.append('data', new Blob([dataset], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+            let userID = cookies['userID'];
+            // console.log('Dataset: ' + userID);
             try {
-                const response = await axios.post('http://0.0.0.0:8000/data-mining/upload', formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data',
-                    },
-                });
-                // console.log(typeof JSON.parse(response.data));
-                setProcessedData(JSON.parse(response.data));
+                const response = await postDataset(dataset, userID);
+                // console.log(response);
+                if (response.status === 429) {
+                    toast.error('You have exceeded the maximum number of datasets allowed. Please delete a dataset before uploading a new one.');
+                }
             } catch (error) {
                 console.log(error);
             }
-        } else {
-            console.log('No file selected');
-        }
-    };
-
-    const handleDatasetUpload = () => {
-        // console.log(file);
-        if (dataset) {
-            // postFile();
-            // let userID = new Cookies().get('userID');
-            let userID = cookies['userID'];
-            console.log('Dataset: ' + userID);
-            postDataset(dataset, userID);
             setShow(true);
         }
     };
