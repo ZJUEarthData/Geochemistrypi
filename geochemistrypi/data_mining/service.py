@@ -1,4 +1,5 @@
 import auth.sql_models as auth_models
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from .sql_models import Dataset
@@ -13,7 +14,7 @@ def read_all_datasets(db: Session, user_id: int):
 def upload_dataset(db: Session, user_id: int, json_dataset: str, dataset_name: str):
     user = db.query(auth_models.User).get(user_id)
     if user.upload_count >= MAX_UPLOADS_PER_USER:
-        raise Exception("User has reached maximum number of uploads")
+        raise HTTPException(status_code=429, detail="User has reached maximum number of uploads")
 
     # Calculate the new sequence number for the dataset
     new_sequence = user.upload_count + 1
