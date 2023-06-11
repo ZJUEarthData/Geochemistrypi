@@ -1,11 +1,15 @@
 import React, { ChangeEvent, useState, useEffect } from 'react';
 import axios from 'axios';
 import DataFrame from './DataFrame';
+import { postDataset } from '../helpers/apiCall';
+// import { Cookies } from 'react-cookie';
+import { useCookies } from 'react-cookie';
 
-const DataUploadButton = () => {
-    const [file, setFile] = useState<File | null>(null);
+const DatasetUploadButton = () => {
+    const [dataset, setDataset] = useState<File | null>(null);
     const [show, setShow] = useState<boolean>(false);
     const [processedData, setProcessedData] = useState<any[]>([]);
+    const [cookies, setCookie] = useCookies(['userID']);
 
     // Get the hostname of the current page
     const hostname = window.location.hostname;
@@ -13,15 +17,15 @@ const DataUploadButton = () => {
     let baseURL = window.location.protocol + '//' + hostname + ':' + backendPort;
     const dashURL = baseURL + '/dash/';
 
-    const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const handleDatasetChange = (event: ChangeEvent<HTMLInputElement>) => {
         const selectedFile = event.target.files?.[0];
-        setFile(selectedFile || null);
+        setDataset(selectedFile || null);
     };
 
     const postFile = async () => {
-        if (file) {
+        if (dataset) {
             const formData = new FormData();
-            formData.append('data', new Blob([file], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+            formData.append('data', new Blob([dataset], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
             try {
                 const response = await axios.post('http://0.0.0.0:8000/data-mining/upload', formData, {
                     headers: {
@@ -38,10 +42,14 @@ const DataUploadButton = () => {
         }
     };
 
-    const handleFileUpload = () => {
+    const handleDatasetUpload = () => {
         // console.log(file);
-        if (file) {
-            postFile();
+        if (dataset) {
+            // postFile();
+            // let userID = new Cookies().get('userID');
+            let userID = cookies['userID'];
+            console.log('Dataset: ' + userID);
+            postDataset(dataset, userID);
             setShow(true);
         }
     };
@@ -63,9 +71,9 @@ const DataUploadButton = () => {
         <div style={containerStyle}>
             <h2>Geochemistry Pi - Data Uploading</h2>
             <br />
-            <input type="file" accept=".xlsx" onChange={handleFileChange} />
+            <input type="file" accept=".xlsx" onChange={handleDatasetChange} />
             <br />
-            <button type="submit" disabled={!file} onClick={handleFileUpload} style={buttonStyle}>
+            <button type="submit" disabled={!dataset} onClick={handleDatasetUpload} style={buttonStyle}>
                 Upload
             </button>
             {show && <hr />}
@@ -76,4 +84,4 @@ const DataUploadButton = () => {
     );
 };
 
-export default DataUploadButton;
+export default DatasetUploadButton;

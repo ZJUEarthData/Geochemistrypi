@@ -39,6 +39,7 @@ output.txt
 
 # Web Dependency
 node_modules
+package-lock.json
 
 # yarn v2
 yarn.lock

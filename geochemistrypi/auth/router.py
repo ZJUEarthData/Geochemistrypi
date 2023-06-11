@@ -39,15 +39,15 @@ async def read_user(user_id: int, db: Session = Depends(get_db)):
     return db_user
 
 
-@router.post("/register", response_model=User)
-async def create_user(user: UserCreate, db: Session = Depends(get_db)):
-    db_user = get_user_by_username(db, username=user.username)
-    if db_user:
-        raise HTTPException(status_code=400, detail="Username already taken")
-    db_user = get_user_by_email(db, email=user.email)
-    if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    return create_new_user(db=db, user=user)
+# @router.post("/register", response_model=User)
+# async def create_user(user: UserCreate, db: Session = Depends(get_db)):
+#     db_user = get_user_by_username(db, username=user.username)
+#     if db_user:
+#         raise HTTPException(status_code=400, detail="Username already taken")
+#     db_user = get_user_by_email(db, email=user.email)
+#     if db_user:
+#         raise HTTPException(status_code=400, detail="Email already registered")
+#     return create_new_user(db=db, user=user)
 
 
 @router.put("/{username}")
@@ -72,3 +72,24 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         expires_delta=access_token_expires,
     )
     return {"message": "Successfully logged in", "userID": user.id, "access_token": access_token, "token_type": "bearer"}
+
+
+@router.post("/register")
+async def register(email: str, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+
+    db_user = get_user_by_username(db, username=form_data.username)
+    if db_user:
+        raise HTTPException(status_code=400, detail="Username already taken")
+    db_user = get_user_by_email(db, email=email)
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    user = UserCreate(email=email, username=form_data.username, password=form_data.password)
+    new_user = create_new_user(db=db, user=user)
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        # data={"sub": user.username}, expires_delta=access_token_expires
+        data={"sub": user.email},
+        expires_delta=access_token_expires,
+    )
+    return {"message": "Successfully registered user", "userID": new_user.id, "access_token": access_token, "token_type": "bearer"}

@@ -16,9 +16,9 @@ app.include_router(data_mining_router.router)
 app.include_router(auth_router.router)
 
 origins = [
-    "http://localhost:3000",
-    "https://localhost:3000",
-    "localhost:3000",
+    "http://localhost:3001",
+    "https://localhost:3001",
+    "localhost:3001",
 ]
 
 app.add_middleware(

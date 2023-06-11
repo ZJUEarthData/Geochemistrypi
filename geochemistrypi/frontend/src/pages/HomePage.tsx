@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
-import DataUploadButton from '../components/Data';
+import DatasetUploadButton from '../components/Dataset';
+import Command from '../components/Command';
 
 const HomePage = () => {
     useEffect(() => {
@@ -9,7 +10,8 @@ const HomePage = () => {
 
     return (
         <div>
-            <DataUploadButton />
+            <DatasetUploadButton />
+            {/* <Command /> */}
             <Toaster />
         </div>
     );
