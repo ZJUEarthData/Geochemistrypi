@@ -29,12 +29,8 @@ async def post_dataset(user_id: int, dataset: UploadFile, db=Depends(get_db)):
     data = await dataset.read()
     df = pd.read_excel(data)
     json_df = df.to_json(orient="records")
-    try:
-        db_dataset = upload_dataset(db=db, user_id=user_id, dataset_name=dataset_name, json_dataset=json_df)
-    except Exception:
-        raise HTTPException(status_code=429, detail="User has reached maximum number of uploads")
+    db_dataset = upload_dataset(db=db, user_id=user_id, dataset_name=dataset_name, json_dataset=json_df)
 
-    # print(df)
     os.makedirs(FAKE_DATABASE_DIR, exist_ok=True)
     df.to_excel(os.path.join(FAKE_DATABASE_DIR, "user_data.xlsx"))
 
