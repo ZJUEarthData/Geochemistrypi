@@ -1,4 +1,4 @@
-import { getData, postData } from './apiCallWrappers';
+import { getData, postData, deleteData } from './apiCallWrappers';
 
 export const postRegister = async (username: string, email: string, password: string) => {
     const params = {
@@ -27,4 +27,22 @@ export const postDataset = async (dataset: File, userID: number) => {
     // console.log(dataset.name);
     formData.append('dataset', new Blob([dataset], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), dataset.name);
     return postData(`/data-mining/${userID}/upload-dataset`, formData, null, 'multipart/form-data');
+};
+
+export const getBasicDatasetsInfo = async (userID: number) => {
+    return getData(`/data-mining/${userID}/basic-datasets-info`);
+};
+
+export const getDataset = async (userID: number, datasetID: number) => {
+    const params = {
+        dataset_id: datasetID,
+    };
+    return getData(`/data-mining/${userID}/get-dataset`, params);
+};
+
+export const deleteDataset = async (userID: number, datasetID: number) => {
+    const params = {
+        dataset_id: datasetID,
+    };
+    return deleteData(`/data-mining/${userID}/delete-dataset`, params);
 };

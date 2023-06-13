@@ -10,9 +10,9 @@ import type { UploadProps } from 'antd';
 import { message, Upload } from 'antd';
 
 const DatasetUploadButton = () => {
-    const [dataset, setDataset] = useState<File | null>(null);
-    const [show, setShow] = useState<boolean>(false);
-    const [processedData, setProcessedData] = useState<any[]>([]);
+    // const [dataset, setDataset] = useState<File | null>(null);
+    // const [show, setShow] = useState<boolean>(false);
+    // const [processedData, setProcessedData] = useState<any[]>([]);
     const [cookies, setCookie] = useCookies(['userID']);
     const { Dragger } = Upload;
     const userID = cookies['userID'];
@@ -23,10 +23,10 @@ const DatasetUploadButton = () => {
     let baseURL = window.location.protocol + '//' + hostname + ':' + backendPort;
     const dashURL = baseURL + '/dash/';
 
-    const handleDatasetChange = (event: ChangeEvent<HTMLInputElement>) => {
-        const selectedDataset = event.target.files?.[0];
-        setDataset(selectedDataset || null);
-    };
+    // const handleDatasetChange = (event: ChangeEvent<HTMLInputElement>) => {
+    //     const selectedDataset = event.target.files?.[0];
+    //     setDataset(selectedDataset || null);
+    // };
 
     // const handleDatasetUpload = async () => {
     //     // console.log(file);

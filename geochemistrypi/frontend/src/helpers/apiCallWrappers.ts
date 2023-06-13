@@ -32,3 +32,17 @@ export const postData = async (url: string, payload?: any, params?: any, content
         return { status: error.response.status, data: error.response.data };
     }
 };
+
+export const deleteData = async (url: string, params?: any) => {
+    try {
+        const response = await axios.delete(`${BASE_URL}${url}`, {
+            params: params,
+        });
+        return { status: response.status, data: response.data };
+    } catch (error) {
+        if (!error?.response) {
+            throw new Error('The server is down at the moment, please try again later');
+        }
+        return { status: error.response.status, data: error.response.data };
+    }
+};

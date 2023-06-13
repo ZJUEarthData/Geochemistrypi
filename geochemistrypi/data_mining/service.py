@@ -11,6 +11,18 @@ def read_all_datasets(db: Session, user_id: int):
     return db.query(Dataset).filter_by(user_id=user_id).order_by(Dataset.sequence).all()
 
 
+def read_basic_datasets_info(db: Session, user_id: int):
+    # Select id, name, sequence from datasets where user_id = user_id order by sequence
+    basic_datasets_info_list = db.query(Dataset.id, Dataset.name, Dataset.sequence).filter_by(user_id=user_id).order_by(Dataset.sequence).all()
+    # Convert the list of tuples to a list of dictionaries
+    basic_datasets_info = [dict(zip(["id", "name", "sequence"], row)) for row in basic_datasets_info_list]
+    return basic_datasets_info
+
+
+def read_dataset(db: Session, user_id: int, dataset_id: int):
+    return db.query(Dataset).filter_by(user_id=user_id, id=dataset_id).first()
+
+
 def upload_dataset(db: Session, user_id: int, json_dataset: str, dataset_name: str):
     user = db.query(auth_models.User).get(user_id)
     if user.upload_count >= MAX_UPLOADS_PER_USER:

@@ -1,32 +1,104 @@
-import { Row, Col, Card } from 'antd';
-import React from 'react';
+import { Row, Col, Card, Button, Modal, Table } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { getBasicDatasetsInfo, deleteDataset, getDataset } from '../helpers/apiCall';
+import { useCookies } from 'react-cookie';
+import { toast } from 'react-hot-toast';
 
 const DatasetDisplay = () => {
-    const datasetFiles = [
-        { id: 1, name: 'dataset1.xlsx' },
-        { id: 2, name: 'dataset2.xlsx' },
-        { id: 3, name: 'dataset3.xlsx' },
-        { id: 4, name: 'dataset4.xlsx' },
-        { id: 5, name: 'dataset5.xlsx' },
-    ];
+    const [datasetInfo, setDatasetInfo] = useState<any[]>([]);
+    const [cookies, setCookie] = useCookies(['userID']);
+    const [selectedDataset, setSelectedDataset] = useState<any[]>([]);
+    const [selectedDatasetName, setSelectedDatasetName] = useState<string>('');
+    const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
+    const userID = cookies['userID'];
 
-    const handleClickDataset = (file) => {
-        // Perform the necessary action when a dataset file is clicked
-        // For example, navigate to a different page or show the data in a modal
-        console.log('Clicked dataset file:', file);
+    useEffect(() => {
+        const fetchDatasetInfo = async () => {
+            try {
+                const response = await getBasicDatasetsInfo(userID);
+                if (response.status === 200) {
+                    setDatasetInfo(response.data);
+                } else {
+                    toast.error('An error occurred, please try again later');
+                }
+            } catch (error) {
+                toast.error('An error occurred, please try again later');
+            }
+        };
+        fetchDatasetInfo();
+    }, []);
+
+    const handleClickViewDataset = async (datasetID: number) => {
+        try {
+            const response = await getDataset(userID, datasetID);
+            // console.log(response);
+            if (response.status === 200) {
+                toast.success('Dataset loaded successfully!');
+                setSelectedDataset(JSON.parse(response.data.dataset['json_data']));
+                setSelectedDatasetName(response.data.dataset['name']);
+                setIsModalVisible(true);
+                // console.log(selectedDataset);
+            } else {
+                toast.error('An error occurred, please try again later');
+            }
+        } catch (error) {
+            toast.error('An error occurred, please try again later');
+        }
+    };
+
+    const handleModalClose = () => {
+        setIsModalVisible(false);
+    };
+
+    const handleClickDeleteDataset = async (datasetID: number) => {
+        try {
+            const response = await deleteDataset(userID, datasetID);
+            if (response.status === 200) {
+                toast.success('Dataset deleted successfully!');
+                const newDatasetInfo = datasetInfo.filter((dataset) => dataset.id !== datasetID);
+                setDatasetInfo(newDatasetInfo);
+            } else {
+                toast.error('An error occurred, please try again later');
+            }
+        } catch (error) {
+            toast.error('An error occurred, please try again later');
+        }
     };
 
     return (
         <div>
             <Row gutter={[16, 16]}>
-                {datasetFiles.map((file) => (
-                    <Col key={file.id} xs={24} sm={12} md={8} lg={6} xl={4}>
-                        <Card title={file.name} hoverable onClick={() => handleClickDataset(file)}>
+                {datasetInfo.map((dataset) => (
+                    <Col key={dataset.sequence} xs={24} sm={12} md={8} lg={6} xl={4}>
+                        <Card
+                            title={dataset.name}
+                            hoverable
+                            actions={[
+                                <Button type="link" onClick={() => handleClickViewDataset(dataset.id)}>
+                                    View
+                                </Button>,
+                                <Button type="link" danger onClick={() => handleClickDeleteDataset(dataset.id)}>
+                                    Delete
+                                </Button>,
+                            ]}
+                        >
                             {/* Additional content or thumbnail can be added here */}
                         </Card>
                     </Col>
                 ))}
             </Row>
+            <Modal title={selectedDatasetName ? selectedDatasetName : ''} open={isModalVisible} onOk={handleModalClose} onCancel={handleModalClose} footer={null}>
+                <div style={{ overflowX: 'scroll', overflowY: 'scroll' }}>
+                    <p>Showing the first 5 rows:</p>
+                    {selectedDataset && (
+                        <Table
+                            dataSource={selectedDataset.slice(0, 5)}
+                            columns={selectedDataset[0] ? Object.keys(selectedDataset[0]).map((key, index) => ({ title: key, dataIndex: key, key: `column-${index}` })) : []}
+                            pagination={false}
+                        />
+                    )}
+                </div>
+            </Modal>
         </div>
     );
 };
