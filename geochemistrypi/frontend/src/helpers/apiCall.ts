@@ -33,6 +33,13 @@ export const getBasicDatasetsInfo = async (userID: number) => {
     return getData(`/data-mining/${userID}/basic-datasets-info`);
 };
 
+export const getDataset = async (userID: number, datasetID: number) => {
+    const params = {
+        dataset_id: datasetID,
+    };
+    return getData(`/data-mining/${userID}/get-dataset`, params);
+};
+
 export const deleteDataset = async (userID: number, datasetID: number) => {
     const params = {
         dataset_id: datasetID,
