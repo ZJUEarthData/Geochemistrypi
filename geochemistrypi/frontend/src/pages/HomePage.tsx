@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import DatasetUploadButton from '../components/Dataset';
+import DatasetDisplay from '../components/DatasetDisplay';
 // import Command from '../components/Command';
 import { MenuFoldOutlined, MenuUnfoldOutlined, DashboardOutlined, UserOutlined, DatabaseOutlined, HomeOutlined } from '@ant-design/icons';
 import { Layout, Menu, Button, theme } from 'antd';
 
-const { Header, Sider, Content } = Layout;
-
 const HomePage = () => {
     const [collapsed, setCollapsed] = useState<boolean>(false);
+    const [activeMenu, setActiveMenu] = useState<string>('1');
+    const [contentComponent, setContentComponent] = useState<React.ReactNode>(<DatasetUploadButton />);
+    const { Header, Sider, Content } = Layout;
     const {
         token: { colorBgContainer },
     } = theme.useToken();
@@ -16,6 +18,28 @@ const HomePage = () => {
     useEffect(() => {
         toast.success('Welcome to Geochemistry π! ✨');
     }, []);
+
+    const handleMenuClick = (item: any) => {
+        const { key } = item;
+        setActiveMenu(key);
+
+        switch (key) {
+            case '1':
+                setContentComponent(<DatasetUploadButton />);
+                break;
+            case '2':
+                setContentComponent(<DatasetDisplay />);
+                break;
+            case '3':
+                setContentComponent(<DatasetDisplay />);
+                break;
+            case '4':
+                setContentComponent(<DatasetDisplay />);
+                break;
+            default:
+                break;
+        }
+    };
 
     return (
         <Layout>
@@ -47,9 +71,7 @@ const HomePage = () => {
                             label: 'Setting',
                         },
                     ]}
-                    onClick={(item) => {
-                        console.log(item);
-                    }}
+                    onClick={handleMenuClick}
                 />
             </Sider>
             <Layout>
@@ -73,7 +95,7 @@ const HomePage = () => {
                         background: colorBgContainer,
                     }}
                 >
-                    <DatasetUploadButton />
+                    {contentComponent}
                 </Content>
             </Layout>
             <Toaster />
