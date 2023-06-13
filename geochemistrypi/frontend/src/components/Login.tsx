@@ -25,8 +25,8 @@ const Login = () => {
             if (response.status === 200) {
                 // setUserIDCookie(response.data.userID);
                 setCookie('userID', response.data.userID, { path: '/' });
-                console.log(response.data.userID);
-                console.log(response.data);
+                // console.log(response.data.userID);
+                // console.log(response.data);
                 toast.success('Login successful!');
                 navigate('/home');
             } else {

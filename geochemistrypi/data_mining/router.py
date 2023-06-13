@@ -4,7 +4,7 @@ import pandas as pd
 from database import get_db
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 
-from .service import read_all_datasets, remove_dataset, upload_dataset
+from .service import read_all_datasets, read_basic_datasets_info, remove_dataset, upload_dataset
 
 # import subprocess
 
@@ -55,6 +55,11 @@ async def delete_dataset(user_id: int, dataset_id: int, db=Depends(get_db)):
 @router.get("/{user_id}/get-all-dataset")
 async def get_all_datasets(user_id: int, db=Depends(get_db)):
     return read_all_datasets(db=db, user_id=user_id)
+
+
+@router.get("/{user_id}/basic-datasets-info")
+async def get_basic_datasets_info(user_id: int, db=Depends(get_db)):
+    return read_basic_datasets_info(db=db, user_id=user_id)
 
 
 @router.get("/get-raw-data")
