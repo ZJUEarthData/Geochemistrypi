@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import DatasetUploadButton from '../components/Dataset';
 import DatasetDisplay from '../components/DatasetDisplay';
+import Dashbord from '../components/Dashboard';
 // import Command from '../components/Command';
 import { MenuFoldOutlined, MenuUnfoldOutlined, DashboardOutlined, UserOutlined, DatabaseOutlined, HomeOutlined } from '@ant-design/icons';
 import { Layout, Menu, Button, theme } from 'antd';
@@ -31,7 +32,7 @@ const HomePage = () => {
                 setContentComponent(<DatasetDisplay />);
                 break;
             case '3':
-                setContentComponent(<DatasetDisplay />);
+                setContentComponent(<Dashbord />);
                 break;
             case '4':
                 setContentComponent(<DatasetDisplay />);
