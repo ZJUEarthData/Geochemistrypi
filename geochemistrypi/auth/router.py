@@ -24,9 +24,10 @@ router = APIRouter(
 #     return users
 
 
-@router.get("/me", response_model=User)
+@router.get("/me")
 async def read_users_me(current_user: User = Depends(get_current_active_user)):
-    return current_user
+    user_info = {"username": current_user.username, "email": current_user.email, "upload_count": current_user.upload_count}
+    return user_info
 
 
 # @router.get("/{user_id}", response_model=User)

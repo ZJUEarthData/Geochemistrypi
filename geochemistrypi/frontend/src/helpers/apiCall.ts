@@ -29,6 +29,10 @@ export const postDataset = async (dataset: File) => {
     return postData(`/data-mining/upload-dataset`, formData, null, 'multipart/form-data');
 };
 
+export const getUserInfo = async () => {
+    return getData(`/auth/me`);
+};
+
 export const getBasicDatasetsInfo = async () => {
     return getData(`/data-mining/basic-datasets-info`);
 };
