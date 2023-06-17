@@ -2,9 +2,8 @@ import auth.sql_models as auth_models
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from .constants import MAX_UPLOADS_PER_USER
 from .sql_models import Dataset
-
-MAX_UPLOADS_PER_USER = 5
 
 
 def read_all_datasets(db: Session, user_id: int):
