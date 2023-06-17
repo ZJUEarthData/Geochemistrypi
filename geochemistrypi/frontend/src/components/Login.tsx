@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import { postLogin } from '../helpers/apiCall';
 import { useNavigate } from 'react-router-dom';
-// import { setUserIDCookie } from "../helpers/cookies";
 import { useCookies } from 'react-cookie';
 import { Button, Form, Input } from 'antd';
 import { LockOutlined, MailOutlined } from '@ant-design/icons';
@@ -12,7 +11,7 @@ const Login = () => {
     const [password, setPassword] = useState<string>('');
     const navigate = useNavigate();
 
-    const [cookies, setCookie] = useCookies(['userID']);
+    const [cookies, setCookie] = useCookies(['token']);
 
     const handleSubmit = async () => {
         // validate email and password
@@ -23,9 +22,7 @@ const Login = () => {
         try {
             const response = await postLogin(email, password);
             if (response.status === 200) {
-                // setUserIDCookie(response.data.userID);
-                setCookie('userID', response.data.userID, { path: '/' });
-                // console.log(response.data.userID);
+                setCookie('token', response.data.access_token, { path: '/' });
                 // console.log(response.data);
                 toast.success('Login successful!');
                 navigate('/home');

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { postRegister } from '../helpers/apiCall';
-// import { setUserIDCookie } from "../helpers/cookies";
 import { useCookies } from 'react-cookie';
 import { Button, Form, Input } from 'antd';
 import { LockOutlined, UserOutlined, MailOutlined } from '@ant-design/icons';
@@ -11,7 +10,7 @@ const Register = () => {
     const [name, setName] = useState<string>('');
     const [email, setEmail] = useState<string>('');
     const [password, setPassword] = useState<string>('');
-    const [cookies, setCookie] = useCookies(['userID']);
+    const [cookies, setCookie] = useCookies(['token']);
     const navigate = useNavigate();
 
     const handleSubmit = async () => {
@@ -32,8 +31,7 @@ const Register = () => {
         try {
             const response = await postRegister(name, email, password);
             if (response.status === 200) {
-                // setUserIDCookie(response.data.userID);
-                setCookie('userID', response.data.userID, { path: '/' });
+                setCookie('token', response.data.access_token, { path: '/' });
                 toast.success('Registration successful!');
                 navigate('/home');
             } else {
@@ -64,17 +62,14 @@ const Register = () => {
                 </Form.Item>
                 <Form.Item name="email" rules={[{ required: true, message: 'Please input your Email!' }]}>
                     <Input prefix={<MailOutlined className="site-form-item-icon" />} type="email" placeholder="Email" onChange={handleEmailChange} />
-                    {/* <input type="email" id="emailInput" placeholder="Email" onChange={handleEmailChange} /> */}
                 </Form.Item>
                 <Form.Item name="password" rules={[{ required: true, message: 'Please input your Password!' }]}>
                     <Input prefix={<LockOutlined className="site-form-item-icon" />} type="password" placeholder="Password" onChange={handlePasswordChange} />
-                    {/* <input type="password" id="passwordInput" placeholder="Password" onChange={handlePasswordChange} /> */}
                 </Form.Item>
                 <Form.Item>
                     <Button type="primary" htmlType="submit" className="register-form-button" onClick={handleSubmit} style={{ width: 100 }}>
                         Register
                     </Button>
-                    {/* <button onClick={handleSubmit}>Login</button> */}
                 </Form.Item>
             </Form>
             <Toaster />

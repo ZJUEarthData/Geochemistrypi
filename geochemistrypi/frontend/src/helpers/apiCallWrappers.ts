@@ -1,6 +1,20 @@
-import axios from 'axios';
+import axios, { AxiosRequestConfig } from 'axios';
+import { getCookieValue } from './cookies';
 
 const BASE_URL = 'http://0.0.0.0:8000';
+
+axios.interceptors.request.use((config: AxiosRequestConfig) => {
+    const token = getCookieValue('token');
+
+    if (token) {
+        config.headers = {
+            ...config.headers,
+            Authorization: `Bearer ${token}`,
+        };
+    }
+
+    return config;
+});
 
 export const getData = async (url: string, params?: any) => {
     try {

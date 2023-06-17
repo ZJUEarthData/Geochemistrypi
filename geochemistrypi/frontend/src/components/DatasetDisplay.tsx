@@ -1,21 +1,18 @@
 import { Row, Col, Card, Button, Modal, Table } from 'antd';
 import React, { useState, useEffect } from 'react';
 import { getBasicDatasetsInfo, deleteDataset, getDataset } from '../helpers/apiCall';
-import { useCookies } from 'react-cookie';
 import { toast } from 'react-hot-toast';
 
 const DatasetDisplay = () => {
     const [datasetInfo, setDatasetInfo] = useState<any[]>([]);
-    const [cookies, setCookie] = useCookies(['userID']);
     const [selectedDataset, setSelectedDataset] = useState<any[]>([]);
     const [selectedDatasetName, setSelectedDatasetName] = useState<string>('');
     const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
-    const userID = cookies['userID'];
 
     useEffect(() => {
         const fetchDatasetInfo = async () => {
             try {
-                const response = await getBasicDatasetsInfo(userID);
+                const response = await getBasicDatasetsInfo();
                 if (response.status === 200) {
                     setDatasetInfo(response.data);
                 } else {
@@ -30,7 +27,7 @@ const DatasetDisplay = () => {
 
     const handleClickViewDataset = async (datasetID: number) => {
         try {
-            const response = await getDataset(userID, datasetID);
+            const response = await getDataset(datasetID);
             // console.log(response);
             if (response.status === 200) {
                 toast.success('Dataset loaded successfully!');
@@ -52,7 +49,7 @@ const DatasetDisplay = () => {
 
     const handleClickDeleteDataset = async (datasetID: number) => {
         try {
-            const response = await deleteDataset(userID, datasetID);
+            const response = await deleteDataset(datasetID);
             if (response.status === 200) {
                 toast.success('Dataset deleted successfully!');
                 const newDatasetInfo = datasetInfo.filter((dataset) => dataset.id !== datasetID);

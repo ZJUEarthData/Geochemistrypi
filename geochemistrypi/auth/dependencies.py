@@ -1,11 +1,13 @@
 from database import get_db
-from dependencies import oauth2_scheme
 from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from .schemas import User
 from .service import get_user_by_email
 from .utils import decode_access_token
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", scheme_name="JWT")
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
