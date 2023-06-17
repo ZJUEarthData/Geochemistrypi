@@ -1,6 +1,7 @@
 import os
 
 import pandas as pd
+from auth.dependencies import get_current_active_user
 from database import get_db
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 
@@ -23,13 +24,13 @@ router = APIRouter(
 )
 
 
-@router.post("/{user_id}/upload-dataset")
-async def post_dataset(user_id: int, dataset: UploadFile, db=Depends(get_db)):
+@router.post("/upload-dataset")
+async def post_dataset(dataset: UploadFile, current_user=Depends(get_current_active_user), db=Depends(get_db)):
     dataset_name = dataset.filename
     data = await dataset.read()
     df = pd.read_excel(data)
     json_df = df.to_json(orient="records")
-    db_dataset = upload_dataset(db=db, user_id=user_id, dataset_name=dataset_name, json_dataset=json_df)
+    db_dataset = upload_dataset(db=db, user_id=current_user.id, dataset_name=dataset_name, json_dataset=json_df)
 
     os.makedirs(FAKE_DATABASE_DIR, exist_ok=True)
     df.to_excel(os.path.join(FAKE_DATABASE_DIR, "user_data.xlsx"))
@@ -40,46 +41,46 @@ async def post_dataset(user_id: int, dataset: UploadFile, db=Depends(get_db)):
     # print(type(processed_data))
     # return processed_data
 
-    return {"message": "Data uploaded successfully", "uploaded_dataset": db_dataset}
+    return {"uploaded_dataset": db_dataset}
 
 
-@router.delete("/{user_id}/delete-dataset")
-async def delete_dataset(user_id: int, dataset_id: int, db=Depends(get_db)):
+@router.delete("/delete-dataset")
+async def delete_dataset(dataset_id: int, current_user=Depends(get_current_active_user), db=Depends(get_db)):
     try:
-        db_dataset = remove_dataset(db=db, user_id=user_id, dataset_id=dataset_id)
+        db_dataset = remove_dataset(db=db, user_id=current_user.id, dataset_id=dataset_id)
     except Exception:
         raise HTTPException(status_code=404, detail="Dataset not found")
-    return {"message": "Dataset deleted successfully", "removed_dataset": db_dataset}
+    return {"removed_dataset": db_dataset}
 
 
-@router.get("/{user_id}/get-all-dataset")
-async def get_all_datasets(user_id: int, db=Depends(get_db)):
-    return read_all_datasets(db=db, user_id=user_id)
+@router.get("/get-all-dataset")
+async def get_all_datasets(current_user=Depends(get_current_active_user), db=Depends(get_db)):
+    return read_all_datasets(db=db, user_id=current_user.id)
 
 
-@router.get("/{user_id}/basic-datasets-info")
-async def get_basic_datasets_info(user_id: int, db=Depends(get_db)):
-    return read_basic_datasets_info(db=db, user_id=user_id)
+@router.get("/basic-datasets-info")
+async def get_basic_datasets_info(current_user=Depends(get_current_active_user), db=Depends(get_db)):
+    return read_basic_datasets_info(db=db, user_id=current_user.id)
 
 
-@router.get("/{user_id}/get-dataset")
-async def get_dataset(user_id: int, dataset_id: int, db=Depends(get_db)):
+@router.get("/get-dataset")
+async def get_dataset(dataset_id: int, current_user=Depends(get_current_active_user), db=Depends(get_db)):
     try:
-        db_dataset = read_dataset(db=db, user_id=user_id, dataset_id=dataset_id)
+        db_dataset = read_dataset(db=db, user_id=current_user.id, dataset_id=dataset_id)
     except Exception:
         raise HTTPException(status_code=404, detail="Dataset not found")
-    return {"message": "Dataset retrieved successfully", "dataset": db_dataset}
+    return {"dataset": db_dataset}
 
 
-@router.get("/get-raw-data")
-async def get_data():
-    if not os.path.exists(os.path.join(FAKE_DATABASE_DIR, "user_data.xlsx")):
-        return {"message": "No data available"}
-    df = pd.read_excel(os.path.join(FAKE_DATABASE_DIR, "user_data.xlsx"))
-    raw_data = df.to_json(orient="records")
-    print(raw_data)
-    print(type(raw_data))
-    return raw_data
+# @router.get("/get-raw-data")
+# async def get_data():
+#     if not os.path.exists(os.path.join(FAKE_DATABASE_DIR, "user_data.xlsx")):
+#         return {"message": "No data available"}
+#     df = pd.read_excel(os.path.join(FAKE_DATABASE_DIR, "user_data.xlsx"))
+#     raw_data = df.to_json(orient="records")
+#     print(raw_data)
+#     print(type(raw_data))
+#     return raw_data
 
 
 # @router.post("/upload")

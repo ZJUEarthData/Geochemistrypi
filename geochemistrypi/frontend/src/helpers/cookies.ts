@@ -1,11 +1,14 @@
-import { Cookies } from 'react-cookie';
+export const getCookieValue = (cookieName: string) => {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
 
-export const setUserIDCookie = (userID: string) => {
-    const cookies = new Cookies();
-    cookies.set('userID', userID, {
-        expires: new Date(Date.now() + 1000 * 60 * 60 * 24), // // Set the cookie expiration to 1 day
-        secure: true, // Set the secure flag to ensure the cookie is only sent over HTTPS
-        // sameSite: "strict",  // Set the sameSite flag to 'strict' to ensure the cookie is only sent with requests to the same domain
-        httpOnly: true, // Set the httpOnly flag to true to prevent client-side JavaScript from accessing the cookie
-    });
+        // Check if the cookie starts with the desired name
+        if (cookie.startsWith(`${cookieName}=`)) {
+            return cookie.substring(cookieName.length + 1);
+        }
+    }
+
+    // Cookie not found
+    return null;
 };
