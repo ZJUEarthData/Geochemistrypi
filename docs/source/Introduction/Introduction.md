@@ -8,9 +8,7 @@
 
 # Introduction
 ## What it is
-Geochemistry π is **a Python framework** for data-driven geochemistry discovery. It provides an extendable tool and
-one-stop shop for **geochemical data analysis** on tabular data. The goal of the Geochemistry π is to create
-a series of user-friendly and extensible products of high automation for the full cycle of geochemistry research.
+Geochemistry π is **a Python framework** for data-driven geochemistry discovery. It provides an extendable tool and one-stop shop for **geochemical data analysis** on tabular data. The goal of the Geochemistry π is to create a series of user-friendly and extensible products of high automation for the full cycle of geochemistry research.
 
 Key features are:
 + **Easy to use:** The automation of data mining process provides the users with simple number options to choose.
@@ -18,32 +16,28 @@ Key features are:
 
 
 ## First Phase
-It works as a **software application** with a command-line interface (CLI) to automate **data mining** process with
-frequently-used **machine learning algorithms** and **statistical analysis methods**, which would further lower the
-threshold for the geochemists.
+It works as a **software application** with a command-line interface (CLI) to automate **data mining** process with frequently-used **machine learning algorithms** and **statistical analysis methods**, which would further lower the threshold for the geochemists.
 
-The highlight is that through choosing **simple number options**, the users are able to implement a completed cycle of data
-mining **without knowledge of** SciPy, NumPy, Pandas, Scikit-learn, FLAML, Ray packages.
+The highlight is that through choosing **simple number options**, the users are able to implement a completed cycle of data mining **without knowledge of** SciPy, NumPy, Pandas, Scikit-learn, FLAML, Ray packages.
 
-Its data section, shown as below, provides feature engineering based on **arithmatic operation**. It allows the users
-to have a statistic analysis on the data set as well as on the imputation result, which is supported by the combination
-of **Monte Carlo simulation** and **hypothesis testing**.
-
-
-Its models section provides both **supervised learning** and **unsupervised learning** methods from
-**Scikit-learn** framework, including four types of algorithms, regression, classification,
-clustering, and dimensional reduction. Integrated with **FLAML** and **Ray** framework, it allows the users to run
-AutoML easily, fastly and cost-effectively on the built-in supervised learning algorithms in our framework.
-
-The activity diagram of the Geochemistry π Version 1.0.0:
+The following figure is the activity diagram of automated ML pipeline in Geochemistry π:
 
 ![Geochemistryπ-Activity Diagram_v1.png](https://github.com/ZJUEarthData/geochemistrypi/assets/66779478/012223e2-8c90-401d-b972-2d4ecd180d83)
+
+Its data section provides feature engineering based on **arithmatic operation**. It allows the users to have a statistic analysis on the data set as well as on the imputation result, which is supported by the combination of **Monte Carlo simulation** and **hypothesis testing**.
+
+Its models section provides both **supervised learning** and **unsupervised learning** methods from **Scikit-learn** framework, including four types of algorithms, regression, classification, clustering, and dimensional reduction. Integrated with **FLAML** and **Ray** framework, it allows the users to run AutoML easily, fastly and cost-effectively on the built-in supervised learning algorithms in our framework.
+
+
+### Second Phase
+
+Currently, we are building three access ways to provide more user-friendly service, including **web portal**, **CLI package** and **API**. It allows the user to perform **continuous training** of the model by automating the ML pipeline in different layers.
+
+The following figure is the system architecture diagram of Geochemistry π: <br>
+
+![System Architecture Diagram](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/2d775737-8bdb-4477-a5b2-ac791b2aacc8)
+
 The whole package is under construction and the documentation is progressively evolving.
-
-
-
-
-
 
 
 ## In-house Materials
