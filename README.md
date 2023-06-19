@@ -25,7 +25,6 @@ Key features are:
 + **Extensible:** It allows appending new algorithms through Scikit-learn with augmented AutoML functionality by FLAML and Ray.
 
 
-
 Latest Update: follow up by clicking `Starred` and  `Watch` on our [GitHub repository](https://github.com/ZJUEarthData/geochemistrypi), then get email notifications of the newest features automatically.
 
 ## Quick Installation
@@ -65,27 +64,28 @@ For more details: Please refer to
 + [Geochemistry π - Download and Run the Beta Version (China - Bilibili)](https://www.bilibili.com/video/BV1UM4y1Q7Ju/?spm_id_from=333.999.0.0&vd_source=27944ab3b73a78970c1a52a5dcbb9140)
 
 
-## First Phase
-It works as a **software application** with a command-line interface (CLI) to automate **data mining** process with
-frequently-used **machine learning algorithms** and **statistical analysis methods**, which would further lower the
-threshold for the geochemists.
+# Roadmap
 
-The highlight is that through choosing **simple number options**, the users are able to implement a completed cycle of data
-mining **without knowledge of** SciPy, NumPy, Pandas, Scikit-learn, FLAML, Ray packages.
+### First Phase
+It works as a **software application** with a command-line interface (CLI) to automate **data mining** process with frequently-used **machine learning algorithms** and **statistical analysis methods**, which would further lower the threshold for the geochemists.
 
-Its data section, shown as below, provides feature engineering based on **arithmatic operation**. It allows the users
-to have a statistic analysis on the data set as well as on the imputation result, which is supported by the combination
-of **Monte Carlo simulation** and **hypothesis testing**.
+The highlight is that through choosing **simple number options**, the users are able to implement a completed cycle of data mining **without knowledge of** SciPy, NumPy, Pandas, Scikit-learn, FLAML, Ray packages.
 
-
-Its models section provides both **supervised learning** and **unsupervised learning** methods from
-**Scikit-learn** framework, including four types of algorithms, regression, classification,
-clustering, and dimensional reduction. Integrated with **FLAML** and **Ray** framework, it allows the users to run
-AutoML easily, fastly and cost-effectively on the built-in supervised learning algorithms in our framework.
-
-The activity diagram of the Geochemistry π Version 1.0.0:
+The following figure is the activity diagram of automated ML pipeline in Geochemistry π:
 
 <img src="./docs/Geochemistryπ-Activity%20Diagram_v1.png" />
+
+Its data section provides feature engineering based on **arithmatic operation**. It allows the users to have a statistic analysis on the data set as well as on the imputation result, which is supported by the combination of **Monte Carlo simulation** and **hypothesis testing**.
+
+Its models section provides both **supervised learning** and **unsupervised learning** methods from **Scikit-learn** framework, including four types of algorithms, regression, classification, clustering, and dimensional reduction. Integrated with **FLAML** and **Ray** framework, it allows the users to run AutoML easily, fastly and cost-effectively on the built-in supervised learning algorithms in our framework.
+
+### Second Phase
+
+Currently, we are building three access ways to provide more user-friendly service, including **web portal**, **CLI package** and **API**. It allows the user to perform **continuous training** of the model by automating the ML pipeline in different layers.
+
+The following figure is the system architecture diagram of Geochemistry π: <br>
+
+![System Architecture Diagram](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/2d775737-8bdb-4477-a5b2-ac791b2aacc8)
 
 The whole package is under construction and the documentation is progressively evolving.
 
@@ -108,12 +108,12 @@ The whole package is under construction and the documentation is progressively e
 + Ting Liu (Kira, Sun Yat-sen University, China)
 + Kaixin Zheng (Hayne, Sun Yat-sen University, China)
 + Aixiwake·Janganuer (Ayshuak, Sun Yat-sen University, China)
-+ Xirui Zhu (Rae, University of York, United Kingdom)
 + Jianing Wang (National University of Singapore, Singapore)
 + Yongkang Chang (Kill-virus, Langzhou University, China)
 + Bailun Jiang (EPSI / Lille University, France)
 + Yucheng Yan (Andy, University of Sydney)
 + Keran Li (Kirk, Chengdu University of Technology)
++ Mengying Ye (Jilin University, Changchun, China)
 
 
 ## Join Us :)
@@ -122,10 +122,8 @@ The whole package is under construction and the documentation is progressively e
 **Key Point: All things are done online, remote work (\*^▽^\*)**
 
 **What can you learn?**
-+ Learning the full cycle of data mining on tabular data, including the algorithms in regression,
-classification, clustering, and decomposition.
-+ Learning to be a qualified Python developer, including any Python programing contents towards data mining,
-basic software engineering techniques like OOP developing, and cooperation tools like Git.
++ Learning the full cycle of data mining on tabular data, including the algorithms in regression,classification, clustering, and decomposition.
++ Learning to be a qualified Python developer, including any Python programing contents towards data mining, basic software engineering techniques like OOP developing, and cooperation tools like Git.
 
 **What can you get?**
 
@@ -139,9 +137,7 @@ basic software engineering techniques like OOP developing, and cooperation tools
 + Three weeks per working cycle -> One online meeting per working cycle
 + One cycle report (see below) per cycle - 5 mins to finish
 
-Even if you are not familiar with topics above, but if you are interested in and have plenty of time to do it.
-That's enough. We have a full-developed training system to help you, as a newbie of data mining or Python developer,
-learn steps by steps with seniors until you can make a significant contribution to our project.
+Even if you are not familiar with topics above, but if you are interested in and have plenty of time to do it. That's enough. We have a full-developed training system to help you, as a newbie of data mining or Python developer, learn steps by steps with seniors until you can make a significant contribution to our project.
 
 **More details about the project?**
 Please refer to:
@@ -180,3 +176,4 @@ More Videos will be recorded soon.
 + Dan Hu (Notre Dame University, United States)
 + Xunxin Liu (Tante, China University of Geosciences, Wuhan, China)
 + Xin Li (The University of Manchester, United Kingdom)
++ Xirui Zhu (Rae, University of York, United Kingdom)
