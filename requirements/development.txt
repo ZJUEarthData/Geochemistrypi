@@ -25,6 +25,7 @@ sqlalchemy
 passlib
 python-jose[cryptography]
 bcrypt
+python-dotenv
 sphinx
 furo
 m2r2

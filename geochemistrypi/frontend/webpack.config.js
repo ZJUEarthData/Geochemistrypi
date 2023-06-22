@@ -1,6 +1,10 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+const Dotenv = require('dotenv-webpack');
+const dotenv = require('dotenv');
+
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 module.exports = {
     entry: path.resolve(__dirname, 'src', 'index.tsx'),
@@ -42,10 +46,13 @@ module.exports = {
             template: path.resolve(__dirname, './public/index.html'),
         }),
         new CleanWebpackPlugin(),
+        new Dotenv({
+            path: path.resolve(__dirname, '../../.env'),
+        }),
     ],
     devServer: {
         static: path.join(__dirname, 'public/'),
-        port: 3001,
+        port: process.env.REACT_APP_FRONTEND_PORT || 3001,
         hot: 'only',
         compress: true,
         open: true,

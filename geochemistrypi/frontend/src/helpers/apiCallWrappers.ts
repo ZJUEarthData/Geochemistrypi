@@ -1,7 +1,7 @@
 import axios, { AxiosRequestConfig } from 'axios';
 import { getCookieValue } from './cookies';
 
-const BASE_URL = 'http://0.0.0.0:8000';
+const BASE_URL = process.env.REACT_APP_AXIOS_BASE_URL || 'http://0.0.0.0:8000';
 
 axios.interceptors.request.use((config: AxiosRequestConfig) => {
     const token = getCookieValue('token');
