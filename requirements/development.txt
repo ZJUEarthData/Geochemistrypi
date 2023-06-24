@@ -39,6 +39,6 @@ sphinxcontrib-devhelp
 sphinxcontrib-htmlhelp
 sphinxcontrib-jquery
 sphinxcontrib-jsmath
-sphinxcontrib-napoleon
-sphinxcontrib-qthelp
+
+
 
