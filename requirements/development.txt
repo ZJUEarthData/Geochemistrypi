@@ -38,7 +38,7 @@ sphinxcontrib-applehelp
 sphinxcontrib-devhelp
 sphinxcontrib-htmlhelp
 sphinxcontrib-jquery
-sphinxcontrib-jsmath
+
 sphinxcontrib-napoleon
 
 
