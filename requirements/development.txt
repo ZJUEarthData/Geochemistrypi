@@ -32,13 +32,11 @@ m2r2
 Sphinx
 sphinx-autobuild
 sphinx-basic-ng
-sphinx-rtd-theme
+
 sphinxcontrib-apidoc
 sphinxcontrib-applehelp
 sphinxcontrib-devhelp
 sphinxcontrib-htmlhelp
-
-
 sphinxcontrib-napoleon
 
 
