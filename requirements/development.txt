@@ -30,7 +30,7 @@ sphinx
 furo
 m2r2
 Sphinx
-sphinx-autobuild
+
 
 
 sphinxcontrib-apidoc
