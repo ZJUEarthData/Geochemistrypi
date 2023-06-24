@@ -31,7 +31,7 @@ furo
 m2r2
 Sphinx
 sphinx-autobuild
-sphinx-basic-ng
+
 
 sphinxcontrib-apidoc
 sphinxcontrib-applehelp
