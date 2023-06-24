@@ -29,7 +29,7 @@ python-dotenv
 sphinx
 furo
 m2r2
-Sphinx
+
 
 
 
