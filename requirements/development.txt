@@ -37,7 +37,7 @@ sphinxcontrib-apidoc
 sphinxcontrib-applehelp
 sphinxcontrib-devhelp
 sphinxcontrib-htmlhelp
-sphinxcontrib-jquery
+
 
 sphinxcontrib-napoleon
 
