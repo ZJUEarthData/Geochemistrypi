@@ -51,16 +51,18 @@ def cli_pipeline(file_name: str) -> None:
     logger = log(OUTPUT_PATH, "inner_test.log")
     logger.info("Geochemistry Py v.1.0.0 - beta version")
 
-    # If the argument is False, hide all Python level warnings.
+    # If the argument is False, hide all Python level warnings. Developers can turn it on by setting the argument to True.
     show_warning(False)
 
-    # Read the data
-    logger.debug("Data Uploaded")
-    print("-*-*- Data Loading -*-*-")
+    # Data Loading
+    logger.debug("User Data Uploaded")
+    print("-*-*- User Data Loading -*-*-")
     if file_name:
+        # If the user provides the file name, then load the data from the file.
         data = read_data(file_name=file_name, is_own_data=1)
         print(f"Successfully load the data set '{file_name}'.")
     else:
+        # If the user doesn't provide the file name, then load the built-in data set.
         print("Built-in Data Option:")
         num2option(TEST_DATA_OPTION)
         test_data_num = limit_num_input(TEST_DATA_OPTION, SECTION[0], num_input)
@@ -77,11 +79,12 @@ def cli_pipeline(file_name: str) -> None:
     show_data_columns(data.columns)
     clear_output()
 
-    # World map projection for a specific element
+    # World Map Projection (Optional)
     logger.debug("World Map Projection")
-    print("-*-*- World Map -*-*-")
+    print("-*-*- World Map Projection -*-*-")
     map_flag = 0
     is_map_projection = 0
+    # TODO: Abstract the following code of checking the existence of the longitude and latitude columns into a function.
     detection_index = 0
     lon = ["LONGITUDE", "Longitude (°E)", "longitude", "Longitude", "经度 (°N)", "经度"]
     lat = ["LATITUDE", "Latitude (°N)", "latitude", "Latitude", "纬度 (°E)", "纬度"]
@@ -100,14 +103,16 @@ def cli_pipeline(file_name: str) -> None:
     if detection_index != 3:
         print("Hence, world map projection functionality will be skipped!")
         clear_output()
+    # If the data set contains both longitude and latitude data, then the user can choose to project the data on the world map.
     while detection_index == 3:
         if map_flag != 1:
-            # option selection
+            # Check if the user wants to project the data on the world map.
             print("World Map Projection for A Specific Element Option:")
             num2option(OPTION)
             is_map_projection = limit_num_input(OPTION, SECTION[3], num_input)
             clear_output()
         if is_map_projection == 1:
+            # If the user chooses to project the data on the world map, then the user can select the element to be projected.
             print("-*-*- Distribution in World Map -*-*-")
             print("Select one of the elements below to be projected in the World Map: ")
             show_data_columns(data.columns)
@@ -131,7 +136,7 @@ def cli_pipeline(file_name: str) -> None:
         elif is_map_projection == 2:
             break
 
-    # Create the processing data set
+    # Data Selection for Preprocessing
     logger.debug("Data Selection")
     print("-*-*- Data Selection -*-*-")
     show_data_columns(data.columns)
@@ -148,7 +153,7 @@ def cli_pipeline(file_name: str) -> None:
     logged_distribution_plot(data_processed.columns, data_processed)
     clear_output()
 
-    # Imputing
+    # Imputing Missing Values
     logger.debug("Imputation")
     print("-*-*- Imputation -*-*-")
     is_null_value(data_processed)
@@ -189,7 +194,7 @@ def cli_pipeline(file_name: str) -> None:
         # if the selected data set doesn't need imputation, which means there are no missing values.
         data_processed_imputed = data_processed
 
-    # Feature engineering
+    # Feature Engineering
     # FIXME(hecan sanyhew1097618435@163.com): fix the logic
     logger.debug("Feature Engineering")
     print("-*-*- Feature Engineering -*-*-")
@@ -233,16 +238,16 @@ def cli_pipeline(file_name: str) -> None:
             clear_output()
             break
 
-    # Mode selection
+    # Mode Selection
     logger.debug("Mode Selection")
-    print("-*-*- Mode Options -*-*-")
+    print("-*-*- Mode Selection -*-*-")
     num2option(MODE_OPTION)
     mode_num = limit_num_input(MODE_OPTION, SECTION[2], num_input)
     clear_output()
     # divide X and y data set when it is supervised learning
     logger.debug("Data Split")
     if mode_num == 1 or mode_num == 2:
-        print("-*-*- Data Split - X Set and Y Set-*-*-")
+        print("-*-*- Data Split - X Set and Y Set -*-*-")
         print("Divide the processing data set into X (feature value) and Y (target value) respectively.")
         # create X data set
         print("Selected sub data set to create X data set:")
@@ -257,7 +262,7 @@ def cli_pipeline(file_name: str) -> None:
         save_data(X, "X Without Scaling", DATASET_OUTPUT_PATH)
         clear_output()
 
-        # feature scaling
+        # Feature Scaling
         print("-*-*- Feature Scaling on X Set -*-*-")
         num2option(OPTION)
         is_feature_scaling = limit_num_input(OPTION, SECTION[1], num_input)
@@ -313,7 +318,7 @@ def cli_pipeline(file_name: str) -> None:
         X_train = data_processed_imputed
         y, X_test, y_train, y_test = None, None, None, None
 
-    # Model option for users
+    # Model Selection
     logger.debug("Model Selection")
     print("-*-*- Model Selection -*-*-:")
     Modes2Models = {1: REGRESSION_MODELS, 2: CLASSIFICATION_MODELS, 3: CLUSTERING_MODELS, 4: DECOMPOSITION_MODELS}

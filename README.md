@@ -29,35 +29,53 @@ Latest Update: follow up by clicking `Starred` and  `Watch` on our [GitHub repos
 
 ## Quick Installation
 
-One instruction to download on command line, such as Terminal on macOS, CMD on Windows.
+One instruction to download on **command line**, such as Terminal on macOS, CMD on Windows.
 ```
 pip install geochemistrypi
+```
+One instruction to download on **Jupyter Notebook** or **Google Colab**.
+```
+!pip install geochemistrypi
 ```
 **Note**: The beta version runs on MacOS, Windows or Linux.
 
 ## Quick Update
-One instruction to update the software to the latest version on command line, such as Terminal on macOS, CMD on Windows.
+One instruction to update the software to the latest version on **command line**, such as Terminal on macOS, CMD on Windows.
 ```
 pip install --upgrade geochemistrypi
+```
+One instruction to download on **Jupyter Notebook** or **Google Colab**.
+```
+!pip install --upgrade geochemistrypi
 ```
 
 ## Example
 
-**How to run:** After successfully downloading, run this instruction on command line whatever directory it is.
+**How to run:** After successfully downloading, run this instruction on **command line / Jupyter Notebook / Google Colab** whatever directory it is.
 
 ### Case 1: Run with built-in data set for testing
+On command line:
 ```
 geochemistrypi data-mining
+```
+On Jupyter Notebook / Google Colab:
+```
+!geochemistrypi data-mining
 ```
 **Note**: There are four built-in data sets corresponding to four kinds of model pattern.
 
 ### Case 2: Run with your own data set
+On command line:
 ```
 geochemistrypi data-mining --data your_own_data_set.xlsx
 ```
-**Note**: Currently, only `.xlsx` file is supported. Please specify the path your data file exists.
+On Jupyter Notebook / Google Colab:
+```
+!geochemistrypi data-mining --data your_own_data_set.xlsx
+```
+**Note**: Currently, only `.xlsx` file is supported. Please specify the path your data file exists. For Google Colab, don't forget to upload your dataset first.
 
-For more details: Please refer to
+For more details: Please refer to:
 + [Manual v1.1.0 for Geochemistry π - Beta (International - Google drive)](https://drive.google.com/file/d/1yryykCyWKM-Sj88fOYbOba6QkB_fu2ws/view?usp=sharing)
 + [Manual v1.1.0 for Geochemistry π - Beta (China - Tencent Docs)](https://docs.qq.com/pdf/DQ0l5d2xVd2VwcnVW?&u=6868f96d4a384b309036e04e637e367a)
 + [Geochemistry π - Download and Run the Beta Version (International - Youtube)](https://www.youtube.com/watch?v=EeVaJ3H7_AU&list=PLy8hNsI55lvh1UHjhVhqNUj3xPdV9sEiM&index=9)
@@ -113,7 +131,7 @@ The whole package is under construction and the documentation is progressively e
 + Bailun Jiang (EPSI / Lille University, France)
 + Yucheng Yan (Andy, University of Sydney)
 + Keran Li (Kirk, Chengdu University of Technology)
-+ Mengying Ye (Jilin University, Changchun, China)
++ Mengying Ye (Mary, Jilin University, Changchun, China)
 
 
 ## Join Us :)
