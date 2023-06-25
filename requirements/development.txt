@@ -26,17 +26,12 @@ passlib
 python-jose[cryptography]
 bcrypt
 python-dotenv
-
 furo
 m2r2
-
-
-
-
 sphinxcontrib-apidoc
 sphinxcontrib-applehelp
 sphinxcontrib-devhelp
 sphinxcontrib-htmlhelp
-sphinxcontrib-napoleon
+
 
 
