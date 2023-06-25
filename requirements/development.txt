@@ -26,9 +26,9 @@ passlib
 python-jose[cryptography]
 bcrypt
 python-dotenv
-sphinx
-furo
 
+furo
+m2r2
 
 
 
