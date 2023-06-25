@@ -30,7 +30,7 @@ furo
 m2r2
 sphinxcontrib-apidoc
 sphinxcontrib-applehelp
-sphinxcontrib-devhelp
+
 
 sphinxcontrib-napoleon
 
