@@ -27,7 +27,8 @@ python-jose[cryptography]
 bcrypt
 python-dotenv
 sphinx
-m2r2
+furo
+
 
 
 
