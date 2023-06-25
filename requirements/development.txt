@@ -29,7 +29,7 @@ python-dotenv
 furo
 m2r2
 sphinxcontrib-apidoc
-sphinxcontrib-applehelp
+
 
 
 sphinxcontrib-napoleon
