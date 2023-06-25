@@ -31,7 +31,7 @@ m2r2
 sphinxcontrib-apidoc
 sphinxcontrib-applehelp
 sphinxcontrib-devhelp
-sphinxcontrib-htmlhelp
 
+sphinxcontrib-napoleon
 
 
