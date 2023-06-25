@@ -28,10 +28,7 @@ bcrypt
 python-dotenv
 furo
 m2r2
-
-
-
-
+sphinxcontrib-apidoc
 sphinxcontrib-napoleon
 
 
