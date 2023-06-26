@@ -6,6 +6,7 @@ import pandas as pd
 import xgboost
 from flaml import AutoML
 from multipledispatch import dispatch
+from rich import print
 from sklearn.ensemble import ExtraTreesRegressor, RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.neural_network import MLPRegressor

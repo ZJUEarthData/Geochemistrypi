@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import pandas as pd
+from rich import print
 from sklearn.impute import SimpleImputer
 
 from ..global_variable import SECTION

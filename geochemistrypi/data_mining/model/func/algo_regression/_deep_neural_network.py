@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from typing import Dict
 
+from rich import print
+
 from ....data.data_readiness import float_input, num_input, str_input, tuple_input
 from ....global_variable import SECTION
 

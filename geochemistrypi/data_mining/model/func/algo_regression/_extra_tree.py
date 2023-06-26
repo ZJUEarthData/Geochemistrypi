@@ -3,6 +3,7 @@ from typing import Dict
 
 import matplotlib.pyplot as plt
 import pandas as pd
+from rich import print
 
 from ....data.data_readiness import num_input, str_input
 from ....global_variable import SECTION

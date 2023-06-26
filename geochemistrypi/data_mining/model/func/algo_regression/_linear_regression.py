@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from mpl_toolkits.mplot3d import Axes3D
+from rich import print
 
 from ....data.data_readiness import str_input
 from ....global_variable import SECTION

@@ -3,6 +3,7 @@ import string
 
 import numpy as np
 import pandas as pd
+from rich import print
 
 # class Stack(object):
 #     """Create a stack."""

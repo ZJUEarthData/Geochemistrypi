@@ -4,6 +4,7 @@ from typing import Dict
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+from rich import print
 from sklearn.inspection import permutation_importance
 
 from ....data.data_readiness import num_input, str_input

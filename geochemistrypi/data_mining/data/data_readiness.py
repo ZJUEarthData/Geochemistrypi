@@ -5,6 +5,7 @@ from typing import List, Optional, Tuple, Union
 
 import openpyxl.utils.exceptions
 import pandas as pd
+from rich import print
 from sklearn.model_selection import train_test_split
 
 from ..global_variable import BUILT_IN_DATASET_PATH

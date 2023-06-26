@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import pandas as pd
 from multipledispatch import dispatch
+from rich import print
 
 from ..data.data_readiness import num_input
 from ..global_variable import DATASET_OUTPUT_PATH, SECTION

@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import os
 
+from rich import print
+
 from .data.data_readiness import basic_info, create_sub_data_set, data_split, float_input, limit_num_input, np2pd, num2option, num_input, read_data, show_data_columns
 from .data.feature_engineering import FeatureConstructor
 from .data.imputation import imputer
