@@ -2,6 +2,7 @@
 from typing import Dict, List
 
 import numpy as np
+from rich import print
 
 from ....data.data_readiness import num_input, str_input
 from ....global_variable import SECTION

@@ -1,6 +1,7 @@
 from typing import Dict
 
 import matplotlib.pyplot as plt
+from rich import print
 from sklearn.tree import plot_tree
 
 from ....data.data_readiness import num_input, str_input

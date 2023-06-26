@@ -6,6 +6,7 @@ import pandas as pd
 import xgboost
 from flaml import AutoML
 from multipledispatch import dispatch
+from rich import print
 from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report

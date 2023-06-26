@@ -3,6 +3,7 @@ from typing import Dict
 import matplotlib.pyplot as plt
 import pandas as pd
 import xgboost
+from rich import print
 
 from ....data.data_readiness import float_input, num_input
 from ....global_variable import SECTION

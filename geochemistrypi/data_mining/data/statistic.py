@@ -3,6 +3,7 @@ import random
 
 import numpy as np
 import pandas as pd
+from rich import print
 from scipy.stats import kruskal, wilcoxon
 
 

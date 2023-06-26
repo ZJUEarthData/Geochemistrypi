@@ -5,6 +5,7 @@ import platform
 
 import pandas as pd
 from matplotlib import pyplot as plt
+from rich import print
 
 
 def clear_output() -> None:

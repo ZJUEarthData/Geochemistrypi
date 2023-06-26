@@ -2,6 +2,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from rich import print
 from sklearn.metrics import explained_variance_score, mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import cross_validate
 

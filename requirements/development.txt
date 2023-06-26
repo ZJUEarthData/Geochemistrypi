@@ -26,6 +26,7 @@ passlib
 python-jose[cryptography]
 bcrypt
 python-dotenv
+rich
 sphinx
 furo
 m2r2

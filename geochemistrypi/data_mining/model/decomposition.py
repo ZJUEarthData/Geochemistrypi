@@ -3,6 +3,7 @@ from typing import Dict, Optional, Union
 
 import numpy as np
 import pandas as pd
+from rich import print
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
