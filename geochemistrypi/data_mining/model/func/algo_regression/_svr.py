@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 from rich import print
 
+from ....constants import SECTION
 from ....data.data_readiness import float_input, num_input, str_input
-from ....global_variable import SECTION
 
 
 def svr_manual_hyper_parameters() -> Dict:

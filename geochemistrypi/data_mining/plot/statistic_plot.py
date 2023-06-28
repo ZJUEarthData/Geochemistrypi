@@ -5,7 +5,7 @@ import seaborn as sns
 import statsmodels.api as sm
 from rich import print
 
-from ..global_variable import STATISTIC_IMAGE_PATH
+from ..constants import STATISTIC_IMAGE_PATH
 from ..utils.base import save_fig
 
 

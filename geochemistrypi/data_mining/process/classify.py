@@ -2,7 +2,7 @@
 import pandas as pd
 from multipledispatch import dispatch
 
-from ..global_variable import DATASET_OUTPUT_PATH
+from ..constants import DATASET_OUTPUT_PATH
 from ..model.classification import (
     ClassificationWorkflowBase,
     DecisionTreeClassification,

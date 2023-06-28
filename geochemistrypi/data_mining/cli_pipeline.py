@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 import os
+from time import sleep
 
+import mlflow
 from rich import print
+from rich.console import Console
+from rich.prompt import Confirm, Prompt
 
-from .data.data_readiness import basic_info, create_sub_data_set, data_split, float_input, limit_num_input, np2pd, num2option, num_input, read_data, show_data_columns
-from .data.feature_engineering import FeatureConstructor
-from .data.imputation import imputer
-from .data.preprocessing import feature_scaler
-from .data.statistic import monte_carlo_simulator
-from .global_variable import (
+from .constants import (
     CLASSIFICATION_MODELS,
     CLUSTERING_MODELS,
     DATASET_OUTPUT_PATH,
@@ -27,7 +26,13 @@ from .global_variable import (
     SECTION,
     STATISTIC_IMAGE_PATH,
     TEST_DATA_OPTION,
+    WORKING_PATH,
 )
+from .data.data_readiness import basic_info, create_sub_data_set, data_split, float_input, limit_num_input, np2pd, num2option, num_input, read_data, show_data_columns
+from .data.feature_engineering import FeatureConstructor
+from .data.imputation import imputer
+from .data.preprocessing import feature_scaler
+from .data.statistic import monte_carlo_simulator
 from .plot.map_plot import map_projected
 from .plot.statistic_plot import basic_statistic, correlation_plot, distribution_plot, is_imputed, is_null_value, logged_distribution_plot, probability_plot, ratio_null_vs_filled
 from .process.classify import ClassificationModelSelection
@@ -35,6 +40,7 @@ from .process.cluster import ClusteringModelSelection
 from .process.decompose import DecompositionModelSelection
 from .process.regress import RegressionModelSelection
 from .utils.base import clear_output, log, save_data, show_warning
+from .utils.mlflow_utils import retrieve_previous_experiment_id
 
 # create the directories if they didn't exist yet
 os.makedirs(MODEL_OUTPUT_IMAGE_PATH, exist_ok=True)
@@ -46,15 +52,46 @@ os.makedirs(MODEL_PATH, exist_ok=True)
 
 
 def cli_pipeline(file_name: str) -> None:
-    """The command line interface for GeochemistryPy."""
-
-    print("Geochemistry Py v0.2.1 - Beta Version")
-    print("....... Initializing .......")
-    logger = log(OUTPUT_PATH, "inner_test.log")
-    logger.info("Geochemistry Py v.1.0.0 - beta version")
+    """The command line interface for Geochemistry π."""
 
     # If the argument is False, hide all Python level warnings. Developers can turn it on by setting the argument to True.
     show_warning(False)
+
+    logger = log(OUTPUT_PATH, "inner_test.log")
+    logger.info("Geochemistry Pi is running.")
+
+    # Display the interactive splash screen when launching the CLI software
+    console = Console()
+    console.print("\n[bold blue]Welcome to Geochemistry Pi![/bold blue]")
+    console.print("[bold]Initializing...[/bold]")
+    with console.status("[bold green]Loading...[/bold green]", spinner="dots"):
+        sleep(2)
+    console.print("✨ Input Template [bold magenta][Option1/Option2][/bold magenta] [bold cyan](Default Value)[/bold cyan]: Input Value")
+    # Create a new experiment or use the previous experiment
+    is_used_previous_experiment = Confirm.ask("✨ Use Previous Experiment", default=False)
+    # Set the tracking uri to the local directory, in the future, we can set it to the remote server.
+    artifact_localtion = f"file:{WORKING_PATH}/geopi_tracking"
+    mlflow.set_tracking_uri(artifact_localtion)
+    # print("tracking uri:", mlflow.get_tracking_uri())
+    if is_used_previous_experiment:
+        old_experiment_id = None
+        # If the user doesn't provide the correct experiment name, then ask the user to input again.
+        while not old_experiment_id:
+            old_experiment_name = Prompt.ask("✨ Previous Experiment Name")
+            old_experiment_id = retrieve_previous_experiment_id(old_experiment_name)
+        mlflow.set_experiment(experiment_id=old_experiment_id)
+        experiment = mlflow.get_experiment(experiment_id=old_experiment_id)
+    else:
+        new_experiment_name = Prompt.ask("✨ New Experiment", default="GeoPi - Rock Classification")
+        new_experiment_tag = Prompt.ask("✨ Experiment Tag Version", default="E - v1.0.0")
+        new_experiment_id = mlflow.create_experiment(name=new_experiment_name, artifact_location=artifact_localtion, tags={"version": new_experiment_tag})
+        experiment = mlflow.get_experiment(experiment_id=new_experiment_id)
+    # print("Artifact Location: {}".format(experiment.artifact_location))
+
+    run_name = Prompt.ask("✨ Run Name", default="Xgboost Algorithm")
+    run_tag = Prompt.ask("✨ Run Tag Version", default="R - v1.0.0")
+    run_description = Prompt.ask("✨ Run Description", default="Use xgboost for GeoPi classification.")
+    mlflow.start_run(run_name=run_name, experiment_id=experiment.experiment_id, tags={"version": run_tag, "description": run_description})
 
     # Data Loading
     logger.debug("User Data Uploaded")
@@ -236,7 +273,7 @@ def cli_pipeline(file_name: str) -> None:
                 clear_output()
                 break
         else:
-            save_data(data_processed_imputed, "Data Before Splitting", DATASET_OUTPUT_PATH)
+            save_data(data_processed_imputed, "Data-Before-Splitting", DATASET_OUTPUT_PATH)
             clear_output()
             break
 
@@ -366,3 +403,5 @@ def cli_pipeline(file_name: str) -> None:
             run = Modes2Initiators[mode_num](MODELS[i])
             run.activate(X, y, X_train, X_test, y_train, y_test)
             clear_output()
+
+    mlflow.end_run()

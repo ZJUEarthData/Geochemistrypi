@@ -14,7 +14,7 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.svm import SVR
 from sklearn.tree import DecisionTreeRegressor
 
-from ..global_variable import MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
+from ..constants import MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
 from ..utils.base import save_fig
 from ._base import WorkflowBase
 from .func.algo_regression._common import cross_validation, plot_predicted_value_evaluation, plot_true_vs_predicted, score

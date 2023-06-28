@@ -7,7 +7,7 @@ from rich import print
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
-from ..global_variable import MODEL_OUTPUT_IMAGE_PATH
+from ..constants import MODEL_OUTPUT_IMAGE_PATH
 from ..utils.base import save_fig
 from ._base import WorkflowBase
 from .func.algo_decomposition._pca import biplot, pca_manual_hyper_parameters, triplot

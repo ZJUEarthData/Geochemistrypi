@@ -27,6 +27,7 @@ python-jose[cryptography]
 bcrypt
 python-dotenv
 rich
+mlflow
 sphinx
 furo
 m2r2

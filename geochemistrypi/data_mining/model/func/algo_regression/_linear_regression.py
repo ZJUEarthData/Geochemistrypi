@@ -7,8 +7,8 @@ import pandas as pd
 from mpl_toolkits.mplot3d import Axes3D
 from rich import print
 
+from ....constants import SECTION
 from ....data.data_readiness import str_input
-from ....global_variable import SECTION
 
 
 def linear_regression_manual_hyper_parameters() -> Dict:

@@ -62,3 +62,4 @@ docs/build
 
 # mlflow
 mlruns
+geopi_tracking

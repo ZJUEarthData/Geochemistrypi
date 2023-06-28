@@ -11,8 +11,8 @@ import pandas as pd
 from multipledispatch import dispatch
 from rich import print
 
+from ..constants import MODEL_PATH, SECTION
 from ..data.data_readiness import limit_num_input, num2option, num_input, show_data_columns
-from ..global_variable import MODEL_PATH, SECTION
 from ..utils.base import save_data
 
 

@@ -3,8 +3,8 @@ from typing import Dict
 
 from rich import print
 
+from ....constants import SECTION
 from ....data.data_readiness import float_input, num_input, str_input, tuple_input
-from ....global_variable import SECTION
 
 
 def deep_neural_network_manual_hyper_parameters() -> Dict:

@@ -3,6 +3,7 @@ import logging
 import os
 import platform
 
+import mlflow
 import pandas as pd
 from matplotlib import pyplot as plt
 from rich import print
@@ -70,6 +71,8 @@ def save_data(df: pd.DataFrame, df_name: str, path: str) -> None:
         # drop the index in case that the dimensions change
         # store the result in the directory "results"
         df.to_excel(os.path.join(path, "{}.xlsx".format(df_name)), index=False)
+        print(os.path.join(path, "{}.xlsx".format(df_name)))
+        mlflow.log_artifact(os.path.join(path, "{}.xlsx".format(df_name)))
         print(f"Successfully store '{df_name}' in '{df_name}.xlsx' in {path}.")
     except ModuleNotFoundError:
         print("** Please download openpyxl by pip3 **")

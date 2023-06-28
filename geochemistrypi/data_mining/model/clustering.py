@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 from typing import Dict, Optional, Union
 
+import mlflow
 import numpy as np
 import pandas as pd
 from rich import print
 from sklearn import metrics
 from sklearn.cluster import DBSCAN, AffinityPropagation, KMeans
 
-from ..global_variable import DATASET_OUTPUT_PATH, MODEL_OUTPUT_IMAGE_PATH
+from ..constants import DATASET_OUTPUT_PATH, MODEL_OUTPUT_IMAGE_PATH
 from ..utils.base import save_data, save_fig
 from ._base import WorkflowBase
 from .func.algo_clustering._dbscan import dbscan_manual_hyper_parameters, dbscan_result_plot
@@ -27,6 +28,7 @@ class ClusteringWorkflowBase(WorkflowBase):
         """Fit the model according to the given training data."""
         self.X = X
         self.model.fit(X)
+        mlflow.log_params(self.model.get_params())
 
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
@@ -177,6 +179,9 @@ class KMeansClustering(ClusteringWorkflowBase):
         print("Inertia Score: ", self.model.inertia_)
         print("Calinski Harabasz Score: ", metrics.calinski_harabasz_score(self.X, self.model.labels_))
         print("Silhouette Score: ", metrics.silhouette_score(self.X, self.model.labels_))
+        mlflow.log_metric("Inertia Score", self.model.inertia_)
+        mlflow.log_metric("Calinski Harabasz Score", metrics.calinski_harabasz_score(self.X, self.model.labels_))
+        mlflow.log_metric("Silhouette Score", metrics.silhouette_score(self.X, self.model.labels_))
 
     @staticmethod
     def _plot_silhouette_diagram(
@@ -191,6 +196,7 @@ class KMeansClustering(ClusteringWorkflowBase):
         print("-----* Silhouette Diagram *-----")
         plot_silhouette_diagram(data, cluster_labels, cluster_centers_, n_clusters, algorithm_name)
         save_fig(f"Silhouette Diagram - {algorithm_name}", store_path)
+        mlflow.log_artifact(f"{store_path}/Silhouette Diagram - {algorithm_name}.png")
 
     @staticmethod
     def _scatter2d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
@@ -198,6 +204,7 @@ class KMeansClustering(ClusteringWorkflowBase):
         print("-----* Cluster Two-Dimensional Diagram *-----")
         scatter2d(data, cluster_labels, algorithm_name)
         save_fig(f"Cluster Two-Dimensional Diagram - {algorithm_name}", store_path)
+        mlflow.log_artifact(f"{store_path}/Cluster Two-Dimensional Diagram - {algorithm_name}.png")
 
     @staticmethod
     def _scatter3d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
@@ -205,6 +212,7 @@ class KMeansClustering(ClusteringWorkflowBase):
         print("-----* Cluster Three-Dimensional Diagram *-----")
         scatter3d(data, cluster_labels, algorithm_name)
         save_fig(f"Cluster Three-Dimensional Diagram - {algorithm_name}", store_path)
+        mlflow.log_artifact(f"{store_path}/Cluster Three-Dimensional Diagram - {algorithm_name}.png")
 
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
