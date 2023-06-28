@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from ..global_variable import GEO_IMAGE_PATH
+from ..constants import GEO_IMAGE_PATH
 from ..utils.base import save_fig
 
 

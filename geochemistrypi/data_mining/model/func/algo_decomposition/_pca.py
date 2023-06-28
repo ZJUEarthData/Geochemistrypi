@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 from rich import print
 
+from ....constants import SECTION
 from ....data.data_readiness import num_input, str_input
-from ....global_variable import SECTION
 
 
 def pca_manual_hyper_parameters() -> Dict:

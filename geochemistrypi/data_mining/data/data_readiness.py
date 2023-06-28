@@ -8,7 +8,7 @@ import pandas as pd
 from rich import print
 from sklearn.model_selection import train_test_split
 
-from ..global_variable import BUILT_IN_DATASET_PATH
+from ..constants import BUILT_IN_DATASET_PATH
 
 # from utils.exceptions import InvalidFileError
 

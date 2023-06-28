@@ -8,7 +8,7 @@ from mpl_toolkits.basemap import Basemap
 
 # import cartopy.crs as ccrs
 # import cartopy
-from ..global_variable import MAP_IMAGE_PATH
+from ..constants import MAP_IMAGE_PATH
 from ..utils.base import save_fig
 
 logging.captureWarnings(True)

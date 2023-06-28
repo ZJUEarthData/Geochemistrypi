@@ -14,7 +14,7 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 
-from ..global_variable import MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
+from ..constants import MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
 from ..utils.base import save_fig
 from ._base import WorkflowBase
 from .func.algo_classification._common import confusion_matrix_plot, cross_validation, plot_precision_recall, plot_ROC

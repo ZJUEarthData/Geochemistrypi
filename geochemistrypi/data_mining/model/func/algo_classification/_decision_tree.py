@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 from rich import print
 from sklearn.tree import plot_tree
 
+from ....constants import SECTION
 from ....data.data_readiness import num_input, str_input
-from ....global_variable import SECTION
 
 
 def decision_tree_manual_hyper_parameters() -> Dict:

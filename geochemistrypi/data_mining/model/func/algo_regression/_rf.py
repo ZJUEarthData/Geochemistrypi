@@ -7,8 +7,8 @@ from matplotlib import pyplot as plt
 from rich import print
 from sklearn.inspection import permutation_importance
 
+from ....constants import SECTION
 from ....data.data_readiness import num_input, str_input
-from ....global_variable import SECTION
 
 
 def random_forest_manual_hyper_parameters() -> Dict:

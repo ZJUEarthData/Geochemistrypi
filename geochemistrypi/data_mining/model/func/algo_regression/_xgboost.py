@@ -8,8 +8,8 @@ from matplotlib import pyplot as plt
 from rich import print
 from sklearn.inspection import permutation_importance
 
+from ....constants import SECTION
 from ....data.data_readiness import float_input, num_input
-from ....global_variable import SECTION
 
 
 def xgboost_manual_hyper_parameters() -> Dict:

@@ -7,8 +7,8 @@ import pandas as pd
 from rich import print
 from sklearn.metrics import silhouette_samples, silhouette_score
 
+from ....constants import SECTION
 from ....data.data_readiness import float_input, num_input, str_input
-from ....global_variable import SECTION
 
 
 def kmeans_manual_hyper_parameters() -> Dict:

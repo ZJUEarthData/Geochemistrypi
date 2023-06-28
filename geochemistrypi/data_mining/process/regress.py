@@ -3,8 +3,8 @@ import pandas as pd
 from multipledispatch import dispatch
 from rich import print
 
+from ..constants import DATASET_OUTPUT_PATH, SECTION
 from ..data.data_readiness import num_input
-from ..global_variable import DATASET_OUTPUT_PATH, SECTION
 from ..model.regression import (
     DecisionTreeRegression,
     DNNRegression,

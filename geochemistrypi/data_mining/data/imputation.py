@@ -4,7 +4,7 @@ import pandas as pd
 from rich import print
 from sklearn.impute import SimpleImputer
 
-from ..global_variable import SECTION
+from ..constants import SECTION
 from .data_readiness import float_input
 
 
