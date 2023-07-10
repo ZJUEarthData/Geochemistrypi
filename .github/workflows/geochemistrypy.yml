@@ -26,7 +26,7 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install flake8 pytest
         python -m pip install pre-commit
-        if [ -f requirements/production.txt ]; then pip install -r requirements.txt; fi
+        if [ -f requirements/production.txt ]; then pip install -r requirements/production.txt; fi
     - name: Run pre-commit hooks
       run: |
         pre-commit run --all-files
