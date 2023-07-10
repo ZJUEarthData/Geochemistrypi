@@ -4,10 +4,39 @@ import string
 import numpy as np
 import pandas as pd
 from rich import print
-from ..constants import DATASET_OUTPUT_PATH, OPTION, SECTION
-from ..plot.statistic_plot import basic_statistic
-from ..utils.base import clear_output, save_data
-from .data_readiness import basic_info, limit_num_input, num2option, num_input, show_data_columns
+
+# class Stack(object):
+#     """Create a stack."""
+#     Error = -1
+#
+#     def __init__(self, MaxSize):
+#         # The size of the stack.
+#         self.MaxSize = MaxSize
+#         # Pointer indicates the position of the top element.
+#         self.Top = -1
+#         self.Data = [None for _ in range(self.MaxSize)]
+#
+#     def is_empty(self):
+#         return self.Top == -1
+#
+#     def push(self, item):
+#         if self.Top == self.MaxSize:
+#             print("The stack is full")
+#             return
+#         else:
+#             self.Top += 1
+#             self.Data[self.Top] = item
+#
+#     def pop(self):
+#         if self.Top == -1:
+#             print("The stack is empty")
+#             return Stack.Error
+#         else:
+#             item = self.Data[self.Top]
+#             self.Data[self.Top] = None
+#             self.Top -= 1
+#             return item
+
 
 class FeatureConstructor(object):
 
@@ -57,15 +86,10 @@ class FeatureConstructor(object):
             "--> Step 1: Multiply 5 with f; \n"
             "--> Step 2: Plus d column with the result of Step 1;\n"
             "--> Step 3: Divide the result of Step 1 by g; \n"
-            "Input example 3: pow(a, b) + c * d \n"
-            "--> Step 1: Raise the base a to the power of the exponent b; \n"
-            "--> Step 2: Multiply the value of c by the value of d; \n"
-            "--> Step 3: Add the result of Step 1 to the result of Step 2; \n"
-            "Input example 4: Example: log(a)/b - c \n"
-            "--> Step 1: Take the logarithm of the value a; \n"
-            "--> Step 2: Divide the result of Step 1 by the value of b; \n"
-            "--> Step 3: Subtract the value of c from the result of Step 2; \n"
+            "Now we've added new computing capabilities:\n"
+            "You can use pow(x,y) to perform power operations.\n"
             "You can use mean(x) to calculate the average value.\n"
+            "You can use log(x) for logarithms with base e.\n"
             # "Input example 3: (h ** 3) / (i ** (1/2)) \n"
             # "--> Step 1: Exponent calculation, h raised to the power of 3; \n"
             # "--> Step 2: Root calculation, find the square root of i; \n"
@@ -86,15 +110,10 @@ class FeatureConstructor(object):
                     "--> Step 1: Multiply 5 with f; \n"
                     "--> Step 2: Plus d column with the result of Step 1;\n"
                     "--> Step 3: Divide the result of Step 1 by g; \n"
-                    "Input example 3: pow(a, b) + c * d \n"
-                    "--> Step 1: Raise the base a to the power of the exponent b; \n"
-                    "--> Step 2: Multiply the value of c by the value of d; \n"
-                    "--> Step 3: Add the result of Step 1 to the result of Step 2; \n"
-                    "Input example 4: Example: log(a)/b - c \n"
-                    "--> Step 1: Take the logarithm of the value a; \n"
-                    "--> Step 2: Divide the result of Step 1 by the value of b; \n"
-                    "--> Step 3: Subtract the value of c from the result of Step 2; \n"
+                    "Now we've added new computing capabilities:\n"
+                    "You can use pow(x,y) to perform power operations.\n"
                     "You can use mean(x) to calculate the average value.\n"
+                    "You can use log(x) for logarithms with base e.\n"
                     # "Input example 3: (h ** 3) / (i ** (1/2)) \n"
                     # "--> Step 1: Exponent calculation, h raised to the power of 3; \n"
                     # "--> Step 2: Root calculation, find the square root of i; \n"
@@ -148,53 +167,113 @@ class FeatureConstructor(object):
                     else:
                         self._infix_expr += ww
 
+    # @staticmethod
+    # def _oper_priority_out(oper):
+    #     return {
+    #         '+': 1, '-': 1,
+    #         '*': 2, '/': 2,
+    #         '(': 3, ')': 0,
+    #     }[oper]
+    #
+    # @staticmethod
+    # def _oper_priority_in(oper):
+    #     return {
+    #         '+': 1, '-': 1,
+    #         '*': 2, '/': 2,
+    #         '(': 0, ')': 0
+    #     }[oper]
+    #
+    # @staticmethod
+    # def _get_operator_fn(oper):
+    #     return {
+    #         '+': operator.add,
+    #         '-': operator.sub,
+    #         '*': operator.mul,
+    #         '/': operator.truediv,
+    #         '%': operator.mod,
+    #         '^': operator.xor,
+    #     }[oper]
+
+    # @staticmethod
+    # def _eval_binary_expr(op1, oper, op2):
+    #     return FeatureConstructor._get_operator_fn(oper)(op1, op2)
+    #
+    # def infix_expr2postfix_expr(self):
+    #     oper_stack = Stack(100)
+    #
+    #     for i in range(len(self._infix_expr)):
+    #         if self._infix_expr[i] in FeatureConstructor.oper:
+    #             # deal with the operators in the expression
+    #
+    #             # Compare the operators' priority inside and outside the operator stack.
+    #             # If the priority of the inside operator is greater than that of the outside,
+    #             # then pop out the current top item in the stack and append it to the postfix expression.
+    #             # Outside the operator stack, '(' is the highest priority
+    #             # while inside the operator stack, it is the lowest priority.
+    #             while not oper_stack.is_empty() and \
+    #                     FeatureConstructor._oper_priority_out(self._infix_expr[i]) < \
+    #                     FeatureConstructor._oper_priority_in(oper_stack.Data[oper_stack.Top]):
+    #                 # When the operator is ')', pop out all the items in the operator stack
+    #                 # until meeting up '(' in the stack.
+    #                 if self._infix_expr[i] == ')':
+    #                     top_item = oper_stack.pop()
+    #                     while top_item != '(':
+    #                         self._postfix_expr.append(top_item)
+    #                         top_item = oper_stack.pop()
+    #                     # release '(' parenthesis variable in the stack
+    #                     del top_item
+    #                     gc.collect()
+    #                     break
+    #                 else:
+    #                     self._postfix_expr.append(oper_stack.pop())
+    #
+    #             # When the operator is ')', don't need to store it in the operator stack
+    #             if self._infix_expr[i] == ')':
+    #                 continue
+    #             else:
+    #                 oper_stack.push(self._infix_expr[i])
+    #         else:
+    #             # deal with the operands in the expression
+    #             self._postfix_expr.append(self._infix_expr[i])
+    #
+    #     # pop up the rest of items in the stack until it's empty
+    #     while not oper_stack.is_empty():
+    #         self._postfix_expr.append(oper_stack.pop())
+    #
+    # def eval_expression(self):
+    #     expr_stack = Stack(100)
+    #     for i in range(len(self._postfix_expr)):
+    #         # when the top item is not an operator
+    #         if self._postfix_expr[i] not in FeatureConstructor.oper:
+    #             expr_stack.push(self._postfix_expr[i])
+    #         else:
+    #             op2 = expr_stack.pop()
+    #             op1 = expr_stack.pop()
+    #             oper = self._postfix_expr[i]
+    #             # check the type of the items
+    #             if isinstance(op2, pandas.core.series.Series):
+    #                 pass
+    #             else:
+    #                 if op2 in FeatureConstructor.alphabet:
+    #                     op2 = self._get_column(op2)
+    #                 else:
+    #                     op2 = float(op2)
+    #             if isinstance(op1, pandas.core.series.Series):
+    #                 pass
+    #             else:
+    #                 if op1 in FeatureConstructor.alphabet:
+    #                     op1 = self._get_column(op1)
+    #                 else:
+    #                     op1 = float(op1)
+    #             temp = FeatureConstructor._eval_binary_expr(op1, oper, op2)
+    #             expr_stack.push(temp)
+    #     self._result = expr_stack.pop()
+    #     self._result.name = self.feature_name
+
     def create_data_set(self):
         print(f'Successfully construct a new feature "{self.feature_name}".')
         print(self._result)
         return pd.concat([self.data, self._result], axis=1)
-
-    def process_feature_engineering(self):
-        print("-*-*- Feature Engineering -*-*-")
-        print("The Selected Data Set:")
-        show_data_columns(self.data.columns)
-        fe_flag = 0
-        is_feature_engineering = 0
-        while True:
-            if fe_flag != 1:
-                print("Feature Engineering Option:")
-                num2option(OPTION)
-                is_feature_engineering = limit_num_input(OPTION, SECTION[1], num_input)
-            if is_feature_engineering == 1:
-                feature_built = FeatureConstructor(self.data)
-                feature_built.index2name()
-                feature_built.name_feature()
-                feature_built.input_expression()
-                feature_built.evaluate()
-                # feature_built.infix_expr2postfix_expr()
-                # feature_built.eval_expression()
-                clear_output()
-                # update the original data with a new feature
-                data_processed_imputed = feature_built.create_data_set()
-                self.data = data_processed_imputed
-                clear_output()
-                basic_info(data_processed_imputed)
-                basic_statistic(data_processed_imputed)
-                clear_output()
-                print("Do you want to continue to construct a new feature?")
-                num2option(OPTION)
-                fe_flag = limit_num_input(OPTION, SECTION[1], num_input)
-                if fe_flag == 1:
-                    clear_output()
-                    continue
-                else:
-                    save_data(data_processed_imputed, "Data Before Splitting", DATASET_OUTPUT_PATH)
-                    print("Exit Feature Engineering Mode.")
-                    clear_output()
-                    break
-            else:
-                save_data(data_processed_imputed, "Data Before Splitting", DATASET_OUTPUT_PATH)
-                clear_output()
-                break
 
     # TODO: Is the scope of input right?
     def check_data_scope(self):

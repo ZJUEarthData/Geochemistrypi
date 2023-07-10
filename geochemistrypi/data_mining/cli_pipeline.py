@@ -33,7 +33,7 @@ from .data.feature_engineering import FeatureConstructor
 from .data.imputation import imputer
 from .data.preprocessing import feature_scaler
 from .data.statistic import monte_carlo_simulator
-from .plot.map_plot import process_world_map
+from .plot.map_plot import map_projected
 from .plot.statistic_plot import basic_statistic, correlation_plot, distribution_plot, is_imputed, is_null_value, logged_distribution_plot, probability_plot, ratio_null_vs_filled
 from .process.classify import ClassificationModelSelection
 from .process.cluster import ClusteringModelSelection
@@ -130,7 +130,60 @@ def cli_pipeline(file_name: str) -> None:
 
     # World Map Projection (Optional)
     logger.debug("World Map Projection")
-    process_world_map(data)
+    print("-*-*- World Map Projection -*-*-")
+    map_flag = 0
+    is_map_projection = 0
+    # TODO: Abstract the following code of checking the existence of the longitude and latitude columns into a function.
+    detection_index = 0
+    lon = ["LONGITUDE", "Longitude (°E)", "longitude", "Longitude", "经度 (°N)", "经度"]
+    lat = ["LATITUDE", "Latitude (°N)", "latitude", "Latitude", "纬度 (°E)", "纬度"]
+    j = [j for j in lat if j in data.columns]
+    i = [i for i in lon if i in data.columns]
+    if bool(len(j) > 0):
+        detection_index += 1
+    if bool(len(i) > 0):
+        detection_index += 2
+    if detection_index == 2:
+        print("The provided data set is lack of 'LATITUDE' data.")
+    elif detection_index == 1:
+        print("The provided data set is lack of 'LONGITUDE' data.")
+    elif detection_index == 0:
+        print("The provided data set is lack of 'LONGITUDE' and 'LATITUDE' data.")
+    if detection_index != 3:
+        print("Hence, world map projection functionality will be skipped!")
+        clear_output()
+    # If the data set contains both longitude and latitude data, then the user can choose to project the data on the world map.
+    while detection_index == 3:
+        if map_flag != 1:
+            # Check if the user wants to project the data on the world map.
+            print("World Map Projection for A Specific Element Option:")
+            num2option(OPTION)
+            is_map_projection = limit_num_input(OPTION, SECTION[3], num_input)
+            clear_output()
+        if is_map_projection == 1:
+            # If the user chooses to project the data on the world map, then the user can select the element to be projected.
+            print("-*-*- Distribution in World Map -*-*-")
+            print("Select one of the elements below to be projected in the World Map: ")
+            show_data_columns(data.columns)
+            elm_num = limit_num_input(data.columns, SECTION[3], num_input)
+            clear_output()
+            latitude = data.loc[:, j]
+            longitude = data.loc[:, i]
+            print("Longitude and latitude data are selected from the provided data set.")
+            map_projected(data.iloc[:, elm_num - 1], longitude, latitude)
+            clear_output()
+            print("Do you want to continue to project a new element in the World Map?")
+            num2option(OPTION)
+            map_flag = limit_num_input(OPTION, SECTION[3], num_input)
+            if map_flag == 1:
+                clear_output()
+                continue
+            else:
+                print("Exit Map Projection Mode.")
+                clear_output()
+                break
+        elif is_map_projection == 2:
+            break
 
     # Data Selection for Preprocessing
     logger.debug("Data Selection")
@@ -193,8 +246,46 @@ def cli_pipeline(file_name: str) -> None:
     # Feature Engineering
     # FIXME(hecan sanyhew1097618435@163.com): fix the logic
     logger.debug("Feature Engineering")
-    feature_built = FeatureConstructor(data_processed_imputed)
-    data_processed_imputed = feature_built.data
+    print("-*-*- Feature Engineering -*-*-")
+    print("The Selected Data Set:")
+    show_data_columns(data_processed_imputed.columns)
+    fe_flag = 0
+    is_feature_engineering = 0
+    while True:
+        if fe_flag != 1:
+            print("Feature Engineering Option:")
+            num2option(OPTION)
+            is_feature_engineering = limit_num_input(OPTION, SECTION[1], num_input)
+        if is_feature_engineering == 1:
+            feature_built = FeatureConstructor(data_processed_imputed)
+            feature_built.index2name()
+            feature_built.name_feature()
+            feature_built.input_expression()
+            feature_built.evaluate()
+            # feature_built.infix_expr2postfix_expr()
+            # feature_built.eval_expression()
+            clear_output()
+            # update the original data with a new feature
+            data_processed_imputed = feature_built.create_data_set()
+            clear_output()
+            basic_info(data_processed_imputed)
+            basic_statistic(data_processed_imputed)
+            clear_output()
+            print("Do you want to continue to construct a new feature?")
+            num2option(OPTION)
+            fe_flag = limit_num_input(OPTION, SECTION[1], num_input)
+            if fe_flag == 1:
+                clear_output()
+                continue
+            else:
+                save_data(data_processed_imputed, "Data Before Splitting", DATASET_OUTPUT_PATH)
+                print("Exit Feature Engineering Mode.")
+                clear_output()
+                break
+        else:
+            save_data(data_processed_imputed, "Data-Before-Splitting", DATASET_OUTPUT_PATH)
+            clear_output()
+            break
 
     # Mode Selection
     logger.debug("Mode Selection")
