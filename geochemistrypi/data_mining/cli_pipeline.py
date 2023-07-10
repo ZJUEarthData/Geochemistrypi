@@ -84,7 +84,16 @@ def cli_pipeline(file_name: str) -> None:
     else:
         new_experiment_name = Prompt.ask("✨ New Experiment", default="GeoPi - Rock Classification")
         new_experiment_tag = Prompt.ask("✨ Experiment Tag Version", default="E - v1.0.0")
-        new_experiment_id = mlflow.create_experiment(name=new_experiment_name, artifact_location=artifact_localtion, tags={"version": new_experiment_tag})
+        try:
+            new_experiment_id = mlflow.create_experiment(name=new_experiment_name, artifact_location=artifact_localtion, tags={"version": new_experiment_tag})
+        except mlflow.exceptions.MlflowException as e:
+            if "already exists" in str(e):
+                console.print("   The experiment name already exists.", style="bold red")
+                console.print("   Use the existing experiment.", style="bold red")
+                console.print(f"   '{new_experiment_name}' is activated.", style="bold red")
+                new_experiment_id = mlflow.get_experiment_by_name(name=new_experiment_name).experiment_id
+            else:
+                raise e
         experiment = mlflow.get_experiment(experiment_id=new_experiment_id)
     # print("Artifact Location: {}".format(experiment.artifact_location))
 
@@ -92,6 +101,7 @@ def cli_pipeline(file_name: str) -> None:
     run_tag = Prompt.ask("✨ Run Tag Version", default="R - v1.0.0")
     run_description = Prompt.ask("✨ Run Description", default="Use xgboost for GeoPi classification.")
     mlflow.start_run(run_name=run_name, experiment_id=experiment.experiment_id, tags={"version": run_tag, "description": run_description})
+    clear_output()
 
     # Data Loading
     logger.debug("User Data Uploaded")
