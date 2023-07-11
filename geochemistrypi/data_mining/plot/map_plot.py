@@ -8,8 +8,9 @@ from mpl_toolkits.basemap import Basemap
 
 # import cartopy.crs as ccrs
 # import cartopy
-from ..constants import MAP_IMAGE_PATH
-from ..utils.base import save_fig
+from ..constants import MAP_IMAGE_PATH, OPTION, SECTION
+from ..data.data_readiness import limit_num_input, num2option, num_input, show_data_columns
+from ..utils.base import clear_output, save_fig
 
 logging.captureWarnings(True)
 
@@ -109,6 +110,63 @@ def map_projected(col: pd.Series, longitude: pd.DataFrame, latitude: pd.DataFram
     cb.set_label("Counts", fontsize=50)
 
     save_fig(f"Map Projection - {col.name}", MAP_IMAGE_PATH)
+
+
+def process_world_map(data):
+    print("-*-*- World Map Projection -*-*-")
+    map_flag = 0
+    is_map_projection = 0
+    # TODO: Abstract the following code of checking the existence of the longitude and latitude columns into a function.
+    detection_index = 0
+    lon = ["LONGITUDE", "Longitude (°E)", "longitude", "Longitude", "经度 (°N)", "经度"]
+    lat = ["LATITUDE", "Latitude (°N)", "latitude", "Latitude", "纬度 (°E)", "纬度"]
+    j = [j for j in lat if j in data.columns]
+    i = [i for i in lon if i in data.columns]
+    if bool(len(j) > 0):
+        detection_index += 1
+    if bool(len(i) > 0):
+        detection_index += 2
+    if detection_index == 2:
+        print("The provided data set is lack of 'LATITUDE' data.")
+    elif detection_index == 1:
+        print("The provided data set is lack of 'LONGITUDE' data.")
+    elif detection_index == 0:
+        print("The provided data set is lack of 'LONGITUDE' and 'LATITUDE' data.")
+    if detection_index != 3:
+        print("Hence, world map projection functionality will be skipped!")
+        clear_output()
+    # If the data set contains both longitude and latitude data, then the user can choose to project the data on the world map.
+    while detection_index == 3:
+        if map_flag != 1:
+            # Check if the user wants to project the data on the world map.
+            print("World Map Projection for A Specific Element Option:")
+            num2option(OPTION)
+            is_map_projection = limit_num_input(OPTION, SECTION[3], num_input)
+            clear_output()
+        if is_map_projection == 1:
+            # If the user chooses to project the data on the world map, then the user can select the element to be projected.
+            print("-*-*- Distribution in World Map -*-*-")
+            print("Select one of the elements below to be projected in the World Map: ")
+            show_data_columns(data.columns)
+            elm_num = limit_num_input(data.columns, SECTION[3], num_input)
+            clear_output()
+            latitude = data.loc[:, j]
+            longitude = data.loc[:, i]
+            print("Longitude and latitude data are selected from the provided data set.")
+            map_projected(data.iloc[:, elm_num - 1], longitude, latitude)
+            clear_output()
+            print("Do you want to continue to project a new element in the World Map?")
+            num2option(OPTION)
+            map_flag = limit_num_input(OPTION, SECTION[3], num_input)
+            if map_flag == 1:
+                clear_output()
+                continue
+            else:
+                print("Exit Map Projection Mode.")
+                clear_output()
+                break
+        elif is_map_projection == 2:
+            break
 
 
 # def map_projected(col: pd.Series, longitude: pd.DataFrame, latitude: pd.DataFrame) -> None:
