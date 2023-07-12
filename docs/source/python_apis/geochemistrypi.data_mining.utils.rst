@@ -20,6 +20,14 @@ geochemistrypi.data\_mining.utils.exceptions module
    :undoc-members:
    :show-inheritance:
 
+geochemistrypi.data\_mining.utils.mlflow\_utils module
+------------------------------------------------------
+
+.. automodule:: geochemistrypi.data_mining.utils.mlflow_utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 

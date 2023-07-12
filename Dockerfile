@@ -1,5 +1,5 @@
 # Stage 1: Build the frontend
-FROM node:latest as frontend-builderge
+FROM node:latest as frontend-builder
 
 # Set the working directory
 WORKDIR /app

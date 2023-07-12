@@ -7,6 +7,7 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
+   geochemistrypi.auth
    geochemistrypi.data_mining
 
 Submodules
@@ -16,6 +17,14 @@ geochemistrypi.cli module
 -------------------------
 
 .. automodule:: geochemistrypi.cli
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+geochemistrypi.database module
+------------------------------
+
+.. automodule:: geochemistrypi.database
    :members:
    :undoc-members:
    :show-inheritance:
@@ -32,6 +41,22 @@ geochemistrypi.start\_dash\_pipeline module
 -------------------------------------------
 
 .. automodule:: geochemistrypi.start_dash_pipeline
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+geochemistrypi.test\_mlflow module
+----------------------------------
+
+.. automodule:: geochemistrypi.test_mlflow
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+geochemistrypi.test\_rich module
+--------------------------------
+
+.. automodule:: geochemistrypi.test_rich
    :members:
    :undoc-members:
    :show-inheritance:
