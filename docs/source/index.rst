@@ -61,6 +61,7 @@ Welcome to Geochemistry π
 
    Developer/Deployment.md
    Developer/Git.md
+   Developer/Docker Deployment.md
 
 .. toctree::
    :maxdepth: 2
