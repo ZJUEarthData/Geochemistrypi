@@ -163,8 +163,6 @@ class FeatureConstructor(object):
                 feature_built.name_feature()
                 feature_built.input_expression()
                 feature_built.evaluate()
-                # feature_built.infix_expr2postfix_expr()
-                # feature_built.eval_expression()
                 clear_output()
                 # update the original data with a new feature
                 data_processed_imputed = feature_built.create_data_set()
@@ -180,12 +178,12 @@ class FeatureConstructor(object):
                     clear_output()
                     continue
                 else:
-                    save_data(data_processed_imputed, "Data Before Splitting", DATASET_OUTPUT_PATH)
+                    save_data(self.data, "Data Before Splitting", DATASET_OUTPUT_PATH)
                     print("Exit Feature Engineering Mode.")
                     clear_output()
                     break
             else:
-                save_data(data_processed_imputed, "Data Before Splitting", DATASET_OUTPUT_PATH)
+                save_data(self.data, "Data Before Splitting", DATASET_OUTPUT_PATH)
                 clear_output()
                 break
 
