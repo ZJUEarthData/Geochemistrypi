@@ -54,7 +54,7 @@ os.makedirs(MODEL_PATH, exist_ok=True)
 def cli_pipeline(file_name: str) -> None:
     """The command line interface for Geochemistry π."""
 
-    # If the argument is False, hide all Python level warnings. Developers can turn it on by setting the argument to True.
+    # TODO: If the argument is False, hide all Python level warnings. Developers can turn it on by setting the argument to True.
     show_warning(False)
 
     logger = log(OUTPUT_PATH, "inner_test.log")
@@ -64,8 +64,17 @@ def cli_pipeline(file_name: str) -> None:
     console = Console()
     console.print("\n[bold blue]Welcome to Geochemistry Pi![/bold blue]")
     console.print("[bold]Initializing...[/bold]")
-    with console.status("[bold green]Loading...[/bold green]", spinner="dots"):
+    with console.status("[bold green]Data Loading...[/bold green]", spinner="dots"):
         sleep(2)
+        if file_name:
+            # If the user provides file name, then load the data from the file.
+            data = read_data(file_name=file_name, is_own_data=1)
+        else:
+            console.print("[bold red]No Data File Provided![/bold red]")
+            console.print("[bold green]Built-in Data Loading...[/bold green]")
+
+    # <--- Experiment Setup --->
+    logger.debug("Experiment Setup")
     console.print("✨ Input Template [bold magenta][Option1/Option2][/bold magenta] [bold cyan](Default Value)[/bold cyan]: Input Value")
     # Create a new experiment or use the previous experiment
     is_used_previous_experiment = Confirm.ask("✨ Use Previous Experiment", default=False)
@@ -96,23 +105,17 @@ def cli_pipeline(file_name: str) -> None:
                 raise e
         experiment = mlflow.get_experiment(experiment_id=new_experiment_id)
     # print("Artifact Location: {}".format(experiment.artifact_location))
-
     run_name = Prompt.ask("✨ Run Name", default="Xgboost Algorithm")
     run_tag = Prompt.ask("✨ Run Tag Version", default="R - v1.0.0")
     run_description = Prompt.ask("✨ Run Description", default="Use xgboost for GeoPi classification.")
     mlflow.start_run(run_name=run_name, experiment_id=experiment.experiment_id, tags={"version": run_tag, "description": run_description})
     clear_output()
 
-    # Data Loading
-    logger.debug("User Data Uploaded")
-    print("-*-*- User Data Loading -*-*-")
-    if file_name:
-        # If the user provides the file name, then load the data from the file.
-        data = read_data(file_name=file_name, is_own_data=1)
-        print(f"Successfully load the data set '{file_name}'.")
-    else:
-        # If the user doesn't provide the file name, then load the built-in data set.
-        print("Built-in Data Option:")
+    # <--- Built-in Data Loading --->
+    logger.debug("Built-in Data Loading")
+    # If the user doesn't provide the file name, then load the built-in data set.
+    if not file_name:
+        print("-*-*- Built-in Data Option-*-*-")
         num2option(TEST_DATA_OPTION)
         test_data_num = limit_num_input(TEST_DATA_OPTION, SECTION[0], num_input)
         if test_data_num == 1:
@@ -125,8 +128,8 @@ def cli_pipeline(file_name: str) -> None:
             file_name = "Data_Decomposition.xlsx"
         data = read_data(file_name=file_name)
         print(f"Successfully loading the built-in data set '{file_name}'.")
-    show_data_columns(data.columns)
-    clear_output()
+        show_data_columns(data.columns)
+        clear_output()
 
     # World Map Projection (Optional)
     logger.debug("World Map Projection")
