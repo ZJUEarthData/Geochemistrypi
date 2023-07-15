@@ -1,5 +1,4 @@
 import os
-import re
 import sys
 from typing import List, Optional, Tuple, Union
 
@@ -14,19 +13,26 @@ from ..constants import BUILT_IN_DATASET_PATH
 
 
 def read_data(file_name: Optional[str] = None, is_own_data: int = 2, prefix: Optional[str] = None, slogan: Optional[str] = "@File: "):
-    """Read the data set."""
+    """Read the data set.
+
+    Parameters
+    ----------
+    file_name : str, optional
+        The name of the data set, by default None
+    is_own_data : int, default=2
+        1: own data set; 2: built-in data set
+    prefix : str, optional
+        The prefix of the data set, by default None
+    slogan : str, optional
+        The slogan of the data set, by default "@File: "
+
+    Returns
+    -------
+    pd.DataFrame
+        The data set read
+    """
     if is_own_data == 1:
-        while True:
-            # Capture exception: The path is invalid -> doesn't exist or not xlsx format
-            if os.path.exists(file_name):
-                if ".xlsx" in re.findall(r".xlsx.*", file_name):
-                    # if True:
-                    data_path = file_name
-                    break
-                else:
-                    print("Caution: Please make sure the data is stored in xlsx format!")
-            else:
-                print("Caution: The path is invalid. Please input the correct path including the" " stored path and suffix!")
+        data_path = file_name
     else:
         data_path = os.path.join(BUILT_IN_DATASET_PATH, file_name)
     try:
@@ -34,19 +40,19 @@ def read_data(file_name: Optional[str] = None, is_own_data: int = 2, prefix: Opt
         return data
     except ImportError as err:
         print(err)
-        print("Warning: on Mac, input the following command in terminal: pip3 install openpyxl")
-        raise
+        print("[red]Warning: on Mac, input the following command in terminal: pip3 install openpyxl[red]")
+        raise err
     except FileNotFoundError as err:
         print(err)
-        print("Warning: please put your own data in the right place and input the completed data set name including" " the stored path and suffix")
-        raise
+        print("[red]Warning: please put your own data in the right place and input the completed data set name including" " the stored path and suffix[red]")
+        raise err
     except openpyxl.utils.exceptions.InvalidFileException as err:
         print(err)
-        print("Warning: please put your own data in the right place and input the completed data set name including" " the stored path and suffix")
-        raise
+        print("[red]Warning: please put your own data in the right place and input the completed data set name including" " the stored path and suffix[red]")
+        raise err
     except Exception:
-        print(f"Unexpected error: {sys.exc_info()[0]} - check the last line of Traceback about the error information")
-        raise
+        print(f"[red]Unexpected error: {sys.exc_info()[0]} - check the last line of Traceback about the error information[red]")
+        raise Exception
 
 
 def basic_info(data: pd.DataFrame):

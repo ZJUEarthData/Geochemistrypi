@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from mpl_toolkits.basemap import Basemap
+from rich import print
 
 # import cartopy.crs as ccrs
 # import cartopy
