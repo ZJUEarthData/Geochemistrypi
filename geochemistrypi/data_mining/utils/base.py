@@ -53,7 +53,7 @@ def save_fig(fig_name: str, image_path: str, tight_layout: bool = True) -> None:
     plt.close()
 
 
-def save_data(df: pd.DataFrame, df_name: str, path: str) -> None:
+def save_data(df: pd.DataFrame, df_name: str, path: str, mlflow_artifact_data_path: str = None) -> None:
     """Save the dataset.
 
     Parameters
@@ -66,13 +66,18 @@ def save_data(df: pd.DataFrame, df_name: str, path: str) -> None:
 
     path : str
         The path to store the data sheet
+
+    mlflow_artifact_data_path : str, default=None
+        The path to store the data sheet in mlflow.
     """
     try:
         # drop the index in case that the dimensions change
         # store the result in the directory "results"
         df.to_excel(os.path.join(path, "{}.xlsx".format(df_name)), index=False)
-        print(os.path.join(path, "{}.xlsx".format(df_name)))
-        mlflow.log_artifact(os.path.join(path, "{}.xlsx".format(df_name)))
+        if mlflow_artifact_data_path:
+            mlflow.log_artifact(os.path.join(path, "{}.xlsx".format(df_name)), artifact_path=mlflow_artifact_data_path)
+        else:
+            mlflow.log_artifact(os.path.join(path, "{}.xlsx".format(df_name)))
         print(f"Successfully store '{df_name}' in '{df_name}.xlsx' in {path}.")
     except ModuleNotFoundError:
         print("** Please download openpyxl by pip3 **")

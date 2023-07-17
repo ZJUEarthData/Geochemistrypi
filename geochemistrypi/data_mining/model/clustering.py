@@ -8,7 +8,7 @@ from rich import print
 from sklearn import metrics
 from sklearn.cluster import DBSCAN, AffinityPropagation, KMeans
 
-from ..constants import DATASET_OUTPUT_PATH, MODEL_OUTPUT_IMAGE_PATH
+from ..constants import DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH, MODEL_OUTPUT_IMAGE_PATH
 from ..utils.base import save_data, save_fig
 from ._base import WorkflowBase
 from .func.algo_clustering._dbscan import dbscan_manual_hyper_parameters, dbscan_result_plot
@@ -48,7 +48,7 @@ class ClusteringWorkflowBase(WorkflowBase):
         # self.X['clustering result'] = self.model.labels_
         self.clustering_result = pd.DataFrame(self.model.labels_, columns=["clustering result"])
         print(self.clustering_result)
-        save_data(self.clustering_result, f"{self.naming}'s result", DATASET_OUTPUT_PATH)
+        save_data(self.clustering_result, f"{self.naming}'s result", DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH)
 
 
 class KMeansClustering(ClusteringWorkflowBase):

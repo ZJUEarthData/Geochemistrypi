@@ -205,10 +205,11 @@ class WorkflowBase(metaclass=ABCMeta):
             WorkflowBase.y_test_predict = y_test_predict
 
     @staticmethod
-    def data_save(df: pd.DataFrame, df_name: str, path: str, slogan: str) -> None:
+    def data_save(df: pd.DataFrame, df_name: str, local_path: str, mlflow_path: str, slogan: str) -> None:
+        """This method saves the data into the local path and the mlflow path."""
         print(f"-----* {slogan} *-----")
         print(df)
-        save_data(df, df_name, path)
+        save_data(df, df_name, local_path, mlflow_path)
 
     @dispatch()
     def save_model(self) -> None:

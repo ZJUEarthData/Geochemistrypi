@@ -5,13 +5,14 @@ import numpy as np
 import pandas as pd
 from rich import print
 
-from ..constants import DATASET_OUTPUT_PATH, OPTION, SECTION
+from ..constants import DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH, OPTION, SECTION
 from ..plot.statistic_plot import basic_statistic
 from ..utils.base import clear_output, save_data
 from .data_readiness import basic_info, limit_num_input, num2option, num_input, show_data_columns
 
 
 class FeatureConstructor(object):
+    """Construct new feature based on the existing data set."""
 
     oper = "+-*/^(),."
     # parenthesis = ['(', ')']
@@ -178,12 +179,12 @@ class FeatureConstructor(object):
                     clear_output()
                     continue
                 else:
-                    save_data(self.data, "Data Before Splitting", DATASET_OUTPUT_PATH)
+                    save_data(self.data, "Data Before Splitting", DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH)
                     print("Exit Feature Engineering Mode.")
                     clear_output()
                     break
             else:
-                save_data(self.data, "Data Before Splitting", DATASET_OUTPUT_PATH)
+                save_data(self.data, "Data Before Splitting", DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH)
                 clear_output()
                 break
 
