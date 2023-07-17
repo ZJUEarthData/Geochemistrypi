@@ -16,6 +16,7 @@ from .constants import (
     GEO_IMAGE_PATH,
     IMPUTING_STRATEGY,
     MAP_IMAGE_PATH,
+    MLFLOW_ARTIFACT_DATA_PATH,
     MODE_OPTION,
     MODEL_OUTPUT_IMAGE_PATH,
     MODEL_PATH,
@@ -131,11 +132,11 @@ def cli_pipeline(file_name: str) -> None:
         show_data_columns(data.columns)
         clear_output()
 
-    # World Map Projection (Optional)
+    # <--- World Map Projection --->
     logger.debug("World Map Projection")
     process_world_map(data)
 
-    # Data Selection for Preprocessing
+    # <--- Data Selection --->
     logger.debug("Data Selection")
     print("-*-*- Data Selection -*-*-")
     show_data_columns(data.columns)
@@ -150,9 +151,10 @@ def cli_pipeline(file_name: str) -> None:
     correlation_plot(data_processed.columns, data_processed)
     distribution_plot(data_processed.columns, data_processed)
     logged_distribution_plot(data_processed.columns, data_processed)
+    save_data(data_processed, "Data Selected", DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH)
     clear_output()
 
-    # Imputing Missing Values
+    # <--- Imputation --->
     logger.debug("Imputation")
     print("-*-*- Imputation -*-*-")
     is_null_value(data_processed)
@@ -193,19 +195,20 @@ def cli_pipeline(file_name: str) -> None:
         # if the selected data set doesn't need imputation, which means there are no missing values.
         data_processed_imputed = data_processed
 
-    # Feature Engineering
-    # FIXME(hecan sanyhew1097618435@163.com): fix the logic
+    # <--- Feature Engineering --->
     logger.debug("Feature Engineering")
     feature_built = FeatureConstructor(data_processed_imputed)
     feature_built.process_feature_engineering()
     data_processed_imputed = feature_built.data
 
-    # Mode Selection
+    # <--- Mode Selection --->
     logger.debug("Mode Selection")
     print("-*-*- Mode Selection -*-*-")
     num2option(MODE_OPTION)
     mode_num = limit_num_input(MODE_OPTION, SECTION[2], num_input)
     clear_output()
+
+    # <--- Data Segmentation --->
     # divide X and y data set when it is supervised learning
     logger.debug("Data Split")
     if mode_num == 1 or mode_num == 2:
@@ -221,10 +224,10 @@ def cli_pipeline(file_name: str) -> None:
         print(X)
         print("Basic Statistical Information: ")
         basic_statistic(X)
-        save_data(X, "X Without Scaling", DATASET_OUTPUT_PATH)
+        save_data(X, "X Without Scaling", DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH)
         clear_output()
 
-        # Feature Scaling
+        # <--- Feature Scaling --->
         print("-*-*- Feature Scaling on X Set -*-*-")
         num2option(OPTION)
         is_feature_scaling = limit_num_input(OPTION, SECTION[1], num_input)
@@ -239,7 +242,7 @@ def cli_pipeline(file_name: str) -> None:
             print(X)
             print("Basic Statistical Information: ")
             basic_statistic(X)
-            save_data(X, "X With Scaling", DATASET_OUTPUT_PATH)
+            save_data(X, "X With Scaling", DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH)
         clear_output()
 
         # create Y data set
@@ -255,7 +258,7 @@ def cli_pipeline(file_name: str) -> None:
         print(y)
         print("Basic Statistical Information: ")
         basic_statistic(y)
-        save_data(y, "y", DATASET_OUTPUT_PATH)
+        save_data(y, "y", DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH)
         clear_output()
 
         # create training data and testing data
@@ -269,7 +272,7 @@ def cli_pipeline(file_name: str) -> None:
             print(value)
             print(f"Basic Statistical Information: {key}")
             basic_statistic(value)
-            save_data(value, key, DATASET_OUTPUT_PATH)
+            save_data(value, key, DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH)
         X_train, X_test = train_test_data["X train"], train_test_data["X test"]
         y_train, y_test = train_test_data["y train"], train_test_data["y test"]
         del data_processed_imputed
@@ -280,7 +283,7 @@ def cli_pipeline(file_name: str) -> None:
         X_train = data_processed_imputed
         y, X_test, y_train, y_test = None, None, None, None
 
-    # Model Selection
+    # <--- Model Selection --->
     logger.debug("Model Selection")
     print("-*-*- Model Selection -*-*-:")
     Modes2Models = {1: REGRESSION_MODELS, 2: CLASSIFICATION_MODELS, 3: CLUSTERING_MODELS, 4: DECOMPOSITION_MODELS}

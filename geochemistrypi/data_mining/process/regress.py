@@ -3,7 +3,7 @@ import pandas as pd
 from multipledispatch import dispatch
 from rich import print
 
-from ..constants import DATASET_OUTPUT_PATH, SECTION
+from ..constants import DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH, SECTION
 from ..data.data_readiness import num_input
 from ..model.regression import (
     DecisionTreeRegression,
@@ -146,7 +146,7 @@ class RegressionModelSelection(object):
         self.reg_workflow.special_components()
 
         # Save the prediction result
-        self.reg_workflow.data_save(y_test_predict, "Y Test Predict", DATASET_OUTPUT_PATH, "Model Prediction")
+        self.reg_workflow.data_save(y_test_predict, "Y Test Predict", DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH, "Model Prediction")
 
         # Save the trained model
         self.reg_workflow.save_model()
@@ -203,7 +203,7 @@ class RegressionModelSelection(object):
         self.reg_workflow.special_components(is_automl)
 
         # Save the prediction result
-        self.reg_workflow.data_save(y_test_predict, "Y Test Predict", DATASET_OUTPUT_PATH, "Model Prediction")
+        self.reg_workflow.data_save(y_test_predict, "Y Test Predict", DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH, "Model Prediction")
 
         # Save the trained model
         self.reg_workflow.save_model(is_automl)

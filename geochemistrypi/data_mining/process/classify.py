@@ -2,7 +2,7 @@
 import pandas as pd
 from multipledispatch import dispatch
 
-from ..constants import DATASET_OUTPUT_PATH
+from ..constants import DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH
 from ..model.classification import (
     ClassificationWorkflowBase,
     DecisionTreeClassification,
@@ -141,7 +141,7 @@ class ClassificationModelSelection(object):
         self.clf_workflow.special_components()
 
         # Save the prediction result
-        self.clf_workflow.data_save(y_test_predict, "Y Test Predict", DATASET_OUTPUT_PATH, "Model Prediction")
+        self.clf_workflow.data_save(y_test_predict, "Y Test Predict", DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH, "Model Prediction")
 
         # Save the trained model
         self.clf_workflow.save_model()
@@ -192,7 +192,7 @@ class ClassificationModelSelection(object):
         self.clf_workflow.special_components(is_automl)
 
         # Save the prediction result
-        self.clf_workflow.data_save(y_test_predict, "y test predict", DATASET_OUTPUT_PATH, "Model Prediction")
+        self.clf_workflow.data_save(y_test_predict, "y test predict", DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH, "Model Prediction")
 
         # Save the trained model
         self.clf_workflow.save_model(is_automl)

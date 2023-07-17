@@ -27,6 +27,8 @@ GEO_IMAGE_PATH = os.path.join(OUTPUT_PATH, "images", "geochemistry")
 # the directory where the trained model saved
 MODEL_PATH = os.path.join(OUTPUT_PATH, "trained_models")
 
+# the directory where the data is saved within the MLflow run's artifact directory
+MLFLOW_ARTIFACT_DATA_PATH = "data"
 
 # Tell which section the user is currently in on the UML
 SECTION = ["User", "Data", "Model", "Plot"]
