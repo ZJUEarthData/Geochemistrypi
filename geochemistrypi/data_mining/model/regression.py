@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
+import json
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
+import mlflow
 import numpy as np
 import pandas as pd
 import xgboost
@@ -14,8 +16,8 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.svm import SVR
 from sklearn.tree import DecisionTreeRegressor
 
-from ..constants import MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
-from ..utils.base import save_fig
+from ..constants import MODEL_OUTPUT_IMAGE_PATH, MODEL_PATH, RAY_FLAML
+from ..utils.base import save_fig, save_text
 from ._base import WorkflowBase
 from .func.algo_regression._common import cross_validation, plot_predicted_value_evaluation, plot_true_vs_predicted, score
 from .func.algo_regression._decision_tree import decision_tree_manual_hyper_parameters, decision_tree_plot
@@ -123,10 +125,13 @@ class RegressionWorkflowBase(WorkflowBase):
         save_fig(f"True Value vs. Predicted Value - {algorithm_name}", store_path)
 
     @staticmethod
-    def _score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> None:
+    def _score(y_true: pd.DataFrame, y_predict: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
         """Calculate the score of the model."""
         print("-----* Model Score *-----")
-        score(y_true, y_predict)
+        scores = score(y_true, y_predict)
+        scores_str = json.dumps(scores, indent=4)
+        save_text(scores_str, f"Model Score - {algorithm_name}", store_path)
+        mlflow.log_metrics(scores)
 
     @staticmethod
     def _cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, cv_num: int = 10) -> None:
@@ -142,7 +147,12 @@ class RegressionWorkflowBase(WorkflowBase):
     @dispatch()
     def common_components(self) -> None:
         """Invoke all common application functions for classification algorithms by Scikit-learn framework."""
-        self._score(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict)
+        self._score(
+            y_true=RegressionWorkflowBase.y_test,
+            y_predict=RegressionWorkflowBase.y_test_predict,
+            algorithm_name=self.naming,
+            store_path=MODEL_PATH,
+        )
         self._cross_validation(self.model, RegressionWorkflowBase.X_train, RegressionWorkflowBase.y_train, 10)
         self._plot_predicted_value_evaluation(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         self._plot_true_vs_predicted(
@@ -155,7 +165,12 @@ class RegressionWorkflowBase(WorkflowBase):
     @dispatch(bool)
     def common_components(self, is_automl: bool) -> None:
         """Invoke all common application functions for classification algorithms by FLAML framework."""
-        self._score(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict)
+        self._score(
+            y_true=RegressionWorkflowBase.y_test,
+            y_predict=RegressionWorkflowBase.y_test_predict,
+            algorithm_name=self.naming,
+            store_path=MODEL_PATH,
+        )
         self._cross_validation(self.auto_model, RegressionWorkflowBase.X_train, RegressionWorkflowBase.y_train, 10)
         self._plot_predicted_value_evaluation(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         self._plot_true_vs_predicted(

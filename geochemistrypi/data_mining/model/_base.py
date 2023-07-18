@@ -247,7 +247,7 @@ class WorkflowBase(metaclass=ABCMeta):
             The local path to save the hyper parameters.
         """
         hyper_parameters_str = json.dumps(hyper_parameters_dict, indent=4)
-        save_text(hyper_parameters_str, f"hyper parameters - {model_name}", local_path)
+        save_text(hyper_parameters_str, f"Hyper Parameters - {model_name}", local_path)
         mlflow.log_params(hyper_parameters_dict)
 
     @dispatch()

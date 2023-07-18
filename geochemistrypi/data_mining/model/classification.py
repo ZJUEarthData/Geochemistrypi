@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
+import json
 from typing import Any, Callable, Dict, List, Literal, Optional, Sequence, Tuple, Union
 
+import mlflow
 import numpy as np
 import pandas as pd
 import xgboost
@@ -14,10 +16,10 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 
-from ..constants import MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
-from ..utils.base import save_fig
+from ..constants import MODEL_OUTPUT_IMAGE_PATH, MODEL_PATH, RAY_FLAML
+from ..utils.base import save_fig, save_text
 from ._base import WorkflowBase
-from .func.algo_classification._common import confusion_matrix_plot, cross_validation, plot_precision_recall, plot_ROC
+from .func.algo_classification._common import confusion_matrix_plot, cross_validation, plot_precision_recall, plot_ROC, score
 from .func.algo_classification._decision_tree import decision_tree_manual_hyper_parameters, decision_tree_plot
 from .func.algo_classification._deep_neural_network import deep_neural_network_manual_hyper_parameters
 from .func.algo_classification._extra_trees import extra_trees_manual_hyper_parameters
@@ -103,10 +105,22 @@ class ClassificationWorkflowBase(WorkflowBase):
         return dict()
 
     @staticmethod
-    def _score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> None:
+    def _score(y_true: pd.DataFrame, y_predict: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
         """Print the classification score report of the model."""
         print("-----* Model Score *-----")
+        scores = score(y_true, y_predict)
+        scores_str = json.dumps(scores, indent=4)
+        save_text(scores_str, f"Model Score - {algorithm_name}", store_path)
+        mlflow.log_metrics(scores)
+
+    @staticmethod
+    def _classification_report(y_true: pd.DataFrame, y_predict: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
+        """Print the classification report of the model."""
+        print("-----* Classification Report *-----")
         print(classification_report(y_true, y_predict))
+        scores = classification_report(y_true, y_predict, output_dict=True)
+        scores_str = json.dumps(scores, indent=4)
+        save_text(scores_str, f"Classification Report - {algorithm_name}", store_path)
 
     @staticmethod
     def _cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, cv_num: int = 10) -> None:
@@ -130,7 +144,18 @@ class ClassificationWorkflowBase(WorkflowBase):
     @dispatch()
     def common_components(self) -> None:
         """Invoke all common application functions for classification algorithms by Scikit-learn framework."""
-        self._score(ClassificationWorkflowBase.y_test, ClassificationWorkflowBase.y_test_predict)
+        self._score(
+            y_true=ClassificationWorkflowBase.y_test,
+            y_predict=ClassificationWorkflowBase.y_test_predict,
+            algorithm_name=self.naming,
+            store_path=MODEL_PATH,
+        )
+        self._classification_report(
+            y_true=ClassificationWorkflowBase.y_test,
+            y_predict=ClassificationWorkflowBase.y_test_predict,
+            algorithm_name=self.naming,
+            store_path=MODEL_PATH,
+        )
         self._cross_validation(self.model, ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.y_train, 10)
         self._confusion_matrix_plot(
             ClassificationWorkflowBase.y_test,
@@ -143,7 +168,18 @@ class ClassificationWorkflowBase(WorkflowBase):
     @dispatch(bool)
     def common_components(self, is_automl: bool) -> None:
         """Invoke all common application functions for classification algorithms by FLAML framework."""
-        self._score(ClassificationWorkflowBase.y_test, ClassificationWorkflowBase.y_test_predict)
+        self._score(
+            y_true=ClassificationWorkflowBase.y_test,
+            y_predict=ClassificationWorkflowBase.y_test_predict,
+            algorithm_name=self.naming,
+            store_path=MODEL_PATH,
+        )
+        self._classification_report(
+            y_true=ClassificationWorkflowBase.y_test,
+            y_predict=ClassificationWorkflowBase.y_test_predict,
+            algorithm_name=self.naming,
+            store_path=MODEL_PATH,
+        )
         self._cross_validation(self.auto_model, ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.y_train, 10)
         self._confusion_matrix_plot(
             ClassificationWorkflowBase.y_test,
