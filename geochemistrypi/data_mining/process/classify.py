@@ -2,7 +2,7 @@
 import pandas as pd
 from multipledispatch import dispatch
 
-from ..constants import DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH
+from ..constants import DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH, MODEL_PATH
 from ..model.classification import (
     ClassificationWorkflowBase,
     DecisionTreeClassification,
@@ -127,6 +127,9 @@ class ClassificationModelSelection(object):
             )
 
         self.clf_workflow.show_info()
+
+        # Save the model hyper-parameters
+        self.clf_workflow.save_hyper_parameters(hyper_parameters, self.model, MODEL_PATH)
 
         # Use Scikit-learn style API to process input data
         self.clf_workflow.fit(X_train, y_train)

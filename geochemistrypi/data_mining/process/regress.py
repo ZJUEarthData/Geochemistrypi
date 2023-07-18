@@ -3,7 +3,7 @@ import pandas as pd
 from multipledispatch import dispatch
 from rich import print
 
-from ..constants import DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH, SECTION
+from ..constants import DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH, MODEL_PATH, SECTION
 from ..data.data_readiness import num_input
 from ..model.regression import (
     DecisionTreeRegression,
@@ -132,6 +132,9 @@ class RegressionModelSelection(object):
             self.reg_workflow = LinearRegression2(fit_intercept=hyper_parameters["fit_intercept"], normalize=hyper_parameters["normalize"])
 
         self.reg_workflow.show_info()
+
+        # Save the model hyper-parameters
+        self.reg_workflow.save_hyper_parameters(hyper_parameters, self.model, MODEL_PATH)
 
         # Use Scikit-learn style API to process input data
         self.reg_workflow.fit(X_train, y_train)

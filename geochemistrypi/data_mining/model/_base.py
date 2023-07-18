@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import json
 import os
 import pickle
 from abc import ABCMeta, abstractmethod
@@ -6,6 +7,7 @@ from datetime import date
 from typing import Dict, List, Optional, Tuple, Union
 
 import joblib
+import mlflow
 import numpy as np
 import pandas as pd
 from multipledispatch import dispatch
@@ -13,7 +15,7 @@ from rich import print
 
 from ..constants import MODEL_PATH, SECTION
 from ..data.data_readiness import limit_num_input, num2option, num_input, show_data_columns
-from ..utils.base import save_data
+from ..utils.base import save_data, save_text
 
 
 class WorkflowBase(metaclass=ABCMeta):
@@ -206,10 +208,47 @@ class WorkflowBase(metaclass=ABCMeta):
 
     @staticmethod
     def data_save(df: pd.DataFrame, df_name: str, local_path: str, mlflow_path: str, slogan: str) -> None:
-        """This method saves the data into the local path and the mlflow path."""
+        """This method saves the data into the local path and the mlflow path.
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            The data to be saved.
+
+        df_name : str
+            The name of the data.
+
+        local_path : str
+            The local path to save the data.
+
+        mlflow_path : str
+            The mlflow path to save the data.
+
+        slogan : str
+            The title of the output section.
+        """
         print(f"-----* {slogan} *-----")
         print(df)
         save_data(df, df_name, local_path, mlflow_path)
+
+    @staticmethod
+    def save_hyper_parameters(hyper_parameters_dict: Dict, model_name: str, local_path: str) -> None:
+        """This method saves the hyper parameters into the local path.
+
+        Parameters
+        ----------
+        hyper_parameters_dict : dict
+            The hyper parameters of the model.
+
+        model_name : str
+            The name of the model.
+
+        local_path : str
+            The local path to save the hyper parameters.
+        """
+        hyper_parameters_str = json.dumps(hyper_parameters_dict, indent=4)
+        save_text(hyper_parameters_str, f"hyper parameters - {model_name}", local_path)
+        mlflow.log_params(hyper_parameters_dict)
 
     @dispatch()
     def save_model(self) -> None:
@@ -226,6 +265,7 @@ class WorkflowBase(metaclass=ABCMeta):
         with open(joblib_path, "wb") as fj:
             joblib.dump(self.model, fj)
         print(f"Successfully store the trained model '{self.naming}' in '{joblib_filename}' in {MODEL_PATH}.")
+        mlflow.sklearn.log_model(self.model, self.naming)
 
     @dispatch(bool)
     def save_model(self, is_automl: bool) -> None:
@@ -242,6 +282,7 @@ class WorkflowBase(metaclass=ABCMeta):
         with open(joblib_path, "wb") as fj:
             joblib.dump(self.auto_model, fj)
         print(f"Successfully store the trained model '{self.naming}' in '{joblib_filename}' in {MODEL_PATH}.")
+        mlflow.sklearn.log_model(self.auto_model, self.naming)
 
         # Use to check whether the trained model is saved well
         # with open(pickle_path, 'rb') as t:
