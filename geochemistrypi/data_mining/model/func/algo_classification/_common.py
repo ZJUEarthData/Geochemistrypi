@@ -1,10 +1,45 @@
 # -*- coding: utf-8 -*-
+from typing import Dict
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from rich import print
-from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix, precision_recall_curve, roc_curve
+from sklearn.metrics import ConfusionMatrixDisplay, accuracy_score, confusion_matrix, f1_score, precision_recall_curve, precision_score, recall_score, roc_curve
 from sklearn.model_selection import cross_val_predict, cross_validate
+
+
+def score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> Dict:
+    """Calculate the scores of the classification model.
+
+    Parameters
+    ----------
+    y_true : pd.DataFrame (n_samples, n_components)
+        The true target values.
+
+    y_predict : pd.DataFrame (n_samples, n_components)
+        The predicted target values.
+
+    Returns
+    -------
+    scores : dict
+        The scores of the classification model.
+    """
+    accuracy = accuracy_score(y_true, y_predict)
+    precision = precision_score(y_true, y_predict)
+    recall = recall_score(y_true, y_predict)
+    f1 = f1_score(y_true, y_predict)
+    print("Accuracy: ", accuracy)
+    print("Precision:", precision)
+    print("Recall:", recall)
+    print("F1 Score:", f1)
+    scores = {
+        "Accuracy": accuracy,
+        "Precision": precision,
+        "Recall": recall,
+        "F1 Score": f1,
+    }
+    return scores
 
 
 def confusion_matrix_plot(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, trained_model: object) -> None:

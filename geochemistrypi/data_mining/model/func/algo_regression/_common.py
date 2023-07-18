@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from typing import Dict
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -7,16 +9,40 @@ from sklearn.metrics import explained_variance_score, mean_absolute_error, mean_
 from sklearn.model_selection import cross_validate
 
 
-def score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> None:
+def score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> Dict:
+    """Calculate the scores of the regression model.
+
+    Parameters
+    ----------
+    y_true : pd.DataFrame (n_samples, n_components)
+        The true target values.
+
+    y_predict : pd.DataFrame (n_samples, n_components)
+        The predicted target values.
+
+    Returns
+    -------
+    scores : dict
+        The scores of the regression model.
+    """
     mse = mean_squared_error(y_true, y_predict)
     rmse = np.sqrt(mse)
     mae = mean_absolute_error(y_true, y_predict)
     r2 = r2_score(y_true, y_predict)
     evs = explained_variance_score(y_true, y_predict)
+    print("Mean Square Error: ", mse)
     print("Root Mean Square Error:", rmse)
     print("Mean Absolute Error:", mae)
     print("R2 Score:", r2)
     print("Explained Variance Score:", evs)
+    scores = {
+        "Mean Square Error": mse,
+        "Root Mean Square Error": rmse,
+        "Mean Absolute Error": mae,
+        "R2 Score": r2,
+        "Explained Variance Score": evs,
+    }
+    return scores
 
 
 def display_cross_validation_scores(scores: np.ndarray) -> None:
