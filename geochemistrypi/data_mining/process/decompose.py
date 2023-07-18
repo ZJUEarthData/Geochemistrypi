@@ -3,6 +3,7 @@ from typing import Optional
 
 import pandas as pd
 
+from ..constants import MODEL_PATH
 from ..model.decomposition import DecompositionWorkflowBase, PCADecomposition, TSNEDecomposition
 
 
@@ -39,8 +40,12 @@ class DecompositionModelSelection(object):
                 early_exaggeration=hyper_parameters["early_exaggeration"],
             )
 
-        # common components for every decomposition algorithm
         self.dcp_workflow.show_info()
+
+        # Save the model hyper-parameters
+        self.dcp_workflow.save_hyper_parameters(hyper_parameters, self.model, MODEL_PATH)
+
+        # Use Scikit-learn style API to process input data
         X_reduced = self.dcp_workflow.fit_transform(X)
         self.dcp_workflow.data_upload(X=X)
 

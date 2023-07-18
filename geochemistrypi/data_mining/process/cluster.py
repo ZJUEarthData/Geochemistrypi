@@ -3,6 +3,7 @@ from typing import Optional
 
 import pandas as pd
 
+from ..constants import MODEL_PATH
 from ..model.clustering import ClusteringWorkflowBase, DBSCANClustering, KMeansClustering
 
 
@@ -48,8 +49,12 @@ class ClusteringModelSelection(object):
         elif self.model == "":
             pass
 
-        # common components for every clustering algorithm
         self.clt_workflow.show_info()
+
+        # Save the model hyper-parameters
+        self.clt_workflow.save_hyper_parameters(hyper_parameters, self.model, MODEL_PATH)
+
+        # Use Scikit-learn style API to process input data
         self.clt_workflow.fit(X)
         self.clt_workflow.get_cluster_centers()
         self.clt_workflow.get_labels()

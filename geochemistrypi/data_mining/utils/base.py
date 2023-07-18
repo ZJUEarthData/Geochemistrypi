@@ -87,6 +87,25 @@ def save_data(df: pd.DataFrame, df_name: str, path: str, mlflow_artifact_data_pa
         print(f"Successfully store '{df_name}' in '{df_name}.csv' in {path}.")
 
 
+def save_text(string: str, text_name: str, path: str) -> None:
+    """Save the text.
+
+    Parameters
+    ----------
+    string : str
+        The text to store.
+
+    text_name : str
+        The name of the text.
+
+    path : str
+        The path to store the text.
+    """
+    file_path = os.path.join(path, text_name + ".txt")
+    with open(file_path, "w") as f:
+        f.write(string)
+
+
 def log(log_path, log_name):
     # Create and configure logger
     # LOG_FORMAT = "%(levelname)s %(asctime)s - %(message)s"
