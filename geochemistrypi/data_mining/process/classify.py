@@ -13,9 +13,10 @@ from ..model.classification import (
     SVMClassification,
     XgboostClassification,
 )
+from ._base import ModelSelectionBase
 
 
-class ClassificationModelSelection(object):
+class ClassificationModelSelection(ModelSelectionBase):
     """Simulate the normal way of training classification algorithms."""
 
     def __init__(self, model):

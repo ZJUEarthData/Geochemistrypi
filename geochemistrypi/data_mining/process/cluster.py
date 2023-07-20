@@ -5,9 +5,10 @@ import pandas as pd
 
 from ..constants import MODEL_PATH
 from ..model.clustering import ClusteringWorkflowBase, DBSCANClustering, KMeansClustering
+from ._base import ModelSelectionBase
 
 
-class ClusteringModelSelection(object):
+class ClusteringModelSelection(ModelSelectionBase):
     """Simulate the normal way of invoking scikit-learn clustering algorithms."""
 
     def __init__(self, model):

@@ -5,9 +5,10 @@ import pandas as pd
 
 from ..constants import MODEL_PATH
 from ..model.decomposition import DecompositionWorkflowBase, PCADecomposition, TSNEDecomposition
+from ._base import ModelSelectionBase
 
 
-class DecompositionModelSelection(object):
+class DecompositionModelSelection(ModelSelectionBase):
     """Simulate the normal way of invoking scikit-learn decomposition algorithms."""
 
     def __init__(self, model: str) -> None:

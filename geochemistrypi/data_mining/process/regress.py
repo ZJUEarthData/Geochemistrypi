@@ -16,9 +16,10 @@ from ..model.regression import (
     SVMRegression,
     XgboostRegression,
 )
+from ._base import ModelSelectionBase
 
 
-class RegressionModelSelection(object):
+class RegressionModelSelection(ModelSelectionBase):
     """Simulate the normal way of training regression algorithms."""
 
     def __init__(self, model):
