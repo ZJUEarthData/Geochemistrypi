@@ -2,6 +2,7 @@
 from typing import Dict
 
 import matplotlib.pyplot as plt
+import mlflow
 import numpy as np
 import pandas as pd
 from rich import print
@@ -36,7 +37,6 @@ def score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> Dict:
     print("R2 Score:", r2)
     print("Explained Variance Score:", evs)
     scores = {
-        "Mean Square Error": mse,
         "Root Mean Square Error": rmse,
         "Mean Absolute Error": mae,
         "R2 Score": r2,
@@ -45,10 +45,28 @@ def score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> Dict:
     return scores
 
 
-def display_cross_validation_scores(scores: np.ndarray) -> None:
-    print("Scores:", scores)
-    print("Mean:", scores.mean())
-    print("Standard deviation:", scores.std())
+def display_cross_validation_scores(scores: np.ndarray, score_name: str) -> None:
+    """Display the scores of cross-validation.
+
+    Parameters
+    ----------
+    scores : np.ndarray
+        The scores of cross-validation.
+
+    score_name : str
+        The name of the score.
+    """
+    cv_scores = {
+        "Fold Scores": str(scores.tolist()),
+        "Mean": scores.mean(),
+        "Standard Deviation": scores.std(),
+    }
+    print("Scores:", cv_scores["Fold Scores"])
+    print("Mean:", cv_scores["Mean"])
+    print("Standard deviation:", cv_scores["Standard Deviation"])
+    mlflow.log_metric(f"CV - {score_name} - Mean", cv_scores["Mean"])
+    mlflow.log_metric(f"CV - {score_name} - Standard Deviation", cv_scores["Standard Deviation"])
+    return cv_scores
 
 
 def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, cv_num: int = 10) -> None:
@@ -85,13 +103,16 @@ def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.D
         "test_r2": "R2 Score",
         "test_explained_variance": "Explained Variance Score",
     }
+    scores_result = {"K-Fold": cv_num}
     for key, values in scores.items():
         print("*", scores2display[key], "*")
         if (key == "test_neg_root_mean_squared_error") or (key == "test_neg_mean_absolute_error"):
-            display_cross_validation_scores(-values)
+            cv_scores = display_cross_validation_scores(-values, scores2display[key])
         else:
-            display_cross_validation_scores(values)
+            cv_scores = display_cross_validation_scores(values, scores2display[key])
+        scores_result[scores2display[key]] = cv_scores
         print("-------------")
+    return scores_result
 
 
 def plot_predicted_value_evaluation(y_test: pd.DataFrame, y_test_predict: pd.DataFrame) -> None:
