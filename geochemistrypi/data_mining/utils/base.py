@@ -104,6 +104,7 @@ def save_text(string: str, text_name: str, path: str) -> None:
     file_path = os.path.join(path, text_name + ".txt")
     with open(file_path, "w") as f:
         f.write(string)
+    print(f"Successfully store '{text_name}' in '{text_name}.txt' in {path}.")
 
 
 def log(log_path, log_name):

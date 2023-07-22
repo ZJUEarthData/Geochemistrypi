@@ -134,15 +134,13 @@ class RegressionWorkflowBase(WorkflowBase):
         mlflow.log_metrics(scores)
 
     @staticmethod
-    def _cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, cv_num: int = 10) -> None:
+    def _cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, cv_num: int, algorithm_name: str, store_path: str) -> None:
         """Cross validation."""
         print("-----* Cross Validation *-----")
         print(f"K-Folds: {cv_num}")
-        cross_validation(trained_model, X_train, y_train, cv_num=cv_num)
-
-    # TODO(Sany sanyhew1097618435@163.com): How to prevent overfitting
-    def is_overfitting(self):
-        pass
+        scores = cross_validation(trained_model, X_train, y_train, cv_num=cv_num)
+        scores_str = json.dumps(scores, indent=4)
+        save_text(scores_str, f"Cross Validation - {algorithm_name}", store_path)
 
     @dispatch()
     def common_components(self) -> None:
@@ -153,7 +151,7 @@ class RegressionWorkflowBase(WorkflowBase):
             algorithm_name=self.naming,
             store_path=MODEL_PATH,
         )
-        self._cross_validation(self.model, RegressionWorkflowBase.X_train, RegressionWorkflowBase.y_train, 10)
+        self._cross_validation(trained_model=self.model, X_train=RegressionWorkflowBase.X_train, y_train=RegressionWorkflowBase.y_train, cv_num=10, algorithm_name=self.naming, store_path=MODEL_PATH)
         self._plot_predicted_value_evaluation(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         self._plot_true_vs_predicted(
             y_test_predict=RegressionWorkflowBase.y_test_predict,
@@ -171,7 +169,9 @@ class RegressionWorkflowBase(WorkflowBase):
             algorithm_name=self.naming,
             store_path=MODEL_PATH,
         )
-        self._cross_validation(self.auto_model, RegressionWorkflowBase.X_train, RegressionWorkflowBase.y_train, 10)
+        self._cross_validation(
+            trained_model=self.auto_model, X_train=RegressionWorkflowBase.X_train, y_train=RegressionWorkflowBase.y_train, cv_num=10, algorithm_name=self.naming, store_path=MODEL_PATH
+        )
         self._plot_predicted_value_evaluation(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         self._plot_true_vs_predicted(
             y_test_predict=RegressionWorkflowBase.y_test_predict,
