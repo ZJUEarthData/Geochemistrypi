@@ -45,7 +45,7 @@ def score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> Dict:
     return scores
 
 
-def display_cross_validation_scores(scores: np.ndarray, score_name: str) -> None:
+def display_cross_validation_scores(scores: np.ndarray, score_name: str) -> Dict:
     """Display the scores of cross-validation.
 
     Parameters
@@ -55,6 +55,11 @@ def display_cross_validation_scores(scores: np.ndarray, score_name: str) -> None
 
     score_name : str
         The name of the score.
+
+    Returns
+    -------
+    cv_scores : dict
+        The scores of cross-validation.
     """
     cv_scores = {
         "Fold Scores": str(scores.tolist()),
@@ -69,7 +74,7 @@ def display_cross_validation_scores(scores: np.ndarray, score_name: str) -> None
     return cv_scores
 
 
-def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, cv_num: int = 10) -> None:
+def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, cv_num: int = 10) -> Dict:
     """Evaluate metric(s) by cross-validation and also record fit/score times.
 
     Parameters
@@ -85,6 +90,11 @@ def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.D
 
     cv_num : int
         Determines the cross-validation splitting strategy.
+
+    Returns
+    -------
+    scores_result : dict
+        The scores of cross-validation.
     """
 
     scores = cross_validate(
@@ -94,10 +104,10 @@ def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.D
         scoring=("neg_root_mean_squared_error", "neg_mean_absolute_error", "r2", "explained_variance"),
         cv=cv_num,
     )
+    del scores["fit_time"]
+    del scores["score_time"]
     # the keys follow the returns of cross_validate in scikit-learn
     scores2display = {
-        "fit_time": "Fit Time",
-        "score_time": "Score Time",
         "test_neg_root_mean_squared_error": "Root Mean Square Error",
         "test_neg_mean_absolute_error": "Mean Absolute Error",
         "test_r2": "R2 Score",

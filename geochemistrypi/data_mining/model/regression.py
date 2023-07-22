@@ -151,8 +151,20 @@ class RegressionWorkflowBase(WorkflowBase):
             algorithm_name=self.naming,
             store_path=MODEL_PATH,
         )
-        self._cross_validation(trained_model=self.model, X_train=RegressionWorkflowBase.X_train, y_train=RegressionWorkflowBase.y_train, cv_num=10, algorithm_name=self.naming, store_path=MODEL_PATH)
-        self._plot_predicted_value_evaluation(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._cross_validation(
+            trained_model=self.model,
+            X_train=RegressionWorkflowBase.X_train,
+            y_train=RegressionWorkflowBase.y_train,
+            cv_num=10,
+            algorithm_name=self.naming,
+            store_path=MODEL_PATH,
+        )
+        self._plot_predicted_value_evaluation(
+            y_test=RegressionWorkflowBase.y_test,
+            y_test_predict=RegressionWorkflowBase.y_test_predict,
+            algorithm_name=self.naming,
+            store_path=MODEL_OUTPUT_IMAGE_PATH,
+        )
         self._plot_true_vs_predicted(
             y_test_predict=RegressionWorkflowBase.y_test_predict,
             y_test=RegressionWorkflowBase.y_test,
@@ -170,7 +182,12 @@ class RegressionWorkflowBase(WorkflowBase):
             store_path=MODEL_PATH,
         )
         self._cross_validation(
-            trained_model=self.auto_model, X_train=RegressionWorkflowBase.X_train, y_train=RegressionWorkflowBase.y_train, cv_num=10, algorithm_name=self.naming, store_path=MODEL_PATH
+            trained_model=self.auto_model,
+            X_train=RegressionWorkflowBase.X_train,
+            y_train=RegressionWorkflowBase.y_train,
+            cv_num=10,
+            algorithm_name=self.naming,
+            store_path=MODEL_PATH,
         )
         self._plot_predicted_value_evaluation(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         self._plot_true_vs_predicted(

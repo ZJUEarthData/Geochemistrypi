@@ -2,6 +2,7 @@
 from typing import Dict
 
 import matplotlib.pyplot as plt
+import mlflow
 import numpy as np
 import pandas as pd
 from rich import print
@@ -50,13 +51,36 @@ def confusion_matrix_plot(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, tr
     disp.plot()
 
 
-def display_cross_validation_scores(scores: np.ndarray) -> None:
-    print("Scores:", scores)
-    print("Mean:", scores.mean())
-    print("Standard deviation:", scores.std())
+def display_cross_validation_scores(scores: np.ndarray, score_name: str) -> Dict:
+    """Display the scores of cross-validation.
+
+    Parameters
+    ----------
+    scores : np.ndarray
+        The scores of cross-validation.
+
+    score_name : str
+        The name of the score.
+
+    Returns
+    -------
+    cv_scores : dict
+        The scores of cross-validation.
+    """
+    cv_scores = {
+        "Fold Scores": str(scores.tolist()),
+        "Mean": scores.mean(),
+        "Standard Deviation": scores.std(),
+    }
+    print("Scores:", cv_scores["Fold Scores"])
+    print("Mean:", cv_scores["Mean"])
+    print("Standard deviation:", cv_scores["Standard Deviation"])
+    mlflow.log_metric(f"CV - {score_name} - Mean", cv_scores["Mean"])
+    mlflow.log_metric(f"CV - {score_name} - Standard Deviation", cv_scores["Standard Deviation"])
+    return cv_scores
 
 
-def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, cv_num: int = 10) -> None:
+def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, cv_num: int = 10) -> Dict:
     """Evaluate metric(s) by cross-validation and also record fit/score times.
 
     Parameters
@@ -72,21 +96,30 @@ def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.D
 
     cv_num : int
         Determines the cross-validation splitting strategy.
+
+    Returns
+    -------
+    scores_result : dict
+        The scores of cross-validation.
     """
 
-    scores = cross_validate(trained_model, X_train, y_train, scoring=("precision", "recall", "f1"), cv=cv_num)
+    scores = cross_validate(trained_model, X_train, y_train, scoring=("accuracy", "precision", "recall", "f1"), cv=cv_num)
+    del scores["fit_time"]
+    del scores["score_time"]
     # the keys follow the returns of cross_validate in scikit-learn
     scores2display = {
-        "fit_time": "Fit Time",
-        "score_time": "Score Time",
+        "test_accuracy": "Accuracy",
         "test_precision": "Precision",
         "test_recall": "Recall",
         "test_f1": "F1 Score",
     }
+    scores_result = {"K-Fold": cv_num}
     for key, values in scores.items():
         print("*", scores2display[key], "*")
-        display_cross_validation_scores(values)
+        cv_scores = display_cross_validation_scores(values, scores2display[key])
+        scores_result[scores2display[key]] = cv_scores
         print("-------------")
+    return scores_result
 
 
 # def contour_data(X: pd.DataFrame, trained_model: object) -> Tuple[List[np.ndarray], np.ndarray]:
