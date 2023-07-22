@@ -304,9 +304,9 @@ def cli_pipeline(file_name: str) -> None:
 
     # AutoML-training
     is_automl = False
-    model = MODELS[model_num - 1]
+    model_name = MODELS[model_num - 1]
     if mode_num == 1 or mode_num == 2:
-        if model not in NON_AUTOML_MODELS:
+        if model_name not in NON_AUTOML_MODELS:
             print("Do you want to employ automated machine learning with respect to this algorithm?" "(Enter the Corresponding Number):")
             num2option(OPTION)
             automl_num = limit_num_input(OPTION, SECTION[2], num_input)
@@ -318,7 +318,7 @@ def cli_pipeline(file_name: str) -> None:
     logger.debug("Model Training")
     if model_num != all_models_num:
         # run the designated model
-        run = Modes2Initiators[mode_num](model)
+        run = Modes2Initiators[mode_num](model_name)
         if not is_automl:
             run.activate(X, y, X_train, X_test, y_train, y_test)
         else:

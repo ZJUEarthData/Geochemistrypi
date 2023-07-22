@@ -1985,7 +1985,6 @@ class DNNClassification(ClassificationWorkflowBase):
         self.n_iter_no_change = (n_iter_no_change,)
         self.max_fun = (max_fun,)
 
-        # FIXME (Sany sanyhew1097618435@163.com): figure out why data type changes after assignment.
         self.model = MLPClassifier(
             hidden_layer_sizes=self.hidden_layer_sizes[0],
             activation=self.activation[0],

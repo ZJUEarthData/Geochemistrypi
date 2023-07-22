@@ -19,8 +19,8 @@ from ._base import ModelSelectionBase
 class ClassificationModelSelection(ModelSelectionBase):
     """Simulate the normal way of training classification algorithms."""
 
-    def __init__(self, model):
-        self.model = model
+    def __init__(self, model_name: str) -> None:
+        self.model_name = model_name
         self.clf_workflow = ClassificationWorkflowBase()
 
     @dispatch(object, object, object, object, object, object)
@@ -38,7 +38,7 @@ class ClassificationModelSelection(ModelSelectionBase):
         self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
 
         # model option
-        if self.model == "Support Vector Machine":
+        if self.model_name == "Support Vector Machine":
             hyper_parameters = SVMClassification.manual_hyper_parameters()
             if hyper_parameters["kernel"] == "linear":
                 self.clf_workflow = SVMClassification(kernel=hyper_parameters["kernel"], C=hyper_parameters["C"], shrinking=hyper_parameters["shrinking"])
@@ -64,7 +64,7 @@ class ClassificationModelSelection(ModelSelectionBase):
                     C=hyper_parameters["C"],
                     shrinking=hyper_parameters["shrinking"],
                 )
-        elif self.model == "Decision Tree":
+        elif self.model_name == "Decision Tree":
             hyper_parameters = DecisionTreeClassification.manual_hyper_parameters()
             self.clf_workflow = DecisionTreeClassification(
                 criterion=hyper_parameters["criterion"],
@@ -73,7 +73,7 @@ class ClassificationModelSelection(ModelSelectionBase):
                 min_samples_leaf=hyper_parameters["min_samples_leaf"],
                 max_features=hyper_parameters["max_features"],
             )
-        elif self.model == "Random Forest":
+        elif self.model_name == "Random Forest":
             hyper_parameters = RandomForestClassification.manual_hyper_parameters()
             self.clf_workflow = RandomForestClassification(
                 n_estimators=hyper_parameters["n_estimators"],
@@ -84,7 +84,7 @@ class ClassificationModelSelection(ModelSelectionBase):
                 bootstrap=hyper_parameters["bootstrap"],
                 oob_score=hyper_parameters["oob_score"],
             )
-        elif self.model == "Xgboost":
+        elif self.model_name == "Xgboost":
             hyper_parameters = XgboostClassification.manual_hyper_parameters()
             self.clf_workflow = XgboostClassification(
                 n_estimators=hyper_parameters["n_estimators"],
@@ -95,7 +95,7 @@ class ClassificationModelSelection(ModelSelectionBase):
                 alpha=hyper_parameters["alpha"],
                 lambd=hyper_parameters["lambd"],
             )
-        elif self.model == "Logistic Regression":
+        elif self.model_name == "Logistic Regression":
             hyper_parameters = LogisticRegressionClassification.manual_hyper_parameters()
             self.clf_workflow = LogisticRegressionClassification(
                 penalty=hyper_parameters["penalty"],
@@ -105,7 +105,7 @@ class ClassificationModelSelection(ModelSelectionBase):
                 class_weight=hyper_parameters["class_weight"],
                 l1_ratio=hyper_parameters["l1_ratio"],
             )
-        elif self.model == "Deep Neural Network":
+        elif self.model_name == "Deep Neural Network":
             hyper_parameters = DNNClassification.manual_hyper_parameters()
             self.clf_workflow = DNNClassification(
                 hidden_layer_sizes=hyper_parameters["hidden_layer_sizes"],
@@ -115,7 +115,7 @@ class ClassificationModelSelection(ModelSelectionBase):
                 learning_rate=hyper_parameters["learning_rate"],
                 max_iter=hyper_parameters["max_iter"],
             )
-        elif self.model == "Extra-Trees":
+        elif self.model_name == "Extra-Trees":
             hyper_parameters = ExtraTreesClassification.manual_hyper_parameters()
             self.clf_workflow = ExtraTreesClassification(
                 n_estimators=hyper_parameters["n_estimators"],
@@ -129,14 +129,14 @@ class ClassificationModelSelection(ModelSelectionBase):
 
         self.clf_workflow.show_info()
 
-        # Save the model hyper-parameters
-        self.clf_workflow.save_hyper_parameters(hyper_parameters, self.model, MODEL_PATH)
-
         # Use Scikit-learn style API to process input data
         self.clf_workflow.fit(X_train, y_train)
         y_test_predict = self.clf_workflow.predict(X_test)
         y_test_predict = self.clf_workflow.np2pd(y_test_predict, y_test.columns)
         self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test, y_test_predict=y_test_predict)
+
+        # Save the model hyper-parameters
+        self.clf_workflow.save_hyper_parameters(hyper_parameters, self.model_name, MODEL_PATH)
 
         # Common components for every classification algorithm
         self.clf_workflow.common_components()
@@ -166,19 +166,19 @@ class ClassificationModelSelection(ModelSelectionBase):
         self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
 
         # Model option
-        if self.model == "Support Vector Machine":
+        if self.model_name == "Support Vector Machine":
             self.clf_workflow = SVMClassification()
-        elif self.model == "Decision Tree":
+        elif self.model_name == "Decision Tree":
             self.clf_workflow = DecisionTreeClassification()
-        elif self.model == "Random Forest":
+        elif self.model_name == "Random Forest":
             self.clf_workflow = RandomForestClassification()
-        elif self.model == "Xgboost":
+        elif self.model_name == "Xgboost":
             self.clf_workflow = XgboostClassification()
-        elif self.model == "Logistic Regression":
+        elif self.model_name == "Logistic Regression":
             self.clf_workflow = LogisticRegressionClassification()
-        elif self.model == "Deep Neural Network":
+        elif self.model_name == "Deep Neural Network":
             self.clf_workflow = DNNClassification()
-        elif self.model == "Extra-Trees":
+        elif self.model_name == "Extra-Trees":
             self.clf_workflow = ExtraTreesClassification()
 
         self.clf_workflow.show_info()
@@ -188,6 +188,12 @@ class ClassificationModelSelection(ModelSelectionBase):
         y_test_predict = self.clf_workflow.predict(X_test, is_automl)
         y_test_predict = self.clf_workflow.np2pd(y_test_predict, y_test.columns)
         self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test, y_test_predict=y_test_predict)
+
+        # Save the model hyper-parameters
+        if self.clf_workflow.ray_best_model is not None:
+            self.clf_workflow.save_hyper_parameters(self.clf_workflow.ray_best_model.get_params(), self.model_name, MODEL_PATH)
+        else:
+            self.clf_workflow.save_hyper_parameters(self.clf_workflow.automl.best_config, self.model_name, MODEL_PATH)
 
         # Common components for every classification algorithm
         self.clf_workflow.common_components(is_automl)

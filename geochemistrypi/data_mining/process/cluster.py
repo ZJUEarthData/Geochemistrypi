@@ -11,8 +11,8 @@ from ._base import ModelSelectionBase
 class ClusteringModelSelection(ModelSelectionBase):
     """Simulate the normal way of invoking scikit-learn clustering algorithms."""
 
-    def __init__(self, model):
-        self.model = model
+    def __init__(self, model_name: str) -> None:
+        self.model_name = model_name
         self.clt_workflow = ClusteringWorkflowBase()
 
     def activate(
@@ -28,7 +28,7 @@ class ClusteringModelSelection(ModelSelectionBase):
 
         self.clt_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
 
-        if self.model == "KMeans":
+        if self.model_name == "KMeans":
             hyper_parameters = KMeansClustering.manual_hyper_parameters()
             self.clt_workflow = KMeansClustering(
                 n_clusters=hyper_parameters["n_clusters"],
@@ -37,7 +37,7 @@ class ClusteringModelSelection(ModelSelectionBase):
                 tol=hyper_parameters["tol"],
                 algorithm=hyper_parameters["algorithm"],
             )
-        elif self.model == "DBSCAN":
+        elif self.model_name == "DBSCAN":
             hyper_parameters = DBSCANClustering.manual_hyper_parameters()
             self.clt_workflow = DBSCANClustering(
                 eps=hyper_parameters["eps"],
@@ -47,18 +47,18 @@ class ClusteringModelSelection(ModelSelectionBase):
                 leaf_size=hyper_parameters["leaf_size"],
                 p=hyper_parameters["p"],
             )
-        elif self.model == "":
+        elif self.model_name == "":
             pass
 
         self.clt_workflow.show_info()
-
-        # Save the model hyper-parameters
-        self.clt_workflow.save_hyper_parameters(hyper_parameters, self.model, MODEL_PATH)
 
         # Use Scikit-learn style API to process input data
         self.clt_workflow.fit(X)
         self.clt_workflow.get_cluster_centers()
         self.clt_workflow.get_labels()
+
+        # Save the model hyper-parameters
+        self.clt_workflow.save_hyper_parameters(hyper_parameters, self.model_name, MODEL_PATH)
 
         # special components of different algorithms
         self.clt_workflow.special_components()

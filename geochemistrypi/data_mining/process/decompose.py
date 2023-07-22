@@ -11,8 +11,8 @@ from ._base import ModelSelectionBase
 class DecompositionModelSelection(ModelSelectionBase):
     """Simulate the normal way of invoking scikit-learn decomposition algorithms."""
 
-    def __init__(self, model: str) -> None:
-        self.model = model
+    def __init__(self, model_name: str) -> None:
+        self.model_name = model_name
         self.dcp_workflow = DecompositionWorkflowBase()
 
     def activate(
@@ -28,10 +28,10 @@ class DecompositionModelSelection(ModelSelectionBase):
 
         self.dcp_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
 
-        if self.model == "Principal Component Analysis":
+        if self.model_name == "Principal Component Analysis":
             hyper_parameters = PCADecomposition.manual_hyper_parameters()
             self.dcp_workflow = PCADecomposition(n_components=hyper_parameters["n_components"], svd_solver=hyper_parameters["svd_solver"])
-        elif self.model == "T-SNE":
+        elif self.model_name == "T-SNE":
             hyper_parameters = TSNEDecomposition.manual_hyper_parameters()
             self.dcp_workflow = TSNEDecomposition(
                 n_components=hyper_parameters["n_components"],
@@ -43,12 +43,12 @@ class DecompositionModelSelection(ModelSelectionBase):
 
         self.dcp_workflow.show_info()
 
-        # Save the model hyper-parameters
-        self.dcp_workflow.save_hyper_parameters(hyper_parameters, self.model, MODEL_PATH)
-
         # Use Scikit-learn style API to process input data
         X_reduced = self.dcp_workflow.fit_transform(X)
         self.dcp_workflow.data_upload(X=X)
+
+        # Save the model hyper-parameters
+        self.dcp_workflow.save_hyper_parameters(hyper_parameters, self.model_name, MODEL_PATH)
 
         # special components of different algorithms
         self.dcp_workflow.special_components(components_num=hyper_parameters["n_components"], reduced_data=X_reduced)
