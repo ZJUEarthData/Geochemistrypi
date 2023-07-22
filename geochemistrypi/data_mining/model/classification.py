@@ -123,11 +123,13 @@ class ClassificationWorkflowBase(WorkflowBase):
         save_text(scores_str, f"Classification Report - {algorithm_name}", store_path)
 
     @staticmethod
-    def _cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, cv_num: int = 10) -> None:
+    def _cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, cv_num: int, algorithm_name: str, store_path: str) -> None:
         """Perform cross validation on the model."""
         print("-----* Cross Validation *-----")
         print(f"K-Folds: {cv_num}")
-        cross_validation(trained_model, X_train, y_train, cv_num=cv_num)
+        scores = cross_validation(trained_model, X_train, y_train, cv_num=cv_num)
+        scores_str = json.dumps(scores, indent=4)
+        save_text(scores_str, f"Cross Validation - {algorithm_name}", store_path)
 
     @staticmethod
     def _confusion_matrix_plot(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, trained_model: object, algorithm_name: str, store_path: str) -> None:
@@ -156,13 +158,20 @@ class ClassificationWorkflowBase(WorkflowBase):
             algorithm_name=self.naming,
             store_path=MODEL_PATH,
         )
-        self._cross_validation(self.model, ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.y_train, 10)
+        self._cross_validation(
+            trained_model=self.model,
+            X_train=ClassificationWorkflowBase.X_train,
+            y_train=ClassificationWorkflowBase.y_train,
+            cv_num=10,
+            algorithm_name=self.naming,
+            store_path=MODEL_PATH,
+        )
         self._confusion_matrix_plot(
-            ClassificationWorkflowBase.y_test,
-            ClassificationWorkflowBase.y_test_predict,
-            self.model,
-            self.naming,
-            MODEL_OUTPUT_IMAGE_PATH,
+            y_test=ClassificationWorkflowBase.y_test,
+            y_test_predict=ClassificationWorkflowBase.y_test_predict,
+            trained_model=self.model,
+            algorithm_name=self.naming,
+            store_path=MODEL_OUTPUT_IMAGE_PATH,
         )
 
     @dispatch(bool)
@@ -180,7 +189,14 @@ class ClassificationWorkflowBase(WorkflowBase):
             algorithm_name=self.naming,
             store_path=MODEL_PATH,
         )
-        self._cross_validation(self.auto_model, ClassificationWorkflowBase.X_train, ClassificationWorkflowBase.y_train, 10)
+        self._cross_validation(
+            trained_model=self.auto_model,
+            X_train=ClassificationWorkflowBase.X_train,
+            y_train=ClassificationWorkflowBase.y_train,
+            cv_num=10,
+            algorithm_name=self.naming,
+            store_path=MODEL_PATH,
+        )
         self._confusion_matrix_plot(
             ClassificationWorkflowBase.y_test,
             ClassificationWorkflowBase.y_test_predict,
