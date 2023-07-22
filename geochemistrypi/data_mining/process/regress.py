@@ -22,8 +22,8 @@ from ._base import ModelSelectionBase
 class RegressionModelSelection(ModelSelectionBase):
     """Simulate the normal way of training regression algorithms."""
 
-    def __init__(self, model):
-        self.model = model
+    def __init__(self, model_name: str) -> None:
+        self.model_name = model_name
         self.reg_workflow = RegressionWorkflowBase()
 
     @dispatch(object, object, object, object, object, object)
@@ -41,7 +41,7 @@ class RegressionModelSelection(ModelSelectionBase):
         self.reg_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
 
         # Model option
-        if self.model == "Polynomial Regression":
+        if self.model_name == "Polynomial Regression":
             hyper_parameters = PolynomialRegression.manual_hyper_parameters()
             self.reg_workflow = PolynomialRegression(
                 degree=hyper_parameters["degree"],
@@ -50,7 +50,7 @@ class RegressionModelSelection(ModelSelectionBase):
             )
             X_train, X_test = self.reg_workflow.poly(X_train, X_test)
             self.reg_workflow.data_upload(X_train=X_train, X_test=X_test)
-        elif self.model == "Xgboost":
+        elif self.model_name == "Xgboost":
             hyper_parameters = XgboostRegression.manual_hyper_parameters()
             self.reg_workflow = XgboostRegression(
                 n_estimators=hyper_parameters["n_estimators"],
@@ -61,7 +61,7 @@ class RegressionModelSelection(ModelSelectionBase):
                 alpha=hyper_parameters["alpha"],
                 lambd=hyper_parameters["lambd"],
             )
-        elif self.model == "Decision Tree":
+        elif self.model_name == "Decision Tree":
             hyper_parameters = DecisionTreeRegression.manual_hyper_parameters()
             self.reg_workflow = DecisionTreeRegression(
                 criterion=hyper_parameters["criterion"],
@@ -70,7 +70,7 @@ class RegressionModelSelection(ModelSelectionBase):
                 min_samples_leaf=hyper_parameters["min_samples_leaf"],
                 max_features=hyper_parameters["max_features"],
             )
-        elif self.model == "Extra-Trees":
+        elif self.model_name == "Extra-Trees":
             hyper_parameters = ExtraTreesRegression.manual_hyper_parameters()
             self.reg_workflow = ExtraTreesRegression(
                 n_estimators=hyper_parameters["n_estimators"],
@@ -81,7 +81,7 @@ class RegressionModelSelection(ModelSelectionBase):
                 bootstrap=hyper_parameters["bootstrap"],
                 oob_score=hyper_parameters["oob_score"],
             )
-        elif self.model == "Random Forest":
+        elif self.model_name == "Random Forest":
             hyper_parameters = RandomForestRegression.manual_hyper_parameters()
             self.reg_workflow = RandomForestRegression(
                 n_estimators=hyper_parameters["n_estimators"],
@@ -92,7 +92,7 @@ class RegressionModelSelection(ModelSelectionBase):
                 bootstrap=hyper_parameters["bootstrap"],
                 oob_score=hyper_parameters["oob_score"],
             )
-        elif self.model == "Support Vector Machine":
+        elif self.model_name == "Support Vector Machine":
             hyper_parameters = SVMRegression.manual_hyper_parameters()
             if hyper_parameters["kernel"] == "linear":
                 self.reg_workflow = SVMRegression(kernel=hyper_parameters["kernel"], C=hyper_parameters["C"], shrinking=hyper_parameters["shrinking"])
@@ -118,7 +118,7 @@ class RegressionModelSelection(ModelSelectionBase):
                     C=hyper_parameters["C"],
                     shrinking=hyper_parameters["shrinking"],
                 )
-        elif self.model == "Deep Neural Network":
+        elif self.model_name == "Deep Neural Network":
             hyper_parameters = DNNRegression.manual_hyper_parameters()
             self.reg_workflow = DNNRegression(
                 hidden_layer_sizes=hyper_parameters["hidden_layer_sizes"],
@@ -128,20 +128,20 @@ class RegressionModelSelection(ModelSelectionBase):
                 learning_rate=hyper_parameters["learning_rate"],
                 max_iter=hyper_parameters["max_iter"],
             )
-        elif self.model == "Linear Regression":
+        elif self.model_name == "Linear Regression":
             hyper_parameters = LinearRegression2.manual_hyper_parameters()
             self.reg_workflow = LinearRegression2(fit_intercept=hyper_parameters["fit_intercept"], normalize=hyper_parameters["normalize"])
 
         self.reg_workflow.show_info()
-
-        # Save the model hyper-parameters
-        self.reg_workflow.save_hyper_parameters(hyper_parameters, self.model, MODEL_PATH)
 
         # Use Scikit-learn style API to process input data
         self.reg_workflow.fit(X_train, y_train)
         y_test_predict = self.reg_workflow.predict(X_test)
         y_test_predict = self.reg_workflow.np2pd(y_test_predict, y_test.columns)
         self.reg_workflow.data_upload(y_test_predict=y_test_predict)
+
+        # Save the model hyper-parameters
+        self.reg_workflow.save_hyper_parameters(hyper_parameters, self.model_name, MODEL_PATH)
 
         # Common components for every regression algorithm
         self.reg_workflow.common_components()
@@ -171,25 +171,25 @@ class RegressionModelSelection(ModelSelectionBase):
         self.reg_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
 
         # Model option
-        if self.model == "Polynomial Regression":
+        if self.model_name == "Polynomial Regression":
             # TODO(Sany sanyhew1097618435@163.com): Find the proper way for polynomial regression
             print("Please specify the maximal degree of the polynomial features.")
             poly_degree = num_input(SECTION[2], "@Degree:")
             self.reg_workflow = PolynomialRegression(degree=poly_degree)
             X_train, X_test = self.reg_workflow.poly(X_train, X_test)
-        elif self.model == "Xgboost":
+        elif self.model_name == "Xgboost":
             self.reg_workflow = XgboostRegression()
-        elif self.model == "Decision Tree":
+        elif self.model_name == "Decision Tree":
             self.reg_workflow = DecisionTreeRegression()
-        elif self.model == "Extra-Trees":
+        elif self.model_name == "Extra-Trees":
             self.reg_workflow = ExtraTreesRegression()
-        elif self.model == "Random Forest":
+        elif self.model_name == "Random Forest":
             self.reg_workflow = RandomForestRegression()
-        elif self.model == "Support Vector Machine":
+        elif self.model_name == "Support Vector Machine":
             self.reg_workflow = SVMRegression()
-        elif self.model == "Deep Neural Network":
+        elif self.model_name == "Deep Neural Network":
             self.reg_workflow = DNNRegression()
-        elif self.model == "Linear Regression":
+        elif self.model_name == "Linear Regression":
             self.reg_workflow = LinearRegression2()
 
         self.reg_workflow.show_info()
@@ -199,6 +199,12 @@ class RegressionModelSelection(ModelSelectionBase):
         y_test_predict = self.reg_workflow.predict(X_test, is_automl)
         y_test_predict = self.reg_workflow.np2pd(y_test_predict, y_test.columns)
         self.reg_workflow.data_upload(y_test_predict=y_test_predict)
+
+        # Save the model hyper-parameters
+        if self.reg_workflow.ray_best_model is not None:
+            self.reg_workflow.save_hyper_parameters(self.reg_workflow.ray_best_model.get_params(), self.model_name, MODEL_PATH)
+        else:
+            self.reg_workflow.save_hyper_parameters(self.reg_workflow.automl.best_config, self.model_name, MODEL_PATH)
 
         # Common components for every regression algorithm
         self.reg_workflow.common_components(is_automl)
