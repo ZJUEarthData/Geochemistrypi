@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import datetime
 import logging
 import os
 import platform
@@ -7,6 +8,56 @@ import mlflow
 import pandas as pd
 from matplotlib import pyplot as plt
 from rich import print
+
+from ..constants import OUTPUT_PATH
+
+
+def create_geopi_output_dir(experiment_name: str, run_name: str) -> None:
+    """Create the output directory for the current run and store the related pathes as environment variable.
+
+    Parameters
+    ----------
+    experiment_name : str
+        The name of the experiment.
+
+    run_name : str
+        The name of the run.
+    """
+    # Set the output path for the current run
+    timestamp = datetime.datetime.now().strftime("%m-%d-%H-%M")
+    geopi_output_path = os.path.join(OUTPUT_PATH, experiment_name, f"{run_name} {timestamp}")
+    os.environ["GEOPI_OUTPUT_PATH"] = geopi_output_path
+    os.makedirs(geopi_output_path, exist_ok=True)
+
+    # Set the output artifacts path for the current run
+    geopi_output_artifacts_path = os.path.join(geopi_output_path, "artifacts")
+    os.environ["GEOPI_OUTPUT_ARTIFACTS_PATH"] = geopi_output_artifacts_path
+    os.makedirs(geopi_output_artifacts_path, exist_ok=True)
+
+    # Set the output artifacts data path for the current run
+    geopi_output_artifacts_data_path = os.path.join(geopi_output_artifacts_path, "data")
+    os.environ["GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"] = geopi_output_artifacts_data_path
+    os.makedirs(geopi_output_artifacts_data_path, exist_ok=True)
+
+    # Set the output artifacts model path for the current run
+    geopi_output_artifacts_model_path = os.path.join(geopi_output_artifacts_path, "model")
+    os.environ["GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH"] = geopi_output_artifacts_model_path
+    os.makedirs(geopi_output_artifacts_model_path, exist_ok=True)
+
+    # Set the output artifacts image path for the current run
+    geopi_output_artifacts_image_path = os.path.join(geopi_output_artifacts_path, "image")
+    os.environ["GEOPI_OUTPUT_ARTIFACTS_IMAGE_PATH"] = geopi_output_artifacts_image_path
+    os.makedirs(geopi_output_artifacts_image_path, exist_ok=True)
+
+    # Set the output parameters path for the current run
+    geopi_output_parameters_path = os.path.join(geopi_output_path, "parameters")
+    os.environ["GEOPI_OUTPUT_PARAMETERS_PATH"] = geopi_output_parameters_path
+    os.makedirs(geopi_output_parameters_path, exist_ok=True)
+
+    # Set the outout metrics path for the current run
+    geopi_output_metrics_path = os.path.join(geopi_output_path, "metrics")
+    os.environ["GEOPI_OUTPUT_METRICS_PATH"] = geopi_output_metrics_path
+    os.makedirs(geopi_output_metrics_path, exist_ok=True)
 
 
 def clear_output() -> None:

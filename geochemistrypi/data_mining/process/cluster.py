@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
+import os
 from typing import Optional
 
 import pandas as pd
 
-from ..constants import MODEL_PATH
 from ..model.clustering import ClusteringWorkflowBase, DBSCANClustering, KMeansClustering
 from ._base import ModelSelectionBase
 
@@ -58,7 +58,7 @@ class ClusteringModelSelection(ModelSelectionBase):
         self.clt_workflow.get_labels()
 
         # Save the model hyper-parameters
-        self.clt_workflow.save_hyper_parameters(hyper_parameters, self.model_name, MODEL_PATH)
+        self.clt_workflow.save_hyper_parameters(hyper_parameters, self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
 
         # special components of different algorithms
         self.clt_workflow.special_components()

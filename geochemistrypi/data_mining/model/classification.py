@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+import os
 from typing import Any, Callable, Dict, List, Literal, Optional, Sequence, Tuple, Union
 
 import mlflow
@@ -16,7 +17,7 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 
-from ..constants import MODEL_OUTPUT_IMAGE_PATH, MODEL_PATH, RAY_FLAML
+from ..constants import MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
 from ..utils.base import save_fig, save_text
 from ._base import WorkflowBase
 from .func.algo_classification._common import confusion_matrix_plot, cross_validation, plot_precision_recall, plot_ROC, score
@@ -121,6 +122,7 @@ class ClassificationWorkflowBase(WorkflowBase):
         scores = classification_report(y_true, y_predict, output_dict=True)
         scores_str = json.dumps(scores, indent=4)
         save_text(scores_str, f"Classification Report - {algorithm_name}", store_path)
+        mlflow.log_artifact(os.path.join(store_path, f"Classification Report - {algorithm_name}.txt"))
 
     @staticmethod
     def _cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, cv_num: int, algorithm_name: str, store_path: str) -> None:
@@ -146,17 +148,18 @@ class ClassificationWorkflowBase(WorkflowBase):
     @dispatch()
     def common_components(self) -> None:
         """Invoke all common application functions for classification algorithms by Scikit-learn framework."""
+        GEOPI_OUTPUT_METRICS_PATH = os.environ["GEOPI_OUTPUT_METRICS_PATH"]
         self._score(
             y_true=ClassificationWorkflowBase.y_test,
             y_predict=ClassificationWorkflowBase.y_test_predict,
             algorithm_name=self.naming,
-            store_path=MODEL_PATH,
+            store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
         self._classification_report(
             y_true=ClassificationWorkflowBase.y_test,
             y_predict=ClassificationWorkflowBase.y_test_predict,
             algorithm_name=self.naming,
-            store_path=MODEL_PATH,
+            store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
         self._cross_validation(
             trained_model=self.model,
@@ -164,7 +167,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             y_train=ClassificationWorkflowBase.y_train,
             cv_num=10,
             algorithm_name=self.naming,
-            store_path=MODEL_PATH,
+            store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
         self._confusion_matrix_plot(
             y_test=ClassificationWorkflowBase.y_test,
@@ -177,17 +180,18 @@ class ClassificationWorkflowBase(WorkflowBase):
     @dispatch(bool)
     def common_components(self, is_automl: bool) -> None:
         """Invoke all common application functions for classification algorithms by FLAML framework."""
+        GEOPI_OUTPUT_METRICS_PATH = os.environ["GEOPI_OUTPUT_METRICS_PATH"]
         self._score(
             y_true=ClassificationWorkflowBase.y_test,
             y_predict=ClassificationWorkflowBase.y_test_predict,
             algorithm_name=self.naming,
-            store_path=MODEL_PATH,
+            store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
         self._classification_report(
             y_true=ClassificationWorkflowBase.y_test,
             y_predict=ClassificationWorkflowBase.y_test_predict,
             algorithm_name=self.naming,
-            store_path=MODEL_PATH,
+            store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
         self._cross_validation(
             trained_model=self.auto_model,
@@ -195,7 +199,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             y_train=ClassificationWorkflowBase.y_train,
             cv_num=10,
             algorithm_name=self.naming,
-            store_path=MODEL_PATH,
+            store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
         self._confusion_matrix_plot(
             ClassificationWorkflowBase.y_test,

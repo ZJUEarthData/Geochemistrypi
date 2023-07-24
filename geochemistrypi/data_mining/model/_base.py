@@ -13,7 +13,7 @@ import pandas as pd
 from multipledispatch import dispatch
 from rich import print
 
-from ..constants import MODEL_PATH, SECTION
+from ..constants import SECTION
 from ..data.data_readiness import limit_num_input, num2option, num_input, show_data_columns
 from ..utils.base import save_data, save_text
 
@@ -256,15 +256,16 @@ class WorkflowBase(metaclass=ABCMeta):
         print("-----* Model Persistence *-----")
         filename = f"{'_'.join(self.naming.split())}_{date.today()}"
         pickle_filename = filename + ".pkl"
-        pickle_path = os.path.join(MODEL_PATH, pickle_filename)
+        GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH")
+        pickle_path = os.path.join(GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH, pickle_filename)
         joblib_filename = filename + ".joblib"
-        joblib_path = os.path.join(MODEL_PATH, joblib_filename)
+        joblib_path = os.path.join(GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH, joblib_filename)
         with open(pickle_path, "wb") as fp:
             pickle.dump(self.model, fp)
-        print(f"Successfully store the trained model '{self.naming}' in '{pickle_filename}' in {MODEL_PATH}.")
+        print(f"Successfully store the trained model '{self.naming}' in '{pickle_filename}' in {GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH}.")
         with open(joblib_path, "wb") as fj:
             joblib.dump(self.model, fj)
-        print(f"Successfully store the trained model '{self.naming}' in '{joblib_filename}' in {MODEL_PATH}.")
+        print(f"Successfully store the trained model '{self.naming}' in '{joblib_filename}' in {GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH}.")
         mlflow.sklearn.log_model(self.model, self.naming)
 
     @dispatch(bool)
@@ -273,15 +274,16 @@ class WorkflowBase(metaclass=ABCMeta):
         print("-----* Model Persistence *-----")
         filename = f"{'_'.join(self.naming.split())}_{date.today()}"
         pickle_filename = filename + ".pkl"
-        pickle_path = os.path.join(MODEL_PATH, pickle_filename)
+        GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH")
+        pickle_path = os.path.join(GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH, pickle_filename)
         joblib_filename = filename + ".joblib"
-        joblib_path = os.path.join(MODEL_PATH, joblib_filename)
+        joblib_path = os.path.join(GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH, joblib_filename)
         with open(pickle_path, "wb") as fp:
             pickle.dump(self.auto_model, fp)
-        print(f"Successfully store the trained model '{self.naming}' in '{pickle_filename}' in {MODEL_PATH}.")
+        print(f"Successfully store the trained model '{self.naming}' in '{pickle_filename}' in {GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH}.")
         with open(joblib_path, "wb") as fj:
             joblib.dump(self.auto_model, fj)
-        print(f"Successfully store the trained model '{self.naming}' in '{joblib_filename}' in {MODEL_PATH}.")
+        print(f"Successfully store the trained model '{self.naming}' in '{joblib_filename}' in {GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH}.")
         mlflow.sklearn.log_model(self.auto_model, self.naming)
 
         # Use to check whether the trained model is saved well

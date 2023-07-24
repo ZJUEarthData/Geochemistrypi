@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
+import os
 import string
 
 import numpy as np
 import pandas as pd
 from rich import print
 
-from ..constants import DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH, OPTION, SECTION
+from ..constants import MLFLOW_ARTIFACT_DATA_PATH, OPTION, SECTION
 from ..plot.statistic_plot import basic_statistic
 from ..utils.base import clear_output, save_data
 from .data_readiness import basic_info, limit_num_input, num2option, num_input, show_data_columns
@@ -19,7 +20,7 @@ class FeatureConstructor(object):
     alphabet = string.ascii_letters
     cal_words = ["pow", "sin", "cos", "tan", "pi", "mean", "std", "var", "log"]
 
-    def __init__(self, data):
+    def __init__(self, data: pd.DataFrame) -> None:
         self.feature_name = None
         self.data = data
         self._infix_expr = []
@@ -27,21 +28,18 @@ class FeatureConstructor(object):
         self.map_dict = {}
         self._result = None
 
-    def index2name(self):
-        """Pattern: [letter : column name], e.g. a : 1st column name; b : 2nd column name
-
-        :return: index : column name, dict
-        """
+    def index2name(self) -> None:
+        """Pattern: [letter : column name], e.g. a : 1st column name; b : 2nd column name."""
         columns_name = self.data.columns
         print("Selected data set:")
         for i in range(len(columns_name)):
             print(FeatureConstructor.alphabet[i] + " - " + columns_name[i])
             self.map_dict[FeatureConstructor.alphabet[i]] = columns_name[i]
 
-    def _get_column(self, index):
+    def _get_column(self, index: str) -> str:
         return self.map_dict[index]
 
-    def name_feature(self):
+    def name_feature(self) -> None:
         while True:
             self.feature_name = input("Name the constructed feature (column name), like 'NEW-COMPOUND': \n" "@input: ")
             if len(self.feature_name) == 0:
@@ -49,7 +47,7 @@ class FeatureConstructor(object):
             else:
                 break
 
-    def input_expression(self):
+    def input_expression(self) -> None:
         expression = input(
             "Build up new feature with the combination of 4 basic arithmatic operator,"
             " including '+', '-', '*', '/', '()'.\n"
@@ -103,7 +101,8 @@ class FeatureConstructor(object):
             else:
                 break
 
-    def evaluate(self):
+    def evaluate(self) -> None:
+        """Evaluate the expression."""
         self.letter_map()
         np.array(["dummy"])  # dummy array to skip the flake8 warning - F401 'numpy as np' imported but unused'
         self._infix_expr = self._infix_expr.replace("sin", "np.sin")
@@ -127,7 +126,8 @@ class FeatureConstructor(object):
         except ZeroDivisionError:
             print("The expression contains a division by zero.")
 
-    def letter_map(self):
+    def letter_map(self) -> None:
+        """Map the letter to the column name."""
         new_text = ""
         test_text = "".join(ch for ch in self._infix_expr if ch not in set(" "))
         for words in FeatureConstructor.cal_words:
@@ -147,12 +147,14 @@ class FeatureConstructor(object):
                     else:
                         self._infix_expr += ww
 
-    def process_feature_engineering(self):
+    def process_feature_engineering(self) -> None:
+        """Process the feature engineering."""
         print("-*-*- Feature Engineering -*-*-")
         print("The Selected Data Set:")
         show_data_columns(self.data.columns)
         fe_flag = 0
         is_feature_engineering = 0
+        GEOPI_OUTPUT_ARTIFACTS_DATA_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH")
         while True:
             if fe_flag != 1:
                 print("Feature Engineering Option:")
@@ -179,20 +181,17 @@ class FeatureConstructor(object):
                     clear_output()
                     continue
                 else:
-                    save_data(self.data, "Data Before Splitting", DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                    save_data(self.data, "Data Selected Imputed Feature-Engineering", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
                     print("Exit Feature Engineering Mode.")
                     clear_output()
                     break
             else:
-                save_data(self.data, "Data Before Splitting", DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                save_data(self.data, "Data Selected Imputed Feature-Engineering", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
                 clear_output()
                 break
 
-    def create_data_set(self):
+    def create_data_set(self) -> pd.DataFrame:
+        """Create a new data set with the new feature."""
         print(f'Successfully construct a new feature "{self.feature_name}".')
         print(self._result)
         return pd.concat([self.data, self._result], axis=1)
-
-    # TODO: Is the scope of input right?
-    def check_data_scope(self):
-        pass

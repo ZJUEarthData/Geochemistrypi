@@ -1,6 +1,6 @@
 import os
 import sys
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import openpyxl.utils.exceptions
 import pandas as pd
@@ -154,10 +154,27 @@ def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
     return sub_data_set
 
 
-def data_split(X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], test_size: float = 0.2) -> dict:
-    """Split arrays or matrices into random train and test subsets."""
+def data_split(X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], test_size: float = 0.2) -> Dict:
+    """Split arrays or matrices into random train and test subsets.
+
+    Parameters
+    ----------
+    X : pd.DataFrame
+        The data to be split.
+
+    y : pd.DataFrame or pd.Series
+        The target variable to be split.
+
+    test_size : float, default=0.2
+        Represents the proportion of the dataset to include in the test split.
+
+    Returns
+    -------
+    dict
+        A dictionary containing the split data.
+    """
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
-    return {"X train": X_train, "X test": X_test, "y train": y_train, "y test": y_test}
+    return {"X Train": X_train, "X Test": X_test, "Y Train": y_train, "Y Test": y_test}
 
 
 def num2option(items: List[str]) -> None:

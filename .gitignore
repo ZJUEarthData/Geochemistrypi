@@ -6,6 +6,7 @@
 
 # all produced data set under the directory output
 **/output
+**/geopi_output
 
 # all saved trained model under the directory trained model
 **/trained_models

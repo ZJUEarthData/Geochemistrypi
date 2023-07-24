@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
+import os
+
 import pandas as pd
 from multipledispatch import dispatch
 
-from ..constants import DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH, MODEL_PATH
+from ..constants import MLFLOW_ARTIFACT_DATA_PATH
 from ..model.classification import (
     ClassificationWorkflowBase,
     DecisionTreeClassification,
@@ -136,7 +138,7 @@ class ClassificationModelSelection(ModelSelectionBase):
         self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test, y_test_predict=y_test_predict)
 
         # Save the model hyper-parameters
-        self.clf_workflow.save_hyper_parameters(hyper_parameters, self.model_name, MODEL_PATH)
+        self.clf_workflow.save_hyper_parameters(hyper_parameters, self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
 
         # Common components for every classification algorithm
         self.clf_workflow.common_components()
@@ -145,7 +147,7 @@ class ClassificationModelSelection(ModelSelectionBase):
         self.clf_workflow.special_components()
 
         # Save the prediction result
-        self.clf_workflow.data_save(y_test_predict, "Y Test Predict", DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH, "Model Prediction")
+        self.clf_workflow.data_save(y_test_predict, "Y Test Predict", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Model Prediction")
 
         # Save the trained model
         self.clf_workflow.save_model()
@@ -191,9 +193,9 @@ class ClassificationModelSelection(ModelSelectionBase):
 
         # Save the model hyper-parameters
         if self.clf_workflow.ray_best_model is not None:
-            self.clf_workflow.save_hyper_parameters(self.clf_workflow.ray_best_model.get_params(), self.model_name, MODEL_PATH)
+            self.clf_workflow.save_hyper_parameters(self.clf_workflow.ray_best_model.get_params(), self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
         else:
-            self.clf_workflow.save_hyper_parameters(self.clf_workflow.automl.best_config, self.model_name, MODEL_PATH)
+            self.clf_workflow.save_hyper_parameters(self.clf_workflow.automl.best_config, self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
 
         # Common components for every classification algorithm
         self.clf_workflow.common_components(is_automl)
@@ -202,7 +204,7 @@ class ClassificationModelSelection(ModelSelectionBase):
         self.clf_workflow.special_components(is_automl)
 
         # Save the prediction result
-        self.clf_workflow.data_save(y_test_predict, "y test predict", DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH, "Model Prediction")
+        self.clf_workflow.data_save(y_test_predict, "y test predict", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Model Prediction")
 
         # Save the trained model
         self.clf_workflow.save_model(is_automl)
