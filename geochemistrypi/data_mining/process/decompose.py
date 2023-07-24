@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
+import os
 from typing import Optional
 
 import pandas as pd
 
-from ..constants import MODEL_PATH
 from ..model.decomposition import DecompositionWorkflowBase, PCADecomposition, TSNEDecomposition
 from ._base import ModelSelectionBase
 
@@ -48,7 +48,7 @@ class DecompositionModelSelection(ModelSelectionBase):
         self.dcp_workflow.data_upload(X=X)
 
         # Save the model hyper-parameters
-        self.dcp_workflow.save_hyper_parameters(hyper_parameters, self.model_name, MODEL_PATH)
+        self.dcp_workflow.save_hyper_parameters(hyper_parameters, self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
 
         # special components of different algorithms
         self.dcp_workflow.special_components(components_num=hyper_parameters["n_components"], reduced_data=X_reduced)

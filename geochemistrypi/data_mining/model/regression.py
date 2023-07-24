@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+import os
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import mlflow
@@ -16,7 +17,7 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.svm import SVR
 from sklearn.tree import DecisionTreeRegressor
 
-from ..constants import MODEL_OUTPUT_IMAGE_PATH, MODEL_PATH, RAY_FLAML
+from ..constants import MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
 from ..utils.base import save_fig, save_text
 from ._base import WorkflowBase
 from .func.algo_regression._common import cross_validation, plot_predicted_value_evaluation, plot_true_vs_predicted, score
@@ -145,11 +146,12 @@ class RegressionWorkflowBase(WorkflowBase):
     @dispatch()
     def common_components(self) -> None:
         """Invoke all common application functions for classification algorithms by Scikit-learn framework."""
+        GEOPI_OUTPUT_METRICS_PATH = os.environ["GEOPI_OUTPUT_METRICS_PATH"]
         self._score(
             y_true=RegressionWorkflowBase.y_test,
             y_predict=RegressionWorkflowBase.y_test_predict,
             algorithm_name=self.naming,
-            store_path=MODEL_PATH,
+            store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
         self._cross_validation(
             trained_model=self.model,
@@ -157,7 +159,7 @@ class RegressionWorkflowBase(WorkflowBase):
             y_train=RegressionWorkflowBase.y_train,
             cv_num=10,
             algorithm_name=self.naming,
-            store_path=MODEL_PATH,
+            store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
         self._plot_predicted_value_evaluation(
             y_test=RegressionWorkflowBase.y_test,
@@ -175,11 +177,12 @@ class RegressionWorkflowBase(WorkflowBase):
     @dispatch(bool)
     def common_components(self, is_automl: bool) -> None:
         """Invoke all common application functions for classification algorithms by FLAML framework."""
+        GEOPI_OUTPUT_METRICS_PATH = os.environ["GEOPI_OUTPUT_METRICS_PATH"]
         self._score(
             y_true=RegressionWorkflowBase.y_test,
             y_predict=RegressionWorkflowBase.y_test_predict,
             algorithm_name=self.naming,
-            store_path=MODEL_PATH,
+            store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
         self._cross_validation(
             trained_model=self.auto_model,
@@ -187,7 +190,7 @@ class RegressionWorkflowBase(WorkflowBase):
             y_train=RegressionWorkflowBase.y_train,
             cv_num=10,
             algorithm_name=self.naming,
-            store_path=MODEL_PATH,
+            store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
         self._plot_predicted_value_evaluation(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict, self.naming, MODEL_OUTPUT_IMAGE_PATH)
         self._plot_true_vs_predicted(

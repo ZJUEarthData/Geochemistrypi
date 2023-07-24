@@ -10,7 +10,6 @@ from rich.prompt import Confirm, Prompt
 from .constants import (
     CLASSIFICATION_MODELS,
     CLUSTERING_MODELS,
-    DATASET_OUTPUT_PATH,
     DECOMPOSITION_MODELS,
     FEATURE_SCALING_STRATEGY,
     GEO_IMAGE_PATH,
@@ -19,7 +18,6 @@ from .constants import (
     MLFLOW_ARTIFACT_DATA_PATH,
     MODE_OPTION,
     MODEL_OUTPUT_IMAGE_PATH,
-    MODEL_PATH,
     NON_AUTOML_MODELS,
     OPTION,
     OUTPUT_PATH,
@@ -40,16 +38,14 @@ from .process.classify import ClassificationModelSelection
 from .process.cluster import ClusteringModelSelection
 from .process.decompose import DecompositionModelSelection
 from .process.regress import RegressionModelSelection
-from .utils.base import clear_output, log, save_data, show_warning
+from .utils.base import clear_output, create_geopi_output_dir, log, save_data, show_warning
 from .utils.mlflow_utils import retrieve_previous_experiment_id
 
 # create the directories if they didn't exist yet
 os.makedirs(MODEL_OUTPUT_IMAGE_PATH, exist_ok=True)
 os.makedirs(STATISTIC_IMAGE_PATH, exist_ok=True)
-os.makedirs(DATASET_OUTPUT_PATH, exist_ok=True)
 os.makedirs(MAP_IMAGE_PATH, exist_ok=True)
 os.makedirs(GEO_IMAGE_PATH, exist_ok=True)
-os.makedirs(MODEL_PATH, exist_ok=True)
 
 
 def cli_pipeline(file_name: str) -> None:
@@ -110,6 +106,7 @@ def cli_pipeline(file_name: str) -> None:
     run_tag = Prompt.ask("✨ Run Tag Version", default="R - v1.0.0")
     run_description = Prompt.ask("✨ Run Description", default="Use xgboost for GeoPi classification.")
     mlflow.start_run(run_name=run_name, experiment_id=experiment.experiment_id, tags={"version": run_tag, "description": run_description})
+    create_geopi_output_dir(experiment.name, run_name)
     clear_output()
 
     # <--- Built-in Data Loading --->
@@ -140,44 +137,46 @@ def cli_pipeline(file_name: str) -> None:
     logger.debug("Data Selection")
     print("-*-*- Data Selection -*-*-")
     show_data_columns(data.columns)
-    data_processed = create_sub_data_set(data)
+    data_selected = create_sub_data_set(data)
     clear_output()
     print("The Selected Data Set:")
-    print(data_processed)
+    print(data_selected)
     clear_output()
     print("Basic Statistical Information: ")
-    basic_info(data_processed)
-    basic_statistic(data_processed)
-    correlation_plot(data_processed.columns, data_processed)
-    distribution_plot(data_processed.columns, data_processed)
-    logged_distribution_plot(data_processed.columns, data_processed)
-    save_data(data_processed, "Data Selected", DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+    basic_info(data_selected)
+    basic_statistic(data_selected)
+    correlation_plot(data_selected.columns, data_selected)
+    distribution_plot(data_selected.columns, data_selected)
+    logged_distribution_plot(data_selected.columns, data_selected)
+    GEOPI_OUTPUT_ARTIFACTS_DATA_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH")
+    save_data(data, "Data Original", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+    save_data(data_selected, "Data Selected", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
     clear_output()
 
     # <--- Imputation --->
     logger.debug("Imputation")
     print("-*-*- Imputation -*-*-")
-    is_null_value(data_processed)
-    ratio_null_vs_filled(data_processed)
-    imputed_flag = is_imputed(data_processed)
+    is_null_value(data_selected)
+    ratio_null_vs_filled(data_selected)
+    imputed_flag = is_imputed(data_selected)
     clear_output()
     if imputed_flag:
         print("-*-*- Strategy for Missing Values -*-*-")
         num2option(IMPUTING_STRATEGY)
         print("Which strategy do you want to apply?")
         strategy_num = limit_num_input(IMPUTING_STRATEGY, SECTION[1], num_input)
-        data_processed_imputed_np = imputer(data_processed, IMPUTING_STRATEGY[strategy_num - 1])
-        data_processed_imputed = np2pd(data_processed_imputed_np, data_processed.columns)
-        del data_processed_imputed_np
+        data_selected_imputed_np = imputer(data_selected, IMPUTING_STRATEGY[strategy_num - 1])
+        data_selected_imputed = np2pd(data_selected_imputed_np, data_selected.columns)
+        del data_selected_imputed_np
         clear_output()
         print("-*-*- Hypothesis Testing on Imputation Method -*-*-")
         print("Null Hypothesis: The distributions of the data set before and after imputing remain the same.")
         print("Thoughts: Check which column rejects null hypothesis.")
         print("Statistics Test Method: Wilcoxon Test")
         monte_carlo_simulator(
-            data_processed,
-            data_processed_imputed,
-            sample_size=data_processed_imputed.shape[0] // 2,
+            data_selected,
+            data_selected_imputed,
+            sample_size=data_selected_imputed.shape[0] // 2,
             iteration=100,
             test="wilcoxon",
             confidence=0.05,
@@ -186,20 +185,22 @@ def cli_pipeline(file_name: str) -> None:
         # print("The statistics test method: Kruskal Wallis Test")
         # monte_carlo_simulator(data_processed, data_processed_imputed, sample_size=50,
         #                       iteration=100, test='kruskal', confidence=0.05)
-        probability_plot(data_processed.columns, data_processed, data_processed_imputed)
-        basic_info(data_processed_imputed)
-        basic_statistic(data_processed_imputed)
-        del data_processed
+        probability_plot(data_selected.columns, data_selected, data_selected_imputed)
+        basic_info(data_selected_imputed)
+        basic_statistic(data_selected_imputed)
+        save_data(data_selected_imputed, "Data Selected Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+        del data_selected
         clear_output()
     else:
         # if the selected data set doesn't need imputation, which means there are no missing values.
-        data_processed_imputed = data_processed
+        data_selected_imputed = data_selected
 
     # <--- Feature Engineering --->
     logger.debug("Feature Engineering")
-    feature_built = FeatureConstructor(data_processed_imputed)
+    feature_built = FeatureConstructor(data_selected_imputed)
     feature_built.process_feature_engineering()
-    data_processed_imputed = feature_built.data
+    data_selected_imputed_fe = feature_built.data
+    del data_selected_imputed
 
     # <--- Mode Selection --->
     logger.debug("Mode Selection")
@@ -216,15 +217,15 @@ def cli_pipeline(file_name: str) -> None:
         print("Divide the processing data set into X (feature value) and Y (target value) respectively.")
         # create X data set
         print("Selected sub data set to create X data set:")
-        show_data_columns(data_processed_imputed.columns)
+        show_data_columns(data_selected_imputed_fe.columns)
         print("The selected X data set:")
-        X = create_sub_data_set(data_processed_imputed)
+        X = create_sub_data_set(data_selected_imputed_fe)
         print("Successfully create X data set.")
         print("The Selected Data Set:")
         print(X)
         print("Basic Statistical Information: ")
         basic_statistic(X)
-        save_data(X, "X Without Scaling", DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+        save_data(X, "X Without Scaling", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
         clear_output()
 
         # <--- Feature Scaling --->
@@ -242,23 +243,23 @@ def cli_pipeline(file_name: str) -> None:
             print(X)
             print("Basic Statistical Information: ")
             basic_statistic(X)
-            save_data(X, "X With Scaling", DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+            save_data(X, "X With Scaling", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
         clear_output()
 
         # create Y data set
         print("-*-*- Data Split - X Set and Y Set-*-*-")
         print("Selected sub data set to create Y data set:")
-        show_data_columns(data_processed_imputed.columns)
+        show_data_columns(data_selected_imputed_fe.columns)
         print("The selected Y data set:")
         print("Notice: Normally, please choose only one column to be tag column Y, not multiple columns.")
         print("Notice: For classification model training, please choose the label column which has distinctive integers.")
-        y = create_sub_data_set(data_processed_imputed)
+        y = create_sub_data_set(data_selected_imputed_fe)
         print("Successfully create Y data set.")
         print("The Selected Data Set:")
         print(y)
         print("Basic Statistical Information: ")
         basic_statistic(y)
-        save_data(y, "y", DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+        save_data(y, "Y", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
         clear_output()
 
         # create training data and testing data
@@ -272,15 +273,15 @@ def cli_pipeline(file_name: str) -> None:
             print(value)
             print(f"Basic Statistical Information: {key}")
             basic_statistic(value)
-            save_data(value, key, DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH)
-        X_train, X_test = train_test_data["X train"], train_test_data["X test"]
-        y_train, y_test = train_test_data["y train"], train_test_data["y test"]
-        del data_processed_imputed
+            save_data(value, key, GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+        X_train, X_test = train_test_data["X Train"], train_test_data["X Test"]
+        y_train, y_test = train_test_data["Y Train"], train_test_data["Y Test"]
+        del data_selected_imputed_fe
         clear_output()
     else:
         # unsupervised learning
-        X = data_processed_imputed
-        X_train = data_processed_imputed
+        X = data_selected_imputed_fe
+        X_train = data_selected_imputed_fe
         y, X_test, y_train, y_test = None, None, None, None
 
     # <--- Model Selection --->

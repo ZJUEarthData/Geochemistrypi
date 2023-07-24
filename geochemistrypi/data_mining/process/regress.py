@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
+import os
+
 import pandas as pd
 from multipledispatch import dispatch
 from rich import print
 
-from ..constants import DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH, MODEL_PATH, SECTION
+from ..constants import MLFLOW_ARTIFACT_DATA_PATH, SECTION
 from ..data.data_readiness import num_input
 from ..model.regression import (
     DecisionTreeRegression,
@@ -141,7 +143,7 @@ class RegressionModelSelection(ModelSelectionBase):
         self.reg_workflow.data_upload(y_test_predict=y_test_predict)
 
         # Save the model hyper-parameters
-        self.reg_workflow.save_hyper_parameters(hyper_parameters, self.model_name, MODEL_PATH)
+        self.reg_workflow.save_hyper_parameters(hyper_parameters, self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
 
         # Common components for every regression algorithm
         self.reg_workflow.common_components()
@@ -150,7 +152,7 @@ class RegressionModelSelection(ModelSelectionBase):
         self.reg_workflow.special_components()
 
         # Save the prediction result
-        self.reg_workflow.data_save(y_test_predict, "Y Test Predict", DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH, "Model Prediction")
+        self.reg_workflow.data_save(y_test_predict, "Y Test Predict", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Model Prediction")
 
         # Save the trained model
         self.reg_workflow.save_model()
@@ -202,9 +204,9 @@ class RegressionModelSelection(ModelSelectionBase):
 
         # Save the model hyper-parameters
         if self.reg_workflow.ray_best_model is not None:
-            self.reg_workflow.save_hyper_parameters(self.reg_workflow.ray_best_model.get_params(), self.model_name, MODEL_PATH)
+            self.reg_workflow.save_hyper_parameters(self.reg_workflow.ray_best_model.get_params(), self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
         else:
-            self.reg_workflow.save_hyper_parameters(self.reg_workflow.automl.best_config, self.model_name, MODEL_PATH)
+            self.reg_workflow.save_hyper_parameters(self.reg_workflow.automl.best_config, self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
 
         # Common components for every regression algorithm
         self.reg_workflow.common_components(is_automl)
@@ -213,7 +215,7 @@ class RegressionModelSelection(ModelSelectionBase):
         self.reg_workflow.special_components(is_automl)
 
         # Save the prediction result
-        self.reg_workflow.data_save(y_test_predict, "Y Test Predict", DATASET_OUTPUT_PATH, MLFLOW_ARTIFACT_DATA_PATH, "Model Prediction")
+        self.reg_workflow.data_save(y_test_predict, "Y Test Predict", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Model Prediction")
 
         # Save the trained model
         self.reg_workflow.save_model(is_automl)
