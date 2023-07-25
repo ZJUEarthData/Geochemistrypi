@@ -131,6 +131,7 @@ def cli_pipeline(file_name: str) -> None:
 
     # <--- World Map Projection --->
     logger.debug("World Map Projection")
+    print("-*-*- World Map Projection -*-*-")
     process_world_map(data)
 
     # <--- Data Selection --->
@@ -197,6 +198,7 @@ def cli_pipeline(file_name: str) -> None:
 
     # <--- Feature Engineering --->
     logger.debug("Feature Engineering")
+    print("-*-*- Feature Engineering -*-*-")
     feature_built = FeatureConstructor(data_selected_imputed)
     feature_built.process_feature_engineering()
     data_selected_imputed_fe = feature_built.data

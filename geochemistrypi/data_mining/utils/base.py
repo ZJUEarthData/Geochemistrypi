@@ -49,6 +49,21 @@ def create_geopi_output_dir(experiment_name: str, run_name: str) -> None:
     os.environ["GEOPI_OUTPUT_ARTIFACTS_IMAGE_PATH"] = geopi_output_artifacts_image_path
     os.makedirs(geopi_output_artifacts_image_path, exist_ok=True)
 
+    # Set the output artifacts image model output path for the current run
+    geopi_output_artifacts_image_model_output_path = os.path.join(geopi_output_artifacts_image_path, "model_output")
+    os.environ["GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH"] = geopi_output_artifacts_image_model_output_path
+    os.makedirs(geopi_output_artifacts_image_model_output_path, exist_ok=True)
+
+    # Set the output artifacts image statistic path for the current run
+    geopi_output_artifacts_image_statistic_path = os.path.join(geopi_output_artifacts_image_path, "statistic")
+    os.environ["GEOPI_OUTPUT_ARTIFACTS_IMAGE_STATISTIC_PATH"] = geopi_output_artifacts_image_statistic_path
+    os.makedirs(geopi_output_artifacts_image_statistic_path, exist_ok=True)
+
+    # Set the output artifacts image map path for the current run
+    geopi_output_artifacts_image_map_path = os.path.join(geopi_output_artifacts_image_path, "map")
+    os.environ["GEOPI_OUTPUT_ARTIFACTS_IMAGE_MAP_PATH"] = geopi_output_artifacts_image_map_path
+    os.makedirs(geopi_output_artifacts_image_map_path, exist_ok=True)
+
     # Set the output parameters path for the current run
     geopi_output_parameters_path = os.path.join(geopi_output_path, "parameters")
     os.environ["GEOPI_OUTPUT_PARAMETERS_PATH"] = geopi_output_parameters_path
@@ -61,7 +76,7 @@ def create_geopi_output_dir(experiment_name: str, run_name: str) -> None:
 
 
 def clear_output() -> None:
-    # TODO(sany hecan@mail2.sysu.edu.cn): Incite exception capture mechanism
+    """Clear the console output."""
     flag = input("(Press Enter key to move forward.)")
     my_os = platform.system()
     if flag == "":
@@ -73,22 +88,24 @@ def clear_output() -> None:
     print("")
 
 
-def save_fig(fig_name: str, image_path: str, tight_layout: bool = True) -> None:
-    """Save the figure.
+def save_fig(fig_name: str, image_path: str, mlflow_artifact_image_path: str = None, tight_layout: bool = True) -> None:
+    """Save the figure in the local directory and in mlflow specialized directory.
 
     Parameters
     ----------
+    fig_name : str
+        Figure name.
+
     image_path : str
         The path to store the image.
 
-    fig_name : str
-        Figure name.
+    mlflow_artifact_image_path : str, default=None
+        The path to store the image in mlflow.
 
     tight_layout : bool, default=True
         Automatically adjust subplot parameters to give specified padding.
     """
-    # TODO: seperate the stored path outside
-    path = os.path.join(image_path, fig_name + ".png")
+    full_path = os.path.join(image_path, fig_name + ".png")
     print(f"Save figure '{fig_name}' in {image_path}.")
     if tight_layout:
         plt.tight_layout()
@@ -96,16 +113,20 @@ def save_fig(fig_name: str, image_path: str, tight_layout: bool = True) -> None:
     # Check that the original file exists,
     # and if it does, add a number after the filename to distinguish
     i = 1
-    dir = path[:-4]
-    while os.path.isfile(path):
-        path = dir + str(i) + ".png"
+    dir = full_path[:-4]
+    while os.path.isfile(full_path):
+        full_path = dir + str(i) + ".png"
         i = i + 1
-    plt.savefig(path, format="png", dpi=300)
+    plt.savefig(full_path, format="png", dpi=300)
     plt.close()
+    if mlflow_artifact_image_path:
+        mlflow.log_artifact(full_path, artifact_path=mlflow_artifact_image_path)
+    else:
+        mlflow.log_artifact(full_path)
 
 
-def save_data(df: pd.DataFrame, df_name: str, path: str, mlflow_artifact_data_path: str = None) -> None:
-    """Save the dataset.
+def save_data(df: pd.DataFrame, df_name: str, data_path: str, mlflow_artifact_data_path: str = None) -> None:
+    """Save the dataset in the local directory and in mlflow specialized directory.
 
     Parameters
     ----------
@@ -123,19 +144,19 @@ def save_data(df: pd.DataFrame, df_name: str, path: str, mlflow_artifact_data_pa
     """
     try:
         # drop the index in case that the dimensions change
-        # store the result in the directory "results"
-        df.to_excel(os.path.join(path, "{}.xlsx".format(df_name)), index=False)
+        full_path = os.path.join(data_path, "{}.xlsx".format(df_name))
+        df.to_excel(full_path, index=False)
         if mlflow_artifact_data_path:
-            mlflow.log_artifact(os.path.join(path, "{}.xlsx".format(df_name)), artifact_path=mlflow_artifact_data_path)
+            mlflow.log_artifact(full_path, artifact_path=mlflow_artifact_data_path)
         else:
-            mlflow.log_artifact(os.path.join(path, "{}.xlsx".format(df_name)))
-        print(f"Successfully store '{df_name}' in '{df_name}.xlsx' in {path}.")
+            mlflow.log_artifact(full_path)
+        print(f"Successfully store '{df_name}' in '{df_name}.xlsx' in {data_path}.")
     except ModuleNotFoundError:
         print("** Please download openpyxl by pip3 **")
         print("** The data will be stored in .csv file **")
-        # store the result in the directory "results"
-        df.to_csv(os.path.join(path, "{}.csv".format(df_name)))
-        print(f"Successfully store '{df_name}' in '{df_name}.csv' in {path}.")
+        full_path = os.path.join(data_path, "{}.csv".format(df_name))
+        df.to_csv(full_path, index=False)
+        print(f"Successfully store '{df_name}' in '{df_name}.csv' in {data_path}.")
 
 
 def save_text(string: str, text_name: str, path: str) -> None:

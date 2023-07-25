@@ -30,6 +30,10 @@ MODEL_PATH = os.path.join(OUTPUT_PATH, "trained_models")
 # the directory where the data is saved within the MLflow run's artifact directory
 MLFLOW_ARTIFACT_DATA_PATH = "data"
 
+MLFLOW_ARTIFACT_IMAGE_STATISTIC_PATH = os.path.join("image", "statistic")
+MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH = os.path.join("image", "model_output")
+MLFLOW_ARTIFACT_IMAGE_MAP_PATH = os.path.join("image", "map")
+
 # Tell which section the user is currently in on the UML
 SECTION = ["User", "Data", "Model", "Plot"]
 

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+import os
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,9 +10,9 @@ from rich import print
 
 # import cartopy.crs as ccrs
 # import cartopy
-from ..constants import MAP_IMAGE_PATH, OPTION, SECTION
+from ..constants import MLFLOW_ARTIFACT_IMAGE_MAP_PATH, OPTION, SECTION
 from ..data.data_readiness import limit_num_input, num2option, num_input, show_data_columns
-from ..utils.base import clear_output, save_fig
+from ..utils.base import clear_output, save_data, save_fig
 
 logging.captureWarnings(True)
 
@@ -110,11 +111,13 @@ def map_projected(col: pd.Series, longitude: pd.DataFrame, latitude: pd.DataFram
     cb.ax.tick_params(labelsize=30)
     cb.set_label("Counts", fontsize=50)
 
-    save_fig(f"Map Projection - {col.name}", MAP_IMAGE_PATH)
+    data = pd.concat([col, longitude, latitude], axis=1)
+    save_fig(f"Map Projection - {col.name}", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MAP_PATH"), MLFLOW_ARTIFACT_IMAGE_MAP_PATH)
+    save_data(data, f"Map Projection - {col.name}", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MAP_PATH"), MLFLOW_ARTIFACT_IMAGE_MAP_PATH)
 
 
-def process_world_map(data):
-    print("-*-*- World Map Projection -*-*-")
+def process_world_map(data: pd.DataFrame) -> None:
+    """The process of projecting the data on the world map."""
     map_flag = 0
     is_map_projection = 0
     # TODO: Abstract the following code of checking the existence of the longitude and latitude columns into a function.
