@@ -2,6 +2,7 @@
 from typing import Dict
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from rich import print
 
@@ -59,24 +60,27 @@ def extra_trees_manual_hyper_parameters() -> Dict:
     return hyper_parameters
 
 
-def feature_importances(X_train: pd.DataFrame, trained_model: object, image_config: dict) -> None:
+def plot_feature_importances(columns_name: pd.Index, feature_importance: np.ndarray, image_config: dict) -> None:
     """Draw the feature importance bar diagram.
 
     Parameters
     ----------
-    X_train : pd.DataFrame (n_samples, n_components)
-        The training feature data.
+    columns_name : pd.Index
+        The name of the columns.
 
-    trained_model : sklearn algorithm model
-        The sklearn algorithm model trained with X_train data.
+    feature_importance : np.ndarray
+        The feature importance values.
+
+    image_config : dict
+        The configuration of the image.
     """
     # create drawing canvas
     fig, ax = plt.subplots(figsize=(image_config["width"], image_config["height"]), dpi=image_config["dpi"])
 
     # draw the main content
-    importances_values = trained_model.feature_importances_
+    importances_values = feature_importance
     importances = pd.DataFrame(importances_values, columns=["importance"])
-    feature_data = pd.DataFrame(X_train.columns, columns=["feature"])
+    feature_data = pd.DataFrame(columns_name, columns=["feature"])
     importance = pd.concat([feature_data, importances], axis=1)
     importance = importance.sort_values(["importance"], ascending=True)
     importance["importance"] = (importance["importance"]).astype(float)
