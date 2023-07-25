@@ -9,7 +9,7 @@ from rich import print
 from sklearn import metrics
 from sklearn.cluster import DBSCAN, AffinityPropagation, KMeans
 
-from ..constants import MLFLOW_ARTIFACT_DATA_PATH, MODEL_OUTPUT_IMAGE_PATH
+from ..constants import MLFLOW_ARTIFACT_DATA_PATH, MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH
 from ..utils.base import save_data, save_fig
 from ._base import WorkflowBase
 from .func.algo_clustering._dbscan import dbscan_manual_hyper_parameters, dbscan_result_plot
@@ -61,15 +61,15 @@ class KMeansClustering(ClusteringWorkflowBase):
 
     def __init__(
         self,
-        n_clusters=8,
-        init="k-means++",
-        n_init=10,
-        max_iter=300,
-        tol=1e-4,
-        verbose=0,
-        random_state=None,
-        copy_x=True,
-        algorithm="auto",
+        n_clusters: int = 8,
+        init: str = "k-means++",
+        n_init: int = 10,
+        max_iter: int = 300,
+        tol: float = 1e-4,
+        verbose: int = 0,
+        random_state: Optional[int] = None,
+        copy_x: bool = True,
+        algorithm: str = "auto",
     ) -> None:
         """
         Parameters
@@ -192,32 +192,39 @@ class KMeansClustering(ClusteringWorkflowBase):
         cluster_centers_: np.ndarray,
         n_clusters: int,
         algorithm_name: str,
-        store_path: str,
+        local_path: str,
+        mlflow_path: str,
     ) -> None:
         """Plot the silhouette diagram of the clustering result."""
         print("-----* Silhouette Diagram *-----")
         plot_silhouette_diagram(data, cluster_labels, cluster_centers_, n_clusters, algorithm_name)
-        save_fig(f"Silhouette Diagram - {algorithm_name}", store_path)
-        mlflow.log_artifact(f"{store_path}/Silhouette Diagram - {algorithm_name}.png")
+        save_fig(f"Silhouette Diagram - {algorithm_name}", local_path, mlflow_path)
+        data_with_labels = pd.concat([data, cluster_labels], axis=1)
+        save_data(data_with_labels, "Silhouette Diagram - Data With Labels", local_path, mlflow_path)
+        cluster_center_data = pd.DataFrame(cluster_centers_, columns=data.columns)
+        save_data(cluster_center_data, "Silhouette Diagram - Cluster Centers", local_path, mlflow_path)
 
     @staticmethod
-    def _scatter2d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
+    def _scatter2d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the two-dimensional diagram of the clustering result."""
         print("-----* Cluster Two-Dimensional Diagram *-----")
         scatter2d(data, cluster_labels, algorithm_name)
-        save_fig(f"Cluster Two-Dimensional Diagram - {algorithm_name}", store_path)
-        mlflow.log_artifact(f"{store_path}/Cluster Two-Dimensional Diagram - {algorithm_name}.png")
+        save_fig(f"Cluster Two-Dimensional Diagram - {algorithm_name}", local_path, mlflow_path)
+        data_with_labels = pd.concat([data, cluster_labels], axis=1)
+        save_data(data_with_labels, f"Cluster Two-Dimensional Diagram - {algorithm_name}", local_path, mlflow_path)
 
     @staticmethod
-    def _scatter3d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
+    def _scatter3d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the three-dimensional diagram of the clustering result."""
         print("-----* Cluster Three-Dimensional Diagram *-----")
         scatter3d(data, cluster_labels, algorithm_name)
-        save_fig(f"Cluster Three-Dimensional Diagram - {algorithm_name}", store_path)
-        mlflow.log_artifact(f"{store_path}/Cluster Three-Dimensional Diagram - {algorithm_name}.png")
+        save_fig(f"Cluster Three-Dimensional Diagram - {algorithm_name}", local_path, mlflow_path)
+        data_with_labels = pd.concat([data, cluster_labels], axis=1)
+        save_data(data_with_labels, f"Cluster Two-Dimensional Diagram - {algorithm_name}", local_path, mlflow_path)
 
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._get_scores()
         self._plot_silhouette_diagram(
             data=self.X,
@@ -225,7 +232,8 @@ class KMeansClustering(ClusteringWorkflowBase):
             cluster_centers_=self.get_cluster_centers(),
             n_clusters=self.n_clusters,
             algorithm_name=self.naming,
-            store_path=MODEL_OUTPUT_IMAGE_PATH,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
         # Draw graphs when the number of principal components > 3
         if self.X.shape[1] >= 3:
@@ -235,7 +243,8 @@ class KMeansClustering(ClusteringWorkflowBase):
                 data=two_dimen_data,
                 cluster_labels=self.clustering_result["clustering result"],
                 algorithm_name=self.naming,
-                store_path=MODEL_OUTPUT_IMAGE_PATH,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
 
             # choose three of dimensions to draw
@@ -244,7 +253,8 @@ class KMeansClustering(ClusteringWorkflowBase):
                 data=three_dimen_data,
                 cluster_labels=self.clustering_result["clustering result"],
                 algorithm_name=self.naming,
-                store_path=MODEL_OUTPUT_IMAGE_PATH,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
         elif self.X.shape[1] == 3:
             # choose two of dimensions to draw
@@ -253,7 +263,8 @@ class KMeansClustering(ClusteringWorkflowBase):
                 data=two_dimen_data,
                 cluster_labels=self.clustering_result["clustering result"],
                 algorithm_name=self.naming,
-                store_path=MODEL_OUTPUT_IMAGE_PATH,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
 
             # no need to choose
@@ -261,14 +272,16 @@ class KMeansClustering(ClusteringWorkflowBase):
                 data=self.X,
                 cluster_labels=self.clustering_result["clustering result"],
                 algorithm_name=self.naming,
-                store_path=MODEL_OUTPUT_IMAGE_PATH,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
         elif self.X.shape[1] == 2:
             self._scatter2d(
                 data=self.X,
                 cluster_labels=self.clustering_result["clustering result"],
                 algorithm_name=self.naming,
-                store_path=MODEL_OUTPUT_IMAGE_PATH,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
         else:
             pass
@@ -282,49 +295,49 @@ class DBSCANClustering(ClusteringWorkflowBase):
 
     def __init__(
         self,
-        eps=0.5,
-        min_samples=5,
-        metric="euclidean",
-        metric_params=None,
-        algorithm="auto",
-        leaf_size=30,
-        p=None,
-        n_jobs=None,
+        eps: float = 0.5,
+        min_samples: int = 5,
+        metric: str = "euclidean",
+        metric_params: Optional[Dict] = None,
+        algorithm: str = "auto",
+        leaf_size: int = 30,
+        p: float = None,
+        n_jobs: int = None,
     ) -> None:
         """
         Parameters
         ----------
         eps : float, default=0.5
-        The maximum distance between two samples for one to be considered as in the neighborhood of the other. This is not a maximum bound on the distances of points within a cluster.
-          This is the most important DBSCAN parameter to choose appropriately for your data set and distance function.
+            The maximum distance between two samples for one to be considered as in the neighborhood of the other. This is not a maximum bound on the distances of points within a cluster.
+            This is the most important DBSCAN parameter to choose appropriately for your data set and distance function.
 
         min_samples : int, default=5
-        The number of samples (or total weight) in a neighborhood for a point to be considered as a core point. This includes the point itself.
+            The number of samples (or total weight) in a neighborhood for a point to be considered as a core point. This includes the point itself.
 
-        metric : str, or callable, default=’euclidean’
-        The metric to use when calculating distance between instances in a feature array. If metric is a string or callable, it must be one of the options allowed by sklearn.metrics.pairwise_distances
-          for its metric parameter.
-          If metric is “precomputed”, X is assumed to be a distance matrix and must be square. X may be a sparse graph, in which case only “nonzero” elements may be considered neighbors for DBSCAN.
+        metric : str, or callable, default=`euclidean`
+            The metric to use when calculating distance between instances in a feature array. If metric is a string or callable, it must be one of the options allowed
+              by sklearn.metrics.pairwise_distances for its metric parameter.
+            If metric is “precomputed”, X is assumed to be a distance matrix and must be square. X may be a sparse graph, in which case only “nonzero” elements may be considered neighbors for DBSCAN.
 
-        New in version 0.17: metric precomputed to accept precomputed sparse matrix.
+            New in version 0.17: metric precomputed to accept precomputed sparse matrix.
 
         metric_params : dict, default=None
-        Additional keyword arguments for the metric function.
+            Additional keyword arguments for the metric function.
 
-        New in version 0.19.
+            New in version 0.19.
 
-        algorithm : {‘auto’, ‘ball_tree’, ‘kd_tree’, ‘brute’}, default=’auto’
-        The algorithm to be used by the NearestNeighbors module to compute pointwise distances and find nearest neighbors. See NearestNeighbors module documentation for details.
+        algorithm : {`auto`, `ball_tree`, `kd_tree`, `brute`}, default=`auto`
+            The algorithm to be used by the NearestNeighbors module to compute pointwise distances and find nearest neighbors. See NearestNeighbors module documentation for details.
 
         leaf_size : int, default=30
-        Leaf size passed to BallTree or cKDTree. This can affect the speed of the construction and query, as well as the memory required to store the tree. The optimal value depends
-          on the nature of the problem.
+            Leaf size passed to BallTree or cKDTree. This can affect the speed of the construction and query, as well as the memory required to store the tree. The optimal value depends
+            on the nature of the problem.
 
         p : float, default=None
-        The power of the Minkowski metric to be used to calculate distance between points. If None, then p=2 (equivalent to the Euclidean distance).
+            The power of the Minkowski metric to be used to calculate distance between points. If None, then p=2 (equivalent to the Euclidean distance).
 
         n_jobs : int, default=None
-        The number of parallel jobs to run. None means 1 unless in a joblib.parallel_backend context. -1 means using all processors. See Glossary for more details.
+            The number of parallel jobs to run. None means 1 unless in a joblib.parallel_backend context. -1 means using all processors. See Glossary for more details.
 
         References
         ----------------------------------------
@@ -363,20 +376,23 @@ class DBSCANClustering(ClusteringWorkflowBase):
         return hyper_parameters
 
     @staticmethod
-    def _clustering_result_plot(X: pd.DataFrame, trained_model: any, algorithm_name: str, imag_config: dict, store_path: str) -> None:
+    def _clustering_result_plot(X: pd.DataFrame, trained_model: any, algorithm_name: str, imag_config: dict, local_path: str, mlflow_path: str) -> None:
         """Plot the clustering result in 2D graph."""
-        print("-------** DBSCAN Clustering Result 2D Plot **----------")
+        print("-------** Cluster Two-Dimensional Diagram **----------")
         dbscan_result_plot(X, trained_model, imag_config, algorithm_name)
-        save_fig(f"Plot - {algorithm_name} - 2D", store_path)
+        save_fig(f"Cluster Two-Dimensional Diagram - {algorithm_name}", local_path, mlflow_path)
+        save_data(X, f"Cluster Two-Dimensional Diagram - {algorithm_name}", local_path, mlflow_path)
 
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._clustering_result_plot(
             X=self.X,
             trained_model=self.model,
             algorithm_name=self.naming,
             imag_config=self.image_config,
-            store_path=MODEL_OUTPUT_IMAGE_PATH,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
 
 

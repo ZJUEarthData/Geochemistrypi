@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 from typing import Dict, Optional, Union
 
 import numpy as np
@@ -7,8 +8,8 @@ from rich import print
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
-from ..constants import MODEL_OUTPUT_IMAGE_PATH
-from ..utils.base import save_fig
+from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH
+from ..utils.base import save_data, save_fig
 from ._base import WorkflowBase
 from .func.algo_decomposition._pca import biplot, pca_manual_hyper_parameters, triplot
 from .func.algo_decomposition._tsne import tsne_manual_hyper_parameters
@@ -232,18 +233,22 @@ class PCADecomposition(DecompositionWorkflowBase):
         print(self.model.explained_variance_ratio_)
 
     @staticmethod
-    def _biplot(reduced_data: pd.DataFrame, pc_data: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
+    def _biplot(reduced_data: pd.DataFrame, pc_data: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Draw bi-plot."""
         print("-----* Compositional Bi-plot *-----")
         biplot(reduced_data, pc_data, algorithm_name)
-        save_fig(f"Compositional Bi-plot - {algorithm_name}", store_path)
+        save_fig(f"Compositional Bi-plot - {algorithm_name}", local_path, mlflow_path)
+        save_data(reduced_data, "Compositional Bi-plot - Reduced Data", local_path, mlflow_path)
+        save_data(pc_data, "Compositional Bi-plot - PC Data", local_path, mlflow_path)
 
     @staticmethod
-    def _triplot(reduced_data: pd.DataFrame, pc_data: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
+    def _triplot(reduced_data: pd.DataFrame, pc_data: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Draw tri-plot."""
         print("-----* Compositional Tri-plot *-----")
         triplot(reduced_data, pc_data, algorithm_name)
-        save_fig(f"Compositional Tri-plot - {algorithm_name}", store_path)
+        save_fig(f"Compositional Tri-plot - {algorithm_name}", local_path, mlflow_path)
+        save_data(reduced_data, "Compositional Tri-plot - Reduced Data", local_path, mlflow_path)
+        save_data(pc_data, "Compositional Tri-plot - PC Data", local_path, mlflow_path)
 
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
@@ -251,6 +256,7 @@ class PCADecomposition(DecompositionWorkflowBase):
         self._get_principal_components()
         self._get_explained_variance_ratio()
 
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         # Draw graphs when the number of principal components > 3
         if kwargs["components_num"] > 3:
             # choose two of dimensions to draw
@@ -260,7 +266,8 @@ class PCADecomposition(DecompositionWorkflowBase):
                 reduced_data=two_dimen_reduced_data,
                 pc_data=two_dimen_pc_data,
                 algorithm_name=self.naming,
-                store_path=MODEL_OUTPUT_IMAGE_PATH,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
 
             # choose three of dimensions to draw
@@ -270,7 +277,8 @@ class PCADecomposition(DecompositionWorkflowBase):
                 reduced_data=three_dimen_reduced_data,
                 pc_data=three_dimen_pc_data,
                 algorithm_name=self.naming,
-                store_path=MODEL_OUTPUT_IMAGE_PATH,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
         elif kwargs["components_num"] == 3:
             # choose two of dimensions to draw
@@ -280,21 +288,24 @@ class PCADecomposition(DecompositionWorkflowBase):
                 reduced_data=two_dimen_reduced_data,
                 pc_data=two_dimen_pc_data,
                 algorithm_name=self.naming,
-                store_path=MODEL_OUTPUT_IMAGE_PATH,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
             # no need to choose
             self._triplot(
                 reduced_data=self.X_reduced,
                 pc_data=self.pc_data,
                 algorithm_name=self.naming,
-                store_path=MODEL_OUTPUT_IMAGE_PATH,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
         elif kwargs["components_num"] == 2:
             self._biplot(
                 reduced_data=self.X_reduced,
                 pc_data=self.pc_data,
                 algorithm_name=self.naming,
-                store_path=MODEL_OUTPUT_IMAGE_PATH,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
         else:
             pass

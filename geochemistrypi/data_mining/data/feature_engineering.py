@@ -149,7 +149,6 @@ class FeatureConstructor(object):
 
     def process_feature_engineering(self) -> None:
         """Process the feature engineering."""
-        print("-*-*- Feature Engineering -*-*-")
         print("The Selected Data Set:")
         show_data_columns(self.data.columns)
         fe_flag = 0

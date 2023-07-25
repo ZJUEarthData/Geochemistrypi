@@ -3,7 +3,6 @@ import json
 import os
 import pickle
 from abc import ABCMeta, abstractmethod
-from datetime import date
 from typing import Dict, List, Optional, Tuple, Union
 
 import joblib
@@ -254,7 +253,7 @@ class WorkflowBase(metaclass=ABCMeta):
     def save_model(self) -> None:
         """Persist the model for future use after training the model with Scikit-learn framework."""
         print("-----* Model Persistence *-----")
-        filename = f"{'_'.join(self.naming.split())}_{date.today()}"
+        filename = f"{'_'.join(self.naming.split())}"
         pickle_filename = filename + ".pkl"
         GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH")
         pickle_path = os.path.join(GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH, pickle_filename)
@@ -272,7 +271,7 @@ class WorkflowBase(metaclass=ABCMeta):
     def save_model(self, is_automl: bool) -> None:
         """Persist the model for future use after training the model with FLAML framework."""
         print("-----* Model Persistence *-----")
-        filename = f"{'_'.join(self.naming.split())}_{date.today()}"
+        filename = f"{'_'.join(self.naming.split())}"
         pickle_filename = filename + ".pkl"
         GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH")
         pickle_path = os.path.join(GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH, pickle_filename)
