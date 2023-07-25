@@ -17,8 +17,8 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.svm import SVR
 from sklearn.tree import DecisionTreeRegressor
 
-from ..constants import MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
-from ..utils.base import save_fig, save_text
+from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
+from ..utils.base import save_data, save_fig, save_text
 from ._base import WorkflowBase
 from .func.algo_regression._common import cross_validation, plot_predicted_value_evaluation, plot_true_vs_predicted, score
 from .func.algo_regression._decision_tree import decision_tree_manual_hyper_parameters, decision_tree_plot
@@ -28,7 +28,7 @@ from .func.algo_regression._linear_regression import linear_regression_manual_hy
 from .func.algo_regression._polynomial_regression import polynomial_regression_manual_hyper_parameters, show_formula
 from .func.algo_regression._rf import box_plot, feature_importance__, random_forest_manual_hyper_parameters
 from .func.algo_regression._svr import plot_2d_decision_boundary, svr_manual_hyper_parameters
-from .func.algo_regression._xgboost import feature_importance, histograms_feature_weights, permutation_importance_, xgboost_manual_hyper_parameters
+from .func.algo_regression._xgboost import histograms_feature_weights, permutation_importance_, plot_feature_importance, xgboost_manual_hyper_parameters
 
 
 class RegressionWorkflowBase(WorkflowBase):
@@ -112,18 +112,22 @@ class RegressionWorkflowBase(WorkflowBase):
         return dict()
 
     @staticmethod
-    def _plot_predicted_value_evaluation(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
+    def _plot_predicted_value_evaluation(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the predicted value evaluation."""
         print("-----* Predicted Value Evaluation *-----")
         plot_predicted_value_evaluation(y_test, y_test_predict)
-        save_fig(f"Predicted Value Evaluation - {algorithm_name}", store_path)
+        save_fig(f"Predicted Value Evaluation - {algorithm_name}", local_path, mlflow_path)
+        data = pd.concat([y_test, y_test_predict], axis=1)
+        save_data(data, f"Predicted Value Evaluation - {algorithm_name}", local_path, mlflow_path)
 
     @staticmethod
-    def _plot_true_vs_predicted(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
+    def _plot_true_vs_predicted(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the true value vs. predicted value."""
         print("-----* True Value vs. Predicted Value *-----")
         plot_true_vs_predicted(y_test_predict, y_test, algorithm_name)
-        save_fig(f"True Value vs. Predicted Value - {algorithm_name}", store_path)
+        save_fig(f"True Value vs. Predicted Value - {algorithm_name}", local_path, mlflow_path)
+        data = pd.concat([y_test, y_test_predict], axis=1)
+        save_data(data, f"True Value vs. Predicted Value - {algorithm_name}", local_path, mlflow_path)
 
     @staticmethod
     def _score(y_true: pd.DataFrame, y_predict: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
@@ -145,8 +149,9 @@ class RegressionWorkflowBase(WorkflowBase):
 
     @dispatch()
     def common_components(self) -> None:
-        """Invoke all common application functions for classification algorithms by Scikit-learn framework."""
-        GEOPI_OUTPUT_METRICS_PATH = os.environ["GEOPI_OUTPUT_METRICS_PATH"]
+        """Invoke all common application functions for regression algorithms by Scikit-learn framework."""
+        GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._score(
             y_true=RegressionWorkflowBase.y_test,
             y_predict=RegressionWorkflowBase.y_test_predict,
@@ -165,19 +170,22 @@ class RegressionWorkflowBase(WorkflowBase):
             y_test=RegressionWorkflowBase.y_test,
             y_test_predict=RegressionWorkflowBase.y_test_predict,
             algorithm_name=self.naming,
-            store_path=MODEL_OUTPUT_IMAGE_PATH,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
         self._plot_true_vs_predicted(
             y_test_predict=RegressionWorkflowBase.y_test_predict,
             y_test=RegressionWorkflowBase.y_test,
             algorithm_name=self.naming,
-            store_path=MODEL_OUTPUT_IMAGE_PATH,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
 
     @dispatch(bool)
     def common_components(self, is_automl: bool) -> None:
-        """Invoke all common application functions for classification algorithms by FLAML framework."""
-        GEOPI_OUTPUT_METRICS_PATH = os.environ["GEOPI_OUTPUT_METRICS_PATH"]
+        """Invoke all common application functions for regression algorithms by FLAML framework."""
+        GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._score(
             y_true=RegressionWorkflowBase.y_test,
             y_predict=RegressionWorkflowBase.y_test_predict,
@@ -192,12 +200,19 @@ class RegressionWorkflowBase(WorkflowBase):
             algorithm_name=self.naming,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
-        self._plot_predicted_value_evaluation(RegressionWorkflowBase.y_test, RegressionWorkflowBase.y_test_predict, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        self._plot_predicted_value_evaluation(
+            y_test=RegressionWorkflowBase.y_test,
+            y_test_predict=RegressionWorkflowBase.y_test_predict,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
         self._plot_true_vs_predicted(
             y_test_predict=RegressionWorkflowBase.y_test_predict,
             y_test=RegressionWorkflowBase.y_test,
             algorithm_name=self.naming,
-            store_path=MODEL_OUTPUT_IMAGE_PATH,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
 
 
@@ -274,7 +289,6 @@ class XgboostRegression(RegressionWorkflowBase):
     # Hence, we have to copy it here again. Just ignore it
     _SklObjective = Optional[Union[str, Callable[[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]]]
 
-    # TODO: find out the attributes importance_type effect
     def __init__(
         self,
         max_depth: Optional[int] = 6,
@@ -571,17 +585,21 @@ class XgboostRegression(RegressionWorkflowBase):
         return hyper_parameters
 
     @staticmethod
-    def _feature_importance(X: pd.DataFrame, trained_model: object, image_config: dict, algorithm_name: str, store_path: str) -> None:
+    def _plot_feature_importance(X: pd.DataFrame, trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Feature importance plot."""
         print("-----* Feature Importance *-----")
-        feature_importance(X, trained_model, image_config)
-        save_fig(f"Feature Importance - {algorithm_name}", store_path)
+        columns_name = X.columns
+        feature_importance = trained_model.feature_importances_
+        plot_feature_importance(columns_name, feature_importance, image_config)
+        save_fig(f"Feature Importance - {algorithm_name}", local_path, mlflow_path)
+        data = pd.DataFrame({"Feature": columns_name, "Importance": feature_importance})
+        save_data(data, f"Feature Importance - {algorithm_name}", local_path, mlflow_path)
 
     @staticmethod
-    def _histograms_feature_weights(X: pd.DataFrame, trained_model: object, image_config: dict, algorithm_name: str, store_path: str) -> None:
+    def _histograms_feature_weights(X: pd.DataFrame, trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Histograms of feature weights plot."""
         histograms_feature_weights(X, trained_model, image_config)
-        save_fig(f"Regression - {algorithm_name} - Feature Importance Score", store_path)
+        save_fig(f"Feature Importance Score - {algorithm_name}", local_path, mlflow_path)
 
     @staticmethod
     def _permutation_importance(
@@ -591,40 +609,73 @@ class XgboostRegression(RegressionWorkflowBase):
         trained_model: object,
         image_config: dict,
         algorithm_name: str,
-        store_path: str,
+        local_path: str,
+        mlflow_path: str,
     ) -> None:
         """Permutation importance plot."""
         permutation_importance_(X, X_test, y_test, trained_model, image_config)
-        save_fig(f"Regression - {algorithm_name} - Xgboost Feature Importance", store_path)
+        save_fig(f"Xgboost Feature Importance - {algorithm_name}", local_path, mlflow_path)
 
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        self._feature_importance(XgboostRegression.X, self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
-        self._histograms_feature_weights(XgboostRegression.X, self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_feature_importance(
+            X=XgboostRegression.X,
+            trained_model=self.model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._histograms_feature_weights(
+            X=XgboostRegression.X,
+            trained_model=self.model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
         self._permutation_importance(
-            XgboostRegression.X,
-            XgboostRegression.X_test,
-            XgboostRegression.y_test,
-            self.model,
-            self.image_config,
-            self.naming,
-            MODEL_OUTPUT_IMAGE_PATH,
+            X=XgboostRegression.X,
+            X_test=XgboostRegression.X_test,
+            y_test=XgboostRegression.y_test,
+            trained_model=self.model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        self._feature_importance(XgboostRegression.X, self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
-        self._histograms_feature_weights(XgboostRegression.X, self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_feature_importance(
+            X=XgboostRegression.X,
+            trained_model=self.auto_model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._histograms_feature_weights(
+            X=XgboostRegression.X,
+            trained_model=self.auto_model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
         self._permutation_importance(
-            XgboostRegression.X,
-            XgboostRegression.X_test,
-            XgboostRegression.y_test,
-            self.auto_model,
-            self.image_config,
-            self.naming,
-            MODEL_OUTPUT_IMAGE_PATH,
+            X=XgboostRegression.X,
+            X_test=XgboostRegression.X_test,
+            y_test=XgboostRegression.y_test,
+            trained_model=self.auto_model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
 
 

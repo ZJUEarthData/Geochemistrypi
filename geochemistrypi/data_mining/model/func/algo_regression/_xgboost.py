@@ -52,24 +52,22 @@ def xgboost_manual_hyper_parameters() -> Dict:
     return hyper_parameters
 
 
-def feature_importance(X: pd.DataFrame, trained_model: object, image_config: dict) -> None:
+def plot_feature_importance(columns_name: pd.Index, feature_importance: np.ndarray, image_config: Dict) -> None:
     """Plot the Feature Importance.
 
     Parameters
     ----------
-    X: pd.DataFrame (n_samples, n_components)
+    columns_name : pd.Index
         The input data.
 
-    trained_model : sklearn algorithm model
-        The sklearn algorithm model trained with X_train data.
+    feature_importance : np.ndarray
+        The feature importance value.
     """
-    columns_name = X.columns
-
     # print the feature importance value orderly
-    for feature_name, score in zip(list(columns_name), trained_model.feature_importances_):
+    for feature_name, score in zip(list(columns_name), feature_importance):
         print(feature_name, ":", score)
     plt.figure(figsize=(image_config["width"], image_config["height"]), dpi=image_config["dpi"])
-    plt.bar(range(len(columns_name)), trained_model.feature_importances_, tick_label=columns_name)
+    plt.bar(range(len(columns_name)), feature_importance, tick_label=columns_name)
 
 
 def histograms_feature_weights(X: pd.DataFrame, trained_model: object, image_config: dict) -> None:
