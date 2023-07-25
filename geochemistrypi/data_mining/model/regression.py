@@ -23,7 +23,7 @@ from ._base import WorkflowBase
 from .func.algo_regression._common import cross_validation, plot_predicted_value_evaluation, plot_true_vs_predicted, score
 from .func.algo_regression._decision_tree import decision_tree_manual_hyper_parameters, decision_tree_plot
 from .func.algo_regression._deep_neural_network import deep_neural_network_manual_hyper_parameters
-from .func.algo_regression._extra_tree import extra_trees_manual_hyper_parameters, feature_importances
+from .func.algo_regression._extra_tree import extra_trees_manual_hyper_parameters, plot_feature_importances
 from .func.algo_regression._linear_regression import linear_regression_manual_hyper_parameters, plot_2d_graph, plot_3d_graph, show_formula
 from .func.algo_regression._polynomial_regression import polynomial_regression_manual_hyper_parameters, show_formula
 from .func.algo_regression._rf import box_plot, feature_importance__, random_forest_manual_hyper_parameters
@@ -910,21 +910,35 @@ class DecisionTreeRegression(RegressionWorkflowBase):
         hyper_parameters = decision_tree_manual_hyper_parameters()
         return hyper_parameters
 
-    def _plot_tree_function(self, trained_model: object, image_config: dict, algorithm_name: str, store_path: str) -> None:
+    def _plot_tree_function(self, trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Drawing decision tree diagrams."""
         print("-----* Decision Tree Plot *-----")
         decision_tree_plot(trained_model, image_config)
-        save_fig(f"Regression - {algorithm_name} - Tree Graph", store_path)
+        save_fig(f"Tree Graph - {algorithm_name}", local_path, mlflow_path)
 
     @dispatch()
     def special_components(self):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        self._plot_tree_function(self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_tree_function(
+            trained_model=self.model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        self._plot_tree_function(self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_tree_function(
+            trained_model=self.auto_model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
 
 
 class ExtraTreesRegression(RegressionWorkflowBase):
@@ -1179,21 +1193,41 @@ class ExtraTreesRegression(RegressionWorkflowBase):
         return hyper_parameters
 
     @staticmethod
-    def _feature_importances(X_train: pd.DataFrame, trained_model: object, image_config: dict, algorithm_name: str, store_path: str) -> None:
+    def _plot_feature_importances(X_train: pd.DataFrame, trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Draw the feature importance bar diagram."""
         print("-----* Feature Importance *-----")
-        feature_importances(X_train, trained_model, image_config)
-        save_fig(f"Regression - {algorithm_name} - Feature Importance Plot", store_path)
+        columns_name = X_train.columns
+        feature_importances = trained_model.feature_importances_
+        plot_feature_importances(columns_name, feature_importances, image_config)
+        save_fig(f"Feature Importance - {algorithm_name}", local_path, mlflow_path)
+        data = pd.DataFrame({"Feature": columns_name, "Importance": feature_importances})
+        save_data(data, f"Feature Importance - {algorithm_name}", local_path, mlflow_path)
 
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        self._feature_importances(ExtraTreesRegression.X_train, self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_feature_importances(
+            X_train=ExtraTreesRegression.X_train,
+            trained_model=self.model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        self._feature_importances(ExtraTreesRegression.X_train, self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_feature_importances(
+            X_train=ExtraTreesRegression.X_train,
+            trained_model=self.auto_model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
 
 
 class RandomForestRegression(RegressionWorkflowBase):
@@ -1204,24 +1238,24 @@ class RandomForestRegression(RegressionWorkflowBase):
 
     def __init__(
         self,
-        n_estimators=100,
-        criterion="mse",
-        max_depth=None,
-        min_samples_split=2,
-        min_samples_leaf=1,
-        min_weight_fraction_leaf=0.0,
-        max_features="sqrt",
-        max_leaf_nodes=None,
-        min_impurity_decrease=0.0,
-        bootstrap=True,
-        oob_score=False,
-        n_jobs=None,
-        random_state=None,
-        verbose=0,
-        warm_start=False,
+        n_estimators: int = 100,
+        criterion: str = "mse",
+        max_depth: Optional[int] = None,
+        min_samples_split: Union[int, float] = 2,
+        min_samples_leaf: Union[int, float] = 1,
+        min_weight_fraction_leaf: float = 0.0,
+        max_features: Union[int, float] = "sqrt",
+        max_leaf_nodes: int = None,
+        min_impurity_decrease: float = 0.0,
+        bootstrap: bool = True,
+        oob_score: bool = False,
+        n_jobs: int = None,
+        random_state: int = None,
+        verbose: int = 0,
+        warm_start: bool = False,
         # class_weight=None,
-        ccp_alpha=0.0,
-        max_samples=None,
+        ccp_alpha: float = 0.0,
+        max_samples: Union[int, float] = None,
     ) -> None:
         """
         Parameters
@@ -1686,47 +1720,47 @@ class SVMRegression(RegressionWorkflowBase):
     def _plot_2d_decision_boundary(
         X: pd.DataFrame,
         X_test: pd.DataFrame,
-        y_test: pd.DataFrame,
         trained_model: Any,
         image_config: dict,
         algorithm_name: str,
-        store_path: str,
-        contour_data: Optional[List[np.ndarray]] = None,
-        labels: Optional[np.ndarray] = None,
+        local_path: str,
+        mlflow_path: str,
     ) -> None:
         """Plot the decision boundary of the trained model with the testing data set below."""
         print("-----* Two-dimensional Decision Boundary Diagram *-----")
-        plot_2d_decision_boundary(X, X_test, y_test, trained_model, image_config, algorithm_name)
-        save_fig(f"Regression - {algorithm_name} - Decision Boundary", store_path)
+        plot_2d_decision_boundary(X, X_test, trained_model, image_config)
+        save_fig(f"Decision Boundary - {algorithm_name}", local_path, mlflow_path)
+        save_data(X, "Decision Boundary - X", local_path, mlflow_path)
+        save_data(X_test, "Decision Boundary - X Test", local_path, mlflow_path)
 
     @dispatch()
     def special_components(self, **kwargs):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         if SVMRegression.X.shape[1] == 2:
             self._plot_2d_decision_boundary(
-                SVMRegression.X,
-                SVMRegression.X_test,
-                SVMRegression.y_test,
-                self.model,
-                self.image_config,
-                self.naming,
-                MODEL_OUTPUT_IMAGE_PATH,
+                X=SVMRegression.X,
+                X_test=SVMRegression.X_test,
+                trained_model=self.model,
+                image_config=self.image_config,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
 
     @dispatch(bool)
     def special_components(self, is_automl: bool, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         if SVMRegression.X.shape[1] == 2:
             self._plot_2d_decision_boundary(
-                SVMRegression.X,
-                SVMRegression.X_test,
-                SVMRegression.y_test,
-                self.auto_model,
-                self.image_config,
-                self.naming,
-                MODEL_OUTPUT_IMAGE_PATH,
+                X=SVMRegression.X,
+                X_test=SVMRegression.X_test,
+                trained_model=self.auto_model,
+                image_config=self.image_config,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
 
 
@@ -2022,21 +2056,35 @@ class DNNRegression(RegressionWorkflowBase):
         return hyper_parameters
 
     @staticmethod
-    def _plot_learning_curve(trained_model: object, algorithm_name: str, store_path) -> None:
+    def _plot_learning_curve(trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the learning curve of the trained model."""
         print("-----* Loss Record *-----")
-        pd.DataFrame(trained_model.loss_curve_).plot(title="Loss")
-        save_fig(f"Loss Record - {algorithm_name}", store_path)
+        data = pd.DataFrame(trained_model.loss_curve_, columns=["Loss"])
+        data.plot(title="Loss")
+        save_fig(f"Loss Record - {algorithm_name}", local_path, mlflow_path)
+        save_data(data, f"Loss Record - {algorithm_name}", local_path, mlflow_path)
 
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        self._plot_learning_curve(self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_learning_curve(
+            trained_model=self.model,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
 
     @dispatch(bool)
     def special_components(self, is_automl: bool, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        self._plot_learning_curve(self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_learning_curve(
+            trained_model=self.auto_model,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
 
 
 class LinearRegression2(RegressionWorkflowBase):
@@ -2104,29 +2152,34 @@ class LinearRegression2(RegressionWorkflowBase):
         return hyper_parameters
 
     @staticmethod
-    def _show_formula(coef, intercept, columns_name):
+    def _show_formula(coef: np.ndarray, intercept: np.ndarray, columns_name: pd.Index) -> None:
         """Show the formula of the linear regression model."""
         print("-----* Linear Regression Formula *-----")
         show_formula(coef, intercept, columns_name)
 
     @staticmethod
-    def _plot_2d_graph(feature_data: pd.DataFrame, target_data: pd.DataFrame, algorithm_name: str, store_path: str):
+    def _plot_2d_graph(feature_data: pd.DataFrame, target_data: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the 2D graph of the linear regression model."""
         print("-----* Plot 2D Graph *-----")
         plot_2d_graph(feature_data, target_data)
-        save_fig(f"2D Scatter Graph - {algorithm_name}", store_path)
+        save_fig(f"2D Scatter Graph - {algorithm_name}", local_path, mlflow_path)
+        data = pd.concat([feature_data, target_data], axis=1)
+        save_data(data, f"2D Scatter Graph - {algorithm_name}", local_path, mlflow_path)
 
     @staticmethod
-    def _plot_3d_graph(feature_data: pd.DataFrame, target_data: pd.DataFrame, algorithm_name: str, store_path: str):
+    def _plot_3d_graph(feature_data: pd.DataFrame, target_data: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the 3D graph of the linear regression model."""
         print("-----* Plot 3D Graph *-----")
         plot_3d_graph(feature_data, target_data)
-        save_fig(f"3D Scatter Graph - {algorithm_name}", store_path)
+        save_fig(f"3D Scatter Graph - {algorithm_name}", local_path, mlflow_path)
+        data = pd.concat([feature_data, target_data], axis=1)
+        save_data(data, f"3D Scatter Graph - {algorithm_name}", local_path, mlflow_path)
 
-    def special_components(self, **kwargs):
+    def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         self._show_formula(coef=self.model.coef_, intercept=self.model.intercept_, columns_name=LinearRegression2.X.columns)
 
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         columns_num = LinearRegression2.X.shape[1]
         if columns_num > 2:
             # choose two of dimensions to draw
@@ -2135,7 +2188,8 @@ class LinearRegression2(RegressionWorkflowBase):
                 feature_data=three_dimen_data,
                 target_data=LinearRegression2.y,
                 algorithm_name=self.naming,
-                store_path=MODEL_OUTPUT_IMAGE_PATH,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
             # choose one of dimensions to draw
             two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(LinearRegression2.X, 1)
@@ -2143,7 +2197,8 @@ class LinearRegression2(RegressionWorkflowBase):
                 feature_data=two_dimen_data,
                 target_data=LinearRegression2.y,
                 algorithm_name=self.naming,
-                store_path=MODEL_OUTPUT_IMAGE_PATH,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
         elif columns_num == 2:
             # choose one of dimensions to draw
@@ -2152,14 +2207,16 @@ class LinearRegression2(RegressionWorkflowBase):
                 feature_data=two_dimen_data,
                 target_data=LinearRegression2.y,
                 algorithm_name=self.naming,
-                store_path=MODEL_OUTPUT_IMAGE_PATH,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
             # no need to choose
             self._plot_3d_graph(
                 feature_data=LinearRegression2.X,
                 target_data=LinearRegression2.y,
                 algorithm_name=self.naming,
-                store_path=MODEL_OUTPUT_IMAGE_PATH,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
         elif columns_num == 1:
             # no need to choose
@@ -2167,7 +2224,8 @@ class LinearRegression2(RegressionWorkflowBase):
                 feature_data=LinearRegression2.X,
                 target_data=LinearRegression2.y,
                 algorithm_name=self.naming,
-                store_path=MODEL_OUTPUT_IMAGE_PATH,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
         else:
             pass

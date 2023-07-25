@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from typing import Dict, List, Optional
+from typing import Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -60,16 +60,7 @@ def svr_manual_hyper_parameters() -> Dict:
     return hyper_parameters
 
 
-def plot_2d_decision_boundary(
-    X: pd.DataFrame,
-    X_test: pd.DataFrame,
-    y_test: pd.DataFrame,
-    trained_model: object,
-    image_config: dict,
-    algorithm_name: str,
-    contour_data: Optional[List[np.ndarray]] = None,
-    labels: Optional[np.ndarray] = None,
-) -> None:
+def plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, trained_model: object, image_config: dict) -> None:
     """Plot the decision boundary of the trained model with the testing data set below.
 
     Parameters
@@ -80,14 +71,11 @@ def plot_2d_decision_boundary(
     X_test : pd.DataFrame (n_samples, n_components)
         The testing feature data.
 
-    y_test : pd.DataFrame (n_samples, n_components)
-        The testing target values.
-
     trained_model : sklearn algorithm model
         The sklearn algorithm model trained with X_train data.
 
-    algorithm_name : str
-        The name of the algorithm model.
+    image_config : dict
+        The configuration of the image.
     """
 
     # Prepare the data for contour plot
