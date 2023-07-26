@@ -20,14 +20,15 @@ from sklearn.tree import DecisionTreeRegressor
 from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
 from ..utils.base import save_data, save_fig, save_text
 from ._base import WorkflowBase
+from .func._common_supervised import plot_2d_decision_boundary, plot_decision_tree
 from .func.algo_regression._common import cross_validation, plot_predicted_value_evaluation, plot_true_vs_predicted, score
-from .func.algo_regression._decision_tree import decision_tree_manual_hyper_parameters, decision_tree_plot
+from .func.algo_regression._decision_tree import decision_tree_manual_hyper_parameters
 from .func.algo_regression._deep_neural_network import deep_neural_network_manual_hyper_parameters
 from .func.algo_regression._extra_tree import extra_trees_manual_hyper_parameters, plot_feature_importances
 from .func.algo_regression._linear_regression import linear_regression_manual_hyper_parameters, plot_2d_graph, plot_3d_graph, show_formula
 from .func.algo_regression._polynomial_regression import polynomial_regression_manual_hyper_parameters, show_formula
 from .func.algo_regression._rf import box_plot, feature_importance__, random_forest_manual_hyper_parameters
-from .func.algo_regression._svr import plot_2d_decision_boundary, svr_manual_hyper_parameters
+from .func.algo_regression._svr import svr_manual_hyper_parameters
 from .func.algo_regression._xgboost import histograms_feature_weights, permutation_importance_, plot_feature_importance, xgboost_manual_hyper_parameters
 
 
@@ -683,7 +684,7 @@ class DecisionTreeRegression(RegressionWorkflowBase):
     """The automation workflow of using Decision Tree algorithm to make insightful products."""
 
     name = "Decision Tree"
-    special_function = ["Decision Tree Plot"]
+    special_function = ["Decision Tree Diagram", "Two-dimensional Decision Boundary Diagram"]
 
     def __init__(
         self,
@@ -827,12 +828,7 @@ class DecisionTreeRegression(RegressionWorkflowBase):
         super().__init__()
         self.criterion = (criterion,)
         self.splitter = (splitter,)
-        # FIXME (Sany sanyhew1097618435@163.com): figure out why data type changes after assignment.
-        # print("max_depth before: ", max_depth)
-        # print("max_depth before type: ", type(max_depth))
         self.max_depth = (max_depth,)
-        # print("max_depth after: ", self.max_depth)
-        # print("max_depth after type: ", type(self.max_depth))
         self.min_samples_split = (min_samples_split,)
         self.min_samples_leaf = (min_samples_leaf,)
         self.min_weight_fraction_leaf = (min_weight_fraction_leaf,)
@@ -910,35 +906,72 @@ class DecisionTreeRegression(RegressionWorkflowBase):
         hyper_parameters = decision_tree_manual_hyper_parameters()
         return hyper_parameters
 
-    def _plot_tree_function(self, trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_tree(self, trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Drawing decision tree diagrams."""
-        print("-----* Decision Tree Plot *-----")
-        decision_tree_plot(trained_model, image_config)
-        save_fig(f"Tree Graph - {algorithm_name}", local_path, mlflow_path)
+        print("-----* Decision Tree Diagram *-----")
+        plot_decision_tree(trained_model, image_config)
+        save_fig(f"Tree Diagram - {algorithm_name}", local_path, mlflow_path)
+
+    @staticmethod
+    def _plot_2d_decision_boundary(
+        X: pd.DataFrame,
+        X_test: pd.DataFrame,
+        trained_model: Any,
+        image_config: dict,
+        algorithm_name: str,
+        local_path: str,
+        mlflow_path: str,
+    ) -> None:
+        """Plot the decision boundary of the trained model with the testing data set below."""
+        print("-----* Two-dimensional Decision Boundary Diagram *-----")
+        plot_2d_decision_boundary(X, X_test, trained_model, image_config)
+        save_fig(f"Decision Boundary - {algorithm_name}", local_path, mlflow_path)
+        save_data(X, "Decision Boundary - X", local_path, mlflow_path)
+        save_data(X_test, "Decision Boundary - X Test", local_path, mlflow_path)
 
     @dispatch()
     def special_components(self):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        self._plot_tree_function(
+        self._plot_tree(
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
+        if DecisionTreeRegression.X.shape[1] == 2:
+            self._plot_2d_decision_boundary(
+                X=DecisionTreeRegression.X,
+                X_test=DecisionTreeRegression.X_test,
+                trained_model=self.model,
+                image_config=self.image_config,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        self._plot_tree_function(
+        self._plot_tree(
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
+        if DecisionTreeRegression.X.shape[1] == 2:
+            self._plot_2d_decision_boundary(
+                X=DecisionTreeRegression.X,
+                X_test=DecisionTreeRegression.X_test,
+                trained_model=self.auto_model,
+                image_config=self.image_config,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
 
 
 class ExtraTreesRegression(RegressionWorkflowBase):

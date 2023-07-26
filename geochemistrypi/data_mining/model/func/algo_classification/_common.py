@@ -177,7 +177,23 @@ def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.D
 #     return matrices, labels
 
 
-def plot_precision_recall(X_train: pd.DataFrame, y_train: pd.DataFrame, trained_model, algorithm_name) -> None:
+def plot_precision_recall(X_train: pd.DataFrame, y_train: pd.DataFrame, trained_model: object, algorithm_name: str) -> None:
+    """Plot the precision-recall curve.
+
+    Parameters
+    ----------
+    X_train : pd.DataFrame (n_samples, n_components)
+        The training feature data.
+
+    y_train : pd.DataFrame (n_samples, n_components)
+        The training target values.
+
+    trained_model : object
+        The model trained.
+
+    algorithm_name : str
+        The name of the algorithm.
+    """
     y_scores = cross_val_predict(trained_model, X_train, y_train.iloc[:, 0], cv=3, method="decision_function")
     precisions, recalls, thresholds = precision_recall_curve(y_train, y_scores)
     plt.figure()
@@ -187,7 +203,23 @@ def plot_precision_recall(X_train: pd.DataFrame, y_train: pd.DataFrame, trained_
     plt.title(f"Precision_Recall_Curve - {algorithm_name}")
 
 
-def plot_ROC(X_train: pd.DataFrame, y_train: pd.DataFrame, trained_model, algorithm_name) -> None:
+def plot_ROC(X_train: pd.DataFrame, y_train: pd.DataFrame, trained_model: object, algorithm_name: str) -> None:
+    """Plot the ROC curve.
+
+    Parameters
+    ----------
+    X_train : pd.DataFrame (n_samples, n_components)
+        The training feature data.
+
+    y_train : pd.DataFrame (n_samples, n_components)
+        The training target values.
+
+    trained_model : object
+        The model trained.
+
+    algorithm_name : str
+        The name of the algorithm.
+    """
     y_scores = cross_val_predict(trained_model, X_train, y_train.iloc[:, 0], cv=3, method="decision_function")
     fpr, tpr, thresholds = roc_curve(y_train, y_scores)
     plt.figure()
