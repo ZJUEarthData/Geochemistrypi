@@ -125,7 +125,7 @@ def save_fig(fig_name: str, image_path: str, mlflow_artifact_image_path: str = N
         mlflow.log_artifact(full_path)
 
 
-def save_data(df: pd.DataFrame, df_name: str, data_path: str, mlflow_artifact_data_path: str = None) -> None:
+def save_data(df: pd.DataFrame, df_name: str, data_path: str, mlflow_artifact_data_path: str = None, index: bool = False) -> None:
     """Save the dataset in the local directory and in mlflow specialized directory.
 
     Parameters
@@ -141,11 +141,14 @@ def save_data(df: pd.DataFrame, df_name: str, data_path: str, mlflow_artifact_da
 
     mlflow_artifact_data_path : str, default=None
         The path to store the data sheet in mlflow.
+
+    index : bool, default=False
+        Whether to write the index.
     """
     try:
         # drop the index in case that the dimensions change
         full_path = os.path.join(data_path, "{}.xlsx".format(df_name))
-        df.to_excel(full_path, index=False)
+        df.to_excel(full_path, index=index)
         if mlflow_artifact_data_path:
             mlflow.log_artifact(full_path, artifact_path=mlflow_artifact_data_path)
         else:
@@ -155,7 +158,7 @@ def save_data(df: pd.DataFrame, df_name: str, data_path: str, mlflow_artifact_da
         print("** Please download openpyxl by pip3 **")
         print("** The data will be stored in .csv file **")
         full_path = os.path.join(data_path, "{}.csv".format(df_name))
-        df.to_csv(full_path, index=False)
+        df.to_csv(full_path, index=index)
         print(f"Successfully store '{df_name}' in '{df_name}.csv' in {data_path}.")
 
 

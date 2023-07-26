@@ -17,10 +17,10 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 
-from ..constants import MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
-from ..utils.base import save_fig, save_text
+from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
+from ..utils.base import save_data, save_fig, save_text
 from ._base import WorkflowBase
-from .func.algo_classification._common import confusion_matrix_plot, cross_validation, plot_precision_recall, plot_ROC, score
+from .func.algo_classification._common import cross_validation, plot_confusion_matrix, plot_precision_recall, plot_ROC, score
 from .func.algo_classification._decision_tree import decision_tree_manual_hyper_parameters, decision_tree_plot
 from .func.algo_classification._deep_neural_network import deep_neural_network_manual_hyper_parameters
 from .func.algo_classification._extra_trees import extra_trees_manual_hyper_parameters
@@ -134,11 +134,13 @@ class ClassificationWorkflowBase(WorkflowBase):
         save_text(scores_str, f"Cross Validation - {algorithm_name}", store_path)
 
     @staticmethod
-    def _confusion_matrix_plot(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, trained_model: object, algorithm_name: str, store_path: str) -> None:
+    def _plot_confusion_matrix(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the confusion matrix of the model."""
         print("-----* Confusion Matrix *-----")
-        confusion_matrix_plot(y_test, y_test_predict, trained_model)
-        save_fig(f"Confusion Matrix - {algorithm_name}", store_path)
+        data = plot_confusion_matrix(y_test, y_test_predict, trained_model)
+        save_fig(f"Confusion Matrix - {algorithm_name}", local_path, mlflow_path)
+        data = pd.DataFrame(data, columns=["Predicted Negative", "Predicted Positive"], index=["Actual Negative", "Actual Positive"])
+        save_data(data, f"Confusion Matrix - {algorithm_name}", local_path, mlflow_path, True)
 
     @staticmethod
     def _contour_data(X: pd.DataFrame, trained_model: Any) -> Tuple[List[np.ndarray], np.ndarray]:
@@ -148,7 +150,8 @@ class ClassificationWorkflowBase(WorkflowBase):
     @dispatch()
     def common_components(self) -> None:
         """Invoke all common application functions for classification algorithms by Scikit-learn framework."""
-        GEOPI_OUTPUT_METRICS_PATH = os.environ["GEOPI_OUTPUT_METRICS_PATH"]
+        GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._score(
             y_true=ClassificationWorkflowBase.y_test,
             y_predict=ClassificationWorkflowBase.y_test_predict,
@@ -169,18 +172,20 @@ class ClassificationWorkflowBase(WorkflowBase):
             algorithm_name=self.naming,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
-        self._confusion_matrix_plot(
+        self._plot_confusion_matrix(
             y_test=ClassificationWorkflowBase.y_test,
             y_test_predict=ClassificationWorkflowBase.y_test_predict,
             trained_model=self.model,
             algorithm_name=self.naming,
-            store_path=MODEL_OUTPUT_IMAGE_PATH,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
 
     @dispatch(bool)
     def common_components(self, is_automl: bool) -> None:
         """Invoke all common application functions for classification algorithms by FLAML framework."""
-        GEOPI_OUTPUT_METRICS_PATH = os.environ["GEOPI_OUTPUT_METRICS_PATH"]
+        GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._score(
             y_true=ClassificationWorkflowBase.y_test,
             y_predict=ClassificationWorkflowBase.y_test_predict,
@@ -201,12 +206,13 @@ class ClassificationWorkflowBase(WorkflowBase):
             algorithm_name=self.naming,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
-        self._confusion_matrix_plot(
-            ClassificationWorkflowBase.y_test,
-            ClassificationWorkflowBase.y_test_predict,
-            self.auto_model,
-            self.naming,
-            MODEL_OUTPUT_IMAGE_PATH,
+        self._plot_confusion_matrix(
+            y_test=ClassificationWorkflowBase.y_test,
+            y_test_predict=ClassificationWorkflowBase.y_test_predict,
+            trained_model=self.auto_model,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
 
 
