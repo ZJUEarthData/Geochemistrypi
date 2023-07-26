@@ -7,7 +7,7 @@ from rich import print
 from scipy.stats import kruskal, wilcoxon
 
 
-def test_once(df_orig: pd.DataFrame, df_impute: pd.DataFrame, test: str = "wilcoxon") -> np.ndarray:
+def test_once(df_orig: pd.DataFrame, df_impute: pd.DataFrame, test: str) -> np.ndarray:
     """Do hypothesis testing on each pair-wise column once, non-parametric test.
     Null hypothesis: the distributions of the data set before and after imputing remain the same.
 
@@ -33,14 +33,16 @@ def test_once(df_orig: pd.DataFrame, df_impute: pd.DataFrame, test: str = "wilco
     if test == "wilcoxon":
         for c in cols:
             try:
-                stat, pval = wilcoxon(df_orig[c], df_impute[c])
+                df_new_orig = df_orig[c].dropna()
+                stat, pval = wilcoxon(df_new_orig, df_impute[c])
                 pvals = np.append(pvals, pval)
             except Exception:
                 pvals = np.append(pvals, 0)
 
     if test == "kruskal":
         for c in cols:
-            stat, pval = kruskal(df_orig[c], df_impute[c], nan_policy="omit")
+            df_new_orig = df_orig[c].dropna()
+            stat, pval = kruskal(df_new_orig, df_impute[c], nan_policy="omit")
             pvals = np.append(pvals, pval)
 
     return pvals
@@ -51,7 +53,7 @@ def monte_carlo_simulator(
     df_impute: pd.DataFrame,
     sample_size: int,
     iteration: int,
-    test: str = "wilcoxon",
+    test: str,
     confidence: float = 0.05,
 ) -> None:
     """Check which column rejects hypothesis testing, p value < significance level, to find whether
