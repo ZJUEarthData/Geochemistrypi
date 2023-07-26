@@ -43,12 +43,31 @@ def score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> Dict:
     return scores
 
 
-def confusion_matrix_plot(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, trained_model: object) -> None:
+def plot_confusion_matrix(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, trained_model: object) -> np.ndarray:
+    """Plot the confusion matrix.
+
+    Parameters
+    ----------
+    y_test : pd.DataFrame (n_samples, n_components)
+        The testing target values.
+
+    y_test_predict : pd.DataFrame (n_samples, n_components)
+        The predicted target values.
+
+    trained_model : sklearn algorithm model
+        The sklearn algorithm model trained with X_train data.
+
+    Returns
+    -------
+    cm : np.ndarray
+        The confusion matrix.
+    """
     cm = confusion_matrix(y_test, y_test_predict)
     print(cm)
     plt.figure()
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=trained_model.classes_)
     disp.plot()
+    return cm
 
 
 def display_cross_validation_scores(scores: np.ndarray, score_name: str) -> Dict:
