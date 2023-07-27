@@ -102,7 +102,7 @@ def cli_pipeline(file_name: str) -> None:
                 raise e
         experiment = mlflow.get_experiment(experiment_id=new_experiment_id)
     # print("Artifact Location: {}".format(experiment.artifact_location))
-    run_name = Prompt.ask("✨ Run Name", default="Xgboost Algorithm")
+    run_name = Prompt.ask("✨ Run Name", default="Xgboost Algorithm - Test 1")
     run_tag = Prompt.ask("✨ Run Tag Version", default="R - v1.0.0")
     run_description = Prompt.ask("✨ Run Description", default="Use xgboost for GeoPi classification.")
     mlflow.start_run(run_name=run_name, experiment_id=experiment.experiment_id, tags={"version": run_tag, "description": run_description})
