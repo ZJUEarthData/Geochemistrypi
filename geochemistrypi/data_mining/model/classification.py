@@ -25,7 +25,7 @@ from .func.algo_classification._common import cross_validation, plot_confusion_m
 from .func.algo_classification._decision_tree import decision_tree_manual_hyper_parameters, decision_tree_plot
 from .func.algo_classification._deep_neural_network import deep_neural_network_manual_hyper_parameters
 from .func.algo_classification._extra_trees import extra_trees_manual_hyper_parameters
-from .func.algo_classification._logistic_regression import logistic_importance_plot, logistic_regression_manual_hyper_parameters
+from .func.algo_classification._logistic_regression import logistic_regression_manual_hyper_parameters, plot_logistic_importance
 from .func.algo_classification._rf import feature_importances, random_forest_manual_hyper_parameters
 from .func.algo_classification._svm import svc_manual_hyper_parameters
 from .func.algo_classification._xgboost import feature_importance_map, feature_importance_value, feature_weights_histograms, xgboost_manual_hyper_parameters
@@ -144,6 +144,34 @@ class ClassificationWorkflowBase(WorkflowBase):
         save_data(data, f"Confusion Matrix - {algorithm_name}", local_path, mlflow_path, True)
 
     @staticmethod
+    def _plot_precision_recall(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+        print("-----* Precision Recall Curve *-----")
+        y_probs, precisions, recalls, thresholds = plot_precision_recall(X_test, y_test, trained_model, algorithm_name)
+        save_fig(f"Precision Recall Curve - {algorithm_name}", local_path, mlflow_path)
+        y_probs = pd.DataFrame(y_probs, columns=["Probabilities"])
+        precisions = pd.DataFrame(precisions, columns=["Precisions"])
+        recalls = pd.DataFrame(recalls, columns=["Recalls"])
+        thresholds = pd.DataFrame(thresholds, columns=["Thresholds"])
+        save_data(y_probs, "Precision Recall Curve - Probabilities", local_path, mlflow_path)
+        save_data(precisions, "Precision Recall Curve - Precisions", local_path, mlflow_path)
+        save_data(recalls, "Precision Recall Curve - Recalls", local_path, mlflow_path)
+        save_data(thresholds, "Precision Recall Curve - Thresholds", local_path, mlflow_path)
+
+    @staticmethod
+    def _plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+        print("-----* ROC Curve *-----")
+        y_probs, fpr, tpr, thresholds = plot_ROC(X_test, y_test, trained_model, algorithm_name)
+        save_fig(f"ROC Curve - {algorithm_name}", local_path, mlflow_path)
+        y_probs = pd.DataFrame(y_probs, columns=["Probabilities"])
+        fpr = pd.DataFrame(fpr, columns=["False Positive Rate"])
+        tpr = pd.DataFrame(tpr, columns=["True Positive Rate"])
+        thresholds = pd.DataFrame(thresholds, columns=["Thresholds"])
+        save_data(y_probs, "ROC Curve - Probabilities", local_path, mlflow_path)
+        save_data(fpr, "ROC Curve - False Positive Rate", local_path, mlflow_path)
+        save_data(tpr, "ROC Curve - True Positive Rate", local_path, mlflow_path)
+        save_data(thresholds, "ROC Curve - Thresholds", local_path, mlflow_path)
+
+    @staticmethod
     def _contour_data(X: pd.DataFrame, trained_model: Any) -> Tuple[List[np.ndarray], np.ndarray]:
         """Build up coordinate matrices as the data of contour plot."""
         # return contour_data(X, trained_model)
@@ -221,7 +249,7 @@ class SVMClassification(ClassificationWorkflowBase):
     """The automation workflow of using SVC algorithm to make insightful products."""
 
     name = "Support Vector Machine"
-    special_function = ["Two-dimensional Decision Boundary Diagram", "Precision_Recall_Curve", "ROC Curve"]
+    special_function = ["Two-dimensional Decision Boundary Diagram", "Precision Recall Curve", "ROC Curve"]
 
     def __init__(
         self,
@@ -231,7 +259,7 @@ class SVMClassification(ClassificationWorkflowBase):
         gamma: Union[str, float] = "scale",
         coef0: float = 0.0,
         shrinking: bool = True,
-        probability: bool = False,
+        probability: bool = True,
         tol: float = 1e-3,
         cache_size: float = 200,
         class_weight: Union[dict, str, None] = None,
@@ -448,33 +476,21 @@ class SVMClassification(ClassificationWorkflowBase):
         save_data(X, "Decision Boundary - X", local_path, mlflow_path)
         save_data(X_test, "Decision Boundary - X Test", local_path, mlflow_path)
 
-    @staticmethod
-    def _plot_precision_recall(X_train: pd.DataFrame, y_train: pd.DataFrame, trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
-        print("-----* Precision and Recall Versus the Decision Threshold *-----")
-        plot_precision_recall(X_train, y_train, trained_model, algorithm_name)
-        save_fig(f"Precision_Recall_Curve - {algorithm_name}", local_path, mlflow_path)
-
-    @staticmethod
-    def _plot_ROC(X_train: pd.DataFrame, y_train: pd.DataFrame, trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
-        print("-----* ROC Curve *-----")
-        plot_ROC(X_train, y_train, trained_model, algorithm_name)
-        save_fig(f"ROC_Curve - {algorithm_name}", local_path, mlflow_path)
-
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_precision_recall(
-            X_train=ClassificationWorkflowBase.X_train,
-            y_train=ClassificationWorkflowBase.y_train,
+            X_test=SVMClassification.X_test,
+            y_test=SVMClassification.y_test,
             trained_model=self.model,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
         self._plot_ROC(
-            X_train=ClassificationWorkflowBase.X_train,
-            y_train=ClassificationWorkflowBase.y_train,
+            X_test=SVMClassification.X_test,
+            y_test=SVMClassification.y_test,
             trained_model=self.model,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -504,16 +520,16 @@ class SVMClassification(ClassificationWorkflowBase):
         """Invoke all special application functions for this algorithms by FLAML framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_precision_recall(
-            X_train=ClassificationWorkflowBase.X_train,
-            y_train=ClassificationWorkflowBase.y_train,
+            X_test=ClassificationWorkflowBase.X_test,
+            y_test=ClassificationWorkflowBase.y_test,
             trained_model=self.auto_model,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
         self._plot_ROC(
-            X_train=ClassificationWorkflowBase.X_train,
-            y_train=ClassificationWorkflowBase.y_train,
+            X_test=ClassificationWorkflowBase.X_test,
+            y_test=ClassificationWorkflowBase.y_test,
             trained_model=self.auto_model,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -803,6 +819,22 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
+        self._plot_precision_recall(
+            X_test=LogisticRegressionClassification.X_test,
+            y_test=LogisticRegressionClassification.y_test,
+            trained_model=self.model,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._plot_ROC(
+            X_test=LogisticRegressionClassification.X_test,
+            y_test=LogisticRegressionClassification.y_test,
+            trained_model=self.model,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
         if DecisionTreeClassification.X.shape[1] == 2:
             self._plot_2d_decision_boundary(
                 X=DecisionTreeClassification.X,
@@ -821,6 +853,22 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
         self._plot_tree(
             trained_model=self.auto_model,
             image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._plot_precision_recall(
+            X_test=LogisticRegressionClassification.X_test,
+            y_test=LogisticRegressionClassification.y_test,
+            trained_model=self.auto_model,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._plot_ROC(
+            X_test=LogisticRegressionClassification.X_test,
+            y_test=LogisticRegressionClassification.y_test,
+            trained_model=self.auto_model,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -1521,7 +1569,7 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
     """The automation workflow of using Logistic Regression algorithm to make insightful products."""
 
     name = "Logistic Regression"
-    special_function = ["Feature Importance", "Precision_Recall_Curve", "ROC Curve"]
+    special_function = ["Feature Importance", "Precision Recall Curve", "ROC Curve"]
 
     def __init__(
         self,
@@ -1750,62 +1798,67 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
         return hyper_parameters
 
     @staticmethod
-    def _feature_importance(data: pd.DataFrame, trained_model: any, algorithm_name: str, store_path: str) -> None:
+    def _plot_feature_importance(columns_name: np.ndarray, trained_model: any, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Print the feature coefficient value orderly."""
         print("-----* Feature Importance *-----")
-        logistic_importance_plot(data, trained_model, algorithm_name)
-        save_fig("LogisticRegression_feature_importance", store_path)
-
-    @staticmethod
-    def _plot_precision_recall(X_train: pd.DataFrame, y_train: pd.DataFrame, trained_model: object, algorithm_name: str, store_path: str) -> None:
-        """Plot the precision-recall curve."""
-        print("-----* Precision and Recall Versus the Decision Threshold *-----")
-        plot_precision_recall(X_train, y_train, trained_model, algorithm_name)
-        save_fig(f"Precision_Recall_Curve - {algorithm_name}", store_path)
-
-    @staticmethod
-    def _plot_ROC(X_train: pd.DataFrame, y_train: pd.DataFrame, trained_model: object, algorithm_name: str, store_path: str) -> None:
-        """Plot the ROC curve."""
-        print("-----* ROC Curve *-----")
-        plot_ROC(X_train, y_train, trained_model, algorithm_name)
-        save_fig(f"ROC_Curve - {algorithm_name}", store_path)
+        data = plot_logistic_importance(columns_name, trained_model)
+        save_fig(f"Feature Importance - {algorithm_name}", local_path, mlflow_path)
+        save_data(data, f"Feature Importance - {algorithm_name}", local_path, mlflow_path)
 
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        self._feature_importance(LogisticRegressionClassification.X, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_feature_importance(
+            columns_name=LogisticRegressionClassification.X.columns,
+            trained_model=self.model,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
         self._plot_precision_recall(
-            LogisticRegressionClassification.X_train,
-            LogisticRegressionClassification.y_train,
-            self.model,
-            self.naming,
-            MODEL_OUTPUT_IMAGE_PATH,
+            X_test=LogisticRegressionClassification.X_test,
+            y_test=LogisticRegressionClassification.y_test,
+            trained_model=self.model,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
         self._plot_ROC(
-            LogisticRegressionClassification.X_train,
-            LogisticRegressionClassification.y_train,
-            self.model,
-            self.naming,
-            MODEL_OUTPUT_IMAGE_PATH,
+            X_test=LogisticRegressionClassification.X_test,
+            y_test=LogisticRegressionClassification.y_test,
+            trained_model=self.model,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        self._feature_importance(LogisticRegressionClassification.X, self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_feature_importance(
+            columns_name=LogisticRegressionClassification.X.columns,
+            trained_model=self.auto_model,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
         self._plot_precision_recall(
-            LogisticRegressionClassification.X_train,
-            LogisticRegressionClassification.y_train,
-            self.auto_model,
-            self.naming,
-            MODEL_OUTPUT_IMAGE_PATH,
+            X_test=LogisticRegressionClassification.X_test,
+            y_test=LogisticRegressionClassification.y_test,
+            trained_model=self.auto_model,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
         self._plot_ROC(
-            LogisticRegressionClassification.X_train,
-            LogisticRegressionClassification.y_train,
-            self.auto_model,
-            self.naming,
-            MODEL_OUTPUT_IMAGE_PATH,
+            X_test=LogisticRegressionClassification.X_test,
+            y_test=LogisticRegressionClassification.y_test,
+            trained_model=self.auto_model,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
 
 

@@ -60,9 +60,8 @@ def logistic_regression_manual_hyper_parameters() -> Dict:
     return hyper_parameters
 
 
-def logistic_importance_plot(data: pd.DataFrame, trained_model: any, algorithm_name: str) -> None:
-    """
-    Draw the feature importance diagram for analysis.
+def plot_logistic_importance(columns_name: np.ndarray, trained_model: object) -> pd.DataFrame:
+    """Draw the feature importance diagram for analysis.
 
     Parameters
     ----------
@@ -71,9 +70,6 @@ def logistic_importance_plot(data: pd.DataFrame, trained_model: any, algorithm_n
 
     trained_model: any
         The algorithm which to be used.
-
-    algorithm_name : str
-        The name of the algorithm.
 
     References
     ----------
@@ -84,7 +80,6 @@ def logistic_importance_plot(data: pd.DataFrame, trained_model: any, algorithm_n
 
     https://scikit-learn.org/stable/modules/linear_model.html/logistic-regression
     """
-    columns_name = data.columns
     for feature_name, score in zip(list(columns_name), trained_model.coef_.flatten()):
         print(feature_name, ":", score)
 
@@ -104,4 +99,6 @@ def logistic_importance_plot(data: pd.DataFrame, trained_model: any, algorithm_n
     for rect in rects:
         w = rect.get_width()
         ax.text(w, rect.get_y() + rect.get_height() / 2, "%.2f" % w, ha="left", va="center")
-        plt.title(f"{algorithm_name} - importance - plot")
+        plt.title("Feature Importance Map Ranked by Coefficient")
+
+    return coef_lr_sort

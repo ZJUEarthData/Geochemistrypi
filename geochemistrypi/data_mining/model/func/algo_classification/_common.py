@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from rich import print
 from sklearn.metrics import ConfusionMatrixDisplay, accuracy_score, confusion_matrix, f1_score, precision_recall_curve, precision_score, recall_score, roc_curve
-from sklearn.model_selection import cross_val_predict, cross_validate
+from sklearn.model_selection import cross_validate
 
 
 def score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> Dict:
@@ -177,54 +177,86 @@ def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.D
 #     return matrices, labels
 
 
-def plot_precision_recall(X_train: pd.DataFrame, y_train: pd.DataFrame, trained_model: object, algorithm_name: str) -> None:
+def plot_precision_recall(X_test, y_test, trained_model: object, algorithm_name: str) -> tuple:
     """Plot the precision-recall curve.
 
     Parameters
     ----------
-    X_train : pd.DataFrame (n_samples, n_components)
-        The training feature data.
+    X_test : pd.DataFrame (n_samples, n_components)
+        The testing feature data.
 
-    y_train : pd.DataFrame (n_samples, n_components)
-        The training target values.
+    y_test : pd.DataFrame (n_samples, n_components)
+        The testing target values.
 
     trained_model : object
         The model trained.
 
     algorithm_name : str
         The name of the algorithm.
+
+    Returns
+    -------
+    y_probs : np.ndarray
+        The probabilities of the model.
+
+    precisions : np.ndarray
+        The precision of the model.
+
+    recalls : np.ndarray
+        The recall of the model.
+
+    thresholds : np.ndarray
+        The thresholds of the model.
     """
-    y_scores = cross_val_predict(trained_model, X_train, y_train.iloc[:, 0], cv=3, method="decision_function")
-    precisions, recalls, thresholds = precision_recall_curve(y_train, y_scores)
+    #  Predict probabilities for the positive class
+    y_probs = trained_model.predict_proba(X_test)[:, 1]
+    precisions, recalls, thresholds = precision_recall_curve(y_test, y_probs)
+
     plt.figure()
     plt.plot(thresholds, precisions[:-1], "b--", label="Precision")
     plt.plot(thresholds, recalls[:-1], "g-", label="Recall")
     plt.legend(labels=["Precision", "Recall"], loc="best")
-    plt.title(f"Precision_Recall_Curve - {algorithm_name}")
+    plt.title(f"Precision Recall Curve - {algorithm_name}")
+    return y_probs, precisions, recalls, thresholds
 
 
-def plot_ROC(X_train: pd.DataFrame, y_train: pd.DataFrame, trained_model: object, algorithm_name: str) -> None:
+def plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, algorithm_name: str) -> tuple:
     """Plot the ROC curve.
 
     Parameters
     ----------
-    X_train : pd.DataFrame (n_samples, n_components)
-        The training feature data.
+    X_test : pd.DataFrame (n_samples, n_components)
+        The testing feature data.
 
-    y_train : pd.DataFrame (n_samples, n_components)
-        The training target values.
+    y_test : pd.DataFrame (n_samples, n_components)
+        The testing target values.
 
     trained_model : object
         The model trained.
 
     algorithm_name : str
         The name of the algorithm.
+
+    Returns
+    -------
+    y_probs : np.ndarray
+        The probabilities of the model.
+
+    fpr : np.ndarray
+        The false positive rate of the model.
+
+    tpr : np.ndarray
+        The true positive rate of the model.
+
+    thresholds : np.ndarray
+        The thresholds of the model.
     """
-    y_scores = cross_val_predict(trained_model, X_train, y_train.iloc[:, 0], cv=3, method="decision_function")
-    fpr, tpr, thresholds = roc_curve(y_train, y_scores)
+    y_probs = trained_model.predict_proba(X_test)[:, 1]
+    fpr, tpr, thresholds = roc_curve(y_test, y_probs)
     plt.figure()
     plt.plot(fpr, tpr, linewidth=2)
     plt.plot([0, 1], [0, 1], "r--")
     plt.xlabel("False Positive Rate")
     plt.ylabel("True Positive Rate (Recall)")
-    plt.title(f"ROC_Curve - {algorithm_name}")
+    plt.title(f"ROC Curve - {algorithm_name}")
+    return y_probs, fpr, tpr, thresholds
