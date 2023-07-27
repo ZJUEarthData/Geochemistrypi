@@ -173,13 +173,13 @@ def cli_pipeline(file_name: str) -> None:
         print("-*-*- Hypothesis Testing on Imputation Method -*-*-")
         print("Null Hypothesis: The distributions of the data set before and after imputing remain the same.")
         print("Thoughts: Check which column rejects null hypothesis.")
-        print("Statistics Test Method: Wilcoxon Test")
+        print("Statistics Test Method: kruskal Test")
         monte_carlo_simulator(
             data_selected,
             data_selected_imputed,
             sample_size=data_selected_imputed.shape[0] // 2,
             iteration=100,
-            test="wilcoxon",
+            test="kruskal",
             confidence=0.05,
         )
         # TODO(sany sanyhew1097618435@163.com): Kruskal Wallis Test - P value - why near 1?
