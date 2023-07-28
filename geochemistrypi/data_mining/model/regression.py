@@ -19,17 +19,17 @@ from sklearn.tree import DecisionTreeRegressor
 
 from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
 from ..utils.base import save_data, save_fig, save_text
-from ._base import WorkflowBase
+from ._base import TreeWorkflowMixin, WorkflowBase
 from .func._common_supervised import plot_2d_decision_boundary, plot_decision_tree
 from .func.algo_regression._common import cross_validation, plot_predicted_value_evaluation, plot_true_vs_predicted, score
 from .func.algo_regression._decision_tree import decision_tree_manual_hyper_parameters
 from .func.algo_regression._deep_neural_network import deep_neural_network_manual_hyper_parameters
-from .func.algo_regression._extra_tree import extra_trees_manual_hyper_parameters, plot_feature_importances
+from .func.algo_regression._extra_tree import extra_trees_manual_hyper_parameters
 from .func.algo_regression._linear_regression import linear_regression_manual_hyper_parameters, plot_2d_graph, plot_3d_graph, show_formula
 from .func.algo_regression._polynomial_regression import polynomial_regression_manual_hyper_parameters, show_formula
-from .func.algo_regression._rf import box_plot, feature_importance__, random_forest_manual_hyper_parameters
+from .func.algo_regression._rf import box_plot, random_forest_manual_hyper_parameters
 from .func.algo_regression._svr import svr_manual_hyper_parameters
-from .func.algo_regression._xgboost import histograms_feature_weights, permutation_importance_, plot_feature_importance, xgboost_manual_hyper_parameters
+from .func.algo_regression._xgboost import histograms_feature_weights, permutation_importance_, xgboost_manual_hyper_parameters
 
 
 class RegressionWorkflowBase(WorkflowBase):
@@ -280,11 +280,11 @@ class PolynomialRegression(RegressionWorkflowBase):
         self._show_formula(coef=self.model.coef_, intercept=self.model.intercept_, features_name=self._features_name)
 
 
-class XgboostRegression(RegressionWorkflowBase):
+class XgboostRegression(TreeWorkflowMixin, RegressionWorkflowBase):
     """The automation workflow of using Xgboost algorithm to make insightful products."""
 
     name = "Xgboost"
-    special_function = ["Feature Importance"]
+    special_function = ["Feature Importance Diagram"]
 
     # In fact, it's used for type hint in the original xgboost package.
     # Hence, we have to copy it here again. Just ignore it
@@ -586,17 +586,6 @@ class XgboostRegression(RegressionWorkflowBase):
         return hyper_parameters
 
     @staticmethod
-    def _plot_feature_importance(X: pd.DataFrame, trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
-        """Feature importance plot."""
-        print("-----* Feature Importance *-----")
-        columns_name = X.columns
-        feature_importance = trained_model.feature_importances_
-        plot_feature_importance(columns_name, feature_importance, image_config)
-        save_fig(f"Feature Importance - {algorithm_name}", local_path, mlflow_path)
-        data = pd.DataFrame({"Feature": columns_name, "Importance": feature_importance})
-        save_data(data, f"Feature Importance - {algorithm_name}", local_path, mlflow_path)
-
-    @staticmethod
     def _histograms_feature_weights(X: pd.DataFrame, trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Histograms of feature weights plot."""
         histograms_feature_weights(X, trained_model, image_config)
@@ -622,7 +611,7 @@ class XgboostRegression(RegressionWorkflowBase):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
-            X=XgboostRegression.X,
+            X_train=XgboostRegression.X_train,
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -653,7 +642,7 @@ class XgboostRegression(RegressionWorkflowBase):
         """Invoke all special application functions for this algorithms by FLAML framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
-            X=XgboostRegression.X,
+            X_train=XgboostRegression.X_train,
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -680,11 +669,11 @@ class XgboostRegression(RegressionWorkflowBase):
         )
 
 
-class DecisionTreeRegression(RegressionWorkflowBase):
+class DecisionTreeRegression(TreeWorkflowMixin, RegressionWorkflowBase):
     """The automation workflow of using Decision Tree algorithm to make insightful products."""
 
     name = "Decision Tree"
-    special_function = ["Decision Tree Diagram", "Two-dimensional Decision Boundary Diagram"]
+    special_function = ["Feature Importance Diagram", "Decision Tree Diagram", "Two-dimensional Decision Boundary Diagram"]
 
     def __init__(
         self,
@@ -933,6 +922,14 @@ class DecisionTreeRegression(RegressionWorkflowBase):
     def special_components(self):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_feature_importance(
+            X_train=DecisionTreeRegression.X_train,
+            trained_model=self.model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
         self._plot_tree(
             trained_model=self.model,
             image_config=self.image_config,
@@ -955,6 +952,14 @@ class DecisionTreeRegression(RegressionWorkflowBase):
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_feature_importance(
+            X_train=DecisionTreeRegression.X_train,
+            trained_model=self.auto_model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
         self._plot_tree(
             trained_model=self.auto_model,
             image_config=self.image_config,
@@ -974,11 +979,11 @@ class DecisionTreeRegression(RegressionWorkflowBase):
             )
 
 
-class ExtraTreesRegression(RegressionWorkflowBase):
+class ExtraTreesRegression(TreeWorkflowMixin, RegressionWorkflowBase):
     """The automation workflow of using Extra-Trees algorithm to make insightful products."""
 
     name = "Extra-Trees"
-    special_function = ["Feature Importance"]
+    special_function = ["Feature Importance Diagram"]
 
     def __init__(
         self,
@@ -1225,22 +1230,11 @@ class ExtraTreesRegression(RegressionWorkflowBase):
         hyper_parameters = extra_trees_manual_hyper_parameters()
         return hyper_parameters
 
-    @staticmethod
-    def _plot_feature_importances(X_train: pd.DataFrame, trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
-        """Draw the feature importance bar diagram."""
-        print("-----* Feature Importance *-----")
-        columns_name = X_train.columns
-        feature_importances = trained_model.feature_importances_
-        plot_feature_importances(columns_name, feature_importances, image_config)
-        save_fig(f"Feature Importance - {algorithm_name}", local_path, mlflow_path)
-        data = pd.DataFrame({"Feature": columns_name, "Importance": feature_importances})
-        save_data(data, f"Feature Importance - {algorithm_name}", local_path, mlflow_path)
-
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        self._plot_feature_importances(
+        self._plot_feature_importance(
             X_train=ExtraTreesRegression.X_train,
             trained_model=self.model,
             image_config=self.image_config,
@@ -1253,7 +1247,7 @@ class ExtraTreesRegression(RegressionWorkflowBase):
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        self._plot_feature_importances(
+        self._plot_feature_importance(
             X_train=ExtraTreesRegression.X_train,
             trained_model=self.auto_model,
             image_config=self.image_config,
@@ -1263,11 +1257,11 @@ class ExtraTreesRegression(RegressionWorkflowBase):
         )
 
 
-class RandomForestRegression(RegressionWorkflowBase):
+class RandomForestRegression(TreeWorkflowMixin, RegressionWorkflowBase):
     """The automation workflow of using Random Forest algorithm to make insightful products."""
 
     name = "Random Forest"
-    special_function = ["Feature Importance"]
+    special_function = ["Feature Importance Diagram"]
 
     def __init__(
         self,
@@ -1517,21 +1511,6 @@ class RandomForestRegression(RegressionWorkflowBase):
         return hyper_parameters
 
     @staticmethod
-    def _feature_importances(
-        X: pd.DataFrame,
-        X_test: pd.DataFrame,
-        y_test: pd.DataFrame,
-        trained_model: object,
-        image_config: dict,
-        algorithm_name: str,
-        store_path: str,
-    ) -> None:
-        """Feature importance plot."""
-        print("-----* Feature Importance *-----")
-        feature_importance__(X, X_test, y_test, trained_model, image_config)
-        save_fig(f"Regression - {algorithm_name} - Feature Importance", store_path)
-
-    @staticmethod
     def _box_plot(
         X: pd.DataFrame,
         X_test: pd.DataFrame,
@@ -1549,14 +1528,14 @@ class RandomForestRegression(RegressionWorkflowBase):
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        self._feature_importances(
-            RandomForestRegression.X,
-            RandomForestRegression.X_test,
-            RandomForestRegression.y_test,
-            self.model,
-            self.image_config,
-            self.naming,
-            MODEL_OUTPUT_IMAGE_PATH,
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_feature_importance(
+            X_train=RandomForestRegression.X_train,
+            trained_model=self.model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
         self._box_plot(
             RandomForestRegression.X,
@@ -1571,14 +1550,14 @@ class RandomForestRegression(RegressionWorkflowBase):
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        self._feature_importances(
-            RandomForestRegression.X,
-            RandomForestRegression.X_test,
-            RandomForestRegression.y_test,
-            self.auto_model,
-            self.image_config,
-            self.naming,
-            MODEL_OUTPUT_IMAGE_PATH,
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_feature_importance(
+            X_train=RandomForestRegression.X_train,
+            trained_model=self.auto_model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
         self._box_plot(
             RandomForestRegression.X,

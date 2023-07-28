@@ -14,7 +14,8 @@ from rich import print
 
 from ..constants import SECTION
 from ..data.data_readiness import limit_num_input, num2option, num_input, show_data_columns
-from ..utils.base import save_data, save_text
+from ..utils.base import save_data, save_fig, save_text
+from .func._common_supervised import plot_feature_importance
 
 
 class WorkflowBase(metaclass=ABCMeta):
@@ -289,3 +290,17 @@ class WorkflowBase(metaclass=ABCMeta):
         # with open(pickle_path, 'rb') as t:
         #     a = pickle.load(t)
         #     print(a)
+
+
+class TreeWorkflowMixin:
+    """Mixin class for tree models."""
+
+    @staticmethod
+    def _plot_feature_importance(X_train: pd.DataFrame, trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+        """Draw the feature importance bar diagram."""
+        print("-----* Feature Importance Diagram *-----")
+        columns_name = X_train.columns
+        feature_importances = trained_model.feature_importances_
+        data = plot_feature_importance(columns_name, feature_importances, image_config)
+        save_fig(f"Feature Importance - {algorithm_name}", local_path, mlflow_path)
+        save_data(data, f"Feature Importance - {algorithm_name}", local_path, mlflow_path, True)
