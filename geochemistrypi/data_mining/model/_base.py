@@ -15,7 +15,7 @@ from rich import print
 from ..constants import SECTION
 from ..data.data_readiness import limit_num_input, num2option, num_input, show_data_columns
 from ..utils.base import save_data, save_fig, save_text
-from .func._common_supervised import plot_feature_importance
+from .func._common_supervised import plot_decision_tree, plot_feature_importance
 
 
 class WorkflowBase(metaclass=ABCMeta):
@@ -304,3 +304,9 @@ class TreeWorkflowMixin:
         data = plot_feature_importance(columns_name, feature_importances, image_config)
         save_fig(f"Feature Importance - {algorithm_name}", local_path, mlflow_path)
         save_data(data, f"Feature Importance - {algorithm_name}", local_path, mlflow_path, True)
+
+    def _plot_tree(self, trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+        """Drawing decision tree diagrams."""
+        print("-----* Single Tree Diagram *-----")
+        plot_decision_tree(trained_model, image_config)
+        save_fig(f"Tree Diagram - {algorithm_name}", local_path, mlflow_path)
