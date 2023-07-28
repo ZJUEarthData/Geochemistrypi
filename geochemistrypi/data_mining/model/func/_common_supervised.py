@@ -7,7 +7,7 @@ from rich import print
 from sklearn.tree import plot_tree
 
 # <------
-# Used by decsion tree including classification and regression
+# Used by tree-based models including classification and regression besides XGBoost
 
 
 def plot_decision_tree(trained_model: object, image_config: Dict) -> None:
@@ -72,7 +72,7 @@ def plot_decision_tree(trained_model: object, image_config: Dict) -> None:
     )
 
 
-# Used by decsion tree including classification and regression
+# Used by tree-based models including classification and regression besides XGBoost
 # ------>
 
 # <------
@@ -139,3 +139,60 @@ def plot_feature_importance(columns_name: pd.Index, feature_importance: np.ndarr
     )
 
     return importance
+
+
+# Used by tree-based models, like, random forest, extra-trees, xgboost including classification and regression
+# ------>
+
+# <------
+# Used by linear models including classification and regression
+
+
+def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: np.ndarray) -> Dict:
+    """Show the formula of linear models.
+
+    Parameters
+    ----------
+    coef : array
+        Coefficient of the features in the decision function.
+
+    intercept : array
+        Independent term in decision function.
+
+    features_name : np.ndarray
+        Name of the features.
+
+    Returns
+    -------
+    formula : dict
+        The formula of linear models.
+    """
+    term = []
+    coef = np.around(coef, decimals=3).tolist()[0]
+
+    for i in range(len(coef)):
+        # the first value stay the same
+        if i == 0:
+            # not append if zero
+            if coef[i] != 0:
+                temp = str(coef[i]) + features_name[i]
+                term.append(temp)
+        else:
+            # add plus symbol if positive, maintain if negative, not append if zero
+            if coef[i] > 0:
+                temp = "+" + str(coef[i]) + features_name[i]
+                term.append(temp)
+            elif coef[i] < 0:
+                temp = str(coef[i]) + features_name[i]
+                term.append(temp)
+    if intercept[0] >= 0:
+        formula = "".join(term) + "+" + str(intercept[0])
+    else:
+        formula = "".join(term) + str(intercept[0])
+    print("y =", formula)
+
+    return {"y": formula}
+
+
+# Used by linear models including classification and regression
+# ------>
