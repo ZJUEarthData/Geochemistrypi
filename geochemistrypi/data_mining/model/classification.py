@@ -20,7 +20,7 @@ from sklearn.tree import DecisionTreeClassifier
 from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, RAY_FLAML
 from ..utils.base import save_data, save_fig, save_text
 from ._base import TreeWorkflowMixin, WorkflowBase
-from .func._common_supervised import plot_2d_decision_boundary, plot_decision_tree
+from .func._common_supervised import plot_2d_decision_boundary
 from .func.algo_classification._common import cross_validation, plot_confusion_matrix, plot_precision_recall, plot_ROC, score
 from .func.algo_classification._decision_tree import decision_tree_manual_hyper_parameters
 from .func.algo_classification._deep_neural_network import deep_neural_network_manual_hyper_parameters
@@ -551,7 +551,7 @@ class DecisionTreeClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
     """The automation workflow of using Decision Tree algorithm to make insightful products."""
 
     name = "Decision Tree"
-    special_function = ["Feature Importance Diagram", "Decision Tree Diagram", "Two-dimensional Decision Boundary Diagram"]
+    special_function = ["Feature Importance Diagram", "Single Tree Diagram", "Two-dimensional Decision Boundary Diagram"]
 
     def __init__(
         self,
@@ -785,12 +785,6 @@ class DecisionTreeClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         hyper_parameters = decision_tree_manual_hyper_parameters()
         return hyper_parameters
 
-    def _plot_tree(self, trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
-        """Drawing decision tree diagrams."""
-        print("-----* Decision Tree Diagram *-----")
-        plot_decision_tree(trained_model, image_config)
-        save_fig(f"Tree Diagram - {algorithm_name}", local_path, mlflow_path)
-
     @staticmethod
     def _plot_2d_decision_boundary(
         X: pd.DataFrame,
@@ -873,7 +867,7 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
     """The automation workflow of using Random Forest algorithm to make insightful products."""
 
     name = "Random Forest"
-    special_function = ["Feature Importance Diagram", "Random Forest's Single Tree Diagram", "Two-dimensional Decision Boundary Diagram"]
+    special_function = ["Feature Importance Diagram", "Single Tree Diagram", "Two-dimensional Decision Boundary Diagram"]
 
     def __init__(
         self,
@@ -1142,13 +1136,6 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         return hyper_parameters
 
     @staticmethod
-    def _plot_tree(trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
-        """Draw a diagram of the first decision tree of the forest."""
-        print("-----* Random Forest's Single Tree Diagram *-----")
-        plot_decision_tree(trained_model.estimators_[0], image_config)
-        save_fig(f"Single Tree Diagram - {algorithm_name}", local_path, mlflow_path)
-
-    @staticmethod
     def _plot_2d_decision_boundary(
         X: pd.DataFrame,
         X_test: pd.DataFrame,
@@ -1178,7 +1165,7 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
         self._plot_tree(
-            trained_model=self.model,
+            trained_model=self.model.estimators_[0],
             image_config=self.image_config,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -1208,7 +1195,7 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
         self._plot_tree(
-            trained_model=self.auto_model,
+            trained_model=self.auto_model.estimators_[0],
             image_config=self.image_config,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -2170,7 +2157,7 @@ class ExtraTreesClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
     """The automation workflow of using Extra-Trees algorithm to make insightful products."""
 
     name = "Extra-Trees"
-    special_function = ["Feature Importance Diagram"]
+    special_function = ["Feature Importance Diagram", "Single Tree Diagram"]
 
     def __init__(
         self,
@@ -2428,6 +2415,13 @@ class ExtraTreesClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
+        self._plot_tree(
+            trained_model=self.model.estimators_[0],
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
 
     @dispatch(bool)
     def special_components(self, is_automl: bool, **kwargs) -> None:
@@ -2436,6 +2430,13 @@ class ExtraTreesClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         self._plot_feature_importance(
             X_train=ExtraTreesClassification.X_train,
             trained_model=self.auto_model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._plot_tree(
+            trained_model=self.auto_model.estimators_[0],
             image_config=self.image_config,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,

@@ -20,7 +20,7 @@ from sklearn.tree import DecisionTreeRegressor
 from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
 from ..utils.base import save_data, save_fig, save_text
 from ._base import TreeWorkflowMixin, WorkflowBase
-from .func._common_supervised import plot_2d_decision_boundary, plot_decision_tree
+from .func._common_supervised import plot_2d_decision_boundary
 from .func.algo_regression._common import cross_validation, plot_predicted_value_evaluation, plot_true_vs_predicted, score
 from .func.algo_regression._decision_tree import decision_tree_manual_hyper_parameters
 from .func.algo_regression._deep_neural_network import deep_neural_network_manual_hyper_parameters
@@ -673,7 +673,7 @@ class DecisionTreeRegression(TreeWorkflowMixin, RegressionWorkflowBase):
     """The automation workflow of using Decision Tree algorithm to make insightful products."""
 
     name = "Decision Tree"
-    special_function = ["Feature Importance Diagram", "Decision Tree Diagram", "Two-dimensional Decision Boundary Diagram"]
+    special_function = ["Feature Importance Diagram", "Single Tree Diagram", "Two-dimensional Decision Boundary Diagram"]
 
     def __init__(
         self,
@@ -895,12 +895,6 @@ class DecisionTreeRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         hyper_parameters = decision_tree_manual_hyper_parameters()
         return hyper_parameters
 
-    def _plot_tree(self, trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
-        """Drawing decision tree diagrams."""
-        print("-----* Decision Tree Diagram *-----")
-        plot_decision_tree(trained_model, image_config)
-        save_fig(f"Tree Diagram - {algorithm_name}", local_path, mlflow_path)
-
     @staticmethod
     def _plot_2d_decision_boundary(
         X: pd.DataFrame,
@@ -983,7 +977,7 @@ class ExtraTreesRegression(TreeWorkflowMixin, RegressionWorkflowBase):
     """The automation workflow of using Extra-Trees algorithm to make insightful products."""
 
     name = "Extra-Trees"
-    special_function = ["Feature Importance Diagram"]
+    special_function = ["Feature Importance Diagram", "Single Tree Diagram"]
 
     def __init__(
         self,
@@ -1242,6 +1236,13 @@ class ExtraTreesRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
+        self._plot_tree(
+            trained_model=self.model.estimators_[0],
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
@@ -1255,13 +1256,20 @@ class ExtraTreesRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
+        self._plot_tree(
+            trained_model=self.auto_model.estimators_[0],
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
 
 
 class RandomForestRegression(TreeWorkflowMixin, RegressionWorkflowBase):
     """The automation workflow of using Random Forest algorithm to make insightful products."""
 
     name = "Random Forest"
-    special_function = ["Feature Importance Diagram"]
+    special_function = ["Feature Importance Diagram", "Single Tree Diagram"]
 
     def __init__(
         self,
@@ -1537,6 +1545,13 @@ class RandomForestRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
+        self._plot_tree(
+            trained_model=self.model.estimators_[0],
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
         self._box_plot(
             RandomForestRegression.X,
             RandomForestRegression.X_test,
@@ -1554,6 +1569,13 @@ class RandomForestRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         self._plot_feature_importance(
             X_train=RandomForestRegression.X_train,
             trained_model=self.auto_model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._plot_tree(
+            trained_model=self.auto_model.estimators_[0],
             image_config=self.image_config,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
