@@ -20,7 +20,6 @@ from sklearn.tree import DecisionTreeRegressor
 from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
 from ..utils.base import save_data, save_fig, save_text
 from ._base import TreeWorkflowMixin, WorkflowBase
-from .func._common_supervised import plot_2d_decision_boundary
 from .func.algo_regression._common import cross_validation, plot_predicted_value_evaluation, plot_true_vs_predicted, score
 from .func.algo_regression._decision_tree import decision_tree_manual_hyper_parameters
 from .func.algo_regression._deep_neural_network import deep_neural_network_manual_hyper_parameters
@@ -673,7 +672,7 @@ class DecisionTreeRegression(TreeWorkflowMixin, RegressionWorkflowBase):
     """The automation workflow of using Decision Tree algorithm to make insightful products."""
 
     name = "Decision Tree"
-    special_function = ["Feature Importance Diagram", "Single Tree Diagram", "Two-dimensional Decision Boundary Diagram"]
+    special_function = ["Feature Importance Diagram", "Single Tree Diagram"]
 
     def __init__(
         self,
@@ -895,23 +894,6 @@ class DecisionTreeRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         hyper_parameters = decision_tree_manual_hyper_parameters()
         return hyper_parameters
 
-    @staticmethod
-    def _plot_2d_decision_boundary(
-        X: pd.DataFrame,
-        X_test: pd.DataFrame,
-        trained_model: Any,
-        image_config: dict,
-        algorithm_name: str,
-        local_path: str,
-        mlflow_path: str,
-    ) -> None:
-        """Plot the decision boundary of the trained model with the testing data set below."""
-        print("-----* Two-dimensional Decision Boundary Diagram *-----")
-        plot_2d_decision_boundary(X, X_test, trained_model, image_config)
-        save_fig(f"Decision Boundary - {algorithm_name}", local_path, mlflow_path)
-        save_data(X, "Decision Boundary - X", local_path, mlflow_path)
-        save_data(X_test, "Decision Boundary - X Test", local_path, mlflow_path)
-
     @dispatch()
     def special_components(self):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
@@ -931,16 +913,6 @@ class DecisionTreeRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
-        if DecisionTreeRegression.X.shape[1] == 2:
-            self._plot_2d_decision_boundary(
-                X=DecisionTreeRegression.X,
-                X_test=DecisionTreeRegression.X_test,
-                trained_model=self.model,
-                image_config=self.image_config,
-                algorithm_name=self.naming,
-                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            )
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
@@ -961,16 +933,6 @@ class DecisionTreeRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
-        if DecisionTreeRegression.X.shape[1] == 2:
-            self._plot_2d_decision_boundary(
-                X=DecisionTreeRegression.X,
-                X_test=DecisionTreeRegression.X_test,
-                trained_model=self.auto_model,
-                image_config=self.image_config,
-                algorithm_name=self.naming,
-                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            )
 
 
 class ExtraTreesRegression(TreeWorkflowMixin, RegressionWorkflowBase):
@@ -1596,7 +1558,7 @@ class SVMRegression(RegressionWorkflowBase):
     """The automation workflow of using SVR algorithm to make insightful products."""
 
     name = "Support Vector Machine"
-    special_function = ["Two-dimensional Decision Boundary Diagram"]
+    special_function = []
 
     def __init__(
         self,
@@ -1750,52 +1712,15 @@ class SVMRegression(RegressionWorkflowBase):
         hyper_parameters = svr_manual_hyper_parameters()
         return hyper_parameters
 
-    @staticmethod
-    def _plot_2d_decision_boundary(
-        X: pd.DataFrame,
-        X_test: pd.DataFrame,
-        trained_model: Any,
-        image_config: dict,
-        algorithm_name: str,
-        local_path: str,
-        mlflow_path: str,
-    ) -> None:
-        """Plot the decision boundary of the trained model with the testing data set below."""
-        print("-----* Two-dimensional Decision Boundary Diagram *-----")
-        plot_2d_decision_boundary(X, X_test, trained_model, image_config)
-        save_fig(f"Decision Boundary - {algorithm_name}", local_path, mlflow_path)
-        save_data(X, "Decision Boundary - X", local_path, mlflow_path)
-        save_data(X_test, "Decision Boundary - X Test", local_path, mlflow_path)
-
     @dispatch()
     def special_components(self, **kwargs):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        if SVMRegression.X.shape[1] == 2:
-            self._plot_2d_decision_boundary(
-                X=SVMRegression.X,
-                X_test=SVMRegression.X_test,
-                trained_model=self.model,
-                image_config=self.image_config,
-                algorithm_name=self.naming,
-                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            )
+        pass
 
     @dispatch(bool)
     def special_components(self, is_automl: bool, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        if SVMRegression.X.shape[1] == 2:
-            self._plot_2d_decision_boundary(
-                X=SVMRegression.X,
-                X_test=SVMRegression.X_test,
-                trained_model=self.auto_model,
-                image_config=self.image_config,
-                algorithm_name=self.naming,
-                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            )
+        pass
 
 
 class DNNRegression(RegressionWorkflowBase):

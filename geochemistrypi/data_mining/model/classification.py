@@ -20,8 +20,7 @@ from sklearn.tree import DecisionTreeClassifier
 from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, RAY_FLAML
 from ..utils.base import save_data, save_fig, save_text
 from ._base import TreeWorkflowMixin, WorkflowBase
-from .func._common_supervised import plot_2d_decision_boundary
-from .func.algo_classification._common import cross_validation, plot_confusion_matrix, plot_precision_recall, plot_ROC, score
+from .func.algo_classification._common import cross_validation, plot_2d_decision_boundary, plot_confusion_matrix, plot_precision_recall, plot_ROC, score
 from .func.algo_classification._decision_tree import decision_tree_manual_hyper_parameters
 from .func.algo_classification._deep_neural_network import deep_neural_network_manual_hyper_parameters
 from .func.algo_classification._extra_trees import extra_trees_manual_hyper_parameters
@@ -34,7 +33,16 @@ from .func.algo_classification._xgboost import xgboost_manual_hyper_parameters
 class ClassificationWorkflowBase(WorkflowBase):
     """The base workflow class of classification algorithms."""
 
-    common_function = ["Model Score", "Confusion Matrix", "Cross Validation", "Model Prediction", "Model Persistence", "Precision Recall Curve", "ROC Curve"]
+    common_function = [
+        "Model Score",
+        "Confusion Matrix",
+        "Cross Validation",
+        "Model Prediction",
+        "Model Persistence",
+        "Precision Recall Curve",
+        "ROC Curve",
+        "Two-dimensional Decision Boundary Diagram",
+    ]
 
     def __init__(self) -> None:
         super().__init__()
@@ -172,9 +180,13 @@ class ClassificationWorkflowBase(WorkflowBase):
         save_data(thresholds, "ROC Curve - Thresholds", local_path, mlflow_path)
 
     @staticmethod
-    def _contour_data(X: pd.DataFrame, trained_model: Any) -> Tuple[List[np.ndarray], np.ndarray]:
-        """Build up coordinate matrices as the data of contour plot."""
-        # return contour_data(X, trained_model)
+    def _plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+        """Plot the decision boundary of the trained model with the testing data set below."""
+        print("-----* Two-dimensional Decision Boundary Diagram *-----")
+        plot_2d_decision_boundary(X, X_test, trained_model, image_config)
+        save_fig(f"Decision Boundary - {algorithm_name}", local_path, mlflow_path)
+        save_data(X, "Decision Boundary - X", local_path, mlflow_path)
+        save_data(X_test, "Decision Boundary - X Test", local_path, mlflow_path)
 
     @dispatch()
     def common_components(self) -> None:
@@ -225,6 +237,16 @@ class ClassificationWorkflowBase(WorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
+        if ClassificationWorkflowBase.X.shape[1] == 2:
+            self._plot_2d_decision_boundary(
+                X=ClassificationWorkflowBase.X,
+                X_test=ClassificationWorkflowBase.X_test,
+                trained_model=self.model,
+                image_config=self.image_config,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
 
     @dispatch(bool)
     def common_components(self, is_automl: bool) -> None:
@@ -275,13 +297,23 @@ class ClassificationWorkflowBase(WorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
+        if ClassificationWorkflowBase.X.shape[1] == 2:
+            self._plot_2d_decision_boundary(
+                X=ClassificationWorkflowBase.X,
+                X_test=ClassificationWorkflowBase.X_test,
+                trained_model=self.auto_model,
+                image_config=self.image_config,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
 
 
 class SVMClassification(ClassificationWorkflowBase):
     """The automation workflow of using SVC algorithm to make insightful products."""
 
     name = "Support Vector Machine"
-    special_function = ["Two-dimensional Decision Boundary Diagram"]
+    special_function = []
 
     def __init__(
         self,
@@ -479,6 +511,7 @@ class SVMClassification(ClassificationWorkflowBase):
                     "degree": {"domain": tune.quniform(lower=1, upper=5, q=1), "init_value": 3, "low_cost_init_value": 3},
                     "coef0": {"domain": tune.uniform(lower=0, upper=1), "init_value": 0, "low_cost_init_value": 0},
                     "shrinking": {"domain": tune.choice([True, False])},
+                    "probability": {"domain": tune.choice([True])},
                 }
                 return space
 
@@ -491,67 +524,22 @@ class SVMClassification(ClassificationWorkflowBase):
         hyper_parameters = svc_manual_hyper_parameters()
         return hyper_parameters
 
-    @staticmethod
-    def _plot_2d_decision_boundary(
-        X: pd.DataFrame,
-        X_test: pd.DataFrame,
-        trained_model: Any,
-        image_config: dict,
-        algorithm_name: str,
-        local_path: str,
-        mlflow_path: str,
-    ) -> None:
-        """Plot the decision boundary of the trained model with the testing data set below."""
-        print("-----* Two-dimensional Decision Boundary Diagram *-----")
-        plot_2d_decision_boundary(X, X_test, trained_model, image_config)
-        save_fig(f"Decision Boundary - {algorithm_name}", local_path, mlflow_path)
-        save_data(X, "Decision Boundary - X", local_path, mlflow_path)
-        save_data(X_test, "Decision Boundary - X Test", local_path, mlflow_path)
-
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        if SVMClassification.X.shape[1] == 2:
-            self._plot_2d_decision_boundary(
-                X=SVMClassification.X,
-                X_test=SVMClassification.X_test,
-                trained_model=self.model,
-                image_config=self.image_config,
-                algorithm_name=self.naming,
-                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            )
-
-            # TODO(Sany sanyhew1097618435@163.com): Check whether 3d decision boundary makes sense.
-            #  If it does, use the code below.
-            # contour_matrices, labels = self.contour_data(SVMClassification.X, self.model)
-            # two_dimen_axis_index, two_dimen_X = self.choose_dimension_data(SVMClassification.X, 2)
-            # two_dimen_X_test = SVMClassification.X_test.iloc[:, two_dimen_axis_index]
-            # two_dimen_contour_matrices = [contour_matrices[i] for i in two_dimen_axis_index]
-            # self._plot_2d_decision_boundary(two_dimen_X, two_dimen_X_test, SVMClassification.y_test, two_dimen_contour_matrices, labels)
+        pass
 
     @dispatch(bool)
     def special_components(self, is_automl: bool, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        if SVMClassification.X.shape[1] == 2:
-            self._plot_2d_decision_boundary(
-                X=SVMClassification.X,
-                X_test=SVMClassification.X_test,
-                trained_model=self.auto_model,
-                image_config=self.image_config,
-                algorithm_name=self.naming,
-                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            )
+        pass
 
 
 class DecisionTreeClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
     """The automation workflow of using Decision Tree algorithm to make insightful products."""
 
     name = "Decision Tree"
-    special_function = ["Feature Importance Diagram", "Single Tree Diagram", "Two-dimensional Decision Boundary Diagram"]
+    special_function = ["Feature Importance Diagram", "Single Tree Diagram"]
 
     def __init__(
         self,
@@ -785,23 +773,6 @@ class DecisionTreeClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         hyper_parameters = decision_tree_manual_hyper_parameters()
         return hyper_parameters
 
-    @staticmethod
-    def _plot_2d_decision_boundary(
-        X: pd.DataFrame,
-        X_test: pd.DataFrame,
-        trained_model: Any,
-        image_config: dict,
-        algorithm_name: str,
-        local_path: str,
-        mlflow_path: str,
-    ) -> None:
-        """Plot the decision boundary of the trained model with the testing data set below."""
-        print("-----* Two-dimensional Decision Boundary Diagram *-----")
-        plot_2d_decision_boundary(X, X_test, trained_model, image_config)
-        save_fig(f"Decision Boundary - {algorithm_name}", local_path, mlflow_path)
-        save_data(X, "Decision Boundary - X", local_path, mlflow_path)
-        save_data(X_test, "Decision Boundary - X Test", local_path, mlflow_path)
-
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
@@ -821,16 +792,6 @@ class DecisionTreeClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
-        if DecisionTreeClassification.X.shape[1] == 2:
-            self._plot_2d_decision_boundary(
-                X=DecisionTreeClassification.X,
-                X_test=DecisionTreeClassification.X_test,
-                trained_model=self.model,
-                image_config=self.image_config,
-                algorithm_name=self.naming,
-                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            )
 
     @dispatch(bool)
     def special_components(self, is_automl: bool, **kwargs) -> None:
@@ -851,23 +812,13 @@ class DecisionTreeClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
-        if DecisionTreeClassification.X.shape[1] == 2:
-            self._plot_2d_decision_boundary(
-                X=DecisionTreeClassification.X,
-                X_test=DecisionTreeClassification.X_test,
-                trained_model=self.auto_model,
-                image_config=self.image_config,
-                algorithm_name=self.naming,
-                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            )
 
 
 class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
     """The automation workflow of using Random Forest algorithm to make insightful products."""
 
     name = "Random Forest"
-    special_function = ["Feature Importance Diagram", "Single Tree Diagram", "Two-dimensional Decision Boundary Diagram"]
+    special_function = ["Feature Importance Diagram", "Single Tree Diagram"]
 
     def __init__(
         self,
@@ -1135,23 +1086,6 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         hyper_parameters = random_forest_manual_hyper_parameters()
         return hyper_parameters
 
-    @staticmethod
-    def _plot_2d_decision_boundary(
-        X: pd.DataFrame,
-        X_test: pd.DataFrame,
-        trained_model: Any,
-        image_config: dict,
-        algorithm_name: str,
-        local_path: str,
-        mlflow_path: str,
-    ) -> None:
-        """Plot the decision boundary of the trained model with the testing data set below."""
-        print("-----* Two-dimensional Decision Boundary Diagram *-----")
-        plot_2d_decision_boundary(X, X_test, trained_model, image_config)
-        save_fig(f"Decision Boundary - {algorithm_name}", local_path, mlflow_path)
-        save_data(X, "Decision Boundary - X", local_path, mlflow_path)
-        save_data(X_test, "Decision Boundary - X Test", local_path, mlflow_path)
-
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
@@ -1171,16 +1105,6 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
-        if RandomForestClassification.X.shape[1] == 2:
-            self._plot_2d_decision_boundary(
-                X=RandomForestClassification.X,
-                X_test=RandomForestClassification.X_test,
-                trained_model=self.model,
-                image_config=self.image_config,
-                algorithm_name=self.naming,
-                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            )
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
@@ -1201,16 +1125,6 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
-        if RandomForestClassification.X.shape[1] == 2:
-            self._plot_2d_decision_boundary(
-                X=RandomForestClassification.X,
-                X_test=RandomForestClassification.X_test,
-                trained_model=self.model,
-                image_config=self.image_config,
-                algorithm_name=self.naming,
-                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            )
 
 
 class XgboostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
