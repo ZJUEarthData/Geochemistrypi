@@ -286,11 +286,6 @@ class WorkflowBase(metaclass=ABCMeta):
         print(f"Successfully store the trained model '{self.naming}' in '{joblib_filename}' in {GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH}.")
         mlflow.sklearn.log_model(self.auto_model, self.naming)
 
-        # Use to check whether the trained model is saved well
-        # with open(pickle_path, 'rb') as t:
-        #     a = pickle.load(t)
-        #     print(a)
-
 
 class TreeWorkflowMixin:
     """Mixin class for tree models."""
