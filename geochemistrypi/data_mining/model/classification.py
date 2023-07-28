@@ -17,24 +17,24 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 
-from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
+from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, RAY_FLAML
 from ..utils.base import save_data, save_fig, save_text
-from ._base import WorkflowBase
+from ._base import TreeWorkflowMixin, WorkflowBase
 from .func._common_supervised import plot_2d_decision_boundary, plot_decision_tree
 from .func.algo_classification._common import cross_validation, plot_confusion_matrix, plot_precision_recall, plot_ROC, score
-from .func.algo_classification._decision_tree import decision_tree_manual_hyper_parameters, decision_tree_plot
+from .func.algo_classification._decision_tree import decision_tree_manual_hyper_parameters
 from .func.algo_classification._deep_neural_network import deep_neural_network_manual_hyper_parameters
 from .func.algo_classification._extra_trees import extra_trees_manual_hyper_parameters
 from .func.algo_classification._logistic_regression import logistic_regression_manual_hyper_parameters, plot_logistic_importance
-from .func.algo_classification._rf import feature_importances, random_forest_manual_hyper_parameters
+from .func.algo_classification._rf import random_forest_manual_hyper_parameters
 from .func.algo_classification._svm import svc_manual_hyper_parameters
-from .func.algo_classification._xgboost import feature_importance_map, feature_importance_value, feature_weights_histograms, xgboost_manual_hyper_parameters
+from .func.algo_classification._xgboost import xgboost_manual_hyper_parameters
 
 
 class ClassificationWorkflowBase(WorkflowBase):
     """The base workflow class of classification algorithms."""
 
-    common_function = ["Model Score", "Confusion Matrix", "Cross Validation", "Model Prediction", "Model Persistence"]
+    common_function = ["Model Score", "Confusion Matrix", "Cross Validation", "Model Prediction", "Model Persistence", "Precision Recall Curve", "ROC Curve"]
 
     def __init__(self) -> None:
         super().__init__()
@@ -209,6 +209,22 @@ class ClassificationWorkflowBase(WorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
+        self._plot_precision_recall(
+            X_test=ClassificationWorkflowBase.X_test,
+            y_test=ClassificationWorkflowBase.y_test,
+            trained_model=self.model,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._plot_ROC(
+            X_test=ClassificationWorkflowBase.X_test,
+            y_test=ClassificationWorkflowBase.y_test,
+            trained_model=self.model,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
 
     @dispatch(bool)
     def common_components(self, is_automl: bool) -> None:
@@ -243,13 +259,29 @@ class ClassificationWorkflowBase(WorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
+        self._plot_precision_recall(
+            X_test=ClassificationWorkflowBase.X_test,
+            y_test=ClassificationWorkflowBase.y_test,
+            trained_model=self.auto_model,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._plot_ROC(
+            X_test=ClassificationWorkflowBase.X_test,
+            y_test=ClassificationWorkflowBase.y_test,
+            trained_model=self.auto_model,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
 
 
 class SVMClassification(ClassificationWorkflowBase):
     """The automation workflow of using SVC algorithm to make insightful products."""
 
     name = "Support Vector Machine"
-    special_function = ["Two-dimensional Decision Boundary Diagram", "Precision Recall Curve", "ROC Curve"]
+    special_function = ["Two-dimensional Decision Boundary Diagram"]
 
     def __init__(
         self,
@@ -480,22 +512,6 @@ class SVMClassification(ClassificationWorkflowBase):
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        self._plot_precision_recall(
-            X_test=SVMClassification.X_test,
-            y_test=SVMClassification.y_test,
-            trained_model=self.model,
-            algorithm_name=self.naming,
-            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-        )
-        self._plot_ROC(
-            X_test=SVMClassification.X_test,
-            y_test=SVMClassification.y_test,
-            trained_model=self.model,
-            algorithm_name=self.naming,
-            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-        )
         if SVMClassification.X.shape[1] == 2:
             self._plot_2d_decision_boundary(
                 X=SVMClassification.X,
@@ -519,22 +535,6 @@ class SVMClassification(ClassificationWorkflowBase):
     def special_components(self, is_automl: bool, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        self._plot_precision_recall(
-            X_test=ClassificationWorkflowBase.X_test,
-            y_test=ClassificationWorkflowBase.y_test,
-            trained_model=self.auto_model,
-            algorithm_name=self.naming,
-            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-        )
-        self._plot_ROC(
-            X_test=ClassificationWorkflowBase.X_test,
-            y_test=ClassificationWorkflowBase.y_test,
-            trained_model=self.auto_model,
-            algorithm_name=self.naming,
-            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-        )
         if SVMClassification.X.shape[1] == 2:
             self._plot_2d_decision_boundary(
                 X=SVMClassification.X,
@@ -547,11 +547,11 @@ class SVMClassification(ClassificationWorkflowBase):
             )
 
 
-class DecisionTreeClassification(ClassificationWorkflowBase):
+class DecisionTreeClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
     """The automation workflow of using Decision Tree algorithm to make insightful products."""
 
     name = "Decision Tree"
-    special_function = ["Decision Tree Diagram", "Two-dimensional Decision Boundary Diagram"]
+    special_function = ["Feature Importance Diagram", "Decision Tree Diagram", "Two-dimensional Decision Boundary Diagram"]
 
     def __init__(
         self,
@@ -812,25 +812,17 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        self._plot_tree(
+        self._plot_feature_importance(
+            X_train=DecisionTreeClassification.X_train,
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
-        self._plot_precision_recall(
-            X_test=LogisticRegressionClassification.X_test,
-            y_test=LogisticRegressionClassification.y_test,
+        self._plot_tree(
             trained_model=self.model,
-            algorithm_name=self.naming,
-            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-        )
-        self._plot_ROC(
-            X_test=LogisticRegressionClassification.X_test,
-            y_test=LogisticRegressionClassification.y_test,
-            trained_model=self.model,
+            image_config=self.image_config,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -850,25 +842,17 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
     def special_components(self, is_automl: bool, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        self._plot_tree(
+        self._plot_feature_importance(
+            X_train=DecisionTreeClassification.X_train,
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
-        self._plot_precision_recall(
-            X_test=LogisticRegressionClassification.X_test,
-            y_test=LogisticRegressionClassification.y_test,
+        self._plot_tree(
             trained_model=self.auto_model,
-            algorithm_name=self.naming,
-            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-        )
-        self._plot_ROC(
-            X_test=LogisticRegressionClassification.X_test,
-            y_test=LogisticRegressionClassification.y_test,
-            trained_model=self.auto_model,
+            image_config=self.image_config,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -885,11 +869,11 @@ class DecisionTreeClassification(ClassificationWorkflowBase):
             )
 
 
-class RandomForestClassification(ClassificationWorkflowBase):
+class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
     """The automation workflow of using Random Forest algorithm to make insightful products."""
 
     name = "Random Forest"
-    special_function = ["Feature Importance", "Random Forest's Tree Plot", "Drawing Decision Surfaces Plot"]
+    special_function = ["Feature Importance Diagram", "Random Forest's Single Tree Diagram", "Two-dimensional Decision Boundary Diagram"]
 
     def __init__(
         self,
@@ -1158,74 +1142,98 @@ class RandomForestClassification(ClassificationWorkflowBase):
         return hyper_parameters
 
     @staticmethod
-    def _feature_importances(X_train: pd.DataFrame, trained_model: object, algorithm_name: str, store_path: str) -> None:
-        """Draw the feature importance bar diagram."""
-        print("-----* Feature Importance *-----")
-        feature_importances(X_train, trained_model)
-        save_fig(f"Feature Importance - {algorithm_name}", store_path)
-
-    @staticmethod
-    def _tree_plot(trained_model: object, image_config: dict, algorithm_name: str, store_path: str) -> None:
+    def _plot_tree(trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Draw a diagram of the first decision tree of the forest."""
-        print("-----* Random Forest's Tree Plot *-----")
-        decision_tree_plot(trained_model.estimators_[0], image_config)
-        save_fig(f"Classification - {algorithm_name} - Tree Graph", store_path)
+        print("-----* Random Forest's Single Tree Diagram *-----")
+        plot_decision_tree(trained_model.estimators_[0], image_config)
+        save_fig(f"Single Tree Diagram - {algorithm_name}", local_path, mlflow_path)
 
     @staticmethod
     def _plot_2d_decision_boundary(
         X: pd.DataFrame,
         X_test: pd.DataFrame,
-        y_test: pd.DataFrame,
-        trained_model: object,
+        trained_model: Any,
         image_config: dict,
         algorithm_name: str,
-        store_path: str,
+        local_path: str,
+        mlflow_path: str,
     ) -> None:
         """Plot the decision boundary of the trained model with the testing data set below."""
         print("-----* Two-dimensional Decision Boundary Diagram *-----")
-        plot_2d_decision_boundary(X, X_test, y_test, trained_model, image_config, algorithm_name)
-        save_fig(f"Classification - {algorithm_name} - Decision Boundary", store_path)
+        plot_2d_decision_boundary(X, X_test, trained_model, image_config)
+        save_fig(f"Decision Boundary - {algorithm_name}", local_path, mlflow_path)
+        save_data(X, "Decision Boundary - X", local_path, mlflow_path)
+        save_data(X_test, "Decision Boundary - X Test", local_path, mlflow_path)
 
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        self._feature_importances(RandomForestClassification.X_train, self.model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
-        self._tree_plot(self.model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_feature_importance(
+            X_train=RandomForestClassification.X_train,
+            trained_model=self.model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._plot_tree(
+            trained_model=self.model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
         if RandomForestClassification.X.shape[1] == 2:
             self._plot_2d_decision_boundary(
-                RandomForestClassification.X,
-                RandomForestClassification.X_test,
-                RandomForestClassification.y_test,
-                self.model,
-                self.image_config,
-                self.naming,
-                MODEL_OUTPUT_IMAGE_PATH,
+                X=RandomForestClassification.X,
+                X_test=RandomForestClassification.X_test,
+                trained_model=self.model,
+                image_config=self.image_config,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        self._feature_importances(RandomForestClassification.X_train, self.auto_model, self.naming, MODEL_OUTPUT_IMAGE_PATH)
-        self._tree_plot(self.auto_model, self.image_config, self.naming, MODEL_OUTPUT_IMAGE_PATH)
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_feature_importance(
+            X_train=RandomForestClassification.X_train,
+            trained_model=self.auto_model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._plot_tree(
+            trained_model=self.auto_model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
         if RandomForestClassification.X.shape[1] == 2:
             self._plot_2d_decision_boundary(
-                RandomForestClassification.X,
-                RandomForestClassification.X_test,
-                RandomForestClassification.y_test,
-                self.auto_model,
-                self.image_config,
-                self.naming,
-                MODEL_OUTPUT_IMAGE_PATH,
+                X=RandomForestClassification.X,
+                X_test=RandomForestClassification.X_test,
+                trained_model=self.model,
+                image_config=self.image_config,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
 
 
-class XgboostClassification(ClassificationWorkflowBase):
+class XgboostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
     """The automation workflow of using Xgboost algorithm to make insightful products."""
+
+    name = "Xgboost"
+    special_function = ["Feature Importance Diagram"]
 
     # https: // xgboost.readthedocs.io / en / stable / python / python_api.html  # module-xgboost.sklearn
     _SklObjective = Optional[Union[str, Callable[[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]]]
-    name = "Xgboost"
-    special_function = ["Feature Importance"]
 
     def __init__(
         self,
@@ -1529,47 +1537,58 @@ class XgboostClassification(ClassificationWorkflowBase):
         hyper_parameters = xgboost_manual_hyper_parameters()
         return hyper_parameters
 
-    @staticmethod
-    def _feature_importance_series(data: pd.DataFrame, trained_model: any, algorithm_name: str, image_config: dict, store_path: str) -> None:
-        """Plot feature importance series."""
-        print("-----* Feature Importance *-----")
-        feature_importance_value(data, trained_model)
-        feature_weights_histograms(trained_model, image_config, algorithm_name)
-        save_fig(f"Classification - {algorithm_name} - Feature Weights Histograms Plot", store_path)
-        feature_importance_map(trained_model, image_config, algorithm_name)
-        save_fig(f"Classification - {algorithm_name} - Feature Importance Map Plot", store_path)
-
-    @dispatch()
-    def special_components(self, **kwargs) -> None:
-        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        self._feature_importance_series(self.X, self.model, self.naming, self.image_config, MODEL_OUTPUT_IMAGE_PATH)
-
-    @dispatch(bool)
-    def special_components(self, is_automl: bool = False, **kwargs) -> None:
-        """Invoke all special application functions for this algorithms by FLAML framework."""
-        self._feature_importance_series(XgboostClassification.X, self.auto_model, self.naming, self.image_config, MODEL_OUTPUT_IMAGE_PATH)
-
-    # def plot(self):
-    # TODO(solve the problem of failed to execute WindowsPath('dot'), make sure the Graphviz executables are on your systems' PATH
-    #     ###################################################
+    # @staticmethod
+    # def _plot_tree(trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    #     # TODO: (solve the problem of failed to execute WindowsPath('dot'), make sure the Graphviz executables are on your systems' PATH
     #     # Drawing diagrams of the first decision tree of xgboost
-    #     ###################################################
-    #     print("-----* Xgboost's Tree Plot *-----")
-    #     xgboost.plot_tree(self.model)
+    #     print("-----* Xgboost's Single Tree Diagram *-----")
+    #     xgboost.plot_tree(trained_model)
     #     # node_params = {
     #     #     'shape': 'box',
     #     #     'style': 'filled,rounded',
     #     #     'fillcolor': '#78bceb'
     #     # }
     #     # xgboost.to_graphviz(self.model, condition_node_params = node_params)
-    #     save_fig('plot_xgboost_tree', MODEL_OUTPUT_IMAGE_PATH)
+    #     save_fig(f"Single Tree Diagram - {algorithm_name}", local_path, mlflow_path)
+
+    @dispatch()
+    def special_components(self, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        # self._plot_tree(
+        #     trained_model=self.model,
+        #     algorithm_name=self.naming,
+        #     local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+        #     mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        # )
+        self._plot_feature_importance(
+            X_train=XgboostClassification.X_train,
+            trained_model=self.model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+
+    @dispatch(bool)
+    def special_components(self, is_automl: bool = False, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by FLAML framework."""
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_feature_importance(
+            X_train=XgboostClassification.X_train,
+            trained_model=self.auto_model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
 
 
 class LogisticRegressionClassification(ClassificationWorkflowBase):
     """The automation workflow of using Logistic Regression algorithm to make insightful products."""
 
     name = "Logistic Regression"
-    special_function = ["Feature Importance", "Precision Recall Curve", "ROC Curve"]
+    special_function = ["Feature Importance"]
 
     def __init__(
         self,
@@ -1816,22 +1835,6 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
-        self._plot_precision_recall(
-            X_test=LogisticRegressionClassification.X_test,
-            y_test=LogisticRegressionClassification.y_test,
-            trained_model=self.model,
-            algorithm_name=self.naming,
-            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-        )
-        self._plot_ROC(
-            X_test=LogisticRegressionClassification.X_test,
-            y_test=LogisticRegressionClassification.y_test,
-            trained_model=self.model,
-            algorithm_name=self.naming,
-            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-        )
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
@@ -1839,22 +1842,6 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             columns_name=LogisticRegressionClassification.X.columns,
-            trained_model=self.auto_model,
-            algorithm_name=self.naming,
-            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-        )
-        self._plot_precision_recall(
-            X_test=LogisticRegressionClassification.X_test,
-            y_test=LogisticRegressionClassification.y_test,
-            trained_model=self.auto_model,
-            algorithm_name=self.naming,
-            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-        )
-        self._plot_ROC(
-            X_test=LogisticRegressionClassification.X_test,
-            y_test=LogisticRegressionClassification.y_test,
             trained_model=self.auto_model,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -2179,32 +2166,32 @@ class DNNClassification(ClassificationWorkflowBase):
         pass
 
 
-class ExtraTreesClassification(ClassificationWorkflowBase):
+class ExtraTreesClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
     """The automation workflow of using Extra-Trees algorithm to make insightful products."""
 
     name = "Extra-Trees"
-    special_function = []
+    special_function = ["Feature Importance Diagram"]
 
     def __init__(
         self,
-        n_estimators=100,
-        criterion="gini",
-        max_depth=None,
-        min_samples_split=2,
-        min_samples_leaf=1,
-        min_weight_fraction_leaf=0.0,
-        max_features="sqrt",
-        max_leaf_nodes=None,
-        min_impurity_decrease=0.0,
-        bootstrap=False,
-        oob_score=False,
-        n_jobs=None,
-        random_state=None,
-        verbose=0,
-        warm_start=False,
-        class_weight=None,
-        ccp_alpha=0.0,
-        max_samples=None,
+        n_estimators: int = 100,
+        criterion: str = "gini",
+        max_depth: Optional[int] = None,
+        min_samples_split: Union[float, int] = 2,
+        min_samples_leaf: Union[float, int] = 1,
+        min_weight_fraction_leaf: float = 0.0,
+        max_features: Union[str, float, int] = "sqrt",
+        max_leaf_nodes: Optional[int] = None,
+        min_impurity_decrease: float = 0.0,
+        bootstrap: bool = False,
+        oob_score: bool = False,
+        n_jobs: Optional[int] = None,
+        random_state: Optional[int] = None,
+        verbose: int = 0,
+        warm_start: bool = False,
+        class_weight: str = None,
+        ccp_alpha: float = 0.0,
+        max_samples: Union[int, float] = None,
     ) -> None:
         """
         Parameters
@@ -2432,9 +2419,25 @@ class ExtraTreesClassification(ClassificationWorkflowBase):
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        pass
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_feature_importance(
+            X_train=ExtraTreesClassification.X_train,
+            trained_model=self.model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
 
     @dispatch(bool)
     def special_components(self, is_automl: bool, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        pass
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_feature_importance(
+            X_train=ExtraTreesClassification.X_train,
+            trained_model=self.auto_model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
