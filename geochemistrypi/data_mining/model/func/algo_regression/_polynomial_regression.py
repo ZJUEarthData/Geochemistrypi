@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
-from typing import Dict, List
+from typing import Dict
 
-import numpy as np
 from rich import print
 
 from ....constants import SECTION
@@ -28,43 +27,3 @@ def polynomial_regression_manual_hyper_parameters() -> Dict:
     include_bias = bool(str_input(include_biases, SECTION[2]))
     hyper_parameters = {"degree": degree, "interaction_only": interaction_only, "include_bias": include_bias}
     return hyper_parameters
-
-
-def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: List) -> None:
-    """Show the formula of polynomial regression.
-
-    Parameters
-    ----------
-    coef : array
-        Coefficient of the features in the decision function.
-
-    intercept : array
-        Independent term in decision function.
-
-    features_name : list
-        Name of the features.
-    """
-    term = []
-    coef = np.around(coef, decimals=3).tolist()[0]
-
-    for i in range(len(coef)):
-        # the first value stay the same
-        if i == 0:
-            # not append if zero
-            if coef[i] != 0:
-                temp = str(coef[i]) + features_name[i]
-                term.append(temp)
-        else:
-            # add plus symbol if positive, maintain if negative, not append if zero
-            if coef[i] > 0:
-                temp = "+" + str(coef[i]) + features_name[i]
-                term.append(temp)
-            elif coef[i] < 0:
-                temp = str(coef[i]) + features_name[i]
-                term.append(temp)
-    if intercept[0] >= 0:
-        # formula of polynomial regression
-        formula = "".join(term) + "+" + str(intercept[0])
-    else:
-        formula = "".join(term) + str(intercept[0])
-    print("y =", formula)

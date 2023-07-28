@@ -2,7 +2,6 @@
 from typing import Dict
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 from mpl_toolkits.mplot3d import Axes3D
 from rich import print
@@ -28,33 +27,6 @@ def linear_regression_manual_hyper_parameters() -> Dict:
     normalize = bool(str_input(normalizes, SECTION[2]))
     hyper_parameters = {"fit_intercept": fit_intercept, "normalize": normalize}
     return hyper_parameters
-
-
-def show_formula(coef, intercept, columns_name):
-    term = []
-    coef = np.around(coef, decimals=3).tolist()[0]
-
-    for i in range(len(coef)):
-        # the first value stay the same
-        if i == 0:
-            # not append if zero
-            if coef[i] != 0:
-                temp = str(coef[i]) + columns_name[i]
-                term.append(temp)
-        else:
-            # add plus symbol if positive, maintain if negative, not append if zero
-            if coef[i] > 0:
-                temp = "+" + str(coef[i]) + columns_name[i]
-                term.append(temp)
-            elif coef[i] < 0:
-                temp = str(coef[i]) + columns_name[i]
-                term.append(temp)
-    if intercept[0] >= 0:
-        # formula of linear regression
-        formula = "".join(term) + "+" + str(intercept[0])
-    else:
-        formula = "".join(term) + str(intercept[0])
-    print("y =", formula)
 
 
 def plot_2d_graph(feature_data: pd.DataFrame, target_data: pd.DataFrame = None) -> None:

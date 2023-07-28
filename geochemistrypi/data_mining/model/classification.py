@@ -19,7 +19,7 @@ from sklearn.tree import DecisionTreeClassifier
 
 from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, RAY_FLAML
 from ..utils.base import save_data, save_fig, save_text
-from ._base import TreeWorkflowMixin, WorkflowBase
+from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
 from .func.algo_classification._common import cross_validation, plot_2d_decision_boundary, plot_confusion_matrix, plot_precision_recall, plot_ROC, score
 from .func.algo_classification._decision_tree import decision_tree_manual_hyper_parameters
 from .func.algo_classification._deep_neural_network import deep_neural_network_manual_hyper_parameters
@@ -1485,11 +1485,11 @@ class XgboostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         )
 
 
-class LogisticRegressionClassification(ClassificationWorkflowBase):
+class LogisticRegressionClassification(LinearWorkflowMixin, ClassificationWorkflowBase):
     """The automation workflow of using Logistic Regression algorithm to make insightful products."""
 
     name = "Logistic Regression"
-    special_function = ["Feature Importance"]
+    special_function = ["Logistic Regression Formula", "Feature Importance Diagram"]
 
     def __init__(
         self,
@@ -1729,6 +1729,15 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+        self._show_formula(
+            coef=self.model.coef_,
+            intercept=self.model.intercept_,
+            features_name=LogisticRegressionClassification.X.columns,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
+            mlflow_path="root",
+        )
         self._plot_feature_importance(
             columns_name=LogisticRegressionClassification.X.columns,
             trained_model=self.model,
@@ -1741,6 +1750,15 @@ class LogisticRegressionClassification(ClassificationWorkflowBase):
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+        self._show_formula(
+            coef=self.auto_model.coef_,
+            intercept=self.auto_model.intercept_,
+            features_name=LogisticRegressionClassification.X.columns,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
+            mlflow_path="root",
+        )
         self._plot_feature_importance(
             columns_name=LogisticRegressionClassification.X.columns,
             trained_model=self.auto_model,

@@ -88,7 +88,7 @@ def clear_output() -> None:
     print("")
 
 
-def save_fig(fig_name: str, image_path: str, mlflow_artifact_image_path: str = None, tight_layout: bool = True) -> None:
+def save_fig(fig_name: str, local_image_path: str, mlflow_artifact_image_path: str = None, tight_layout: bool = True) -> None:
     """Save the figure in the local directory and in mlflow specialized directory.
 
     Parameters
@@ -96,7 +96,7 @@ def save_fig(fig_name: str, image_path: str, mlflow_artifact_image_path: str = N
     fig_name : str
         Figure name.
 
-    image_path : str
+    local_image_path : str
         The path to store the image.
 
     mlflow_artifact_image_path : str, default=None
@@ -105,8 +105,8 @@ def save_fig(fig_name: str, image_path: str, mlflow_artifact_image_path: str = N
     tight_layout : bool, default=True
         Automatically adjust subplot parameters to give specified padding.
     """
-    full_path = os.path.join(image_path, fig_name + ".png")
-    print(f"Save figure '{fig_name}' in {image_path}.")
+    full_path = os.path.join(local_image_path, fig_name + ".png")
+    print(f"Save figure '{fig_name}' in {local_image_path}.")
     if tight_layout:
         plt.tight_layout()
 
@@ -125,7 +125,7 @@ def save_fig(fig_name: str, image_path: str, mlflow_artifact_image_path: str = N
         mlflow.log_artifact(full_path)
 
 
-def save_data(df: pd.DataFrame, df_name: str, data_path: str, mlflow_artifact_data_path: str = None, index: bool = False) -> None:
+def save_data(df: pd.DataFrame, df_name: str, local_data_path: str, mlflow_artifact_data_path: str = None, index: bool = False) -> None:
     """Save the dataset in the local directory and in mlflow specialized directory.
 
     Parameters
@@ -136,7 +136,7 @@ def save_data(df: pd.DataFrame, df_name: str, data_path: str, mlflow_artifact_da
     df_name : str
         The name of the data sheet.
 
-    path : str
+    local_data_path : str
         The path to store the data sheet
 
     mlflow_artifact_data_path : str, default=None
@@ -147,22 +147,22 @@ def save_data(df: pd.DataFrame, df_name: str, data_path: str, mlflow_artifact_da
     """
     try:
         # drop the index in case that the dimensions change
-        full_path = os.path.join(data_path, "{}.xlsx".format(df_name))
+        full_path = os.path.join(local_data_path, "{}.xlsx".format(df_name))
         df.to_excel(full_path, index=index)
         if mlflow_artifact_data_path:
             mlflow.log_artifact(full_path, artifact_path=mlflow_artifact_data_path)
         else:
             mlflow.log_artifact(full_path)
-        print(f"Successfully store '{df_name}' in '{df_name}.xlsx' in {data_path}.")
+        print(f"Successfully store '{df_name}' in '{df_name}.xlsx' in {local_data_path}.")
     except ModuleNotFoundError:
         print("** Please download openpyxl by pip3 **")
         print("** The data will be stored in .csv file **")
-        full_path = os.path.join(data_path, "{}.csv".format(df_name))
+        full_path = os.path.join(local_data_path, "{}.csv".format(df_name))
         df.to_csv(full_path, index=index)
-        print(f"Successfully store '{df_name}' in '{df_name}.csv' in {data_path}.")
+        print(f"Successfully store '{df_name}' in '{df_name}.csv' in {local_data_path}.")
 
 
-def save_text(string: str, text_name: str, path: str) -> None:
+def save_text(string: str, text_name: str, local_text_path: str, mlflow_artifact_text_path: str = None) -> None:
     """Save the text.
 
     Parameters
@@ -173,13 +173,23 @@ def save_text(string: str, text_name: str, path: str) -> None:
     text_name : str
         The name of the text.
 
-    path : str
+    local_text_path : str
         The path to store the text.
+
+    mlflow_artifact_text_path : str, default=None
+        The path to store the text in mlflow.
     """
-    file_path = os.path.join(path, text_name + ".txt")
-    with open(file_path, "w") as f:
+    full_path = os.path.join(local_text_path, text_name + ".txt")
+    with open(full_path, "w") as f:
         f.write(string)
-    print(f"Successfully store '{text_name}' in '{text_name}.txt' in {path}.")
+    print(f"Successfully store '{text_name}' in '{text_name}.txt' in {local_text_path}.")
+    if not mlflow_artifact_text_path:
+        pass
+    elif mlflow_artifact_text_path == "root":
+        # If artifact_path is "root", the artifact will be placed in the root artifacts directory.
+        mlflow.log_artifact(full_path)
+    else:
+        mlflow.log_artifact(full_path, artifact_path=mlflow_artifact_text_path)
 
 
 def log(log_path, log_name):

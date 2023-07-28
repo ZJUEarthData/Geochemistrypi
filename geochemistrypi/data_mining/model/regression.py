@@ -19,13 +19,13 @@ from sklearn.tree import DecisionTreeRegressor
 
 from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
 from ..utils.base import save_data, save_fig, save_text
-from ._base import TreeWorkflowMixin, WorkflowBase
+from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
 from .func.algo_regression._common import cross_validation, plot_predicted_value_evaluation, plot_true_vs_predicted, score
 from .func.algo_regression._decision_tree import decision_tree_manual_hyper_parameters
 from .func.algo_regression._deep_neural_network import deep_neural_network_manual_hyper_parameters
 from .func.algo_regression._extra_tree import extra_trees_manual_hyper_parameters
-from .func.algo_regression._linear_regression import linear_regression_manual_hyper_parameters, plot_2d_graph, plot_3d_graph, show_formula
-from .func.algo_regression._polynomial_regression import polynomial_regression_manual_hyper_parameters, show_formula
+from .func.algo_regression._linear_regression import linear_regression_manual_hyper_parameters, plot_2d_graph, plot_3d_graph
+from .func.algo_regression._polynomial_regression import polynomial_regression_manual_hyper_parameters
 from .func.algo_regression._rf import box_plot, random_forest_manual_hyper_parameters
 from .func.algo_regression._svr import svr_manual_hyper_parameters
 from .func.algo_regression._xgboost import histograms_feature_weights, permutation_importance_, xgboost_manual_hyper_parameters
@@ -102,7 +102,7 @@ class RegressionWorkflowBase(WorkflowBase):
         """The customized model of FLAML framework."""
         return object
 
-    def ray_tune(self, X_train, X_test, y_train, y_test) -> object:
+    def ray_tune(self, X_train: pd.DataFrame, X_test: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame) -> object:
         """The customized model of FLAML framework and RAY framework."""
         return object
 
@@ -216,7 +216,7 @@ class RegressionWorkflowBase(WorkflowBase):
         )
 
 
-class PolynomialRegression(RegressionWorkflowBase):
+class PolynomialRegression(LinearWorkflowMixin, RegressionWorkflowBase):
     """The automation workflow of using Polynomial Regression algorithm to make insightful products."""
 
     name = "Polynomial Regression"
@@ -268,15 +268,17 @@ class PolynomialRegression(RegressionWorkflowBase):
         hyper_parameters = polynomial_regression_manual_hyper_parameters()
         return hyper_parameters
 
-    @staticmethod
-    def _show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: List) -> None:
-        """Show the formula of the polynomial regression."""
-        print("-----* Polynomial Regression Formula *-----")
-        show_formula(coef, intercept, features_name)
-
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        self._show_formula(coef=self.model.coef_, intercept=self.model.intercept_, features_name=self._features_name)
+        GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+        self._show_formula(
+            coef=self.model.coef_,
+            intercept=self.model.intercept_,
+            features_name=self._features_name,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
+            mlflow_path="root",
+        )
 
 
 class XgboostRegression(TreeWorkflowMixin, RegressionWorkflowBase):
@@ -2046,7 +2048,7 @@ class DNNRegression(RegressionWorkflowBase):
         )
 
 
-class LinearRegression2(RegressionWorkflowBase):
+class LinearRegression2(LinearWorkflowMixin, RegressionWorkflowBase):
     """The automation workflow of using Linear Regression algorithm to make insightful products."""
 
     name = "Linear Regression"
@@ -2111,12 +2113,6 @@ class LinearRegression2(RegressionWorkflowBase):
         return hyper_parameters
 
     @staticmethod
-    def _show_formula(coef: np.ndarray, intercept: np.ndarray, columns_name: pd.Index) -> None:
-        """Show the formula of the linear regression model."""
-        print("-----* Linear Regression Formula *-----")
-        show_formula(coef, intercept, columns_name)
-
-    @staticmethod
     def _plot_2d_graph(feature_data: pd.DataFrame, target_data: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the 2D graph of the linear regression model."""
         print("-----* Plot 2D Graph *-----")
@@ -2136,9 +2132,16 @@ class LinearRegression2(RegressionWorkflowBase):
 
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        self._show_formula(coef=self.model.coef_, intercept=self.model.intercept_, columns_name=LinearRegression2.X.columns)
-
+        GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._show_formula(
+            coef=self.model.coef_,
+            intercept=self.model.intercept_,
+            features_name=LinearRegression2.X_train.columns,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
+            mlflow_path="root",
+        )
         columns_num = LinearRegression2.X.shape[1]
         if columns_num > 2:
             # choose two of dimensions to draw
