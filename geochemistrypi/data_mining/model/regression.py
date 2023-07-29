@@ -17,7 +17,7 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.svm import SVR
 from sklearn.tree import DecisionTreeRegressor
 
-from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
+from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, RAY_FLAML
 from ..utils.base import save_data, save_fig, save_text
 from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
 from .func.algo_regression._common import cross_validation, plot_predicted_vs_actual, plot_residuals, score
@@ -26,15 +26,15 @@ from .func.algo_regression._deep_neural_network import deep_neural_network_manua
 from .func.algo_regression._extra_tree import extra_trees_manual_hyper_parameters
 from .func.algo_regression._linear_regression import linear_regression_manual_hyper_parameters
 from .func.algo_regression._polynomial_regression import polynomial_regression_manual_hyper_parameters
-from .func.algo_regression._rf import box_plot, random_forest_manual_hyper_parameters
+from .func.algo_regression._rf import random_forest_manual_hyper_parameters
 from .func.algo_regression._svr import svr_manual_hyper_parameters
-from .func.algo_regression._xgboost import histograms_feature_weights, permutation_importance_, xgboost_manual_hyper_parameters
+from .func.algo_regression._xgboost import xgboost_manual_hyper_parameters
 
 
 class RegressionWorkflowBase(WorkflowBase):
     """The base workflow class of regression algorithms."""
 
-    common_function = ["Model Score", "Cross Validation", "Model Prediction", "Model Persistence", "Predicted vs. Actual Diagram", "Residuals Diagram"]
+    common_function = ["Model Score", "Cross Validation", "Model Prediction", "Model Persistence", "Predicted vs. Actual Diagram", "Residuals Diagram", "Permutation Importance Diagram"]
 
     def __init__(self) -> None:
         super().__init__()
@@ -180,6 +180,15 @@ class RegressionWorkflowBase(WorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
+        self._plot_permutation_importance(
+            X_test=RegressionWorkflowBase.X_test,
+            y_test=RegressionWorkflowBase.y_test,
+            trained_model=self.model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
 
     @dispatch(bool)
     def common_components(self, is_automl: bool) -> None:
@@ -210,6 +219,15 @@ class RegressionWorkflowBase(WorkflowBase):
         self._plot_residuals(
             y_test_predict=RegressionWorkflowBase.y_test_predict,
             y_test=RegressionWorkflowBase.y_test,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._plot_permutation_importance(
+            X_test=RegressionWorkflowBase.X_test,
+            y_test=RegressionWorkflowBase.y_test,
+            trained_model=self.auto_model,
+            image_config=self.image_config,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -586,26 +604,11 @@ class XgboostRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         hyper_parameters = xgboost_manual_hyper_parameters()
         return hyper_parameters
 
-    @staticmethod
-    def _histograms_feature_weights(X: pd.DataFrame, trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
-        """Histograms of feature weights plot."""
-        histograms_feature_weights(X, trained_model, image_config)
-        save_fig(f"Feature Importance Score - {algorithm_name}", local_path, mlflow_path)
-
-    @staticmethod
-    def _permutation_importance(
-        X: pd.DataFrame,
-        X_test: pd.DataFrame,
-        y_test: pd.DataFrame,
-        trained_model: object,
-        image_config: dict,
-        algorithm_name: str,
-        local_path: str,
-        mlflow_path: str,
-    ) -> None:
-        """Permutation importance plot."""
-        permutation_importance_(X, X_test, y_test, trained_model, image_config)
-        save_fig(f"Xgboost Feature Importance - {algorithm_name}", local_path, mlflow_path)
+    # @staticmethod
+    # def _histograms_feature_weights(X: pd.DataFrame, trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    #     """Histograms of feature weights plot."""
+    #     histograms_feature_weights(X, trained_model, image_config)
+    #     save_fig(f"Feature Importance Score - {algorithm_name}", local_path, mlflow_path)
 
     @dispatch()
     def special_components(self, **kwargs) -> None:
@@ -619,24 +622,14 @@ class XgboostRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
-        self._histograms_feature_weights(
-            X=XgboostRegression.X,
-            trained_model=self.model,
-            image_config=self.image_config,
-            algorithm_name=self.naming,
-            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-        )
-        self._permutation_importance(
-            X=XgboostRegression.X,
-            X_test=XgboostRegression.X_test,
-            y_test=XgboostRegression.y_test,
-            trained_model=self.model,
-            image_config=self.image_config,
-            algorithm_name=self.naming,
-            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-        )
+        # self._histograms_feature_weights(
+        #     X=XgboostRegression.X,
+        #     trained_model=self.model,
+        #     image_config=self.image_config,
+        #     algorithm_name=self.naming,
+        #     local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+        #     mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        # )
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
@@ -650,24 +643,14 @@ class XgboostRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
-        self._histograms_feature_weights(
-            X=XgboostRegression.X,
-            trained_model=self.auto_model,
-            image_config=self.image_config,
-            algorithm_name=self.naming,
-            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-        )
-        self._permutation_importance(
-            X=XgboostRegression.X,
-            X_test=XgboostRegression.X_test,
-            y_test=XgboostRegression.y_test,
-            trained_model=self.auto_model,
-            image_config=self.image_config,
-            algorithm_name=self.naming,
-            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-        )
+        # self._histograms_feature_weights(
+        #     X=XgboostRegression.X,
+        #     trained_model=self.auto_model,
+        #     image_config=self.image_config,
+        #     algorithm_name=self.naming,
+        #     local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+        #     mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        # )
 
 
 class DecisionTreeRegression(TreeWorkflowMixin, RegressionWorkflowBase):
@@ -1482,21 +1465,6 @@ class RandomForestRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         hyper_parameters = random_forest_manual_hyper_parameters()
         return hyper_parameters
 
-    @staticmethod
-    def _box_plot(
-        X: pd.DataFrame,
-        X_test: pd.DataFrame,
-        y_test: pd.DataFrame,
-        trained_model: object,
-        image_config: dict,
-        algorithm_name: str,
-        store_path: str,
-    ) -> None:
-        """Box plot."""
-        print("-----* Box Plot *-----")
-        box_plot(X, X_test, y_test, trained_model, image_config)
-        save_fig(f"Regression - {algorithm_name} - Box Plot", store_path)
-
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
@@ -1515,15 +1483,6 @@ class RandomForestRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-        )
-        self._box_plot(
-            RandomForestRegression.X,
-            RandomForestRegression.X_test,
-            RandomForestRegression.y_test,
-            self.model,
-            self.image_config,
-            self.naming,
-            MODEL_OUTPUT_IMAGE_PATH,
         )
 
     @dispatch(bool)
@@ -1544,15 +1503,6 @@ class RandomForestRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-        )
-        self._box_plot(
-            RandomForestRegression.X,
-            RandomForestRegression.X_test,
-            RandomForestRegression.y_test,
-            self.auto_model,
-            self.image_config,
-            self.naming,
-            MODEL_OUTPUT_IMAGE_PATH,
         )
 
 

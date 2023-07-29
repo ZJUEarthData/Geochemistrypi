@@ -15,18 +15,6 @@ BUILT_IN_DATASET_PATH = os.path.join(PACKAGEDIR, "data", "dataset")
 # the root directory where all the output stays
 OUTPUT_PATH = os.path.join(WORKING_PATH, "geopi_output")
 
-# the directory where the data set produced stays
-DATASET_OUTPUT_PATH = os.path.join(OUTPUT_PATH, "data")
-
-# the directory where pictures saved
-MODEL_OUTPUT_IMAGE_PATH = os.path.join(OUTPUT_PATH, "images", "model_output")
-STATISTIC_IMAGE_PATH = os.path.join(OUTPUT_PATH, "images", "statistic")
-MAP_IMAGE_PATH = os.path.join(OUTPUT_PATH, "images", "map")
-GEO_IMAGE_PATH = os.path.join(OUTPUT_PATH, "images", "geochemistry")
-
-# the directory where the trained model saved
-MODEL_PATH = os.path.join(OUTPUT_PATH, "trained_models")
-
 # the directory where the artifact is saved within the MLflow run's artifact directory
 MLFLOW_ARTIFACT_DATA_PATH = "data"
 MLFLOW_ARTIFACT_IMAGE_STATISTIC_PATH = os.path.join("image", "statistic")

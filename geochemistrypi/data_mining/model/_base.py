@@ -15,7 +15,7 @@ from rich import print
 from ..constants import SECTION
 from ..data.data_readiness import limit_num_input, num2option, num_input, show_data_columns
 from ..utils.base import save_data, save_fig, save_text
-from .func._common_supervised import plot_decision_tree, plot_feature_importance, show_formula
+from .func._common_supervised import plot_decision_tree, plot_feature_importance, plot_permutation_importance, show_formula
 from .func.algo_regression._linear_regression import plot_2d_line_diagram, plot_2d_scatter_diagram, plot_3d_scatter_diagram, plot_3d_surface_diagram
 
 
@@ -286,6 +286,26 @@ class WorkflowBase(metaclass=ABCMeta):
             joblib.dump(self.auto_model, fj)
         print(f"Successfully store the trained model '{self.naming}' in '{joblib_filename}' in {GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH}.")
         mlflow.sklearn.log_model(self.auto_model, self.naming)
+
+    @staticmethod
+    def _plot_permutation_importance(
+        X_test: pd.DataFrame,
+        y_test: pd.DataFrame,
+        trained_model: object,
+        image_config: dict,
+        algorithm_name: str,
+        local_path: str,
+        mlflow_path: str,
+    ) -> None:
+        """Permutation importance plot."""
+        print("-----* Permutation Importance Diagram *-----")
+        importances_mean, importances_std, importances = plot_permutation_importance(X_test, y_test, trained_model, image_config)
+        save_fig(f"Permutation Importance - {algorithm_name}", local_path, mlflow_path)
+        save_data(X_test, "Permutation Importance - X Test", local_path, mlflow_path)
+        save_data(y_test, "Permutation Importance - Y Test", local_path, mlflow_path)
+        data_dict = {"importances_mean": importances_mean.tolist(), "importances_std": importances_std.tolist(), "importances": importances.tolist()}
+        data_str = json.dumps(data_dict, indent=4)
+        save_text(data_str, f"Permutation Importance - {algorithm_name}", local_path, mlflow_path)
 
 
 class TreeWorkflowMixin:
