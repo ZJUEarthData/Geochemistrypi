@@ -18,8 +18,10 @@ def logistic_regression_manual_hyper_parameters() -> Dict:
     """
     print("Penalty: This hyperparameter specifies the norm used in the penalization.")
     print("Please specify the norm used in the penalization. It is generally recommended to leave it set to l2.")
-    penalties = ["l1", "l2", "elasticnet", "none"]
+    penalties = ["l1", "l2", "elasticnet", "None"]
     penalty = str_input(penalties, SECTION[2])
+    if penalty == "None":
+        penalty = None
     print("C: This hyperparameter specifies the inverse of regularization strength. A smaller value of C indicates stronger regularization, whereas a larger value indicates weaker regularization.")
     print("Please specify the inverse of regularization strength. A good starting range could be between 0.001 and 1000, such as 1.0.")
     C = float_input(1, SECTION[2], "@C: ")
@@ -49,6 +51,8 @@ def logistic_regression_manual_hyper_parameters() -> Dict:
     print("Please specify the weights associated with classes. It is generally recommended to leave it set to None.")
     class_weights = ["None", "balanced"]
     class_weight = str_input(class_weights, SECTION[2])
+    if class_weight == "None":
+        class_weight = None
     hyper_parameters = {
         "penalty": penalty,
         "C": C,

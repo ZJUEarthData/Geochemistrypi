@@ -277,6 +277,8 @@ class PolynomialRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._features_name = poly_features.get_feature_names_out()
         except AttributeError:
             self._features_name = poly_features.get_feature_names()
+        X_train_poly = pd.DataFrame(X_train_poly, columns=self._features_name)
+        X_test_poly = pd.DataFrame(X_test_poly, columns=self._features_name)
         return X_train_poly, X_test_poly
 
     @classmethod
