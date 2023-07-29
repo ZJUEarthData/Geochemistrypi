@@ -16,6 +16,7 @@ from ..constants import SECTION
 from ..data.data_readiness import limit_num_input, num2option, num_input, show_data_columns
 from ..utils.base import save_data, save_fig, save_text
 from .func._common_supervised import plot_decision_tree, plot_feature_importance, show_formula
+from .func.algo_regression._linear_regression import plot_2d_line_diagram, plot_2d_scatter_diagram, plot_3d_scatter_diagram, plot_3d_surface_diagram
 
 
 class WorkflowBase(metaclass=ABCMeta):
@@ -318,3 +319,39 @@ class LinearWorkflowMixin:
         formula = show_formula(coef, intercept, features_name)
         formula_str = json.dumps(formula, indent=4)
         save_text(formula_str, f"{algorithm_name} Formula", local_path, mlflow_path)
+
+    @staticmethod
+    def _plot_2d_scatter_diagram(feature_data: pd.DataFrame, target_data: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+        """Plot the 2D graph of the linear regression model."""
+        print("-----* 2D Scatter Diagram *-----")
+        plot_2d_scatter_diagram(feature_data, target_data)
+        save_fig(f"2D Scatter Diagram - {algorithm_name}", local_path, mlflow_path)
+        data = pd.concat([feature_data, target_data], axis=1)
+        save_data(data, f"2D Scatter Diagram - {algorithm_name}", local_path, mlflow_path)
+
+    @staticmethod
+    def _plot_2d_line_diagram(feature_data: pd.DataFrame, target_data: pd.DataFrame, y_test_predict: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+        """Plot the 2D graph of the linear regression model."""
+        print("-----* 2D Line Diagram *-----")
+        plot_2d_line_diagram(feature_data, target_data, y_test_predict)
+        save_fig(f"2D Line Diagram - {algorithm_name}", local_path, mlflow_path)
+        data = pd.concat([feature_data, target_data, y_test_predict], axis=1)
+        save_data(data, f"2D Line Diagram - {algorithm_name}", local_path, mlflow_path)
+
+    @staticmethod
+    def _plot_3d_scatter_diagram(feature_data: pd.DataFrame, target_data: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+        """Plot the 3D graph of the linear regression model."""
+        print("-----*  3D Scatter Diagram *-----")
+        plot_3d_scatter_diagram(feature_data, target_data)
+        save_fig(f"3D Scatter Diagram - {algorithm_name}", local_path, mlflow_path)
+        data = pd.concat([feature_data, target_data], axis=1)
+        save_data(data, f"3D Scatter Diagram - {algorithm_name}", local_path, mlflow_path)
+
+    @staticmethod
+    def _plot_3d_surface_diagram(feature_data: pd.DataFrame, target_data: pd.DataFrame, y_test_predict: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+        """Plot the 3D graph of the linear regression model."""
+        print("-----* 3D Surface Diagram *-----")
+        plot_3d_surface_diagram(feature_data, target_data, y_test_predict)
+        save_fig(f"3D Surface Diagram - {algorithm_name}", local_path, mlflow_path)
+        data = pd.concat([feature_data, target_data, y_test_predict], axis=1)
+        save_data(data, f"3D Surface Diagram - {algorithm_name}", local_path, mlflow_path)

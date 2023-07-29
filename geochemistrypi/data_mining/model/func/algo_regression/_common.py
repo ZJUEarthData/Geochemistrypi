@@ -125,31 +125,53 @@ def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.D
     return scores_result
 
 
-def plot_predicted_value_evaluation(y_test: pd.DataFrame, y_test_predict: pd.DataFrame) -> None:
-    plt.figure(figsize=(4, 4))
-    plt.scatter(y_test, y_test_predict, color="gold", alpha=0.3)
-    plt.plot([y_test.min(), y_test.max()], [y_test_predict.min(), y_test_predict.max()], "-r", linewidth=1)
-    plt.title("Predicted image")
-    plt.xlabel("y_test")
-    plt.ylabel("y_test_predict")
-
-
-def plot_true_vs_predicted(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, algorithm_name: str):
+def plot_predicted_vs_actual(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, algorithm_name: str) -> None:
     """Plot the testing predict values of the trained model and the testing target values.
 
     Parameters
     ----------
     y_test_predict : pd.DataFrame (n_samples, n_components)
         The testing predict values.
+
     y_test : pd.DataFrame (n_samples, n_components)
         The testing target values.
+
     algorithm_name : str
         The name of the algorithm model.
     """
-
-    y_test.index = range(len(y_test))
-    plt.figure(figsize=(8, 6))
-    plt.plot(y_test_predict, color="red", label="predict")
-    plt.plot(y_test, color="gold", label="true")
+    plt.scatter(y_test_predict, y_test, color="b")
+    plt.plot(y_test_predict, y_test_predict, color="r", linestyle="--", label="Perfect Prediction Line")
+    plt.xlabel("Predicted Values")
+    plt.ylabel("Actual Values")
     plt.legend()
-    plt.title(f"Ground Truth v.s. Prediction - {algorithm_name}")
+    plt.title(f"Predicted vs. Actual Diagram - {algorithm_name}")
+
+
+def plot_residuals(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, algorithm_name: str) -> pd.DataFrame:
+    """Plot the residuals of the testing predict values and the testing target values.
+
+    Parameters
+    ----------
+    y_test_predict : pd.DataFrame (n_samples, n_components)
+        The testing predict values.
+
+    y_test : pd.DataFrame (n_samples, n_components)
+        The testing target values.
+
+    algorithm_name : str
+        The name of the algorithm model.
+
+    Returns
+    -------
+    residuals : pd.DataFrame (n_samples, n_components)
+        The residuals of the testing predict values and the testing target values.
+    """
+    residuals = y_test_predict.values - y_test.values
+    residuals = pd.DataFrame(residuals, columns=["Residuals"])
+    plt.scatter(y_test_predict, residuals, color="b")
+    plt.axhline(0, color="r", linestyle="--", label="Zero Residual Line")
+    plt.title(f"Residuals Diagram - {algorithm_name}")
+    plt.xlabel("Predicted Values")
+    plt.ylabel("Residuals (Actual - Predicted)'")
+    plt.legend()
+    return residuals
