@@ -8,10 +8,10 @@ from rich import print
 from ..constants import MLFLOW_ARTIFACT_DATA_PATH, SECTION
 from ..data.data_readiness import num_input
 from ..model.regression import (
+    ClassicalLinearRegression,
     DecisionTreeRegression,
     DNNRegression,
     ExtraTreesRegression,
-    LinearRegression2,
     PolynomialRegression,
     RandomForestRegression,
     RegressionWorkflowBase,
@@ -131,8 +131,8 @@ class RegressionModelSelection(ModelSelectionBase):
                 max_iter=hyper_parameters["max_iter"],
             )
         elif self.model_name == "Linear Regression":
-            hyper_parameters = LinearRegression2.manual_hyper_parameters()
-            self.reg_workflow = LinearRegression2(fit_intercept=hyper_parameters["fit_intercept"], normalize=hyper_parameters["normalize"])
+            hyper_parameters = ClassicalLinearRegression.manual_hyper_parameters()
+            self.reg_workflow = ClassicalLinearRegression(fit_intercept=hyper_parameters["fit_intercept"], normalize=hyper_parameters["normalize"])
 
         self.reg_workflow.show_info()
 
@@ -192,7 +192,7 @@ class RegressionModelSelection(ModelSelectionBase):
         elif self.model_name == "Deep Neural Network":
             self.reg_workflow = DNNRegression()
         elif self.model_name == "Linear Regression":
-            self.reg_workflow = LinearRegression2()
+            self.reg_workflow = ClassicalLinearRegression()
 
         self.reg_workflow.show_info()
 

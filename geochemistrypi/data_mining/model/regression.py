@@ -20,11 +20,11 @@ from sklearn.tree import DecisionTreeRegressor
 from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, MODEL_OUTPUT_IMAGE_PATH, RAY_FLAML
 from ..utils.base import save_data, save_fig, save_text
 from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
-from .func.algo_regression._common import cross_validation, plot_predicted_value_evaluation, plot_true_vs_predicted, score
+from .func.algo_regression._common import cross_validation, plot_predicted_vs_actual, plot_residuals, score
 from .func.algo_regression._decision_tree import decision_tree_manual_hyper_parameters
 from .func.algo_regression._deep_neural_network import deep_neural_network_manual_hyper_parameters
 from .func.algo_regression._extra_tree import extra_trees_manual_hyper_parameters
-from .func.algo_regression._linear_regression import linear_regression_manual_hyper_parameters, plot_2d_graph, plot_3d_graph
+from .func.algo_regression._linear_regression import linear_regression_manual_hyper_parameters
 from .func.algo_regression._polynomial_regression import polynomial_regression_manual_hyper_parameters
 from .func.algo_regression._rf import box_plot, random_forest_manual_hyper_parameters
 from .func.algo_regression._svr import svr_manual_hyper_parameters
@@ -34,7 +34,7 @@ from .func.algo_regression._xgboost import histograms_feature_weights, permutati
 class RegressionWorkflowBase(WorkflowBase):
     """The base workflow class of regression algorithms."""
 
-    common_function = ["Model Score", "Cross Validation", "Model Prediction", "Model Persistence"]
+    common_function = ["Model Score", "Cross Validation", "Model Prediction", "Model Persistence", "Predicted vs. Actual Diagram", "Residuals Diagram"]
 
     def __init__(self) -> None:
         super().__init__()
@@ -112,22 +112,22 @@ class RegressionWorkflowBase(WorkflowBase):
         return dict()
 
     @staticmethod
-    def _plot_predicted_value_evaluation(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
-        """Plot the predicted value evaluation."""
-        print("-----* Predicted Value Evaluation *-----")
-        plot_predicted_value_evaluation(y_test, y_test_predict)
-        save_fig(f"Predicted Value Evaluation - {algorithm_name}", local_path, mlflow_path)
+    def _plot_predicted_vs_actual(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+        """Plot the predicted vs. actual diagram."""
+        print("-----* Predicted vs. Actual Diagram *-----")
+        plot_predicted_vs_actual(y_test_predict, y_test, algorithm_name)
+        save_fig(f"Predicted vs. Actual Diagram - {algorithm_name}", local_path, mlflow_path)
         data = pd.concat([y_test, y_test_predict], axis=1)
-        save_data(data, f"Predicted Value Evaluation - {algorithm_name}", local_path, mlflow_path)
+        save_data(data, f"Predicted vs. Actual Diagram - {algorithm_name}", local_path, mlflow_path)
 
     @staticmethod
-    def _plot_true_vs_predicted(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
-        """Plot the true value vs. predicted value."""
-        print("-----* True Value vs. Predicted Value *-----")
-        plot_true_vs_predicted(y_test_predict, y_test, algorithm_name)
-        save_fig(f"True Value vs. Predicted Value - {algorithm_name}", local_path, mlflow_path)
-        data = pd.concat([y_test, y_test_predict], axis=1)
-        save_data(data, f"True Value vs. Predicted Value - {algorithm_name}", local_path, mlflow_path)
+    def _plot_residuals(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+        """Plot the residuals diagram."""
+        print("-----* Residuals Diagram *-----")
+        residuals = plot_residuals(y_test_predict, y_test, algorithm_name)
+        save_fig(f"Residuals Diagram - {algorithm_name}", local_path, mlflow_path)
+        data = pd.concat([y_test, residuals], axis=1)
+        save_data(data, f"Residuals Diagram - {algorithm_name}", local_path, mlflow_path)
 
     @staticmethod
     def _score(y_true: pd.DataFrame, y_predict: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
@@ -166,14 +166,14 @@ class RegressionWorkflowBase(WorkflowBase):
             algorithm_name=self.naming,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
-        self._plot_predicted_value_evaluation(
-            y_test=RegressionWorkflowBase.y_test,
+        self._plot_predicted_vs_actual(
             y_test_predict=RegressionWorkflowBase.y_test_predict,
+            y_test=RegressionWorkflowBase.y_test,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
-        self._plot_true_vs_predicted(
+        self._plot_residuals(
             y_test_predict=RegressionWorkflowBase.y_test_predict,
             y_test=RegressionWorkflowBase.y_test,
             algorithm_name=self.naming,
@@ -200,14 +200,14 @@ class RegressionWorkflowBase(WorkflowBase):
             algorithm_name=self.naming,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
-        self._plot_predicted_value_evaluation(
-            y_test=RegressionWorkflowBase.y_test,
+        self._plot_predicted_vs_actual(
             y_test_predict=RegressionWorkflowBase.y_test_predict,
+            y_test=RegressionWorkflowBase.y_test,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
-        self._plot_true_vs_predicted(
+        self._plot_residuals(
             y_test_predict=RegressionWorkflowBase.y_test_predict,
             y_test=RegressionWorkflowBase.y_test,
             algorithm_name=self.naming,
@@ -2048,11 +2048,11 @@ class DNNRegression(RegressionWorkflowBase):
         )
 
 
-class LinearRegression2(LinearWorkflowMixin, RegressionWorkflowBase):
+class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
     """The automation workflow of using Linear Regression algorithm to make insightful products."""
 
     name = "Linear Regression"
-    special_function = ["Linear Regression Formula", "Two/Three-dimensional Linear Regression Image"]
+    special_function = ["Linear Regression Formula", "2D Scatter Diagram", "3D Scatter Diagram", "2D Line Diagram", "3D Surface Diagram"]
 
     def __init__(self, fit_intercept: bool = True, normalize: bool = False, copy_X: bool = True, n_jobs: Optional[int] = None) -> None:
         """
@@ -2103,7 +2103,7 @@ class LinearRegression2(LinearWorkflowMixin, RegressionWorkflowBase):
 
         self.model = LinearRegression(fit_intercept=self.fit_intercept, copy_X=self.copy_X, normalize=self.normalize, n_jobs=self.n_jobs)
 
-        self.naming = LinearRegression2.name
+        self.naming = ClassicalLinearRegression.name
 
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
@@ -2112,24 +2112,6 @@ class LinearRegression2(LinearWorkflowMixin, RegressionWorkflowBase):
         hyper_parameters = linear_regression_manual_hyper_parameters()
         return hyper_parameters
 
-    @staticmethod
-    def _plot_2d_graph(feature_data: pd.DataFrame, target_data: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
-        """Plot the 2D graph of the linear regression model."""
-        print("-----* Plot 2D Graph *-----")
-        plot_2d_graph(feature_data, target_data)
-        save_fig(f"2D Scatter Graph - {algorithm_name}", local_path, mlflow_path)
-        data = pd.concat([feature_data, target_data], axis=1)
-        save_data(data, f"2D Scatter Graph - {algorithm_name}", local_path, mlflow_path)
-
-    @staticmethod
-    def _plot_3d_graph(feature_data: pd.DataFrame, target_data: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
-        """Plot the 3D graph of the linear regression model."""
-        print("-----* Plot 3D Graph *-----")
-        plot_3d_graph(feature_data, target_data)
-        save_fig(f"3D Scatter Graph - {algorithm_name}", local_path, mlflow_path)
-        data = pd.concat([feature_data, target_data], axis=1)
-        save_data(data, f"3D Scatter Graph - {algorithm_name}", local_path, mlflow_path)
-
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
@@ -2137,54 +2119,70 @@ class LinearRegression2(LinearWorkflowMixin, RegressionWorkflowBase):
         self._show_formula(
             coef=self.model.coef_,
             intercept=self.model.intercept_,
-            features_name=LinearRegression2.X_train.columns,
+            features_name=ClassicalLinearRegression.X_train.columns,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
             mlflow_path="root",
         )
-        columns_num = LinearRegression2.X.shape[1]
+        columns_num = ClassicalLinearRegression.X.shape[1]
         if columns_num > 2:
-            # choose two of dimensions to draw
-            three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(LinearRegression2.X, 2)
-            self._plot_3d_graph(
-                feature_data=three_dimen_data,
-                target_data=LinearRegression2.y,
+            # choose one of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(ClassicalLinearRegression.X_test, 1)
+            self._plot_2d_scatter_diagram(
+                feature_data=two_dimen_data,
+                target_data=ClassicalLinearRegression.y_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
-            # choose one of dimensions to draw
-            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(LinearRegression2.X, 1)
-            self._plot_2d_graph(
-                feature_data=two_dimen_data,
-                target_data=LinearRegression2.y,
+            # choose two of dimensions to draw
+            three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(ClassicalLinearRegression.X_test, 2)
+            self._plot_3d_scatter_diagram(
+                feature_data=three_dimen_data,
+                target_data=ClassicalLinearRegression.y_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
         elif columns_num == 2:
             # choose one of dimensions to draw
-            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(LinearRegression2.X, 1)
-            self._plot_2d_graph(
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(ClassicalLinearRegression.X_test, 1)
+            self._plot_2d_scatter_diagram(
                 feature_data=two_dimen_data,
-                target_data=LinearRegression2.y,
+                target_data=ClassicalLinearRegression.y_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
             # no need to choose
-            self._plot_3d_graph(
-                feature_data=LinearRegression2.X,
-                target_data=LinearRegression2.y,
+            self._plot_3d_scatter_diagram(
+                feature_data=ClassicalLinearRegression.X_test,
+                target_data=ClassicalLinearRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            self._plot_3d_surface_diagram(
+                feature_data=ClassicalLinearRegression.X_test,
+                target_data=ClassicalLinearRegression.y_test,
+                y_test_predict=ClassicalLinearRegression.y_test_predict,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
         elif columns_num == 1:
             # no need to choose
-            self._plot_2d_graph(
-                feature_data=LinearRegression2.X,
-                target_data=LinearRegression2.y,
+            self._plot_2d_scatter_diagram(
+                feature_data=ClassicalLinearRegression.X_test,
+                target_data=ClassicalLinearRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            self._plot_2d_line_diagram(
+                feature_data=ClassicalLinearRegression.X_test,
+                target_data=ClassicalLinearRegression.y_test,
+                y_test_predict=ClassicalLinearRegression.y_test_predict,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
