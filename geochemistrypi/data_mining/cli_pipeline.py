@@ -289,6 +289,7 @@ def cli_pipeline(file_name: str) -> None:
     }
     MODELS = Modes2Models[mode_num]
     num2option(MODELS)
+    # Add the option of all models
     all_models_num = len(MODELS) + 1
     print(str(all_models_num) + " - All models above to be trained")
     print("Which model do you want to apply?(Enter the Corresponding Number)")
@@ -299,7 +300,9 @@ def cli_pipeline(file_name: str) -> None:
     # AutoML-training
     is_automl = False
     model_name = MODELS[model_num - 1]
+    # If the model is supervised learning, then allow the user to use AutoML.
     if mode_num == 1 or mode_num == 2:
+        # If the model is not in the NON_AUTOML_MODELS, then ask the user whether to use AutoML.
         if model_name not in NON_AUTOML_MODELS:
             print("Do you want to employ automated machine learning with respect to this algorithm?" "(Enter the Corresponding Number):")
             num2option(OPTION)
@@ -310,18 +313,31 @@ def cli_pipeline(file_name: str) -> None:
 
     # Model trained selection
     logger.debug("Model Training")
+    # If the user doesn't choose all models, then run the designated model.
     if model_num != all_models_num:
         # run the designated model
         run = Modes2Initiators[mode_num](model_name)
+        # If is_automl is False, then run the model without AutoML.
         if not is_automl:
             run.activate(X, y, X_train, X_test, y_train, y_test)
         else:
             run.activate(X, y, X_train, X_test, y_train, y_test, is_automl)
     else:
-        # gain all models result in the specific mode
+        # Run all models
         for i in range(len(MODELS) - 1):
-            run = Modes2Initiators[mode_num](MODELS[i])
-            run.activate(X, y, X_train, X_test, y_train, y_test)
-            clear_output()
-
+            # Start a nested MLflow run within the current MLflow run
+            with mlflow.start_run(run_name=MODELS[i], experiment_id=experiment.experiment_id, nested=True):
+                create_geopi_output_dir(experiment.name, run_name, MODELS[i])
+                run = Modes2Initiators[mode_num](MODELS[i])
+                # If is_automl is False, then run all models without AutoML.
+                if not is_automl:
+                    run.activate(X, y, X_train, X_test, y_train, y_test)
+                else:
+                    # If is_automl is True, but MODELS[i] is in the NON_AUTOML_MODELS, then run the model without AutoML.
+                    if MODELS[i] in NON_AUTOML_MODELS:
+                        run.activate(X, y, X_train, X_test, y_train, y_test)
+                    else:
+                        # If is_automl is True, and MODELS[i] is not in the NON_AUTOML_MODELS, then run the model with AutoML.
+                        run.activate(X, y, X_train, X_test, y_train, y_test, is_automl)
+                clear_output()
     mlflow.end_run()

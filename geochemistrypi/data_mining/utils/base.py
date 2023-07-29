@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-import datetime
 import logging
 import os
 import platform
+from typing import Optional
 
 import mlflow
 import pandas as pd
@@ -12,7 +12,7 @@ from rich import print
 from ..constants import OUTPUT_PATH
 
 
-def create_geopi_output_dir(experiment_name: str, run_name: str) -> None:
+def create_geopi_output_dir(experiment_name: str, run_name: str, sub_run_name: Optional[str] = None) -> None:
     """Create the output directory for the current run and store the related pathes as environment variable.
 
     Parameters
@@ -22,10 +22,16 @@ def create_geopi_output_dir(experiment_name: str, run_name: str) -> None:
 
     run_name : str
         The name of the run.
+
+    sub_run_name : str, default=None
+        The name of the sub run.
     """
     # Set the output path for the current run
-    timestamp = datetime.datetime.now().strftime("%m-%d-%H-%M")
-    geopi_output_path = os.path.join(OUTPUT_PATH, experiment_name, f"{run_name} {timestamp}")
+    # timestamp = datetime.datetime.now().strftime("%m-%d-%H-%M")
+    if sub_run_name:
+        geopi_output_path = os.path.join(OUTPUT_PATH, experiment_name, f"{run_name}", sub_run_name)
+    else:
+        geopi_output_path = os.path.join(OUTPUT_PATH, experiment_name, f"{run_name}")
     os.environ["GEOPI_OUTPUT_PATH"] = geopi_output_path
     os.makedirs(geopi_output_path, exist_ok=True)
 
