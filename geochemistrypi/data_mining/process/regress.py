@@ -174,7 +174,6 @@ class RegressionModelSelection(ModelSelectionBase):
 
         # Model option
         if self.model_name == "Polynomial Regression":
-            # TODO(Sany sanyhew1097618435@163.com): Find the proper way for polynomial regression
             print("Please specify the maximal degree of the polynomial features.")
             poly_degree = num_input(SECTION[2], "@Degree:")
             self.reg_workflow = PolynomialRegression(degree=poly_degree)
