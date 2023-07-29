@@ -12,18 +12,14 @@ from .constants import (
     CLUSTERING_MODELS,
     DECOMPOSITION_MODELS,
     FEATURE_SCALING_STRATEGY,
-    GEO_IMAGE_PATH,
     IMPUTING_STRATEGY,
-    MAP_IMAGE_PATH,
     MLFLOW_ARTIFACT_DATA_PATH,
     MODE_OPTION,
-    MODEL_OUTPUT_IMAGE_PATH,
     NON_AUTOML_MODELS,
     OPTION,
     OUTPUT_PATH,
     REGRESSION_MODELS,
     SECTION,
-    STATISTIC_IMAGE_PATH,
     TEST_DATA_OPTION,
     WORKING_PATH,
 )
@@ -41,12 +37,6 @@ from .process.regress import RegressionModelSelection
 from .utils.base import clear_output, create_geopi_output_dir, log, save_data, show_warning
 from .utils.mlflow_utils import retrieve_previous_experiment_id
 
-# create the directories if they didn't exist yet
-os.makedirs(MODEL_OUTPUT_IMAGE_PATH, exist_ok=True)
-os.makedirs(STATISTIC_IMAGE_PATH, exist_ok=True)
-os.makedirs(MAP_IMAGE_PATH, exist_ok=True)
-os.makedirs(GEO_IMAGE_PATH, exist_ok=True)
-
 
 def cli_pipeline(file_name: str) -> None:
     """The command line interface for Geochemistry π."""
@@ -54,7 +44,8 @@ def cli_pipeline(file_name: str) -> None:
     # TODO: If the argument is False, hide all Python level warnings. Developers can turn it on by setting the argument to True.
     show_warning(False)
 
-    logger = log(OUTPUT_PATH, "inner_test.log")
+    os.makedirs(OUTPUT_PATH, exist_ok=True)
+    logger = log(OUTPUT_PATH, "geopi_inner_test.log")
     logger.info("Geochemistry Pi is running.")
 
     # Display the interactive splash screen when launching the CLI software

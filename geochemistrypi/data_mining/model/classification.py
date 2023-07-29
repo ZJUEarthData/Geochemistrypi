@@ -42,6 +42,7 @@ class ClassificationWorkflowBase(WorkflowBase):
         "Precision Recall Curve",
         "ROC Curve",
         "Two-dimensional Decision Boundary Diagram",
+        "Permutation Importance Diagram",
     ]
 
     def __init__(self) -> None:
@@ -237,6 +238,15 @@ class ClassificationWorkflowBase(WorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
+        self._plot_permutation_importance(
+            X_test=ClassificationWorkflowBase.X_test,
+            y_test=ClassificationWorkflowBase.y_test,
+            trained_model=self.model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
         if ClassificationWorkflowBase.X.shape[1] == 2:
             self._plot_2d_decision_boundary(
                 X=ClassificationWorkflowBase.X,
@@ -293,6 +303,15 @@ class ClassificationWorkflowBase(WorkflowBase):
             X_test=ClassificationWorkflowBase.X_test,
             y_test=ClassificationWorkflowBase.y_test,
             trained_model=self.auto_model,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._plot_permutation_importance(
+            X_test=ClassificationWorkflowBase.X_test,
+            y_test=ClassificationWorkflowBase.y_test,
+            trained_model=self.auto_model,
+            image_config=self.image_config,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
