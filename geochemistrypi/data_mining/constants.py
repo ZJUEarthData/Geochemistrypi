@@ -3,14 +3,14 @@ import os
 # The number of uploading dataset per user is limited to 5.
 MAX_UPLOADS_PER_USER = 5
 
-# current working directory in which the user activates the application
-WORKING_PATH = os.getcwd()
-
 # the directory in which the package(application) is installed
 PACKAGEDIR = os.path.dirname(os.path.realpath(__file__))
 
 # the directory where the built-in data set to be processed stays
 BUILT_IN_DATASET_PATH = os.path.join(PACKAGEDIR, "data", "dataset")
+
+# current working directory in which the user activates the application
+WORKING_PATH = os.getcwd()
 
 # the root directory where all the output stays
 OUTPUT_PATH = os.path.join(WORKING_PATH, "geopi_output")
