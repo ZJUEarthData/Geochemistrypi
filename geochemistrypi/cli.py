@@ -9,6 +9,7 @@ import typer
 
 from ._version import __version__
 from .data_mining.cli_pipeline import cli_pipeline
+from .data_mining.constants import WORKING_PATH
 
 app = typer.Typer()
 
@@ -16,9 +17,11 @@ CURRENT_PATH = os.path.dirname(os.path.realpath(__file__))
 FRONTEND_PATH = os.path.join(CURRENT_PATH, "frontend")
 BACKEND_PATH = os.path.join(CURRENT_PATH, "start_dash_pipeline.py")
 PIPELINE_PATH = os.path.join(CURRENT_PATH, "start_cli_pipeline.py")
+MLFLOW_STORE_PATH = os.path.join(f"file:{WORKING_PATH}", "geopi_tracking")
 
 
 def _version_callback(value: bool) -> None:
+    """Show Geochemistry Pi version."""
     if value:
         typer.echo(f"Geochemistry π {__version__}")
         raise typer.Exit()
@@ -35,16 +38,23 @@ def main(version: Optional[bool] = typer.Option(None, "--version", "-v", help="S
 
 
 @app.command()
-def data_mining(data: str = "", web: bool = False):
+def data_mining(data: str = "", web: bool = False, mlflow: bool = False) -> None:
     """Apply data mining technique with supervised learning and unsupervised learning methods."""
 
     def start_backend():
+        """Start the backend server."""
         start_backend_command = f"python {BACKEND_PATH}"
         subprocess.run(start_backend_command, shell=True)
 
     def start_frontend():
+        """Start the frontend server."""
         start_frontend_command = f"cd {FRONTEND_PATH} && yarn start"
         subprocess.run(start_frontend_command, shell=True)
+
+    def start_mlflow():
+        """Start the mlflow server."""
+        start_mlflow_command = f"mlflow ui --backend-store-uri {MLFLOW_STORE_PATH} "
+        subprocess.run(start_mlflow_command, shell=True)
 
     if web:
         # Start the backend and frontend in parallel
@@ -56,11 +66,17 @@ def data_mining(data: str = "", web: bool = False):
         backend_thread.join()
         frontend_thread.join()
     else:
-        cli_pipeline(data)
+        # If mlflow is enabled, start the mlflow server, otherwise start the CLI pipeline
+        if mlflow:
+            # Start mlflow server to track the experiment
+            mlflow_thread = threading.Thread(target=start_mlflow)
+            mlflow_thread.start()
+        else:
+            cli_pipeline(data)
 
 
 @app.command()
-def web_setup():
+def web_setup() -> None:
     """Set up the dependency of the web application."""
     my_os = platform.system()
     if my_os == "Windows":

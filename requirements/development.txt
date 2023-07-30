@@ -13,7 +13,7 @@ joblib==1.2.0
 flaml==1.0.14
 numpy==1.23.5
 xgboost==1.6.2
-basemap==1.3.6
+cartopy
 threadpoolctl==3.1.0
 matplotlib==3.5.2
 pre-commit
