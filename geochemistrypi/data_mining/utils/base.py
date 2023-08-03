@@ -81,6 +81,60 @@ def create_geopi_output_dir(experiment_name: str, run_name: str, sub_run_name: O
     os.makedirs(geopi_output_metrics_path, exist_ok=True)
 
 
+def get_os() -> str:
+    """Get the operating system.
+
+    Returns
+    -------
+    str
+        The operating system.
+    """
+    my_os = platform.system()
+    if my_os == "Windows":
+        return "Windows"
+    elif my_os == "Linux":
+        return "Linux"
+    elif my_os == "Darwin":
+        return "macOS"
+    else:
+        return "Unknown"
+
+
+def check_package(package_name: str) -> bool:
+    """Check whether the package is installed.
+
+    Parameters
+    ----------
+    package_name : str
+        The name of the package.
+
+    Returns
+    -------
+    bool
+        Whether the package is installed.
+    """
+    import importlib
+
+    try:
+        importlib.import_module(package_name)
+        return True
+    except ImportError:
+        return False
+
+
+def install_package(package_name: str) -> None:
+    """Install the package.
+
+    Parameters
+    ----------
+    package_name : str
+        The name of the package.
+    """
+    import subprocess
+
+    subprocess.check_call(["python", "-m", "pip", "install", package_name])
+
+
 def clear_output() -> None:
     """Clear the console output."""
     flag = input("(Press Enter key to move forward.)")
@@ -90,7 +144,6 @@ def clear_output() -> None:
             os.system("cls")  # for Windows
         else:
             os.system("clear")  # for Linux and macOS
-
     print("")
 
 

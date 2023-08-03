@@ -2,23 +2,19 @@
 import logging
 import os
 
-import cartopy
-import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
-# from mpl_toolkits.basemap import Basemap
 from rich import print
 
 from ..constants import MLFLOW_ARTIFACT_IMAGE_MAP_PATH, OPTION, SECTION
 from ..data.data_readiness import limit_num_input, num2option, num_input, show_data_columns
-from ..utils.base import clear_output, save_data, save_fig
+from ..utils.base import clear_output, get_os, save_data, save_fig
 
 logging.captureWarnings(True)
 
 
-def map_projected(col: pd.Series, longitude: pd.DataFrame, latitude: pd.DataFrame) -> None:
+def map_projected_by_cartopy(col: pd.Series, longitude: pd.DataFrame, latitude: pd.DataFrame) -> None:
     """Project an element data into world map using cartopy.
 
     Parameters
@@ -32,7 +28,15 @@ def map_projected(col: pd.Series, longitude: pd.DataFrame, latitude: pd.DataFram
     latitude : pd.DataFrame
         Latitude data of data items.
     """
-
+    try:
+        import cartopy
+        import cartopy.crs as ccrs
+    except ImportError:
+        print("The cartopy package is not installed. Please install it first.")
+        print("For example, you can run the following command in your terminal:")
+        print("pip install cartopy")
+        print("conda install -c conda-forge cartopy")
+        return
     M = col
     # Create a new figure with the desired size and DPI
     plt.figure(figsize=(24, 16), dpi=300)
@@ -77,50 +81,57 @@ def map_projected(col: pd.Series, longitude: pd.DataFrame, latitude: pd.DataFram
     save_data(data, f"Map Projection - {col.name}", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MAP_PATH"), MLFLOW_ARTIFACT_IMAGE_MAP_PATH)
 
 
-# def map_projected(col: pd.Series, longitude: pd.DataFrame, latitude: pd.DataFrame) -> None:
-#     """Project an element data into world map using basemap.
+def map_projected_by_basemap(col: pd.Series, longitude: pd.DataFrame, latitude: pd.DataFrame) -> None:
+    """Project an element data into world map using basemap.
 
-#     Parameters
-#     ----------
-#     col : pd.Series
-#         One selected column from the data sheet.
+    Parameters
+    ----------
+    col : pd.Series
+        One selected column from the data sheet.
 
-#     longitude : pd.DataFrame
-#         Longitude data of data items.
+    longitude : pd.DataFrame
+        Longitude data of data items.
 
-#     latitude : pd.DataFrame
-#         Latitude data of data items.
-#     """
-#     M = col
-#     plt.figure(figsize=(24, 16), dpi=300)
-#     plt.rcParams["font.sans-serif"] = "Arial"
-#     m = Basemap(projection="robin", lat_0=0, lon_0=0)
-#     m.drawcoastlines()
-#     m.drawcountries()
-#     m.drawmapboundary(fill_color="white")
+    latitude : pd.DataFrame
+        Latitude data of data items.
+    """
+    try:
+        from mpl_toolkits.basemap import Basemap
+    except ImportError:
+        print("The basemap package is not installed. Please install it first.")
+        print("For example, you can run the following command in your terminal:")
+        print("pip install basemap")
+        print("conda install -c conda-forge basemap")
+        return
+    M = col
+    plt.figure(figsize=(24, 16), dpi=300)
+    plt.rcParams["font.sans-serif"] = "Arial"
+    m = Basemap(projection="robin", lat_0=0, lon_0=0)
+    m.drawcoastlines()
+    m.drawcountries()
+    m.drawmapboundary(fill_color="white")
 
-#     parallels = np.arange(-90.0, 90.0, 45.0)
-#     m.drawparallels(parallels, labels=[True, True, True, False], fontsize=30)
-#     meridians = np.arange(-180.0, 180.0, 60.0)
-#     m.drawmeridians(meridians, labels=[True, False, True, True], fontsize=30)
-#     lon, lat = m(longitude, latitude)
-#     if type(M) != type(longitude):
-#         M = [0.5 for i in range(len(M))]
-#     m.scatter(lon, lat, c=M, edgecolor="grey", marker="D", linewidths=0.5, vmax=3, vmin=0, s=25, alpha=0.3, cmap="BuPu")
-#     cb = m.colorbar(pad=1)
-#     cb.ax.tick_params(labelsize=30)
-#     cb.set_label("Counts", fontsize=50)
+    parallels = np.arange(-90.0, 90.0, 45.0)
+    m.drawparallels(parallels, labels=[True, True, True, False], fontsize=30)
+    meridians = np.arange(-180.0, 180.0, 60.0)
+    m.drawmeridians(meridians, labels=[True, False, True, True], fontsize=30)
+    lon, lat = m(longitude, latitude)
+    if type(M) != type(longitude):
+        M = [0.5 for i in range(len(M))]
+    m.scatter(lon, lat, c=M, edgecolor="grey", marker="D", linewidths=0.5, vmax=3, vmin=0, s=25, alpha=0.3, cmap="BuPu")
+    cb = m.colorbar(pad=1)
+    cb.ax.tick_params(labelsize=30)
+    cb.set_label("Counts", fontsize=50)
 
-#     data = pd.concat([col, longitude, latitude], axis=1)
-#     save_fig(f"Map Projection - {col.name}", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MAP_PATH"), MLFLOW_ARTIFACT_IMAGE_MAP_PATH)
-#     save_data(data, f"Map Projection - {col.name}", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MAP_PATH"), MLFLOW_ARTIFACT_IMAGE_MAP_PATH)
+    data = pd.concat([col, longitude, latitude], axis=1)
+    save_fig(f"Map Projection - {col.name}", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MAP_PATH"), MLFLOW_ARTIFACT_IMAGE_MAP_PATH)
+    save_data(data, f"Map Projection - {col.name}", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MAP_PATH"), MLFLOW_ARTIFACT_IMAGE_MAP_PATH)
 
 
 def process_world_map(data: pd.DataFrame) -> None:
     """The process of projecting the data on the world map."""
     map_flag = 0
     is_map_projection = 0
-    # TODO: Abstract the following code of checking the existence of the longitude and latitude columns into a function.
     detection_index = 0
     lon = ["LONGITUDE", "Longitude (°E)", "longitude", "Longitude", "经度 (°N)", "经度"]
     lat = ["LATITUDE", "Latitude (°N)", "latitude", "Latitude", "纬度 (°E)", "纬度"]
@@ -157,7 +168,13 @@ def process_world_map(data: pd.DataFrame) -> None:
             latitude = data.loc[:, j]
             longitude = data.loc[:, i]
             print("Longitude and latitude data are selected from the provided data set.")
-            map_projected(data.iloc[:, elm_num - 1], longitude, latitude)
+            # If OS is Windows or Linux, then use basemap to project the data on the world map.
+            # If OS is macOS, then use cartopy to project the data on the world map.
+            my_os = get_os()
+            if my_os == "Windows" or my_os == "Linux":
+                map_projected_by_basemap(data.iloc[:, elm_num - 1], longitude, latitude)
+            elif my_os == "macOS":
+                map_projected_by_cartopy(data.iloc[:, elm_num - 1], longitude, latitude)
             clear_output()
             print("Do you want to continue to project a new element in the World Map?")
             num2option(OPTION)
