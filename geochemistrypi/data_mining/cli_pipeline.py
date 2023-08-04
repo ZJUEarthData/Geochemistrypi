@@ -58,7 +58,7 @@ def cli_pipeline(file_name: str) -> None:
     if file_name:
         # If the user provides file name, then load the data from the file.
         data = read_data(file_name=file_name, is_own_data=1)
-        print("[bold green]Successfully loading![bold green]")
+        print("[bold green]Successfully Loading Own Data![bold green]")
     else:
         print("[bold red]No Data File Provided![/bold red]")
         print("[bold green]Built-in Data Loading.[/bold green]")
