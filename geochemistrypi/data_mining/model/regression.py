@@ -22,7 +22,7 @@ from ..utils.base import save_data, save_fig, save_text
 from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
 from .func.algo_regression._common import cross_validation, plot_predicted_vs_actual, plot_residuals, score
 from .func.algo_regression._decision_tree import decision_tree_manual_hyper_parameters
-from .func.algo_regression._deep_neural_network import deep_neural_network_manual_hyper_parameters
+from .func.algo_regression._multi_layer_perceptron import multi_layer_perceptron_manual_hyper_parameters
 from .func.algo_regression._extra_tree import extra_trees_manual_hyper_parameters
 from .func.algo_regression._linear_regression import linear_regression_manual_hyper_parameters
 from .func.algo_regression._polynomial_regression import polynomial_regression_manual_hyper_parameters
@@ -1677,10 +1677,10 @@ class SVMRegression(RegressionWorkflowBase):
         pass
 
 
-class DNNRegression(RegressionWorkflowBase):
-    """The automation workflow of using Deep Neural Network algorithm to make insightful products."""
+class MLPRegression(RegressionWorkflowBase):
+    """The automation workflow of using Multi-layer Perceptron algorithm to make insightful products."""
 
-    name = "Deep Neural Network"
+    name = "Multi-layer Perceptron"
     special_function = ["Loss Record"]
 
     def __init__(
@@ -1894,10 +1894,10 @@ class DNNRegression(RegressionWorkflowBase):
             n_iter_no_change=self.n_iter_no_change,
         )
 
-        self.naming = DNNRegression.name
+        self.naming = MLPRegression.name
 
     def ray_tune(self, X_train: pd.DataFrame, X_test: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame) -> None:
-        """The customized DNN of the combinations of Ray, FLAML and Scikit-learn framework."""
+        """The customized MLP of the combinations of Ray, FLAML and Scikit-learn framework."""
 
         from ray import tune
         from ray.air import session
@@ -1965,7 +1965,7 @@ class DNNRegression(RegressionWorkflowBase):
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
         print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
-        hyper_parameters = deep_neural_network_manual_hyper_parameters()
+        hyper_parameters = multi_layer_perceptron_manual_hyper_parameters()
         return hyper_parameters
 
     @staticmethod

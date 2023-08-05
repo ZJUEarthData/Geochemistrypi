@@ -391,7 +391,7 @@ Note: Normally, set 20% of the dataset aside as test set, such as 0.2
 ~~~
 
 **4.13 Model Selection**
-You can choose one in the model selection(Such as 8 is the algorithm to implement deep neural network).
+You can choose one in the model selection(Such as 8 is the algorithm to implement multi-layer perceptron).
 
 ~~~
 -*-*- Model Selection -*-*-:
@@ -402,13 +402,13 @@ You can choose one in the model selection(Such as 8 is the algorithm to implemen
 5 - Random Forest
 6 - Extra-Trees
 7 - Xgboost
-8 - Deep Neural Networks
+8 - Multi-layer Perceptron
 9 - All models above to be trained
 Which model do you want to apply?(Enter the Corresponding Number)
 (Model) ➜ @Number:8
 ~~~
 **Note**:
-The following takes deep neural networks an an example.
+The following takes multi-layer perceptron an an example.
 You can choose whether to run automatic machine learning.
 Then following the hint to input.
 

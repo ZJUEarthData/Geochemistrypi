@@ -7,7 +7,7 @@ from ....constants import SECTION
 from ....data.data_readiness import float_input, num_input, str_input, tuple_input
 
 
-def deep_neural_network_manual_hyper_parameters() -> Dict:
+def multi_layer_perceptron_manual_hyper_parameters() -> Dict:
     """Manually set hyperparameters.
 
     Returns

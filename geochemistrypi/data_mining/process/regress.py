@@ -10,7 +10,7 @@ from ..data.data_readiness import num_input
 from ..model.regression import (
     ClassicalLinearRegression,
     DecisionTreeRegression,
-    DNNRegression,
+    MLPRegression,
     ExtraTreesRegression,
     PolynomialRegression,
     RandomForestRegression,
@@ -120,9 +120,9 @@ class RegressionModelSelection(ModelSelectionBase):
                     C=hyper_parameters["C"],
                     shrinking=hyper_parameters["shrinking"],
                 )
-        elif self.model_name == "Deep Neural Network":
-            hyper_parameters = DNNRegression.manual_hyper_parameters()
-            self.reg_workflow = DNNRegression(
+        elif self.model_name == "Multi-layer Perceptron":
+            hyper_parameters = MLPRegression.manual_hyper_parameters()
+            self.reg_workflow = MLPRegression(
                 hidden_layer_sizes=hyper_parameters["hidden_layer_sizes"],
                 activation=hyper_parameters["activation"],
                 solver=hyper_parameters["solver"],
@@ -188,8 +188,8 @@ class RegressionModelSelection(ModelSelectionBase):
             self.reg_workflow = RandomForestRegression()
         elif self.model_name == "Support Vector Machine":
             self.reg_workflow = SVMRegression()
-        elif self.model_name == "Deep Neural Network":
-            self.reg_workflow = DNNRegression()
+        elif self.model_name == "Multi-layer Perceptron":
+            self.reg_workflow = MLPRegression()
         elif self.model_name == "Linear Regression":
             self.reg_workflow = ClassicalLinearRegression()
 

@@ -22,7 +22,7 @@ from ..utils.base import save_data, save_fig, save_text
 from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
 from .func.algo_classification._common import cross_validation, plot_2d_decision_boundary, plot_confusion_matrix, plot_precision_recall, plot_ROC, score
 from .func.algo_classification._decision_tree import decision_tree_manual_hyper_parameters
-from .func.algo_classification._deep_neural_network import deep_neural_network_manual_hyper_parameters
+from .func.algo_classification._multi_layer_perceptron import multi_layer_perceptron_manual_hyper_parameters
 from .func.algo_classification._extra_trees import extra_trees_manual_hyper_parameters
 from .func.algo_classification._logistic_regression import logistic_regression_manual_hyper_parameters, plot_logistic_importance
 from .func.algo_classification._rf import random_forest_manual_hyper_parameters
@@ -1787,10 +1787,10 @@ class LogisticRegressionClassification(LinearWorkflowMixin, ClassificationWorkfl
         )
 
 
-class DNNClassification(ClassificationWorkflowBase):
-    """The automation workflow of using Deep Neural Network algorithm to make insightful products."""
+class MLPClassification(ClassificationWorkflowBase):
+    """The automation workflow of using Multi-layer Perceptron algorithm to make insightful products."""
 
-    name = "Deep Neural Network"
+    name = "Multi-layer Perceptron"
     special_function = []
 
     def __init__(
@@ -2020,10 +2020,10 @@ class DNNClassification(ClassificationWorkflowBase):
             max_fun=self.max_fun[0],
         )
 
-        self.naming = DNNClassification.name
+        self.naming = MLPClassification.name
 
     def ray_tune(self, X_train: pd.DataFrame, X_test: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame) -> None:
-        """The customized DNN of the combinations of Ray, FLAML and Scikit-learn framework."""
+        """The customized MLP of the combinations of Ray, FLAML and Scikit-learn framework."""
 
         from ray import tune
         from ray.air import session
@@ -2090,7 +2090,7 @@ class DNNClassification(ClassificationWorkflowBase):
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
         print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
-        hyper_parameters = deep_neural_network_manual_hyper_parameters()
+        hyper_parameters = multi_layer_perceptron_manual_hyper_parameters()
         return hyper_parameters
 
     @dispatch()
