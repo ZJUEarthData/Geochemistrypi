@@ -39,6 +39,14 @@ class ClassificationModelSelection(ModelSelectionBase):
 
         self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
 
+        # sample balance
+        is_sample_Balance, X_train, y_train = self.clf_workflow.sample_balance(X_train, y_train)
+
+        # Save the resampling result
+        if is_sample_Balance == 1:
+            self.clf_workflow.data_save(X_train, "X Train Resampling", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "X Train Resampling")
+            self.clf_workflow.data_save(y_train, "y Train Resampling", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "y Train Resampling")
+
         # model option
         if self.model_name == "Support Vector Machine":
             hyper_parameters = SVMClassification.manual_hyper_parameters()
@@ -166,6 +174,14 @@ class ClassificationModelSelection(ModelSelectionBase):
         """Train by FLAML framework + RAY framework."""
 
         self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
+
+        # sample balance
+        is_sample_Balance, X_train, y_train = self.clf_workflow.sample_balance(X_train, y_train)
+
+        # Save the resampling result
+        if is_sample_Balance == 1:
+            self.clf_workflow.data_save(X_train, "X Train Resampling", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "X Train Resampling")
+            self.clf_workflow.data_save(y_train, "y Train Resampling", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "y Train Resampling")
 
         # Model option
         if self.model_name == "Support Vector Machine":

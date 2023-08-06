@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
-from typing import Dict
+from typing import Dict, List
 
 import matplotlib.pyplot as plt
 import mlflow
 import numpy as np
 import pandas as pd
+from imblearn.over_sampling import RandomOverSampler
+from imblearn.pipeline import Pipeline
+from imblearn.under_sampling import RandomUnderSampler
 from rich import print
 from sklearn.metrics import ConfusionMatrixDisplay, accuracy_score, confusion_matrix, f1_score, precision_recall_curve, precision_score, recall_score, roc_curve
 from sklearn.model_selection import cross_validate
@@ -298,3 +301,38 @@ def plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, trained_mod
         loc=image_config["title_location"],
         pad=image_config["title_pad"],
     )
+
+
+def resampler(X_train: pd.DataFrame, y_train: pd.DataFrame, method: List[str], method_idx: int) -> tuple:
+    """Use this method when the classification dataset has an unbalanced number of categories.
+
+    Parameters
+    ----------
+    X_train : pd.DataFrame (n_samples, n_components)
+        The train feature data.
+
+    y_train : pd.DataFrame (n_samples, n_label)
+        The train label data.
+
+    method : list
+        The specific method of resampling.
+
+    method_idx : int
+        The index corresponding to the specific method of resampling.
+    """
+
+    if method[method_idx] == "Over Sampling":
+        resampler = RandomOverSampler()
+        X_train_resampled, y_train_resampled = resampler.fit_resample(X_train, y_train)
+        return X_train_resampled, y_train_resampled
+    elif method[method_idx] == "Under Sampling":
+        resampler = RandomUnderSampler()
+        X_train_resampled, y_train_resampled = resampler.fit_resample(X_train, y_train)
+        return X_train_resampled, y_train_resampled
+    elif method[method_idx] == "Oversampling and Undersampling":
+        over = RandomOverSampler()
+        under = RandomUnderSampler()
+        over_under_steps = [("oversample", over), ("undersample", under)]
+        resampler = Pipeline(steps=over_under_steps)
+        X_train_resampled, y_train_resampled = resampler.fit_resample(X_train, y_train)
+        return X_train_resampled, y_train_resampled
