@@ -38,7 +38,7 @@ REGRESSION_MODELS = [
     "Random Forest",
     "Extra-Trees",
     "Xgboost",
-    "Deep Neural Network",
+    "Multi-layer Perceptron",
 ]
 CLASSIFICATION_MODELS = [
     "Logistic Regression",
@@ -47,14 +47,14 @@ CLASSIFICATION_MODELS = [
     "Random Forest",
     "Extra-Trees",
     "Xgboost",
-    "Deep Neural Network",
+    "Multi-layer Perceptron",
 ]
 CLUSTERING_MODELS = ["KMeans", "DBSCAN"]
 DECOMPOSITION_MODELS = ["Principal Component Analysis", "T-SNE"]
 
 # Special AutoML models
 NON_AUTOML_MODELS = ["Linear Regression", "Polynomial Regression"]
-RAY_FLAML = ["Deep Neural Network"]
+RAY_FLAML = ["Multi-layer Perceptron"]
 
 IMPUTING_STRATEGY = ["Mean Value", "Median Value", "Most Frequent Value", "Constant(Specified Value)"]
 
