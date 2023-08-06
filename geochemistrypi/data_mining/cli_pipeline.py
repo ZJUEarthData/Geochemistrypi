@@ -54,7 +54,7 @@ def cli_pipeline(file_name: str) -> None:
     print("[bold]Initializing...[/bold]")
 
     with console.status("[bold green]Data Loading...[/bold green]", spinner="dots"):
-        sleep(2)
+        sleep(1.5)
     if file_name:
         # If the user provides file name, then load the data from the file.
         data = read_data(file_name=file_name, is_own_data=1)
@@ -64,7 +64,7 @@ def cli_pipeline(file_name: str) -> None:
         print("[bold green]Built-in Data Loading.[/bold green]")
 
     with console.status("[bold green]Denpendency Checking...[/bold green]", spinner="dots"):
-        sleep(2)
+        sleep(1.5)
     my_os = get_os()
     # Check the dependency of the basemap or cartopy to project the data on the world map later.
     if my_os == "Windows" or my_os == "Linux":

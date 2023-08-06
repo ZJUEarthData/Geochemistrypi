@@ -1791,7 +1791,7 @@ class MLPClassification(ClassificationWorkflowBase):
     """The automation workflow of using Multi-layer Perceptron algorithm to make insightful products."""
 
     name = "Multi-layer Perceptron"
-    special_function = []
+    special_function = ["Loss Curve Diagram"]
 
     def __init__(
         self,
@@ -2093,15 +2093,38 @@ class MLPClassification(ClassificationWorkflowBase):
         hyper_parameters = multi_layer_perceptron_manual_hyper_parameters()
         return hyper_parameters
 
+    @staticmethod
+    def _plot_loss_curve(trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+        """Plot the learning curve of the trained model."""
+        print("-----* Loss Curve Diagram *-----")
+        data = pd.DataFrame(trained_model.loss_curve_, columns=["Loss"])
+        data.plot(title="Loss")
+        save_fig(f"Loss Curve Diagram - {algorithm_name}", local_path, mlflow_path)
+        save_data(data, f"Loss Curve Diagram - {algorithm_name}", local_path, mlflow_path)
+
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        pass
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        if self.model.get_params()["solver"] in ["sgd", "adam"]:
+            self._plot_loss_curve(
+                trained_model=self.model,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
 
     @dispatch(bool)
     def special_components(self, is_automl: bool, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        pass
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        if self.model.get_params()["solver"] in ["sgd", "adam"]:
+            self._plot_loss_curve(
+                trained_model=self.auto_model,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
 
 
 class ExtraTreesClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
