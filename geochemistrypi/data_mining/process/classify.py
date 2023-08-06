@@ -8,9 +8,9 @@ from ..constants import MLFLOW_ARTIFACT_DATA_PATH
 from ..model.classification import (
     ClassificationWorkflowBase,
     DecisionTreeClassification,
-    DNNClassification,
     ExtraTreesClassification,
     LogisticRegressionClassification,
+    MLPClassification,
     RandomForestClassification,
     SVMClassification,
     XgboostClassification,
@@ -107,9 +107,9 @@ class ClassificationModelSelection(ModelSelectionBase):
                 class_weight=hyper_parameters["class_weight"],
                 l1_ratio=hyper_parameters["l1_ratio"],
             )
-        elif self.model_name == "Deep Neural Network":
-            hyper_parameters = DNNClassification.manual_hyper_parameters()
-            self.clf_workflow = DNNClassification(
+        elif self.model_name == "Multi-layer Perceptron":
+            hyper_parameters = MLPClassification.manual_hyper_parameters()
+            self.clf_workflow = MLPClassification(
                 hidden_layer_sizes=hyper_parameters["hidden_layer_sizes"],
                 activation=hyper_parameters["activation"],
                 solver=hyper_parameters["solver"],
@@ -178,8 +178,8 @@ class ClassificationModelSelection(ModelSelectionBase):
             self.clf_workflow = XgboostClassification()
         elif self.model_name == "Logistic Regression":
             self.clf_workflow = LogisticRegressionClassification()
-        elif self.model_name == "Deep Neural Network":
-            self.clf_workflow = DNNClassification()
+        elif self.model_name == "Multi-layer Perceptron":
+            self.clf_workflow = MLPClassification()
         elif self.model_name == "Extra-Trees":
             self.clf_workflow = ExtraTreesClassification()
 
