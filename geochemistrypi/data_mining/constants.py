@@ -59,3 +59,5 @@ RAY_FLAML = ["Deep Neural Network"]
 IMPUTING_STRATEGY = ["Mean Value", "Median Value", "Most Frequent Value", "Constant(Specified Value)"]
 
 FEATURE_SCALING_STRATEGY = ["Min-max Scaling", "Standardization"]
+
+SAMPLE_BALANCE_STRATEGY = ["Over Sampling", "Under Sampling", "Oversampling and Undersampling"]
