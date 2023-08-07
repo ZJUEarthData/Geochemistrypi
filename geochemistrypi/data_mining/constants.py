@@ -33,6 +33,7 @@ MODE_OPTION = ["Regression", "Classification", "Clustering", "Dimensional Reduct
 REGRESSION_MODELS = [
     "Linear Regression",
     "Polynomial Regression",
+    "K-Nearest Neighbors",
     "Support Vector Machine",
     "Decision Tree",
     "Random Forest",

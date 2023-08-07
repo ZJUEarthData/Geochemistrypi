@@ -10,7 +10,7 @@ from sklearn import metrics
 from sklearn.cluster import DBSCAN, AffinityPropagation, KMeans
 
 from ..constants import MLFLOW_ARTIFACT_DATA_PATH, MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH
-from ..utils.base import save_data, save_fig
+from ..utils.base import clear_output, save_data, save_fig
 from ._base import WorkflowBase
 from .func.algo_clustering._dbscan import dbscan_manual_hyper_parameters, dbscan_result_plot
 from .func.algo_clustering._kmeans import kmeans_manual_hyper_parameters, plot_silhouette_diagram, scatter2d, scatter3d
@@ -173,6 +173,7 @@ class KMeansClustering(ClusteringWorkflowBase):
         """Manual hyper-parameters specification."""
         print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
         hyper_parameters = kmeans_manual_hyper_parameters()
+        clear_output()
         return hyper_parameters
 
     def _get_scores(self):
@@ -373,6 +374,7 @@ class DBSCANClustering(ClusteringWorkflowBase):
         """Manual hyper-parameters specification."""
         print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
         hyper_parameters = dbscan_manual_hyper_parameters()
+        clear_output()
         return hyper_parameters
 
     @staticmethod
