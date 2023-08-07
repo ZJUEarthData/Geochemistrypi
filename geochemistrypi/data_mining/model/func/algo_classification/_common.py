@@ -303,7 +303,7 @@ def plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, trained_mod
     )
 
 
-def resampler(X_train: pd.DataFrame, y_train: pd.DataFrame, method: List[str], method_idx: int) -> tuple:
+def resampler(X_train: pd.DataFrame, y_train: pd.DataFrame, method: List[str], method_idx: int) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Use this method when the classification dataset has an unbalanced number of categories.
 
     Parameters
@@ -319,6 +319,14 @@ def resampler(X_train: pd.DataFrame, y_train: pd.DataFrame, method: List[str], m
 
     method_idx : int
         The index corresponding to the specific method of resampling.
+
+    Returns
+    -------
+    X_train_resampled : pd.DataFrame (n_samples, n_components)
+        The resampled train feature data.
+
+    y_train_resampled : pd.DataFrame (n_samples, n_label)
+        The resampled train label data.
     """
 
     if method[method_idx] == "Over Sampling":

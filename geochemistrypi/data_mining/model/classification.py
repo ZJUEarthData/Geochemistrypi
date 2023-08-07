@@ -20,7 +20,7 @@ from sklearn.tree import DecisionTreeClassifier
 from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, OPTION, RAY_FLAML, SAMPLE_BALANCE_STRATEGY, SECTION
 from ..data.data_readiness import limit_num_input, num2option, num_input
 from ..plot.statistic_plot import basic_statistic
-from ..utils.base import save_data, save_fig, save_text
+from ..utils.base import clear_output, save_data, save_fig, save_text
 from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
 from .func.algo_classification._common import cross_validation, plot_2d_decision_boundary, plot_confusion_matrix, plot_precision_recall, plot_ROC, resampler, score
 from .func.algo_classification._decision_tree import decision_tree_manual_hyper_parameters
@@ -192,24 +192,25 @@ class ClassificationWorkflowBase(WorkflowBase):
         save_data(X_test, "Decision Boundary - X Test", local_path, mlflow_path)
 
     @staticmethod
-    def sample_balance(X_train: pd.DataFrame, y_train: pd.DataFrame) -> tuple:
+    def sample_balance(X_train: pd.DataFrame, y_train: pd.DataFrame, local_path: str, mlflow_path: str) -> tuple:
         """Use this method when the sample size is unbalanced."""
         print("-*-*- Sample Balance on Train Set -*-*-")
         num2option(OPTION)
-        is_sample_Balance = limit_num_input(OPTION, SECTION[1], num_input)
-        if is_sample_Balance == 1:
+        is_sample_balance = limit_num_input(OPTION, SECTION[1], num_input)
+        if is_sample_balance == 1:
             print("Which strategy do you want to apply?")
             num2option(SAMPLE_BALANCE_STRATEGY)
             sample_balance_num = limit_num_input(SAMPLE_BALANCE_STRATEGY, SECTION[1], num_input)
-            X_train_resampled, y_train_resampled = resampler(X_train, y_train, SAMPLE_BALANCE_STRATEGY, sample_balance_num - 1)
-            train_set_resampled = pd.concat([X_train_resampled, y_train_resampled], axis=1)
+            X_train, y_train = resampler(X_train, y_train, SAMPLE_BALANCE_STRATEGY, sample_balance_num - 1)
+            train_set_resampled = pd.concat([X_train, y_train], axis=1)
             print("Train Set After Resampling:")
             print(train_set_resampled)
             print("Basic Statistical Information: ")
             basic_statistic(train_set_resampled)
-            return is_sample_Balance, X_train_resampled, y_train_resampled
-        elif is_sample_Balance == 2:
-            return is_sample_Balance, X_train, y_train
+            save_data(X_train, "X Train After Sample Balance", local_path, mlflow_path)
+            save_data(y_train, "Y Train After Sample Balance", local_path, mlflow_path)
+        clear_output()
+        return X_train, y_train
 
     @dispatch()
     def common_components(self) -> None:

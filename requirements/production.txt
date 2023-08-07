@@ -27,3 +27,4 @@ bcrypt
 python-dotenv
 rich
 mlflow
+imblearn
