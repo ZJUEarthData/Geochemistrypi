@@ -12,17 +12,19 @@ from multipledispatch import dispatch
 from rich import print
 from sklearn.ensemble import ExtraTreesRegressor, RandomForestRegressor
 from sklearn.linear_model import LinearRegression
+from sklearn.neighbors import KNeighborsRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.svm import SVR
 from sklearn.tree import DecisionTreeRegressor
 
 from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, RAY_FLAML
-from ..utils.base import save_data, save_fig, save_text
+from ..utils.base import clear_output, save_data, save_fig, save_text
 from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
 from .func.algo_regression._common import cross_validation, plot_predicted_vs_actual, plot_residuals, score
 from .func.algo_regression._decision_tree import decision_tree_manual_hyper_parameters
 from .func.algo_regression._extra_tree import extra_trees_manual_hyper_parameters
+from .func.algo_regression._knn import knn_manual_hyper_parameters
 from .func.algo_regression._linear_regression import linear_regression_manual_hyper_parameters
 from .func.algo_regression._multi_layer_perceptron import multi_layer_perceptron_manual_hyper_parameters
 from .func.algo_regression._polynomial_regression import polynomial_regression_manual_hyper_parameters
@@ -286,6 +288,7 @@ class PolynomialRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         """Manual hyper-parameters specification."""
         print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
         hyper_parameters = polynomial_regression_manual_hyper_parameters()
+        clear_output()
         return hyper_parameters
 
     def special_components(self, **kwargs) -> None:
@@ -604,6 +607,7 @@ class XgboostRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         """Manual hyper-parameters specification."""
         print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
         hyper_parameters = xgboost_manual_hyper_parameters()
+        clear_output()
         return hyper_parameters
 
     # @staticmethod
@@ -879,6 +883,7 @@ class DecisionTreeRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         """Manual hyper-parameters specification."""
         print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
         hyper_parameters = decision_tree_manual_hyper_parameters()
+        clear_output()
         return hyper_parameters
 
     @dispatch()
@@ -1171,6 +1176,7 @@ class ExtraTreesRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         """Manual hyper-parameters specification."""
         print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
         hyper_parameters = extra_trees_manual_hyper_parameters()
+        clear_output()
         return hyper_parameters
 
     @dispatch()
@@ -1465,6 +1471,7 @@ class RandomForestRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         """Manual hyper-parameters specification."""
         print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
         hyper_parameters = random_forest_manual_hyper_parameters()
+        clear_output()
         return hyper_parameters
 
     @dispatch()
@@ -1664,6 +1671,7 @@ class SVMRegression(RegressionWorkflowBase):
         """Manual hyper-parameters specification."""
         print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
         hyper_parameters = svr_manual_hyper_parameters()
+        clear_output()
         return hyper_parameters
 
     @dispatch()
@@ -1966,6 +1974,7 @@ class MLPRegression(RegressionWorkflowBase):
         """Manual hyper-parameters specification."""
         print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
         hyper_parameters = multi_layer_perceptron_manual_hyper_parameters()
+        clear_output()
         return hyper_parameters
 
     @staticmethod
@@ -2064,6 +2073,7 @@ class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         """Manual hyper-parameters specification."""
         print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
         hyper_parameters = linear_regression_manual_hyper_parameters()
+        clear_output()
         return hyper_parameters
 
     def special_components(self, **kwargs) -> None:
@@ -2143,3 +2153,152 @@ class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             )
         else:
             pass
+
+
+class KNNRegression(RegressionWorkflowBase):
+    """The automation workflow of using KNN algorithm to make insightful products."""
+
+    name = "K-Nearest Neighbors"
+    special_function = []
+
+    def __init__(
+        self,
+        n_neighbors: int = 5,
+        *,
+        weights: str = "uniform",
+        algorithm: str = "auto",
+        leaf_size: int = 30,
+        p: int = 2,
+        metric: str = "minkowski",
+        metric_params: Optional[Dict] = None,
+        n_jobs: Optional[int] = None,
+    ) -> None:
+        """
+        Parameters
+        ----------
+        n_neighbors : int, default=5
+            Number of neighbors to use by default for :meth:`kneighbors` queries.
+
+        weights : {'uniform', 'distance'}, callable or None, default='uniform'
+            Weight function used in prediction.  Possible values:
+
+            - 'uniform' : uniform weights.  All points in each neighborhood
+            are weighted equally.
+            - 'distance' : weight points by the inverse of their distance.
+            in this case, closer neighbors of a query point will have a
+            greater influence than neighbors which are further away.
+            - [callable] : a user-defined function which accepts an
+            array of distances, and returns an array of the same shape
+            containing the weights.
+
+            Uniform weights are used by default.
+
+        algorithm : {'auto', 'ball_tree', 'kd_tree', 'brute'}, default='auto'
+            Algorithm used to compute the nearest neighbors:
+
+            - 'ball_tree' will use :class:`BallTree`
+            - 'kd_tree' will use :class:`KDTree`
+            - 'brute' will use a brute-force search.
+            - 'auto' will attempt to decide the most appropriate algorithm
+            based on the values passed to :meth:`fit` method.
+
+            Note: fitting on sparse input will override the setting of
+            this parameter, using brute force.
+
+        leaf_size : int, default=30
+            Leaf size passed to BallTree or KDTree.  This can affect the
+            speed of the construction and query, as well as the memory
+            required to store the tree.  The optimal value depends on the
+            nature of the problem.
+
+        p : int, default=2
+            Power parameter for the Minkowski metric. When p = 1, this is
+            equivalent to using manhattan_distance (l1), and euclidean_distance
+            (l2) for p = 2. For arbitrary p, minkowski_distance (l_p) is used.
+
+        metric : str or callable, default='minkowski'
+            Metric to use for distance computation. Default is "minkowski", which
+            results in the standard Euclidean distance when p = 2. See the
+            documentation of `scipy.spatial.distance
+            <https://docs.scipy.org/doc/scipy/reference/spatial.distance.html>`_ and
+            the metrics listed in
+            :class:`~sklearn.metrics.pairwise.distance_metrics` for valid metric
+            values.
+
+            If metric is "precomputed", X is assumed to be a distance matrix and
+            must be square during fit. X may be a :term:`sparse graph`, in which
+            case only "nonzero" elements may be considered neighbors.
+
+            If metric is a callable function, it takes two arrays representing 1D
+            vectors as inputs and must return one value indicating the distance
+            between those vectors. This works for Scipy's metrics, but is less
+            efficient than passing the metric name as a string.
+
+        metric_params : dict, default=None
+            Additional keyword arguments for the metric function.
+
+        n_jobs : int, default=None
+            The number of parallel jobs to run for neighbors search.
+            ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
+            ``-1`` means using all processors. See :term:`Glossary <n_jobs>`
+            for more details.
+            Doesn't affect :meth:`fit` method.
+
+        References
+        ----------
+        Scikit-learn API: sklearn.neighbors.KNeighborsRegressor
+        https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.KNeighborsRegressor.html
+        """
+        super().__init__()
+        self.n_neighbors = n_neighbors
+        self.weights = weights
+        self.algorithm = algorithm
+        self.leaf_size = leaf_size
+        self.p = p
+        self.metric = metric
+        self.metric_params = metric_params
+        self.n_jobs = n_jobs
+
+        self.model = KNeighborsRegressor(
+            n_neighbors=self.n_neighbors,
+            weights=self.weights,
+            algorithm=self.algorithm,
+            leaf_size=self.leaf_size,
+            p=self.p,
+            metric=self.metric,
+            metric_params=self.metric_params,
+            n_jobs=self.n_jobs,
+        )
+
+        self.naming = KNNRegression.name
+
+    @property
+    def settings(self) -> Dict:
+        """The configuration to implement AutoML by FLAML framework."""
+        configuration = {
+            "time_budget": 10,  # total running time in seconds
+            "metric": "r2",
+            "estimator_list": ["kneighbor"],  # list of ML learners
+            "task": "regression",  # task type
+            # "log_file_name": f"{self.naming} - automl.log",  # flaml log file
+            # "log_training_metric": True,  # whether to log training metric
+        }
+        return configuration
+
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
+        """Manual hyper-parameters specification."""
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = knn_manual_hyper_parameters()
+        clear_output()
+        return hyper_parameters
+
+    @dispatch()
+    def special_components(self, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        pass
+
+    @dispatch(bool)
+    def special_components(self, is_automl: bool, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by FLAML framework."""
+        pass

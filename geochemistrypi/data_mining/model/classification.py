@@ -564,6 +564,7 @@ class SVMClassification(ClassificationWorkflowBase):
         """Manual hyper-parameters specification."""
         print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
         hyper_parameters = svc_manual_hyper_parameters()
+        clear_output()
         return hyper_parameters
 
     @dispatch()
@@ -813,6 +814,7 @@ class DecisionTreeClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         """Manual hyper-parameters specification."""
         print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
         hyper_parameters = decision_tree_manual_hyper_parameters()
+        clear_output()
         return hyper_parameters
 
     @dispatch()
@@ -1126,6 +1128,7 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         """Manual hyper-parameters specification."""
         print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
         hyper_parameters = random_forest_manual_hyper_parameters()
+        clear_output()
         return hyper_parameters
 
     @dispatch()
@@ -1478,6 +1481,7 @@ class XgboostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         """Manual hyper-parameters specification."""
         print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
         hyper_parameters = xgboost_manual_hyper_parameters()
+        clear_output()
         return hyper_parameters
 
     # @staticmethod
@@ -1757,6 +1761,7 @@ class LogisticRegressionClassification(LinearWorkflowMixin, ClassificationWorkfl
         """Manual hyper-parameters specification."""
         print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
         hyper_parameters = logistic_regression_manual_hyper_parameters()
+        clear_output()
         return hyper_parameters
 
     @staticmethod
@@ -2114,6 +2119,7 @@ class MLPClassification(ClassificationWorkflowBase):
         """Manual hyper-parameters specification."""
         print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
         hyper_parameters = multi_layer_perceptron_manual_hyper_parameters()
+        clear_output()
         return hyper_parameters
 
     @staticmethod
@@ -2398,6 +2404,7 @@ class ExtraTreesClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         """Manual hyper-parameters specification."""
         print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
         hyper_parameters = extra_trees_manual_hyper_parameters()
+        clear_output()
         return hyper_parameters
 
     @dispatch()

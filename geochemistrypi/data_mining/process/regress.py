@@ -11,6 +11,7 @@ from ..model.regression import (
     ClassicalLinearRegression,
     DecisionTreeRegression,
     ExtraTreesRegression,
+    KNNRegression,
     MLPRegression,
     PolynomialRegression,
     RandomForestRegression,
@@ -133,6 +134,16 @@ class RegressionModelSelection(ModelSelectionBase):
         elif self.model_name == "Linear Regression":
             hyper_parameters = ClassicalLinearRegression.manual_hyper_parameters()
             self.reg_workflow = ClassicalLinearRegression(fit_intercept=hyper_parameters["fit_intercept"], normalize=hyper_parameters["normalize"])
+        elif self.model_name == "K-Nearest Neighbors":
+            hyper_parameters = KNNRegression.manual_hyper_parameters()
+            self.reg_workflow = KNNRegression(
+                n_neighbors=hyper_parameters["n_neighbors"],
+                weights=hyper_parameters["weights"],
+                algorithm=hyper_parameters["algorithm"],
+                leaf_size=hyper_parameters["leaf_size"],
+                p=hyper_parameters["p"],
+                metric=hyper_parameters["metric"],
+            )
 
         self.reg_workflow.show_info()
 
@@ -192,6 +203,8 @@ class RegressionModelSelection(ModelSelectionBase):
             self.reg_workflow = MLPRegression()
         elif self.model_name == "Linear Regression":
             self.reg_workflow = ClassicalLinearRegression()
+        elif self.model_name == "K-Nearest Neighbors":
+            self.reg_workflow = KNNRegression()
 
         self.reg_workflow.show_info()
 
