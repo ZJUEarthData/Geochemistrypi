@@ -28,6 +28,7 @@ bcrypt
 python-dotenv
 rich
 mlflow
+imblearn
 sphinx
 furo
 m2r2
