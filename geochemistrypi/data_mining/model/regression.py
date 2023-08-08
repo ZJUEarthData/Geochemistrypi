@@ -10,7 +10,7 @@ import xgboost
 from flaml import AutoML
 from multipledispatch import dispatch
 from rich import print
-from sklearn.ensemble import ExtraTreesRegressor, RandomForestRegressor
+from sklearn.ensemble import ExtraTreesRegressor, GradientBoostingRegressor, RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.neural_network import MLPRegressor
@@ -24,6 +24,7 @@ from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
 from .func.algo_regression._common import cross_validation, plot_predicted_vs_actual, plot_residuals, score
 from .func.algo_regression._decision_tree import decision_tree_manual_hyper_parameters
 from .func.algo_regression._extra_tree import extra_trees_manual_hyper_parameters
+from .func.algo_regression._gradient_boosting import gradient_boosting_manual_hyper_parameters
 from .func.algo_regression._knn import knn_manual_hyper_parameters
 from .func.algo_regression._linear_regression import linear_regression_manual_hyper_parameters
 from .func.algo_regression._multi_layer_perceptron import multi_layer_perceptron_manual_hyper_parameters
@@ -2302,3 +2303,370 @@ class KNNRegression(RegressionWorkflowBase):
     def special_components(self, is_automl: bool, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
         pass
+
+
+class GradientBoostingRegression(TreeWorkflowMixin, RegressionWorkflowBase):
+    """The automation workflow of using Gradient Boosting algorithm to make insightful products."""
+
+    name = "Gradient Boosting"
+    special_function = ["Feature Importance Diagram", "Single Tree Diagram"]
+
+    def __init__(
+        self,
+        *,
+        loss: str = "squared_error",
+        learning_rate: float = 0.1,
+        n_estimators: int = 100,
+        subsample: float = 1.0,
+        criterion: str = "friedman_mse",
+        min_samples_split: Union[int, float] = 2,
+        min_samples_leaf: Union[int, float] = 1,
+        min_weight_fraction_leaf: float = 0.0,
+        max_depth: float = 3,
+        min_impurity_decrease: float = 0.0,
+        init: Optional[object] = None,
+        random_state: Optional[int] = None,
+        max_features: Union[str, int, float] = None,
+        alpha: float = 0.9,
+        verbose: int = 0,
+        max_leaf_nodes: Optional[int] = None,
+        warm_start: bool = False,
+        validation_fraction: float = 0.1,
+        n_iter_no_change: Optional[int] = None,
+        tol: float = 1e-4,
+        ccp_alpha: float = 0.0,
+    ) -> None:
+        """
+        Parameters
+        ----------
+        loss : {'squared_error', 'absolute_error', 'huber', 'quantile'}, \
+                default='squared_error'
+            Loss function to be optimized. 'squared_error' refers to the squared
+            error for regression. 'absolute_error' refers to the absolute error of
+            regression and is a robust loss function. 'huber' is a
+            combination of the two. 'quantile' allows quantile regression (use
+            `alpha` to specify the quantile).
+
+        learning_rate : float, default=0.1
+            Learning rate shrinks the contribution of each tree by `learning_rate`.
+            There is a trade-off between learning_rate and n_estimators.
+            Values must be in the range `[0.0, inf)`.
+
+        n_estimators : int, default=100
+            The number of boosting stages to perform. Gradient boosting
+            is fairly robust to over-fitting so a large number usually
+            results in better performance.
+            Values must be in the range `[1, inf)`.
+
+        subsample : float, default=1.0
+            The fraction of samples to be used for fitting the individual base
+            learners. If smaller than 1.0 this results in Stochastic Gradient
+            Boosting. `subsample` interacts with the parameter `n_estimators`.
+            Choosing `subsample < 1.0` leads to a reduction of variance
+            and an increase in bias.
+            Values must be in the range `(0.0, 1.0]`.
+
+        criterion : {'friedman_mse', 'squared_error'}, default='friedman_mse'
+            The function to measure the quality of a split. Supported criteria are
+            "friedman_mse" for the mean squared error with improvement score by
+            Friedman, "squared_error" for mean squared error. The default value of
+            "friedman_mse" is generally the best as it can provide a better
+            approximation in some cases.
+
+            .. versionadded:: 0.18
+
+        min_samples_split : int or float, default=2
+            The minimum number of samples required to split an internal node:
+
+            - If int, values must be in the range `[2, inf)`.
+            - If float, values must be in the range `(0.0, 1.0]` and `min_samples_split`
+            will be `ceil(min_samples_split * n_samples)`.
+
+            .. versionchanged:: 0.18
+            Added float values for fractions.
+
+        min_samples_leaf : int or float, default=1
+            The minimum number of samples required to be at a leaf node.
+            A split point at any depth will only be considered if it leaves at
+            least ``min_samples_leaf`` training samples in each of the left and
+            right branches.  This may have the effect of smoothing the model,
+            especially in regression.
+
+            - If int, values must be in the range `[1, inf)`.
+            - If float, values must be in the range `(0.0, 1.0)` and `min_samples_leaf`
+            will be `ceil(min_samples_leaf * n_samples)`.
+
+            .. versionchanged:: 0.18
+            Added float values for fractions.
+
+        min_weight_fraction_leaf : float, default=0.0
+            The minimum weighted fraction of the sum total of weights (of all
+            the input samples) required to be at a leaf node. Samples have
+            equal weight when sample_weight is not provided.
+            Values must be in the range `[0.0, 0.5]`.
+
+        max_depth : int or None, default=3
+            Maximum depth of the individual regression estimators. The maximum
+            depth limits the number of nodes in the tree. Tune this parameter
+            for best performance; the best value depends on the interaction
+            of the input variables. If None, then nodes are expanded until
+            all leaves are pure or until all leaves contain less than
+            min_samples_split samples.
+            If int, values must be in the range `[1, inf)`.
+
+        min_impurity_decrease : float, default=0.0
+            A node will be split if this split induces a decrease of the impurity
+            greater than or equal to this value.
+            Values must be in the range `[0.0, inf)`.
+
+            The weighted impurity decrease equation is the following::
+
+                N_t / N * (impurity - N_t_R / N_t * right_impurity
+                                    - N_t_L / N_t * left_impurity)
+
+            where ``N`` is the total number of samples, ``N_t`` is the number of
+            samples at the current node, ``N_t_L`` is the number of samples in the
+            left child, and ``N_t_R`` is the number of samples in the right child.
+
+            ``N``, ``N_t``, ``N_t_R`` and ``N_t_L`` all refer to the weighted sum,
+            if ``sample_weight`` is passed.
+
+            .. versionadded:: 0.19
+
+        init : estimator or 'zero', default=None
+            An estimator object that is used to compute the initial predictions.
+            ``init`` has to provide :term:`fit` and :term:`predict`. If 'zero', the
+            initial raw predictions are set to zero. By default a
+            ``DummyEstimator`` is used, predicting either the average target value
+            (for loss='squared_error'), or a quantile for the other losses.
+
+        random_state : int, RandomState instance or None, default=None
+            Controls the random seed given to each Tree estimator at each
+            boosting iteration.
+            In addition, it controls the random permutation of the features at
+            each split (see Notes for more details).
+            It also controls the random splitting of the training data to obtain a
+            validation set if `n_iter_no_change` is not None.
+            Pass an int for reproducible output across multiple function calls.
+            See :term:`Glossary <random_state>`.
+
+        max_features : {'sqrt', 'log2'}, int or float, default=None
+            The number of features to consider when looking for the best split:
+
+            - If int, values must be in the range `[1, inf)`.
+            - If float, values must be in the range `(0.0, 1.0]` and the features
+            considered at each split will be `max(1, int(max_features * n_features_in_))`.
+            - If "sqrt", then `max_features=sqrt(n_features)`.
+            - If "log2", then `max_features=log2(n_features)`.
+            - If None, then `max_features=n_features`.
+
+            Choosing `max_features < n_features` leads to a reduction of variance
+            and an increase in bias.
+
+            Note: the search for a split does not stop until at least one
+            valid partition of the node samples is found, even if it requires to
+            effectively inspect more than ``max_features`` features.
+
+        alpha : float, default=0.9
+            The alpha-quantile of the huber loss function and the quantile
+            loss function. Only if ``loss='huber'`` or ``loss='quantile'``.
+            Values must be in the range `(0.0, 1.0)`.
+
+        verbose : int, default=0
+            Enable verbose output. If 1 then it prints progress and performance
+            once in a while (the more trees the lower the frequency). If greater
+            than 1 then it prints progress and performance for every tree.
+            Values must be in the range `[0, inf)`.
+
+        max_leaf_nodes : int, default=None
+            Grow trees with ``max_leaf_nodes`` in best-first fashion.
+            Best nodes are defined as relative reduction in impurity.
+            Values must be in the range `[2, inf)`.
+            If None, then unlimited number of leaf nodes.
+
+        warm_start : bool, default=False
+            When set to ``True``, reuse the solution of the previous call to fit
+            and add more estimators to the ensemble, otherwise, just erase the
+            previous solution. See :term:`the Glossary <warm_start>`.
+
+        validation_fraction : float, default=0.1
+            The proportion of training data to set aside as validation set for
+            early stopping. Values must be in the range `(0.0, 1.0)`.
+            Only used if ``n_iter_no_change`` is set to an integer.
+
+            .. versionadded:: 0.20
+
+        n_iter_no_change : int, default=None
+            ``n_iter_no_change`` is used to decide if early stopping will be used
+            to terminate training when validation score is not improving. By
+            default it is set to None to disable early stopping. If set to a
+            number, it will set aside ``validation_fraction`` size of the training
+            data as validation and terminate training when validation score is not
+            improving in all of the previous ``n_iter_no_change`` numbers of
+            iterations.
+            Values must be in the range `[1, inf)`.
+
+            .. versionadded:: 0.20
+
+        tol : float, default=1e-4
+            Tolerance for the early stopping. When the loss is not improving
+            by at least tol for ``n_iter_no_change`` iterations (if set to a
+            number), the training stops.
+            Values must be in the range `[0.0, inf)`.
+
+            .. versionadded:: 0.20
+
+        ccp_alpha : non-negative float, default=0.0
+            Complexity parameter used for Minimal Cost-Complexity Pruning. The
+            subtree with the largest cost complexity that is smaller than
+            ``ccp_alpha`` will be chosen. By default, no pruning is performed.
+            Values must be in the range `[0.0, inf)`.
+            See :ref:`minimal_cost_complexity_pruning` for details.
+
+            .. versionadded:: 0.22
+
+        References
+        ----------
+        Scikit-learn API: sklearn.ensemble.GradientBoostingRegressor
+        https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.GradientBoostingRegressor.html
+        """
+        super().__init__()
+        self.loss = loss
+        self.learning_rate = learning_rate
+        self.n_estimators = n_estimators
+        self.subsample = subsample
+        self.criterion = criterion
+        self.min_samples_split = min_samples_split
+        self.min_samples_leaf = min_samples_leaf
+        self.min_weight_fraction_leaf = min_weight_fraction_leaf
+        self.max_depth = max_depth
+        self.min_impurity_decrease = min_impurity_decrease
+        self.init = init
+        self.random_state = random_state
+        self.max_features = max_features
+        self.alpha = alpha
+        self.verbose = verbose
+        self.max_leaf_nodes = max_leaf_nodes
+        self.warm_start = warm_start
+        self.validation_fraction = validation_fraction
+        self.n_iter_no_change = n_iter_no_change
+        self.tol = tol
+        self.ccp_alpha = ccp_alpha
+
+        self.model = GradientBoostingRegressor(
+            loss=self.loss,
+            learning_rate=self.learning_rate,
+            n_estimators=self.n_estimators,
+            subsample=self.subsample,
+            criterion=self.criterion,
+            min_samples_split=self.min_samples_split,
+            min_samples_leaf=self.min_samples_leaf,
+            min_weight_fraction_leaf=self.min_weight_fraction_leaf,
+            max_depth=self.max_depth,
+            min_impurity_decrease=self.min_impurity_decrease,
+            init=self.init,
+            random_state=self.random_state,
+            max_features=self.max_features,
+            alpha=self.alpha,
+            verbose=self.verbose,
+            max_leaf_nodes=self.max_leaf_nodes,
+            warm_start=self.warm_start,
+            validation_fraction=self.validation_fraction,
+            n_iter_no_change=self.n_iter_no_change,
+            tol=self.tol,
+            ccp_alpha=self.ccp_alpha,
+        )
+
+        self.naming = GradientBoostingRegression.name
+        self.customized = True
+        self.customized_name = "Gradient Boosting"
+
+    @property
+    def settings(self) -> Dict:
+        """The configuration of Gradient Boosting to implement AutoML by FLAML framework."""
+        configuration = {
+            "time_budget": 10,  # total running time in seconds
+            "metric": "r2",
+            "estimator_list": [self.customized_name],  # list of ML learners
+            "task": "regression",  # task type
+            # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
+            # "log_training_metric": True,  # whether to log training metric
+        }
+        return configuration
+
+    @property
+    def customization(self) -> object:
+        """The customized Gradient Boosting of FLAML framework."""
+        from flaml import tune
+        from flaml.data import REGRESSION
+        from flaml.model import SKLearnEstimator
+        from sklearn.ensemble import GradientBoostingRegressor
+
+        class MyGradientBoostingRegression(SKLearnEstimator):
+            def __init__(self, task="regression", n_jobs=None, **config):
+                super().__init__(task, **config)
+                if task in REGRESSION:
+                    self.estimator_class = GradientBoostingRegressor
+
+            @classmethod
+            def search_space(cls, data_size, task):
+                space = {
+                    "n_estimators": {"domain": tune.lograndint(lower=4, upper=512), "init_value": 100},
+                    "max_depth": {"domain": tune.randint(lower=1, upper=10), "init_value": 3},
+                    "learning_rate": {"domain": tune.loguniform(lower=0.001, upper=1.0), "init_value": 0.1},
+                    "subsample": {"domain": tune.uniform(lower=0.1, upper=1.0), "init_value": 1.0},
+                    "min_samples_split": {"domain": tune.randint(lower=2, upper=20), "init_value": 2},
+                    "min_samples_leaf": {"domain": tune.randint(lower=1, upper=20), "init_value": 1},
+                    "min_impurity_decrease": {"domain": tune.loguniform(lower=1e-10, upper=1e-2), "init_value": 0.0},
+                }
+                return space
+
+        return MyGradientBoostingRegression
+
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
+        """Manual hyper-parameters specification."""
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = gradient_boosting_manual_hyper_parameters()
+        clear_output()
+        return hyper_parameters
+
+    @dispatch()
+    def special_components(self, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_feature_importance(
+            X_train=GradientBoostingRegression.X_train,
+            trained_model=self.model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._plot_tree(
+            trained_model=self.model.estimators_[0][0],
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+
+    @dispatch(bool)
+    def special_components(self, is_automl: bool, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by FLAML framework."""
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_feature_importance(
+            X_train=GradientBoostingRegression.X_train,
+            trained_model=self.auto_model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._plot_tree(
+            trained_model=self.auto_model.estimators_[0][0],
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )

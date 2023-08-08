@@ -11,6 +11,7 @@ from ..model.regression import (
     ClassicalLinearRegression,
     DecisionTreeRegression,
     ExtraTreesRegression,
+    GradientBoostingRegression,
     KNNRegression,
     MLPRegression,
     PolynomialRegression,
@@ -127,6 +128,18 @@ class RegressionModelSelection(ModelSelectionBase):
                 p=hyper_parameters["p"],
                 metric=hyper_parameters["metric"],
             )
+        elif self.model_name == "Gradient Boosting":
+            hyper_parameters = GradientBoostingRegression.manual_hyper_parameters()
+            self.reg_workflow = GradientBoostingRegression(
+                n_estimators=hyper_parameters["n_estimators"],
+                learning_rate=hyper_parameters["learning_rate"],
+                max_depth=hyper_parameters["max_depth"],
+                min_samples_split=hyper_parameters["min_samples_split"],
+                min_samples_leaf=hyper_parameters["min_samples_leaf"],
+                max_features=hyper_parameters["max_features"],
+                subsample=hyper_parameters["subsample"],
+                loss=hyper_parameters["loss"],
+            )
 
         self.reg_workflow.show_info()
 
@@ -188,6 +201,8 @@ class RegressionModelSelection(ModelSelectionBase):
             self.reg_workflow = ClassicalLinearRegression()
         elif self.model_name == "K-Nearest Neighbors":
             self.reg_workflow = KNNRegression()
+        elif self.model_name == "Gradient Boosting":
+            self.reg_workflow = GradientBoostingRegression()
 
         self.reg_workflow.show_info()
 

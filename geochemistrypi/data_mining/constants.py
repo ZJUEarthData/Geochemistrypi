@@ -38,6 +38,7 @@ REGRESSION_MODELS = [
     "Decision Tree",
     "Random Forest",
     "Extra-Trees",
+    "Gradient Boosting",
     "Xgboost",
     "Multi-layer Perceptron",
 ]
