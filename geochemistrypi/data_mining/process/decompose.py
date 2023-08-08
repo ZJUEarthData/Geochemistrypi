@@ -4,7 +4,7 @@ from typing import Optional
 
 import pandas as pd
 
-from ..model.decomposition import DecompositionWorkflowBase, PCADecomposition, TSNEDecomposition
+from ..model.decomposition import DecompositionWorkflowBase, MDSDecomposition, PCADecomposition, TSNEDecomposition
 from ._base import ModelSelectionBase
 
 
@@ -28,7 +28,7 @@ class DecompositionModelSelection(ModelSelectionBase):
 
         self.dcp_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
 
-        if self.model_name == "Principal Component Analysis":
+        if self.model_name == "PCA":
             hyper_parameters = PCADecomposition.manual_hyper_parameters()
             self.dcp_workflow = PCADecomposition(n_components=hyper_parameters["n_components"], svd_solver=hyper_parameters["svd_solver"])
         elif self.model_name == "T-SNE":
@@ -39,6 +39,14 @@ class DecompositionModelSelection(ModelSelectionBase):
                 learning_rate=hyper_parameters["learning_rate"],
                 n_iter=hyper_parameters["n_iter"],
                 early_exaggeration=hyper_parameters["early_exaggeration"],
+            )
+        elif self.model_name == "MDS":
+            hyper_parameters = MDSDecomposition.manual_hyper_parameters()
+            self.dcp_workflow = MDSDecomposition(
+                n_components=hyper_parameters["n_components"],
+                metric=hyper_parameters["metric"],
+                n_init=hyper_parameters["n_init"],
+                max_iter=hyper_parameters["max_iter"],
             )
 
         self.dcp_workflow.show_info()

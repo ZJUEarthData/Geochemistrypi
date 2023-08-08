@@ -6,11 +6,12 @@ import numpy as np
 import pandas as pd
 from rich import print
 from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
+from sklearn.manifold import MDS, TSNE
 
 from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH
-from ..utils.base import save_data, save_fig
+from ..utils.base import clear_output, save_data, save_fig
 from ._base import WorkflowBase
+from .func.algo_decomposition._mds import mds_manual_hyper_parameters
 from .func.algo_decomposition._pca import biplot, pca_manual_hyper_parameters, triplot
 from .func.algo_decomposition._tsne import tsne_manual_hyper_parameters
 
@@ -211,6 +212,7 @@ class PCADecomposition(DecompositionWorkflowBase):
         """Manual hyper-parameters specification."""
         print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
         hyper_parameters = pca_manual_hyper_parameters()
+        clear_output()
         return hyper_parameters
 
     def _get_principal_components(self) -> None:
@@ -517,8 +519,131 @@ class TSNEDecomposition(DecompositionWorkflowBase):
         """Manual hyper-parameters specification."""
         print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
         hyper_parameters = tsne_manual_hyper_parameters()
+        clear_output()
         return hyper_parameters
 
-    def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
+    def special_components(self, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        pass
+
+
+class MDSDecomposition(DecompositionWorkflowBase):
+    """The automation workflow of using MDS algorithm to make insightful products."""
+
+    name = "MDS"
+    special_function = []
+
+    def __init__(
+        self,
+        n_components: int = 2,
+        *,
+        metric: bool = True,
+        n_init: int = 4,
+        max_iter: int = 300,
+        verbose: int = 0,
+        eps: float = 1e-3,
+        n_jobs: Optional[int] = None,
+        random_state: Optional[int] = None,
+        dissimilarity: str = "euclidean",
+        # normalized_stress="warn",
+    ) -> None:
+        """
+        Parameters
+        ----------
+        n_components : int, default=2
+            Number of dimensions in which to immerse the dissimilarities.
+
+        metric : bool, default=True
+            If ``True``, perform metric MDS; otherwise, perform nonmetric MDS.
+            When ``False`` (i.e. non-metric MDS), dissimilarities with 0 are considered as
+            missing values.
+
+        n_init : int, default=4
+            Number of times the SMACOF algorithm will be run with different
+            initializations. The final results will be the best output of the runs,
+            determined by the run with the smallest final stress.
+
+        max_iter : int, default=300
+            Maximum number of iterations of the SMACOF algorithm for a single run.
+
+        verbose : int, default=0
+            Level of verbosity.
+
+        eps : float, default=1e-3
+            Relative tolerance with respect to stress at which to declare
+            convergence. The value of `eps` should be tuned separately depending
+            on whether or not `normalized_stress` is being used.
+
+        n_jobs : int, default=None
+            The number of jobs to use for the computation. If multiple
+            initializations are used (``n_init``), each run of the algorithm is
+            computed in parallel.
+
+            ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
+            ``-1`` means using all processors. See :term:`Glossary <n_jobs>`
+            for more details.
+
+        random_state : int, RandomState instance or None, default=None
+            Determines the random number generator used to initialize the centers.
+            Pass an int for reproducible results across multiple function calls.
+            See :term:`Glossary <random_state>`.
+
+        dissimilarity : {'euclidean', 'precomputed'}, default='euclidean'
+            Dissimilarity measure to use:
+
+            - 'euclidean':
+                Pairwise Euclidean distances between points in the dataset.
+
+            - 'precomputed':
+                Pre-computed dissimilarities are passed directly to ``fit`` and
+                ``fit_transform``.
+
+        normalized_stress : bool or "auto" default=False
+            Whether use and return normed stress value (Stress-1) instead of raw
+            stress calculated by default. Only supported in non-metric MDS.
+
+            .. versionadded:: 1.2
+
+        References
+        ----------
+        Scikit-learn API: sklearn.manifold.MDS
+        https://scikit-learn.org/stable/modules/generated/sklearn.manifold.MDS.html
+        """
+        super().__init__()
+        self.n_components = n_components
+        self.metric = metric
+        self.n_init = n_init
+        self.max_iter = max_iter
+        self.verbose = verbose
+        self.eps = eps
+        self.n_jobs = n_jobs
+        self.random_state = random_state
+        self.dissimilarity = dissimilarity
+        # self.normalized_stress = normalized_stress
+
+        self.model = MDS(
+            n_components=self.n_components,
+            metric=self.metric,
+            n_init=self.n_init,
+            max_iter=self.max_iter,
+            verbose=self.verbose,
+            eps=self.eps,
+            n_jobs=self.n_jobs,
+            random_state=self.random_state,
+            dissimilarity=self.dissimilarity,
+            # normalized_stress=self.normalized_stress,
+        )
+
+        self.naming = MDSDecomposition.name
+
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
+        """Manual hyper-parameters specification."""
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = mds_manual_hyper_parameters()
+        clear_output()
+        return hyper_parameters
+
+    def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         pass

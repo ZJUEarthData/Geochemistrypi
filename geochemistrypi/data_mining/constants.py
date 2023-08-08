@@ -52,7 +52,7 @@ CLASSIFICATION_MODELS = [
     "Multi-layer Perceptron",
 ]
 CLUSTERING_MODELS = ["KMeans", "DBSCAN"]
-DECOMPOSITION_MODELS = ["Principal Component Analysis", "T-SNE"]
+DECOMPOSITION_MODELS = ["PCA", "T-SNE", "MDS"]
 
 # Special AutoML models
 NON_AUTOML_MODELS = ["Linear Regression", "Polynomial Regression"]
