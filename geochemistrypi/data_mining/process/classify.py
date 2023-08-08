@@ -45,30 +45,13 @@ class ClassificationModelSelection(ModelSelectionBase):
         # Model option
         if self.model_name == "Support Vector Machine":
             hyper_parameters = SVMClassification.manual_hyper_parameters()
-            if hyper_parameters["kernel"] == "linear":
-                self.clf_workflow = SVMClassification(kernel=hyper_parameters["kernel"], C=hyper_parameters["C"], shrinking=hyper_parameters["shrinking"])
-            elif hyper_parameters["kernel"] == "poly":
-                self.clf_workflow = SVMClassification(
-                    kernel=hyper_parameters["kernel"],
-                    degree=hyper_parameters["degree"],
-                    gamma=hyper_parameters["gamma"],
-                    C=hyper_parameters["C"],
-                    shrinking=hyper_parameters["shrinking"],
-                )
-            elif hyper_parameters["kernel"] == "rbf":
-                self.clf_workflow = SVMClassification(
-                    kernel=hyper_parameters["kernel"],
-                    gamma=hyper_parameters["gamma"],
-                    C=hyper_parameters["C"],
-                    shrinking=hyper_parameters["shrinking"],
-                )
-            elif hyper_parameters["kernel"] == "sigmoid":
-                self.clf_workflow = SVMClassification(
-                    kernel=hyper_parameters["kernel"],
-                    gamma=hyper_parameters["gamma"],
-                    C=hyper_parameters["C"],
-                    shrinking=hyper_parameters["shrinking"],
-                )
+            self.clf_workflow = SVMClassification(
+                kernel=hyper_parameters["kernel"],
+                degree=hyper_parameters["degree"],
+                gamma=hyper_parameters["gamma"],
+                C=hyper_parameters["C"],
+                shrinking=hyper_parameters["shrinking"],
+            )
         elif self.model_name == "Decision Tree":
             hyper_parameters = DecisionTreeClassification.manual_hyper_parameters()
             self.clf_workflow = DecisionTreeClassification(

@@ -45,12 +45,16 @@ def svr_manual_hyper_parameters() -> Dict:
     shrinkings = ["True", "False"]
     shrinking = bool(str_input(shrinkings, SECTION[2]))
     hyper_parameters = {"kernel": kernel, "C": C, "shrinking": shrinking}
-    if degree:
+    if not degree:
         # Use the default value provided by sklearn.svm.SVR
         hyper_parameters["degree"] = 3
-    if gamma:
+    else:
+        hyper_parameters["degree"] = degree
+    if not gamma:
         # Use the default value provided by sklearn.svm.SVR
         hyper_parameters["gamma"] = "scale"
+    else:
+        hyper_parameters["gamma"] = gamma
     # if coef0:
     #     # Use the default value provided by sklearn.svm.SVR
     #     hyper_parameters["coef0"] = 0.0
