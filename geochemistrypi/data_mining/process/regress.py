@@ -97,30 +97,13 @@ class RegressionModelSelection(ModelSelectionBase):
             )
         elif self.model_name == "Support Vector Machine":
             hyper_parameters = SVMRegression.manual_hyper_parameters()
-            if hyper_parameters["kernel"] == "linear":
-                self.reg_workflow = SVMRegression(kernel=hyper_parameters["kernel"], C=hyper_parameters["C"], shrinking=hyper_parameters["shrinking"])
-            elif hyper_parameters["kernel"] == "poly":
-                self.reg_workflow = SVMRegression(
-                    kernel=hyper_parameters["kernel"],
-                    degree=hyper_parameters["degree"],
-                    gamma=hyper_parameters["gamma"],
-                    C=hyper_parameters["C"],
-                    shrinking=hyper_parameters["shrinking"],
-                )
-            elif hyper_parameters["kernel"] == "rbf":
-                self.reg_workflow = SVMRegression(
-                    kernel=hyper_parameters["kernel"],
-                    gamma=hyper_parameters["gamma"],
-                    C=hyper_parameters["C"],
-                    shrinking=hyper_parameters["shrinking"],
-                )
-            elif hyper_parameters["kernel"] == "sigmoid":
-                self.reg_workflow = SVMRegression(
-                    kernel=hyper_parameters["kernel"],
-                    gamma=hyper_parameters["gamma"],
-                    C=hyper_parameters["C"],
-                    shrinking=hyper_parameters["shrinking"],
-                )
+            self.reg_workflow = SVMRegression(
+                kernel=hyper_parameters["kernel"],
+                degree=hyper_parameters["degree"],
+                gamma=hyper_parameters["gamma"],
+                C=hyper_parameters["C"],
+                shrinking=hyper_parameters["shrinking"],
+            )
         elif self.model_name == "Multi-layer Perceptron":
             hyper_parameters = MLPRegression.manual_hyper_parameters()
             self.reg_workflow = MLPRegression(
