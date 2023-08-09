@@ -53,6 +53,7 @@ def cli_pipeline(file_name: str) -> None:
     print("\n[bold blue]Welcome to Geochemistry Pi![/bold blue]")
     print("[bold]Initializing...[/bold]")
 
+    # <-- User Data Loading -->
     with console.status("[bold green]Data Loading...[/bold green]", spinner="dots"):
         sleep(1.5)
     if file_name:
@@ -63,6 +64,7 @@ def cli_pipeline(file_name: str) -> None:
         print("[bold red]No Data File Provided![/bold red]")
         print("[bold green]Built-in Data Loading.[/bold green]")
 
+    # <-- Dependency Checking -->
     with console.status("[bold green]Denpendency Checking...[/bold green]", spinner="dots"):
         sleep(1.5)
     my_os = get_os()
@@ -88,14 +90,21 @@ def cli_pipeline(file_name: str) -> None:
 
     # <--- Experiment Setup --->
     logger.debug("Experiment Setup")
+    console.print("✨ Press [bold magenta]Ctrl + C[/bold magenta] to exit our software at any time.")
     console.print("✨ Input Template [bold magenta][Option1/Option2][/bold magenta] [bold cyan](Default Value)[/bold cyan]: Input Value")
     # Create a new experiment or use the previous experiment
     is_used_previous_experiment = Confirm.ask("✨ Use Previous Experiment", default=False)
     # Set the tracking uri to the local directory, in the future, we can set it to the remote server.
     artifact_localtion = f"file:{WORKING_PATH}/geopi_tracking"
     mlflow.set_tracking_uri(artifact_localtion)
+    # Print the tracking uri for debugging.
     # print("tracking uri:", mlflow.get_tracking_uri())
     if is_used_previous_experiment:
+        # List all existing experiment names
+        existing_experiments = mlflow.search_experiments()
+        print("   [underline]Experiment Index: Experiment Name[/underline]")
+        for idx, exp in enumerate(existing_experiments):
+            print(f"   [bold underline magenta]Experiment {idx}: {exp.name}[/bold underline magenta]")
         old_experiment_id = None
         # If the user doesn't provide the correct experiment name, then ask the user to input again.
         while not old_experiment_id:
