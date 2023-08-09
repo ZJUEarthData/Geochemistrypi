@@ -71,6 +71,7 @@ class ClassificationModelSelection(ModelSelectionBase):
                 max_features=hyper_parameters["max_features"],
                 bootstrap=hyper_parameters["bootstrap"],
                 oob_score=hyper_parameters["oob_score"],
+                max_samples=hyper_parameters["max_samples"],
             )
         elif self.model_name == "Xgboost":
             hyper_parameters = XgboostClassification.manual_hyper_parameters()
@@ -113,6 +114,7 @@ class ClassificationModelSelection(ModelSelectionBase):
                 max_features=hyper_parameters["max_features"],
                 bootstrap=hyper_parameters["bootstrap"],
                 oob_score=hyper_parameters["oob_score"],
+                max_samples=hyper_parameters["max_samples"],
             )
 
         self.clf_workflow.show_info()

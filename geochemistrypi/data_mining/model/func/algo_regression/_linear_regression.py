@@ -8,7 +8,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from rich import print
 
 from ....constants import SECTION
-from ....data.data_readiness import str_input
+from ....data.data_readiness import bool_input
 
 
 def linear_regression_manual_hyper_parameters() -> Dict:
@@ -20,12 +20,10 @@ def linear_regression_manual_hyper_parameters() -> Dict:
     """
     print("Fit Intercept: This hyperparameter specifies whether to calculate the intercept (also called the bias term) for this model.")
     print("Please specify whether to calculate the intercept for this model. It is generally recommended to leave it set to True.")
-    fit_intercepts = ["True", "False"]
-    fit_intercept = bool(str_input(fit_intercepts, SECTION[2]))
+    fit_intercept = bool_input(SECTION[2])
     print("Normalize: This hyperparameter specifies whether to normalize the data before fitting the model.")
     print("Please specify whether to normalize the input features before fitting the model. It is generally recommended to leave it set to False.")
-    normalizes = ["True", "False"]
-    normalize = bool(str_input(normalizes, SECTION[2]))
+    normalize = bool_input(SECTION[2])
     hyper_parameters = {"fit_intercept": fit_intercept, "normalize": normalize}
     return hyper_parameters
 

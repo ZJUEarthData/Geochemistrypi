@@ -4,7 +4,7 @@ from typing import Dict
 from rich import print
 
 from ....constants import SECTION
-from ....data.data_readiness import num_input, str_input
+from ....data.data_readiness import bool_input, num_input
 
 
 def polynomial_regression_manual_hyper_parameters() -> Dict:
@@ -19,11 +19,9 @@ def polynomial_regression_manual_hyper_parameters() -> Dict:
     degree = num_input(SECTION[2], "@Degree: ")
     print("Interaction Only: This hyperparameter specifies whether to only include interaction features.")
     print("Please specify whether to only include interaction features. It is generally recommended to leave it set to False.")
-    interaction_onlys = ["True", "False"]
-    interaction_only = bool(str_input(interaction_onlys, SECTION[2]))
+    interaction_only = bool_input(SECTION[2])
     print("Include Bias: This hyperparameter specifies whether to include a bias (also called the intercept) term in the model.")
     print("Please specify whether to include a bias term in the model. It is generally recommended to leave it set to True.")
-    include_biases = ["True", "False"]
-    include_bias = bool(str_input(include_biases, SECTION[2]))
+    include_bias = bool_input(SECTION[2])
     hyper_parameters = {"degree": degree, "interaction_only": interaction_only, "include_bias": include_bias}
     return hyper_parameters

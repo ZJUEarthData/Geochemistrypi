@@ -84,6 +84,7 @@ class RegressionModelSelection(ModelSelectionBase):
                 max_features=hyper_parameters["max_features"],
                 bootstrap=hyper_parameters["bootstrap"],
                 oob_score=hyper_parameters["oob_score"],
+                max_samples=hyper_parameters["max_samples"],
             )
         elif self.model_name == "Random Forest":
             hyper_parameters = RandomForestRegression.manual_hyper_parameters()
@@ -95,6 +96,7 @@ class RegressionModelSelection(ModelSelectionBase):
                 max_features=hyper_parameters["max_features"],
                 bootstrap=hyper_parameters["bootstrap"],
                 oob_score=hyper_parameters["oob_score"],
+                max_samples=hyper_parameters["max_samples"],
             )
         elif self.model_name == "Support Vector Machine":
             hyper_parameters = SVMRegression.manual_hyper_parameters()

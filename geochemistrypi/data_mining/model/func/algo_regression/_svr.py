@@ -4,7 +4,7 @@ from typing import Dict
 from rich import print
 
 from ....constants import SECTION
-from ....data.data_readiness import float_input, num_input, str_input
+from ....data.data_readiness import bool_input, float_input, num_input, str_input
 
 
 def svr_manual_hyper_parameters() -> Dict:
@@ -42,8 +42,7 @@ def svr_manual_hyper_parameters() -> Dict:
     print("Shrinking: This hyperparameter specifies whether to use the shrinking heuristic.")
     print("The shrinking heuristic is a technique that speeds up the training process by only considering the support vectors in the decision function.")
     print("Please specify whether to use the shrinking heuristic. It is generally recommended to leave it set to True.")
-    shrinkings = ["True", "False"]
-    shrinking = bool(str_input(shrinkings, SECTION[2]))
+    shrinking = bool_input(SECTION[2])
     hyper_parameters = {"kernel": kernel, "C": C, "shrinking": shrinking}
     if not degree:
         # Use the default value provided by sklearn.svm.SVR

@@ -28,7 +28,7 @@ from .func.algo_classification._extra_trees import extra_trees_manual_hyper_para
 from .func.algo_classification._logistic_regression import logistic_regression_manual_hyper_parameters, plot_logistic_importance
 from .func.algo_classification._multi_layer_perceptron import multi_layer_perceptron_manual_hyper_parameters
 from .func.algo_classification._rf import random_forest_manual_hyper_parameters
-from .func.algo_classification._svm import svc_manual_hyper_parameters
+from .func.algo_classification._svc import svc_manual_hyper_parameters
 from .func.algo_classification._xgboost import xgboost_manual_hyper_parameters
 
 

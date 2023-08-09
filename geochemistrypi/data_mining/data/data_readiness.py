@@ -2,6 +2,7 @@ import os
 import sys
 from typing import Dict, List, Optional, Tuple, Union
 
+import numpy as np
 import openpyxl.utils.exceptions
 import pandas as pd
 from rich import print
@@ -19,10 +20,13 @@ def read_data(file_name: Optional[str] = None, is_own_data: int = 2, prefix: Opt
     ----------
     file_name : str, optional
         The name of the data set, by default None
+
     is_own_data : int, default=2
         1: own data set; 2: built-in data set
+
     prefix : str, optional
         The prefix of the data set, by default None
+
     slogan : str, optional
         The slogan of the data set, by default "@File: "
 
@@ -55,11 +59,28 @@ def read_data(file_name: Optional[str] = None, is_own_data: int = 2, prefix: Opt
         raise Exception
 
 
-def basic_info(data: pd.DataFrame):
+def basic_info(data: pd.DataFrame) -> None:
+    """Show the basic information of the data set.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The data set to be shown.
+    """
     print(data.info())
 
 
-def show_data_columns(columns_name, columns_index=None):
+def show_data_columns(columns_name: pd.Index, columns_index: Optional[List] = None) -> None:
+    """Show the column names of the data set.
+
+    Parameters
+    ----------
+    columns_name : pd.Index
+        The column names of the data set.
+
+    columns_index : list, default=None
+        The column index of the data set.
+    """
     print("-" * 20)
     print("Index - Column Name")
     if columns_index is None:
@@ -73,6 +94,18 @@ def show_data_columns(columns_name, columns_index=None):
 
 
 def select_columns(columns_range: Optional[str] = None) -> List[int]:
+    """Select the columns of the data set.
+
+    Parameters
+    ----------
+    columns_range : str, default=None
+        The columns range of the data set.
+
+    Returns
+    -------
+    list
+        The columns selected.
+    """
     columns_selected = []
     temp = columns_range.split(";")
     for i in range(len(temp)):
@@ -95,6 +128,18 @@ def select_columns(columns_range: Optional[str] = None) -> List[int]:
 
 
 def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
+    """Create a sub data set.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The data set to be processed.
+
+    Returns
+    -------
+    pd.DataFrame
+        The sub data set.
+    """
     sub_data_set_columns_range = input(
         "Select the data range you want to process.\n"
         "Input format:\n"
@@ -196,6 +241,7 @@ def num_input(prefix: Optional[str] = None, slogan: Optional[str] = "@Number: ")
     ----------
     prefix : str, default=None
         It indicates which section the user currently is in on the UML, which is shown on the command-line console.
+
     slogan : str, default="@Number: "
         It acts like the first parameter of input function in Python, which output the hint.
 
@@ -216,6 +262,25 @@ def num_input(prefix: Optional[str] = None, slogan: Optional[str] = "@Number: ")
     return option
 
 
+def np2pd(array: np.ndarray, columns_name: List[str]) -> pd.DataFrame:
+    """Convert numpy array to pandas dataframe.
+
+    Parameters
+    ----------
+    array : np.ndarray
+        The numpy array to be converted.
+
+    columns_name : List[str]
+        The column names of the dataframe.
+
+    Returns
+    -------
+    pd.DataFrame
+        The converted dataframe.
+    """
+    return pd.DataFrame(array, columns=columns_name)
+
+
 def limit_num_input(option_list: List[str], prefix: str, input_func: num_input) -> int:
     """Limit the scope of the option.
 
@@ -223,8 +288,10 @@ def limit_num_input(option_list: List[str], prefix: str, input_func: num_input) 
     ----------
     option_list : List[str]
         All the options provided are stored in a list.
+
     prefix : str
         It indicates which section the user currently is in on the UML, which is shown on the command-line console.
+
     input_func: function
         The function of input_func.
 
@@ -241,10 +308,6 @@ def limit_num_input(option_list: List[str], prefix: str, input_func: num_input) 
         else:
             break
     return option
-
-
-def np2pd(array, columns_name):
-    return pd.DataFrame(array, columns=columns_name)
 
 
 def float_input(default: float, prefix: Optional[str] = None, slogan: Optional[str] = "@Number: ") -> float:
@@ -299,6 +362,24 @@ def str_input(option_list: List[str], prefix: Optional[str] = None) -> str:
     option_num = limit_num_input(option_list, prefix, num_input)
     option = option_list[option_num - 1]
     return option
+
+
+def bool_input(prefix: Optional[str] = None) -> bool:
+    """Get the number of the desired option.
+
+    Parameters
+    ----------
+    prefix : str, default=None
+        It indicates which section the user currently is in on the UML, which is shown on the command-line console.
+
+    Returns
+    -------
+    bool
+        A boolean value.
+    """
+    bool_value = ["True", "False"]
+    option = str_input(bool_value, prefix)
+    return True if option == "True" else False
 
 
 def tuple_input(default: Tuple[int], prefix: Optional[str] = None, slogan: Optional[str] = None) -> Tuple[int]:
