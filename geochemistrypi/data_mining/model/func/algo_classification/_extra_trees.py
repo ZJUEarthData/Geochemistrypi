@@ -3,7 +3,7 @@ from typing import Dict
 from rich import print
 
 from ....constants import SECTION
-from ....data.data_readiness import num_input, str_input
+from ....data.data_readiness import bool_input, float_input, num_input
 
 
 def extra_trees_manual_hyper_parameters() -> Dict:
@@ -35,15 +35,18 @@ def extra_trees_manual_hyper_parameters() -> Dict:
         "  of the same size as the original. This new dataset is then used to construct a decision tree in the ensemble. If False, the whole dataset is used to build each tree."
     )
     print("Please specify whether bootstrap samples are used when building trees. It is generally recommended to leave it set to True.")
-    bootstraps = ["True", "Flase"]
-    bootstrap = bool(str_input(bootstraps, SECTION[2]))
+    bootstrap = bool_input(SECTION[2])
+    max_samples = None
+    if bootstrap:
+        print("Max Samples: The number of samples to draw from X_train to train each base estimator.")
+        print("Please specify the ratio. A good starting range could be between 0.5 and 1, such as 0.8.")
+        max_samples = float_input(0.8, SECTION[2], "@Max Samples: ")
     print(
         "oob_score: Whether to use out-of-bag samples to estimate the generalization accuracy. When the oob_score hyperparameter is set to True, Extra Trees will use a random subset of the data"
         " to train each decision tree in the ensemble, and the remaining data that was not used for training (the out-of-bag samples) will be used to calculate the OOB score. "
     )
     print("Please specify whether to use out-of-bag samples to estimate the generalization accuracy. It is generally recommended to leave it set to True.")
-    oob_scores = ["True", "Flase"]
-    oob_score = bool(str_input(oob_scores, SECTION[2]))
+    oob_score = bool_input(SECTION[2])
     hyper_parameters = {
         "n_estimators": n_estimators,
         "max_depth": max_depth,
@@ -53,4 +56,9 @@ def extra_trees_manual_hyper_parameters() -> Dict:
         "bootstrap": bootstrap,
         "oob_score": oob_score,
     }
+    if not max_samples:
+        # Use the default value provided by sklearn.ensemble.ExtraTreesClassifier.
+        hyper_parameters["max_samples"] = None
+    else:
+        hyper_parameters["max_samples"] = max_samples
     return hyper_parameters

@@ -946,14 +946,14 @@ class ExtraTreesRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         max_leaf_nodes: int = None,
         min_impurity_decrease: float = 0.0,
         #  min_impurity_split=None,
-        bootstrap=False,
-        oob_score=False,
-        n_jobs=None,
-        random_state=None,
-        verbose=0,
-        warm_start=False,
+        bootstrap: bool = False,
+        oob_score: bool = False,
+        n_jobs: Optional[int] = None,
+        random_state: Optional[int] = None,
+        verbose: int = 0,
+        warm_start: bool = False,
         ccp_alpha: float = 0.0,
-        max_samples=None,
+        max_samples: Union[int, float] = None,
     ) -> None:
         """
         Parameters
