@@ -41,6 +41,7 @@ REGRESSION_MODELS = [
     "Gradient Boosting",
     "Xgboost",
     "Multi-layer Perceptron",
+    "Lasso Regression",
 ]
 CLASSIFICATION_MODELS = [
     "Logistic Regression",
@@ -55,7 +56,7 @@ CLUSTERING_MODELS = ["KMeans", "DBSCAN"]
 DECOMPOSITION_MODELS = ["PCA", "T-SNE", "MDS"]
 
 # Special AutoML models
-NON_AUTOML_MODELS = ["Linear Regression", "Polynomial Regression"]
+NON_AUTOML_MODELS = ["Linear Regression", "Polynomial Regression","Lasso Regression"]
 RAY_FLAML = ["Multi-layer Perceptron"]
 
 IMPUTING_STRATEGY = ["Mean Value", "Median Value", "Most Frequent Value", "Constant(Specified Value)"]
