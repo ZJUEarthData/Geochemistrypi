@@ -21,10 +21,7 @@ def linear_regression_manual_hyper_parameters() -> Dict:
     print("Fit Intercept: This hyperparameter specifies whether to calculate the intercept (also called the bias term) for this model.")
     print("Please specify whether to calculate the intercept for this model. It is generally recommended to leave it set to True.")
     fit_intercept = bool_input(SECTION[2])
-    print("Normalize: This hyperparameter specifies whether to normalize the data before fitting the model.")
-    print("Please specify whether to normalize the input features before fitting the model. It is generally recommended to leave it set to False.")
-    normalize = bool_input(SECTION[2])
-    hyper_parameters = {"fit_intercept": fit_intercept, "normalize": normalize}
+    hyper_parameters = {"fit_intercept": fit_intercept}
     return hyper_parameters
 
 

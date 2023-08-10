@@ -120,7 +120,7 @@ class RegressionModelSelection(ModelSelectionBase):
             )
         elif self.model_name == "Linear Regression":
             hyper_parameters = ClassicalLinearRegression.manual_hyper_parameters()
-            self.reg_workflow = ClassicalLinearRegression(fit_intercept=hyper_parameters["fit_intercept"], normalize=hyper_parameters["normalize"])
+            self.reg_workflow = ClassicalLinearRegression(fit_intercept=hyper_parameters["fit_intercept"])
         elif self.model_name == "K-Nearest Neighbors":
             hyper_parameters = KNNRegression.manual_hyper_parameters()
             self.reg_workflow = KNNRegression(

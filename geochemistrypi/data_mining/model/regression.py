@@ -2019,7 +2019,13 @@ class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
     name = "Linear Regression"
     special_function = ["Linear Regression Formula", "2D Scatter Diagram", "3D Scatter Diagram", "2D Line Diagram", "3D Surface Diagram"]
 
-    def __init__(self, fit_intercept: bool = True, normalize: bool = False, copy_X: bool = True, n_jobs: Optional[int] = None) -> None:
+    def __init__(
+        self,
+        fit_intercept: bool = True,
+        copy_X: bool = True,
+        n_jobs: Optional[int] = None,
+        positive: bool = False,
+    ) -> None:
         """
         Parameters
         ----------
@@ -2027,17 +2033,6 @@ class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             Whether to calculate the intercept for this model. If set
             to False, no intercept will be used in calculations
             (i.e. data is expected to be centered).
-
-        normalize : bool, default=False
-            This parameter is ignored when ``fit_intercept`` is set to False.
-            If True, the regressors X will be normalized before regression by
-            subtracting the mean and dividing by the l2-norm.
-            If you wish to standardize, please use
-                            :class:`~sklearn.preprocessing.StandardScaler` before calling ``fit``
-            on an estimator with ``normalize=False``.
-            .. deprecated:: 1.0
-               `normalize` was deprecated in version 1.0 and will be
-               removed in 1.2.
 
         copy_X : bool, default=True
                         If True, X will be copied; else, it may be overwritten.
@@ -2062,11 +2057,16 @@ class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         """
         super().__init__()
         self.fit_intercept = fit_intercept
-        self.normalize = normalize
         self.copy_X = copy_X
         self.n_jobs = n_jobs
+        self.positive = positive
 
-        self.model = LinearRegression(fit_intercept=self.fit_intercept, copy_X=self.copy_X, normalize=self.normalize, n_jobs=self.n_jobs)
+        self.model = LinearRegression(
+            fit_intercept=self.fit_intercept,
+            copy_X=self.copy_X,
+            n_jobs=self.n_jobs,
+            positive=self.positive,
+        )
 
         self.naming = ClassicalLinearRegression.name
 
