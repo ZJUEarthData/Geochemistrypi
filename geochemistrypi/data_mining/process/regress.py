@@ -13,6 +13,7 @@ from ..model.regression import (
     ExtraTreesRegression,
     GradientBoostingRegression,
     KNNRegression,
+    LassoRegression,
     MLPRegression,
     PolynomialRegression,
     RandomForestRegression,
@@ -142,6 +143,13 @@ class RegressionModelSelection(ModelSelectionBase):
                 subsample=hyper_parameters["subsample"],
                 loss=hyper_parameters["loss"],
             )
+        elif self.model_name == "Lasso Regression":
+            hyper_parameters = LassoRegression.manual_hyper_parameters()
+            self.reg_workflow = LassoRegression(
+                alpha=hyper_parameters["alpha"],
+                fit_intercept=hyper_parameters["fit_intercept"],
+                normalize=hyper_parameters["normalize"],
+            )
 
         self.reg_workflow.show_info()
 
@@ -205,6 +213,8 @@ class RegressionModelSelection(ModelSelectionBase):
             self.reg_workflow = KNNRegression()
         elif self.model_name == "Gradient Boosting":
             self.reg_workflow = GradientBoostingRegression()
+        elif self.model_name == "Lasso Regression":
+            self.reg_workflow = LassoRegression()
 
         self.reg_workflow.show_info()
 
