@@ -11,7 +11,7 @@ from flaml import AutoML
 from multipledispatch import dispatch
 from rich import print
 from sklearn.ensemble import ExtraTreesRegressor, GradientBoostingRegressor, RandomForestRegressor
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import Lasso, LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import PolynomialFeatures
@@ -26,6 +26,7 @@ from .func.algo_regression._decision_tree import decision_tree_manual_hyper_para
 from .func.algo_regression._extra_tree import extra_trees_manual_hyper_parameters
 from .func.algo_regression._gradient_boosting import gradient_boosting_manual_hyper_parameters
 from .func.algo_regression._knn import knn_manual_hyper_parameters
+from .func.algo_regression._lasso_regression import lasso_regression_manual_hyper_parameters
 from .func.algo_regression._linear_regression import linear_regression_manual_hyper_parameters
 from .func.algo_regression._multi_layer_perceptron import multi_layer_perceptron_manual_hyper_parameters
 from .func.algo_regression._polynomial_regression import polynomial_regression_manual_hyper_parameters
@@ -2670,3 +2671,108 @@ class GradientBoostingRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
+
+
+class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
+    """The automation workflow of using Lasso to make insightful products."""
+
+    name = "Lasso Regression"
+    special_function = ["Lasso Regression Formula", "2D Scatter Diagram", "3D Scatter Diagram", "2D Line Diagram", "3D Surface Diagram"]
+
+    def __init__(self, alpha=1, fit_intercept: bool = True, normalize: bool = False, random_state=None, selection="cyclic") -> None:
+
+        super().__init__()
+        self.alpha = alpha
+        self.fit_intercept = fit_intercept
+        self.normalize = normalize
+        self.random_state = random_state
+        self.selection = selection
+
+        self.model = Lasso(alpha=self.alpha, fit_intercept=self.fit_intercept, normalize=self.normalize, random_state=self.random_state, selection=self.selection)
+
+        self.naming = LassoRegression.name
+
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
+        """Manual hyper-parameters specification."""
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = lasso_regression_manual_hyper_parameters()
+        return hyper_parameters
+
+    def special_components(self, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+        self._show_formula(
+            coef=[self.model.coef_],
+            intercept=self.model.intercept_,
+            features_name=LassoRegression.X_train.columns,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
+            mlflow_path="root",
+        )
+        columns_num = LassoRegression.X.shape[1]
+        if columns_num > 2:
+            # choose one of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(LassoRegression.X_test, 1)
+            self._plot_2d_scatter_diagram(
+                feature_data=two_dimen_data,
+                target_data=LassoRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            # choose two of dimensions to draw
+            three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(LassoRegression.X_test, 2)
+            self._plot_3d_scatter_diagram(
+                feature_data=three_dimen_data,
+                target_data=LassoRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        elif columns_num == 2:
+            # choose one of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(LassoRegression.X_test, 1)
+            self._plot_2d_scatter_diagram(
+                feature_data=two_dimen_data,
+                target_data=LassoRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            # no need to choose
+            self._plot_3d_scatter_diagram(
+                feature_data=LassoRegression.X_test,
+                target_data=LassoRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            self._plot_3d_surface_diagram(
+                feature_data=LassoRegression.X_test,
+                target_data=LassoRegression.y_test,
+                y_test_predict=LassoRegression.y_test_predict,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        elif columns_num == 1:
+            # no need to choose
+            self._plot_2d_scatter_diagram(
+                feature_data=LassoRegression.X_test,
+                target_data=LassoRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            self._plot_2d_line_diagram(
+                feature_data=LassoRegression.X_test,
+                target_data=LassoRegression.y_test,
+                y_test_predict=LassoRegression.y_test_predict,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        else:
+            pass
