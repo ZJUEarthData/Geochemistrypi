@@ -148,7 +148,9 @@ class RegressionModelSelection(ModelSelectionBase):
             self.reg_workflow = LassoRegression(
                 alpha=hyper_parameters["alpha"],
                 fit_intercept=hyper_parameters["fit_intercept"],
-                normalize=hyper_parameters["normalize"],
+                max_iter=hyper_parameters["max_iter"],
+                tol=hyper_parameters["tol"],
+                selection=hyper_parameters["selection"],
             )
 
         self.reg_workflow.show_info()
