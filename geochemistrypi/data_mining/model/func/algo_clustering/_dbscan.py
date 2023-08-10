@@ -24,7 +24,7 @@ def dbscan_manual_hyper_parameters() -> Dict:
     min_samples = num_input(SECTION[2], "Min Samples: ")
     print("Metric: The metric to use when calculating distance between instances in a feature array.")
     print("Please specify the metric to use when calculating distance between instances in a feature array. It is generally recommended to leave it set to euclidean.")
-    metrics = ["euclidean", "manhattan", "chebyshev", "minkowski", "wminkowski", "seuclidean", "mahalanobis"]
+    metrics = ["euclidean", "manhattan", "chebyshev", "minkowski", "cosine", "correlation"]
     metric = str_input(metrics, SECTION[2])
     print("Algorithm: The algorithm to be used by the NearestNeighbors module to compute pointwise distances and find nearest neighbors.")
     print("Please specify the algorithm. It is generally recommended to leave it set to auto.")
