@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -149,15 +149,15 @@ def plot_feature_importance(columns_name: pd.Index, feature_importance: np.ndarr
 # Used by linear models including classification and regression
 
 
-def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: np.ndarray) -> Dict:
+def show_formula(coef: np.ndarray, intercept: Union[np.ndarray, float], features_name: np.ndarray) -> Dict:
     """Show the formula of linear models.
 
     Parameters
     ----------
-    coef : array
+    coef : np.ndarray
         Coefficient of the features in the decision function.
 
-    intercept : array
+    intercept : np.ndarray or float
         Independent term in decision function.
 
     features_name : np.ndarray
@@ -186,10 +186,16 @@ def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: np.ndar
             elif coef[i] < 0:
                 temp = str(coef[i]) + features_name[i]
                 term.append(temp)
-    if intercept[0] >= 0:
-        formula = "".join(term) + "+" + str(intercept[0])
+    if type(intercept) == np.ndarray:
+        if intercept[0] >= 0:
+            formula = "".join(term) + "+" + str(intercept[0])
+        else:
+            formula = "".join(term) + str(intercept[0])
     else:
-        formula = "".join(term) + str(intercept[0])
+        if intercept >= 0:
+            formula = "".join(term) + "+" + str(intercept)
+        else:
+            formula = "".join(term) + str(intercept)
     print("y =", formula)
 
     return {"y": formula}

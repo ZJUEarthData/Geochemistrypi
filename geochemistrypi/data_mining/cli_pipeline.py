@@ -50,7 +50,7 @@ def cli_pipeline(file_name: str) -> None:
 
     # Display the interactive splash screen when launching the CLI software
     console = Console()
-    print("\n[bold blue]Welcome to Geochemistry Pi![/bold blue]")
+    print("\n[bold blue]Welcome to Geochemistry π![/bold blue]")
     print("[bold]Initializing...[/bold]")
 
     # <-- User Data Loading -->

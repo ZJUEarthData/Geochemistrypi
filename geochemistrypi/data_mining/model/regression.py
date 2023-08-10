@@ -2679,16 +2679,104 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
     name = "Lasso Regression"
     special_function = ["Lasso Regression Formula", "2D Scatter Diagram", "3D Scatter Diagram", "2D Line Diagram", "3D Surface Diagram"]
 
-    def __init__(self, alpha=1, fit_intercept: bool = True, normalize: bool = False, random_state=None, selection="cyclic") -> None:
+    def __init__(
+        self,
+        alpha: float = 1.0,
+        *,
+        fit_intercept: bool = True,
+        precompute: bool = False,
+        copy_X: bool = True,
+        max_iter: int = 1000,
+        tol: float = 1e-4,
+        warm_start: bool = False,
+        positive: bool = False,
+        random_state: Optional[int] = None,
+        selection: str = "cyclic",
+    ) -> None:
+        """
+        Parameters
+        ----------
+        alpha : float, default=1.0
+            Constant that multiplies the L1 term, controlling regularization
+            strength. `alpha` must be a non-negative float i.e. in `[0, inf)`.
 
+            When `alpha = 0`, the objective is equivalent to ordinary least
+            squares, solved by the :class:`LinearRegression` object. For numerical
+            reasons, using `alpha = 0` with the `Lasso` object is not advised.
+            Instead, you should use the :class:`LinearRegression` object.
+
+        fit_intercept : bool, default=True
+            Whether to calculate the intercept for this model. If set
+            to False, no intercept will be used in calculations
+            (i.e. data is expected to be centered).
+
+        precompute : bool or array-like of shape (n_features, n_features),\
+                    default=False
+            Whether to use a precomputed Gram matrix to speed up
+            calculations. The Gram matrix can also be passed as argument.
+            For sparse input this option is always ``False`` to preserve sparsity.
+
+        copy_X : bool, default=True
+            If ``True``, X will be copied; else, it may be overwritten.
+
+        max_iter : int, default=1000
+            The maximum number of iterations.
+
+        tol : float, default=1e-4
+            The tolerance for the optimization: if the updates are
+            smaller than ``tol``, the optimization code checks the
+            dual gap for optimality and continues until it is smaller
+            than ``tol``, see Notes below.
+
+        warm_start : bool, default=False
+            When set to True, reuse the solution of the previous call to fit as
+            initialization, otherwise, just erase the previous solution.
+            See :term:`the Glossary <warm_start>`.
+
+        positive : bool, default=False
+            When set to ``True``, forces the coefficients to be positive.
+
+        random_state : int, RandomState instance, default=None
+            The seed of the pseudo random number generator that selects a random
+            feature to update. Used when ``selection`` == 'random'.
+            Pass an int for reproducible output across multiple function calls.
+            See :term:`Glossary <random_state>`.
+
+        selection : {'cyclic', 'random'}, default='cyclic'
+            If set to 'random', a random coefficient is updated every iteration
+            rather than looping over features sequentially by default. This
+            (setting to 'random') often leads to significantly faster convergence
+            especially when tol is higher than 1e-4.
+
+        References
+        ----------
+        Scikit-learn API: sklearn.linear_model.Lasso
+        https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Lasso.html
+        """
         super().__init__()
         self.alpha = alpha
         self.fit_intercept = fit_intercept
-        self.normalize = normalize
+        self.precompute = precompute
+        self.copy_X = copy_X
+        self.max_iter = max_iter
+        self.tol = tol
+        self.warm_start = warm_start
+        self.positive = positive
         self.random_state = random_state
         self.selection = selection
 
-        self.model = Lasso(alpha=self.alpha, fit_intercept=self.fit_intercept, normalize=self.normalize, random_state=self.random_state, selection=self.selection)
+        self.model = Lasso(
+            alpha=self.alpha,
+            fit_intercept=self.fit_intercept,
+            precompute=self.precompute,
+            copy_X=self.copy_X,
+            max_iter=self.max_iter,
+            tol=self.tol,
+            warm_start=self.warm_start,
+            positive=self.positive,
+            random_state=self.random_state,
+            selection=self.selection,
+        )
 
         self.naming = LassoRegression.name
 
@@ -2697,6 +2785,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         """Manual hyper-parameters specification."""
         print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
         hyper_parameters = lasso_regression_manual_hyper_parameters()
+        clear_output()
         return hyper_parameters
 
     def special_components(self, **kwargs) -> None:
