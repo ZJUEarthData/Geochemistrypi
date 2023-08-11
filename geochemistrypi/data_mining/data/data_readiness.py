@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -148,6 +149,33 @@ def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
         'Format 2: "xx", such as "7" --> you want to deal with the columns 7 \n'
         "@input: "
     )
+    while True:
+        temp = sub_data_set_columns_range.split(";")
+        for i in range(len(temp)):
+            if isinstance(eval(temp[i]), int):
+                if int(temp[i]) > int(data.shape[1]):
+                    print("The input {} is incorrect!".format(temp[i]))
+                    print("The number you entered is out of the range of options: 1 - {}".format(data.shape[1]))
+                    time.sleep(0.5)
+                    sub_data_set_columns_range = input("-----* Please enter again *-----\n @input:")
+                    judge = True
+                    break
+                else:
+                    judge = False
+            else:
+                min_max = eval(temp[i])
+                if int(min_max[1]) > int(data.shape[1]):
+                    print("The input {} is incorrect!".format(temp[i]))
+                    print("The number you entered is out of the range of options: 1 - {}".format(data.shape[1]))
+                    time.sleep(0.5)
+                    sub_data_set_columns_range = input("-----* Please enter again *-----\n @input:")
+                    judge = True
+                    break
+                else:
+                    judge = False
+
+        if judge is False:
+            break
 
     while True:
         try:
