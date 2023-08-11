@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import string
+import time
 
 import numpy as np
 import pandas as pd
@@ -17,12 +18,12 @@ class FeatureConstructor(object):
 
     oper = "+-*/^(),."
     # parenthesis = ['(', ')']
-    alphabet = string.ascii_letters
     cal_words = ["pow", "sin", "cos", "tan", "pi", "mean", "std", "var", "log"]
 
     def __init__(self, data: pd.DataFrame) -> None:
         self.feature_name = None
         self.data = data
+        self.alphabet = string.ascii_lowercase
         self._infix_expr = []
         self._postfix_expr = []
         self.map_dict = {}
@@ -33,8 +34,8 @@ class FeatureConstructor(object):
         columns_name = self.data.columns
         print("Selected data set:")
         for i in range(len(columns_name)):
-            print(FeatureConstructor.alphabet[i] + " - " + columns_name[i])
-            self.map_dict[FeatureConstructor.alphabet[i]] = columns_name[i]
+            print(self.alphabet[i] + " - " + columns_name[i])
+            self.map_dict[self.alphabet[i]] = columns_name[i]
 
     def _get_column(self, index: str) -> str:
         return self.map_dict[index]
@@ -49,7 +50,7 @@ class FeatureConstructor(object):
 
     def input_expression(self) -> None:
         expression = input(
-            "Build up new feature with the combination of 4 basic arithmatic operator,"
+            "Build up new feature with the combination of basic arithmatic operators,"
             " including '+', '-', '*', '/', '()'.\n"
             "Input example 1: a * b - c \n"
             "--> Step 1: Multiply a column with b column; \n"
@@ -71,39 +72,27 @@ class FeatureConstructor(object):
         )
         while True:
             self._infix_expr = expression.replace(" ", "")
-            if not all(c.isdigit() or c.isspace() or c in FeatureConstructor.oper or c in FeatureConstructor.alphabet for c in self._infix_expr):
-                print("There's something wrong with the input !\n")
-                expression = input(
-                    "Build up new feature with the combination of 4 basic arithmatic operator,"
-                    " including '+', '-', '*', '/', '()'.\n"
-                    "Input example 1: a * b - c \n"
-                    "--> Step 1: Multiply a column with b column; \n"
-                    "--> Step 2: Subtract c from the result of Step 1; \n"
-                    "Input example 2: (d + 5 * f) / g \n"
-                    "--> Step 1: Multiply 5 with f; \n"
-                    "--> Step 2: Plus d column with the result of Step 1;\n"
-                    "--> Step 3: Divide the result of Step 1 by g; \n"
-                    "Input example 3: pow(a, b) + c * d \n"
-                    "--> Step 1: Raise the base a to the power of the exponent b; \n"
-                    "--> Step 2: Multiply the value of c by the value of d; \n"
-                    "--> Step 3: Add the result of Step 1 to the result of Step 2; \n"
-                    "Input example 4: log(a)/b - c \n"
-                    "--> Step 1: Take the logarithm of the value a; \n"
-                    "--> Step 2: Divide the result of Step 1 by the value of b; \n"
-                    "--> Step 3: Subtract the value of c from the result of Step 2; \n"
-                    "You can use mean(x) to calculate the average value.\n"
-                    # "Input example 3: (h ** 3) / (i ** (1/2)) \n"
-                    # "--> Step 1: Exponent calculation, h raised to the power of 3; \n"
-                    # "--> Step 2: Root calculation, find the square root of i; \n"
-                    # "--> Step 3: Divide the result of Step 1 by the result of Step 2; \n"
-                    "@input: "
-                )
+            if len(self._infix_expr) == 0:
+                print("You haven't built any new features yet!")
+                time.sleep(0.5)
+                expression = input("-----* Please enter again *-----\n @input:")
+            elif not all(c.isdigit() or c.isspace() or c in FeatureConstructor.oper or c in self.alphabet for c in self._infix_expr):
+                print("There's something wrong with the input !")
+                time.sleep(0.5)
+                expression = input("-----* Please enter again *-----\n @input:")
             else:
-                break
+                try:
+                    self.letter_map()
+                except Exception as e:
+                    print("Your input contains the following error:", e)
+                    time.sleep(0.5)
+                    expression = input("-----* Please enter again *-----\n @input:")
+                else:
+                    break
 
     def evaluate(self) -> None:
         """Evaluate the expression."""
-        self.letter_map()
+
         np.array(["dummy"])  # dummy array to skip the flake8 warning - F401 'numpy as np' imported but unused'
         self._infix_expr = self._infix_expr.replace("sin", "np.sin")
         self._infix_expr = self._infix_expr.replace("cos", "np.cos")
@@ -142,7 +131,7 @@ class FeatureConstructor(object):
                 self._infix_expr += word
             else:
                 for ww in word:
-                    if ww in FeatureConstructor.alphabet:
+                    if ww in self.alphabet:
                         self._infix_expr += str("self.data['" + self._get_column(ww) + "']")
                     else:
                         self._infix_expr += ww

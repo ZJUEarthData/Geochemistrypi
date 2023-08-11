@@ -101,6 +101,6 @@ def monte_carlo_simulator(
     print("The size of the sample for each iteration (half of the whole data set): ", sample_size)
     print("Average p-value: ")
     print("\n".join("{} {}".format(x, y) for x, y in zip(df_orig.columns, col_res)))
-    print("Note: 'p-value = 0' means imputation method doesn't apply to that column.")
+    print("Note: 'p-value < 0.05' means imputation method doesn't apply to that column.")
     print("The columns which rejects null hypothesis: ", end="")
     print("None") if not rejected_col.size else print(*list(rejected_col))
