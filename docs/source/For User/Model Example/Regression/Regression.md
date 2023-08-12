@@ -553,7 +553,7 @@ After checking the output, you should be able to see a menu to choose a machine 
 5 - Random Forest
 6 - Extra-Trees
 7 - Xgboost
-8 - Multi-layer Perceptron
+8 - Deep Neural Networks
 9 - All models above to be trained
 Which model do you want to apply?(Enter the Corresponding Number)
 (Model) ➜ @Number: 2

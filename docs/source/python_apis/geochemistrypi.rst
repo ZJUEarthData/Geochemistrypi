@@ -45,22 +45,6 @@ geochemistrypi.start\_dash\_pipeline module
    :undoc-members:
    :show-inheritance:
 
-geochemistrypi.test\_mlflow module
-----------------------------------
-
-.. automodule:: geochemistrypi.test_mlflow
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-geochemistrypi.test\_rich module
---------------------------------
-
-.. automodule:: geochemistrypi.test_rich
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Module contents
 ---------------
 

@@ -8,13 +8,14 @@
 + Jianming Zhao (Jamie, Jilin University, Changchun, China)
 + Yang Lyu (Daisy, Zhejiang University, China)
 + Shengxin Wang (Samson, Lanzhou University, China)
-+ Wenyu Zhao (Molly, Zhejiang University, China)
 
 ## Members:
++ Wenyu Zhao (Molly, Zhejiang University, China)
 + Fang Li (liv, Shenzhen University, China)
 + Ting Liu (Kira, Sun Yat-sen University, China)
 + Kaixin Zheng (Hayne, Sun Yat-sen University, China)
 + Aixiwake·Janganuer (Ayshuak, Sun Yat-sen University, China)
++ Parnanjan Dutta (Presidency University, Kolkata, India)
 + Bailun Jiang (EPSI / Lille University, France)
 + Yongkang Chang (Kill-virus, Langzhou University, China)
 + Xirui Zhu (Rae, University of York, United Kingdom)

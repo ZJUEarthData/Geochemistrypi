@@ -45,6 +45,7 @@ html_theme_options = {
         "color-brand-primary": "blue",
         # "color-brand-content": "brown",
         "color-admonition-background": "orange",
+        "font-stack": "Times New Roman, Times, serif",
     },
 }
 

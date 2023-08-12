@@ -1,27 +1,27 @@
-<p style="text-align: center; font-size: 30px; font-weight: bold;">
-  User Guide for Geochemistry π
+<p style="text-align: center; font-size: 38px; font-weight: bold;">
+  Developer Guide for Geochemistry π
 </p>
 
 
 
 
-### Table of Contents
+#### Table of Contents
 
 1. [Installation](#installation)
 2. [Example](#example)
 3. [Data Format](#data)
 4. [Use](#use)
 5. [Bug Report](#bug)
-6. [How to use pickle and joblib](#joblib)
-7. [Advice](#advice)
+6. [Advice](#advice)
+
 
 
 ## 1. Installation <a name="installation"> </a>
 
-Requirements: Python 3.7+
-**Note**:You must have Python 3.7+ installed on your computer to use the software.
+Requirements: Python 3.9
+**Note**:You must have Python 3.9 installed on your computer to use the software.
 
-**1.1 Check Environment**
+### 1.1 Check Environment
 
 You need to ensure that pip is installed.
 You can view it by typing instructions on the command line.
@@ -31,7 +31,7 @@ $ pip --version
 ```
 **Note**: **\$** refers to the command line interface. Don't copy **\$**.  The same as below.
 
-**1.2 Quick Install**
+### 1.2 Quick Install
 
 One instruction to download our software on command line, such as Terminal on macOS, CMD on Windows.
 
@@ -41,7 +41,7 @@ $ pip install geochemistrypi
 
 The beta version runs on MacOS, Windows or Linux. Make sure that your network is stable while downloading.
 
-**1.3 Advanced Install**
+### 1.3 Advanced Install
 
 It is highly recommended downloading in an isolated virtual python environment, which prevents messing up your system python packages.
 
@@ -164,7 +164,7 @@ The following are four built-in data set in our software stored on Google Drive,
 
 ## 4. Use<a name="use"> </a>
 
-**4.1 Selection algorithm**
+### 4.1 Selection algorithm
 When you type geochemistrypi data-mining or geochemistrypi data-mining --data your_own_data_set.xlsx command,there are four algorithmic modes you can use,which are Regression,Classification,Clustering and Dimensional Reduction.
 
 ~~~
@@ -181,7 +181,7 @@ Built-in Data Option:
 You can choose which one you want to use,just type in its number.
 Then you can see a column corresponding to you data.
 
-**4.2 World Map Projection for A Specific Element Option**
+### 4.2 World Map Projection for A Specific Element Option
 You can press Enter to go to the next step.
 Here you can choose to project specific elements in the world map.
 
@@ -202,7 +202,7 @@ Select one of the elements below to be projected in the World Map:
 (Plot) ➜ @Number:
 ~~~
 
-**4.3 Do you want to continue to project a new element in the World Map**
+### 4.3 Do you want to continue to project a new element in the World Map
 Here you can choose whether or not to continue to project some elements.
 
 ~~~
@@ -212,7 +212,7 @@ Do you want to continue to project a new element in the World Map?
 (Plot) ➜ @Number:
 ~~~
 
-**4.4 Select the data range you want to process**
+### 4.4 Select the data range you want to process
 Here is about data selection.
 Sometimes we do not need to process all of the data columns,just need to select the columns we want to process according to one input format,such as we need the column from the 8th to 13th,the input format is "[8,13]".
 
@@ -251,7 +251,7 @@ The Selected Data Set:
 (Press Enter key to move forward.)
 ~~~
 
-**4.5 Strategy for Missing Values**
+### 4.5 Strategy for Missing Values
 If some columns has some null values,we provide currently three methods to fill the missing values,you can choose whatever you want.
 
 ~~~
@@ -263,10 +263,10 @@ Which strategy do you want to apply?
 (Data) ➜ @Number:
 ~~~
 
-**4.6 Hypothesis Testing on Imputation Method**
+### 4.6 Hypothesis Testing on Imputation Method
 After chooseing the imputation method and it will act the hypothesis testing on the imputation method.
 
-**4.7 Feature Engineering**
+### 4.7 Feature Engineering
 This is the feature engineering part.
 
 ~~~
@@ -311,7 +311,7 @@ You can see the information of the new data set you created and can append the f
 Name: GEO, Length: 109, dtype: float64
 ```
 
-**4.8 Do you want to continue to construct a new feature**
+### 4.8 Do you want to continue to construct a new feature
 You can continue to create more features.
 
 ~~~
@@ -321,7 +321,7 @@ Do you want to continue to construct a new feature?
 (Data) ➜ @Number:
 ~~~
 
-**4.9 Mode Options**
+### 4.9 Mode Options
 Choose your algorithm in the mode options.
 
 ~~~
@@ -333,7 +333,7 @@ Choose your algorithm in the mode options.
 (Model) ➜ @Number:
 ~~~
 
-**4.10 Data Split - X Set and Y Set**
+### 4.10 Data Split - X Set and Y Set
 Here you need to divide the data set into a X set and Y set.
 Firstly You need to have a feature column.
 You can choose one or several columns to be the X set.
@@ -347,7 +347,7 @@ Format 2: "xx", such as "7" --> you want to deal with the columns 7
 @input:[1,5]
 ~~~
 
-**4.11 Feature Scaling on X Set**
+### 4.11 Feature Scaling on X Set
 You can do some feature scaling one the X set.
 Choose yes in feature scaling on the X set.
 
@@ -369,7 +369,7 @@ The data range in the dimensional space has changed.
 Then you need to create traget column.
 ~~~
 
-**4.12 Data Split - Train Set and Test Set**
+### 4.12 Data Split - Train Set and Test Set
 Create train set and set based on the X and Y.
 
 ~~~
@@ -390,8 +390,8 @@ Note: Normally, set 20% of the dataset aside as test set, such as 0.2
 (Data) ➜ @Test Ratio: 0.2
 ~~~
 
-**4.13 Model Selection**
-You can choose one in the model selection(Such as 8 is the algorithm to implement multi layer perceptron).
+### 4.13 Model Selection
+You can choose one in the model selection(Such as 8 is the algorithm to implement deep neural network).
 
 ~~~
 -*-*- Model Selection -*-*-:
@@ -402,13 +402,13 @@ You can choose one in the model selection(Such as 8 is the algorithm to implemen
 5 - Random Forest
 6 - Extra-Trees
 7 - Xgboost
-8 - Multi-layer Perceptron
+8 - Deep Neural Networks
 9 - All models above to be trained
 Which model do you want to apply?(Enter the Corresponding Number)
 (Model) ➜ @Number:8
 ~~~
 **Note**:
-The following takes multi layer perceptron an an example.
+The following takes deep neural networks an an example.
 You can choose whether to run automatic machine learning.
 Then following the hint to input.
 
@@ -450,45 +450,9 @@ $ pip install pip install -i https://pypi.tuna.tsinghua.edu.cn/simple pandas
 
 We promise to get you in contact as soon as possible.
 
-## 6. How to use pickle and joblib<a name="joblib"> </a>
-
-We often need to store the trained model so that we can read it out directly when making decisions. The Pickle module comes with python and is a great time saver.
-
-`pickle `，It can serialise objects and save them to disk and read them out when needed, and any object can perform a serialisation operation.
-
-```python
-import pickle
-#writing
-with open(file_name, 'wb') as fp:
-            pickle.dump(model, fp)
-#read
-with open(file_name, 'rb') as f:
-						model=pickle.load(file)
-
-# eg：Using existing models to make predictions on data
-y_data_pre = model.predict(x_data)
-print(y_data_pre)
-```
-
-`joblib`，In the specific case of `scikit-learn`, it is better to use `joblib` instead of `pickle` ( `dump`& `load`) This works better for objects that carry large `numpy` arrays internally.
 
 
-```python
-#from sklearn.externals import joblib
-#from joblib import dump, load
-import joblib
-# using joblib.dump to save model
-joblib.dump(model, 'filename.joblib')
-
-# joblib.load read the model
-model = joblib.load('filename.joblib')
-
-#eg Using existing models to make predictions on data
-y_data_pre = 'filename.joblib'.predict(x_data)
-```
-
-
-## 7. Advice<a name="advice"> </a>
+## 6. Advice<a name="advice"> </a>
 
 The software is in beta version currently. There are too many shortcomings which we need to improve in the future. It would be highly appreciated if you can share your opinions on how to make it better.
 

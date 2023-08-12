@@ -29,7 +29,7 @@ Its data section provides feature engineering based on **arithmatic operation**.
 Its models section provides both **supervised learning** and **unsupervised learning** methods from **Scikit-learn** framework, including four types of algorithms, regression, classification, clustering, and dimensional reduction. Integrated with **FLAML** and **Ray** framework, it allows the users to run AutoML easily, fastly and cost-effectively on the built-in supervised learning algorithms in our framework.
 
 
-### Second Phase
+## Second Phase
 
 Currently, we are building three access ways to provide more user-friendly service, including **web portal**, **CLI package** and **API**. It allows the user to perform **continuous training** of the model by automating the ML pipeline in different layers.
 
