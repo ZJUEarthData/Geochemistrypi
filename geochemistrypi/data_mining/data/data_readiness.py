@@ -168,7 +168,13 @@ def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
                         judge = False
                 else:
                     min_max = eval(temp[i])
-                    if int(min_max[1]) > int(data.shape[1]):
+                    if int(min_max[0]) >= int(min_max[1]):
+                        print("There is a problem with the format of the data you entered!")
+                        time.sleep(0.5)
+                        sub_data_set_columns_range = input("-----* Please enter again *-----\n @input:")
+                        judge = True
+                        break
+                    elif int(min_max[1]) > int(data.shape[1]):
                         print("The input {} is incorrect!".format(temp[i]))
                         print("The number you entered is out of the range of options: 1 - {}".format(data.shape[1]))
                         time.sleep(0.5)
