@@ -8,66 +8,33 @@ Welcome to Geochemistry π
 =======================================================================================
 
 .. toctree::
-   :maxdepth: 1
-   :caption: Introduction
+   :maxdepth: 3
+   :caption: Home
 
-   Introduction/Introduction.md
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Installation
-
-   Installation.md
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Citing this work
+   Introduction <Home/Introduction.md>
 
 .. toctree::
    :maxdepth: 3
-   :caption: Model Example
+   :caption: For User
 
-   Model Example/Data_Preprocessing/Data Preprocessing.md
-   Model Example/Clustering/Clustering.md
-   Model Example/Classification/classification.md
-   Model Example/Decomposition/decomposition.md
-   Model Example/Regression/Regression.md
-   
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Contact Us
-
-   Contact us/bug_template.md
-   Contact us/Q&A.md
-   Contact us/Join us.md
+   User Guide <For User/User Guide.md>
+   Installation Manual <For User/Installation Manual.md>
+   Model Example <model example.rst>    
+   Contact Us <contact us.rst>
+   Docs Link <For User/User Docs link.md>
+   API <python_apis/api.rst>
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contributing
+   :maxdepth: 3
+   :caption: For Developer
 
-   Contributing/Code Conduct.md
-   Contributing/Contributor.md
-
-.. toctree::
-   :maxdepth: 2
-   :caption: User Guide
-
-   User Guide.md
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Developer Guide
-
-   Developer/Deployment.md
-   Developer/Git.md
-   Developer/Docker Deployment.md
-
-.. toctree::
-   :maxdepth: 2
-   :caption: API
-
-   python_apis/api.rst
+   Developer Guide <For Developer/Developer Guide/Developer Manual.md>
+   Contributing <contributing.rst>
+   Local Deployment <For Developer/Local Deployment.md>
+   Docker Deployment <For Developer/Docker Deployment.md>
+   Algorithm Functionality Addition <For Developer/Algorithm Functionality Addition Procedure_geochemistrypi 0.2.0_CN/data_mining_geochemistrypi_020.md>
+   Complete Pull Request <For Developer/A Completed Pull Request.md>
+   Docs Link <For Developer/Developer Docs link.md>
 
 Indices and tables
 ==================
