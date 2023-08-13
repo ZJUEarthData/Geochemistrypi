@@ -75,18 +75,18 @@ class FeatureConstructor(object):
             if len(self._infix_expr) == 0:
                 print("You haven't built any new features yet!")
                 time.sleep(0.5)
-                expression = input("-----* Please enter again *-----\n @input:")
+                expression = input("-----* Please enter again *-----\n@input: ")
             elif not all(c.isdigit() or c.isspace() or c in FeatureConstructor.oper or c in self.alphabet for c in self._infix_expr):
                 print("There's something wrong with the input !")
                 time.sleep(0.5)
-                expression = input("-----* Please enter again *-----\n @input:")
+                expression = input("-----* Please enter again *-----\n@input: ")
             else:
                 try:
                     self.letter_map()
                 except Exception as e:
                     print("Your input contains the following error:", e)
                     time.sleep(0.5)
-                    expression = input("-----* Please enter again *-----\n @input:")
+                    expression = input("-----* Please enter again *-----\n@input: ")
                 else:
                     break
 

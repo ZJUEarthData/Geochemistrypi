@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "geochemistrypi"
-version = "0.3.0-dev6"
+version = "0.3.0"
 authors = [
   { name="Can He", email="sanyhew1097618435@163.com" },
 ]
@@ -49,6 +49,7 @@ dependencies = [
     "python-dotenv",                # required to run python-dotenv
     "rich",                         # color print
     "mlflow",                       # required to run mlflow
+    "imblearn",
 ]
 
 [tool.black]
