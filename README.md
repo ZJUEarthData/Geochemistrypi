@@ -17,7 +17,7 @@ ___
 
 Geochemistry π is an **open-sourced highly automated machine learning Python framework** dedicating to build up MLOps level 1 software product for data-driven geochemistry discovery on tabular data.
 
-Key Components are:
+Core capabilities are:
 
 + **Continous Training**
 + **Machine Learning Lifecycle Management**
@@ -101,6 +101,7 @@ On Jupyter Notebook / Google Colab:
 ```
 !geochemistrypi data-mining --mlflow
 ```
+**Note**: Once you run our software, there are two folders (`geopi_output` and `geopi_tracking`) generated automatically. Make sure the directory where you execute the above command should have the genereted file `geopi_tracking`.
 
 Copy the address in the displayed result into any browser to open the MLflow web interface. The address is normally like this http://127.0.0.1:5000.
 
@@ -179,7 +180,7 @@ The whole package is under construction and the documentation is progressively e
 + Bailun Jiang (EPSI / Lille University, France)
 + Yucheng Yan (Andy, University of Sydney, Australia)
 + Ruitao Chang (China University of Geosciences Beijing, China)
-+ Zhenglin Xu (Garry, Jilin University)
++ Zhenglin Xu (Garry, Jilin University, China)
 
 
 
