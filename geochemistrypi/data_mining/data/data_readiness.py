@@ -41,7 +41,10 @@ def read_data(file_name: Optional[str] = None, is_own_data: int = 2, prefix: Opt
     else:
         data_path = os.path.join(BUILT_IN_DATASET_PATH, file_name)
     try:
-        data = pd.read_excel(data_path, engine="openpyxl")
+        if data_path.endswith(".xlsx"):
+            data = pd.read_excel(data_path, engine="openpyxl")
+        elif data_path.endswith(".csv"):
+            data = pd.read_csv(data_path)
         return data
     except ImportError as err:
         print(err)
@@ -151,28 +154,41 @@ def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
     )
     while True:
         temp = sub_data_set_columns_range.split(";")
-        for i in range(len(temp)):
-            if isinstance(eval(temp[i]), int):
-                if int(temp[i]) > int(data.shape[1]):
-                    print("The input {} is incorrect!".format(temp[i]))
-                    print("The number you entered is out of the range of options: 1 - {}".format(data.shape[1]))
-                    time.sleep(0.5)
-                    sub_data_set_columns_range = input("-----* Please enter again *-----\n@input: ")
-                    judge = True
-                    break
+        if len(sub_data_set_columns_range) != 0:
+            for i in range(len(temp)):
+                if isinstance(eval(temp[i]), int):
+                    if int(temp[i]) > int(data.shape[1]):
+                        print("The input {} is incorrect!".format(temp[i]))
+                        print("The number you entered is out of the range of options: 1 - {}".format(data.shape[1]))
+                        time.sleep(0.5)
+                        sub_data_set_columns_range = input("-----* Please enter again *-----\n @input:")
+                        judge = True
+                        break
+                    else:
+                        judge = False
                 else:
-                    judge = False
-            else:
-                min_max = eval(temp[i])
-                if int(min_max[1]) > int(data.shape[1]):
-                    print("The input {} is incorrect!".format(temp[i]))
-                    print("The number you entered is out of the range of options: 1 - {}".format(data.shape[1]))
-                    time.sleep(0.5)
-                    sub_data_set_columns_range = input("-----* Please enter again *-----\n@input: ")
-                    judge = True
-                    break
-                else:
-                    judge = False
+                    min_max = eval(temp[i])
+                    if int(min_max[0]) >= int(min_max[1]):
+                        print("There is a problem with the format of the data you entered!")
+                        time.sleep(0.5)
+                        sub_data_set_columns_range = input("-----* Please enter again *-----\n @input:")
+                        judge = True
+                        break
+                    elif int(min_max[1]) > int(data.shape[1]):
+                        print("The input {} is incorrect!".format(temp[i]))
+                        print("The number you entered is out of the range of options: 1 - {}".format(data.shape[1]))
+                        time.sleep(0.5)
+                        sub_data_set_columns_range = input("-----* Please enter again *-----\n @input:")
+                        judge = True
+                        break
+                    else:
+                        judge = False
+        else:
+            print("You have not entered the sequence number of the selected data!")
+            print("The number you entered should be in the range of options: 1 - {}".format(data.shape[1]))
+            time.sleep(0.5)
+            sub_data_set_columns_range = input("-----* Please enter again *-----\n @input:")
+            judge = True
 
         if judge is False:
             break
