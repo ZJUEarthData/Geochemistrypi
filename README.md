@@ -168,7 +168,7 @@ The whole package is under construction and the documentation is progressively e
 + Jianhao Sun (Jin, China University of Geosciences, Wuhan, China)
 + Kaixin Zheng (Hayne, Sun Yat-sen University, China)
 + Jianing Wang (National University of Singapore, Singapore)
-+ Yongkang Chang (Kill-virus, Langzhou University, China)
++ Yongkang Chan (Kill-virus, Lanzhou University, China)
 + Mengying Ye (Mary, Jilin University, China)
 + Mengqi Gao (China University of Geosciences, Beijing, China)
 
