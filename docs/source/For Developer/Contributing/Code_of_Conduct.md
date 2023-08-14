@@ -1,4 +1,4 @@
-#  Code Specification - Geochemistry π
+#  Code of Conduct
 
 Contents：
 
@@ -454,9 +454,9 @@ tbc...
 
 + One commit for one functionality implementation or one optimization or one bug fix. It is allowed to push multiple commits to the remote codebase with one pull request.
 + Please include the following tags in the beginning of your commit message to make more organized commits and PRs. It would tell exactly what use it is in this commit.
-  + `feat`: a new feature
-  + `fix`: bug fix
-  + `improvement`: an existing feature improved
+  + `feat`: a new feature is introduced with the changes
+  + `fix`: a bug fix
+  + `perf`: an existing feature improved
   + `docs`: changes to the documentation
   + `style`: code formatting
   + `refactor`: refactoring production code
@@ -476,7 +476,7 @@ Notice: the tags should be lower-case except for `BREAKING CHANGE`.
 # Then he wants to use git commit to append the code changes to his local codebase.
 # He will use the command in command line.
 
-git commit -m "feat: Add a function to draw the decision boundary for Decision Tree."
+git commit -m "feat: add a function to draw the decision boundary for Decision Tree."
 ```
 
 + Reference:

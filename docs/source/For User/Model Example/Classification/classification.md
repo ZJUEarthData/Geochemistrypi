@@ -2,7 +2,7 @@
 
 Classification is a supervised learning task, in which the training data we feed to the algorithm includes the desired labels. The aim of classification task is to classify each data into the corresponding class. So we have to use dataset with known labels to train a classification model. Then choose one model which has best performance to predict unknown data.
 
-Note：In the two categories, the label must be set to 0,1 , and the metric value is 1 by default, such as precision
+Note：If your task is binary classification, the label must be set to either 0 or 1. All metric values would be calculated from the label 1 by default, such as precision, accurary and so on.
 
 ## 1. Train-Test Data Preparation
 **Choose the mode you need to use.**
