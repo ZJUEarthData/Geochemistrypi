@@ -12,6 +12,7 @@ Welcome to Geochemistry π
    :caption: Home
 
    Introduction <Home/Introduction.md>
+   Change Log <Home/CHANGELOG.md>
 
 .. toctree::
    :maxdepth: 3
