@@ -33,7 +33,7 @@ Latest Update: follow up by clicking `Starred` and  `Watch` on our [GitHub repos
 
 ## Quick Installation
 
-One instruction to download on **command line**, such as Terminal on macOS, CMD on Windows.
+One instruction to download on **command line**, such as Terminal on macOS, Command Prompt on Windows.
 ```
 pip install geochemistrypi
 ```
@@ -41,11 +41,12 @@ One instruction to download on **Jupyter Notebook** or **Google Colab**.
 ```
 !pip install geochemistrypi
 ```
-**Note**: The beta version runs on MacOS, Windows or Linux.
+**Note**: For more detail on installation, please refer to our online documentation in **Installation Manual** under the section of **FOR USER**. Over there, we highly recommend to use virtual environment (Conda) to avoid dependency version problems.
+
 
 ## Quick Update
 
-One instruction to update the software to the latest version on **command line**, such as Terminal on macOS, CMD on Windows.
+One instruction to update the software to the latest version on **command line**, such as Terminal on macOS, Command Prompt on Windows.
 ```
 pip install --upgrade geochemistrypi
 ```
@@ -103,7 +104,7 @@ On Jupyter Notebook / Google Colab:
 ```
 **Note**: Once you run our software, there are two folders (`geopi_output` and `geopi_tracking`) generated automatically. Make sure the directory where you execute the above command should have the genereted file `geopi_tracking`.
 
-Copy the address in the displayed result into any browser to open the MLflow web interface. The address is normally like this http://127.0.0.1:5000.
+Copy the address in the displayed result into any browser to open the MLflow web interface. The address is normally like this http://127.0.0.1:5000. Search MLflow online to see more operations and usages.
 
 For more details: Please refer to:
 
