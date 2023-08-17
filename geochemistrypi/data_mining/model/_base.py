@@ -141,8 +141,22 @@ class WorkflowBase(metaclass=ABCMeta):
         return float()
 
     @staticmethod
-    def np2pd(array, columns_name):
-        """The type of the data set is transformed from numpy.ndarray to pandas.DataFrame."""
+    def np2pd(array: np.ndarray, columns_name: Union[List[str], pd.Index]) -> pd.DataFrame:
+        """The type of the data set is transformed from numpy.ndarray to pandas.DataFrame.
+
+        Parameters
+        ----------
+        array : np.ndarray (n_samples, n_features)
+            the data set.
+
+        columns_name : list[str] or pd.Index
+            the name of the columns of the data set.
+
+        Returns
+        -------
+        pd.DataFrame (n_samples, n_features)
+            the data set.
+        """
         return pd.DataFrame(array, columns=columns_name)
 
     @staticmethod
@@ -159,9 +173,10 @@ class WorkflowBase(metaclass=ABCMeta):
         Returns
         -------
         selected_axis_index : list[int]
-            the index of the that dimension, which is shown as the index of the column of the data set
+            the index of the that dimension, which is shown as the index of the column of the data set.
+
         selected_axis_data : pd.DataFrame (n_samples, n_features)
-            the selected data from the whole data set
+            the selected data from the whole data set.
         """
         print(f"-----* {dimensions} Dimensions Data Selection *-----")
         print(f"The software is going to draw related {dimensions}d graphs.")
