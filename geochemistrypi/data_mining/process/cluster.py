@@ -14,6 +14,7 @@ class ClusteringModelSelection(ModelSelectionBase):
     def __init__(self, model_name: str) -> None:
         self.model_name = model_name
         self.clt_workflow = ClusteringWorkflowBase()
+        self.transformer_config = {}
 
     def activate(
         self,
@@ -64,4 +65,4 @@ class ClusteringModelSelection(ModelSelectionBase):
         self.clt_workflow.special_components()
 
         # Save the trained model
-        self.clt_workflow.save_model()
+        self.clt_workflow.model_save()

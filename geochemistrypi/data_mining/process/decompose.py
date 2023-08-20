@@ -15,6 +15,7 @@ class DecompositionModelSelection(ModelSelectionBase):
     def __init__(self, model_name: str) -> None:
         self.model_name = model_name
         self.dcp_workflow = DecompositionWorkflowBase()
+        self.transformer_config = {}
 
     def activate(
         self,
@@ -67,4 +68,4 @@ class DecompositionModelSelection(ModelSelectionBase):
         self.dcp_workflow.data_save(X_reduced, "X Reduced", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Reduced Data")
 
         # Save the trained model
-        self.dcp_workflow.save_model()
+        self.dcp_workflow.model_save()

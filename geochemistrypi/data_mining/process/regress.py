@@ -30,6 +30,7 @@ class RegressionModelSelection(ModelSelectionBase):
     def __init__(self, model_name: str) -> None:
         self.model_name = model_name
         self.reg_workflow = RegressionWorkflowBase()
+        self.transformer_config = {}
 
     @dispatch(object, object, object, object, object, object)
     def activate(
@@ -53,7 +54,8 @@ class RegressionModelSelection(ModelSelectionBase):
                 interaction_only=hyper_parameters["interaction_only"],
                 include_bias=hyper_parameters["include_bias"],
             )
-            X_train, X_test = self.reg_workflow.poly(X_train, X_test)
+            poly_config, X_train, X_test = self.reg_workflow.poly(X_train, X_test)
+            self.transformer_config.update(poly_config)
             self.reg_workflow.data_upload(X_train=X_train, X_test=X_test)
         elif self.model_name == "Xgboost":
             hyper_parameters = XgboostRegression.manual_hyper_parameters()
@@ -174,7 +176,7 @@ class RegressionModelSelection(ModelSelectionBase):
         self.reg_workflow.data_save(y_test_predict, "Y Test Predict", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Model Prediction")
 
         # Save the trained model
-        self.reg_workflow.save_model()
+        self.reg_workflow.model_save()
 
     @dispatch(object, object, object, object, object, object, bool)
     def activate(
@@ -196,7 +198,9 @@ class RegressionModelSelection(ModelSelectionBase):
             print("Please specify the maximal degree of the polynomial features.")
             poly_degree = num_input(SECTION[2], "@Degree:")
             self.reg_workflow = PolynomialRegression(degree=poly_degree)
-            X_train, X_test = self.reg_workflow.poly(X_train, X_test)
+            poly_config, X_train, X_test = self.reg_workflow.poly(X_train, X_test)
+            self.transformer_config.update(poly_config)
+            self.reg_workflow.data_upload(X_train=X_train, X_test=X_test)
         elif self.model_name == "Xgboost":
             self.reg_workflow = XgboostRegression()
         elif self.model_name == "Decision Tree":
@@ -242,4 +246,4 @@ class RegressionModelSelection(ModelSelectionBase):
         self.reg_workflow.data_save(y_test_predict, "Y Test Predict", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Model Prediction")
 
         # Save the trained model
-        self.reg_workflow.save_model(is_automl)
+        self.reg_workflow.model_save(is_automl)

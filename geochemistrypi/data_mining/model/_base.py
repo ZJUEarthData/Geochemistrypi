@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 import json
 import os
-import pickle
 from abc import ABCMeta, abstractmethod
 from typing import Dict, List, Optional, Tuple, Union
 
-import joblib
 import mlflow
 import numpy as np
 import pandas as pd
@@ -14,7 +12,7 @@ from rich import print
 
 from ..constants import SECTION
 from ..data.data_readiness import limit_num_input, num2option, num_input, show_data_columns
-from ..utils.base import save_data, save_fig, save_text
+from ..utils.base import save_data, save_fig, save_model, save_text
 from .func._common_supervised import plot_decision_tree, plot_feature_importance, plot_permutation_importance, show_formula
 from .func.algo_regression._linear_regression import plot_2d_line_diagram, plot_2d_scatter_diagram, plot_3d_scatter_diagram, plot_3d_surface_diagram
 
@@ -267,40 +265,18 @@ class WorkflowBase(metaclass=ABCMeta):
         mlflow.log_params(hyper_parameters_dict)
 
     @dispatch()
-    def save_model(self) -> None:
+    def model_save(self) -> None:
         """Persist the model for future use after training the model with Scikit-learn framework."""
         print("-----* Model Persistence *-----")
-        filename = f"{'_'.join(self.naming.split())}"
-        pickle_filename = filename + ".pkl"
         GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH")
-        pickle_path = os.path.join(GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH, pickle_filename)
-        joblib_filename = filename + ".joblib"
-        joblib_path = os.path.join(GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH, joblib_filename)
-        with open(pickle_path, "wb") as fp:
-            pickle.dump(self.model, fp)
-        print(f"Successfully store the trained model '{self.naming}' in '{pickle_filename}' in {GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH}.")
-        with open(joblib_path, "wb") as fj:
-            joblib.dump(self.model, fj)
-        print(f"Successfully store the trained model '{self.naming}' in '{joblib_filename}' in {GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH}.")
-        mlflow.sklearn.log_model(self.model, self.naming)
+        save_model(self.model, self.naming, self.X_train.iloc[[0]], GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH)
 
     @dispatch(bool)
-    def save_model(self, is_automl: bool) -> None:
+    def model_save(self, is_automl: bool) -> None:
         """Persist the model for future use after training the model with FLAML framework."""
         print("-----* Model Persistence *-----")
-        filename = f"{'_'.join(self.naming.split())}"
-        pickle_filename = filename + ".pkl"
         GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH")
-        pickle_path = os.path.join(GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH, pickle_filename)
-        joblib_filename = filename + ".joblib"
-        joblib_path = os.path.join(GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH, joblib_filename)
-        with open(pickle_path, "wb") as fp:
-            pickle.dump(self.auto_model, fp)
-        print(f"Successfully store the trained model '{self.naming}' in '{pickle_filename}' in {GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH}.")
-        with open(joblib_path, "wb") as fj:
-            joblib.dump(self.auto_model, fj)
-        print(f"Successfully store the trained model '{self.naming}' in '{joblib_filename}' in {GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH}.")
-        mlflow.sklearn.log_model(self.auto_model, self.naming)
+        save_model(self.auto_model, self.naming, self.X_train.iloc[[0]], GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH)
 
     @staticmethod
     def _plot_permutation_importance(

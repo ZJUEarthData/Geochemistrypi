@@ -322,6 +322,9 @@ def resampler(X_train: pd.DataFrame, y_train: pd.DataFrame, method: List[str], m
 
     Returns
     -------
+    sample_balance_config : dict
+        The configuration of the resampling method.
+
     X_train_resampled : pd.DataFrame (n_samples, n_components)
         The resampled train feature data.
 
@@ -332,15 +335,16 @@ def resampler(X_train: pd.DataFrame, y_train: pd.DataFrame, method: List[str], m
     if method[method_idx] == "Over Sampling":
         resampler = RandomOverSampler()
         X_train_resampled, y_train_resampled = resampler.fit_resample(X_train, y_train)
-        return X_train_resampled, y_train_resampled
+        sample_balance_config = {type(resampler).__name__: resampler.get_params()}
     elif method[method_idx] == "Under Sampling":
         resampler = RandomUnderSampler()
         X_train_resampled, y_train_resampled = resampler.fit_resample(X_train, y_train)
-        return X_train_resampled, y_train_resampled
+        sample_balance_config = {type(resampler).__name__: resampler.get_params()}
     elif method[method_idx] == "Oversampling and Undersampling":
         over = RandomOverSampler()
         under = RandomUnderSampler()
         over_under_steps = [("oversample", over), ("undersample", under)]
         resampler = Pipeline(steps=over_under_steps)
         X_train_resampled, y_train_resampled = resampler.fit_resample(X_train, y_train)
-        return X_train_resampled, y_train_resampled
+        sample_balance_config = {type(resampler[0]).__name__: resampler[0].get_params(), type(resampler[1]).__name__: resampler[1].get_params()}
+    return sample_balance_config, X_train_resampled, y_train_resampled
