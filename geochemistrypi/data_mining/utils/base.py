@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 import logging
 import os
+import pickle
 import platform
 from typing import Optional
 
+import joblib
 import mlflow
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -249,6 +251,42 @@ def save_text(string: str, text_name: str, local_text_path: str, mlflow_artifact
         mlflow.log_artifact(full_path)
     else:
         mlflow.log_artifact(full_path, artifact_path=mlflow_artifact_text_path)
+
+
+def save_model(model: object, model_name: str, data_sample: pd.DataFrame, local_model_path: str, mlflow_artifact_model_path: str = None) -> None:
+    """Save the model in the local directory and in mlflow specialized directory.
+
+    Parameters
+    ----------
+    model : object
+        The model to store.
+
+    model_name : str
+        The name of the model.
+
+    data_sample : pd.DataFrame
+        The sample of the dataset.
+
+    local_model_path : str
+        The path to store the model.
+
+    mlflow_artifact_model_path : str, default=None
+        The path to store the model in mlflow.
+    """
+    pickle_filename = model_name + ".pkl"
+    pickle_path = os.path.join(local_model_path, pickle_filename)
+    with open(pickle_path, "wb") as f:
+        pickle.dump(model, f)
+    print(f"Successfully store '{model_name}' in '{pickle_filename}' in {local_model_path}.")
+    joblib_filename = model_name + ".joblib"
+    joblib_path = os.path.join(local_model_path, joblib_filename)
+    with open(joblib_path, "wb") as f:
+        joblib.dump(model, f)
+    print(f"Successfully store '{model_name}' in '{joblib_filename}' in {local_model_path}.")
+    if not mlflow_artifact_model_path:
+        mlflow.sklearn.log_model(model, model_name, input_example=data_sample)
+    else:
+        mlflow.sklearn.log_model(model, mlflow_artifact_model_path, input_example=data_sample)
 
 
 def log(log_path, log_name):

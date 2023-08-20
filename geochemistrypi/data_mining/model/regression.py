@@ -276,6 +276,7 @@ class PolynomialRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         poly_features = PolynomialFeatures(degree=self.degree, include_bias=self.include_bias, interaction_only=self.interaction_only, order=self.order)
         X_train_poly = poly_features.fit_transform(X_train)
         X_test_poly = poly_features.fit_transform(X_test)
+        poly_config = {type(poly_features).__name__: poly_features.get_params()}
         try:
             # scikit-learn >= 1.0
             self._features_name = poly_features.get_feature_names_out()
@@ -283,7 +284,7 @@ class PolynomialRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._features_name = poly_features.get_feature_names()
         X_train_poly = pd.DataFrame(X_train_poly, columns=self._features_name)
         X_test_poly = pd.DataFrame(X_test_poly, columns=self._features_name)
-        return X_train_poly, X_test_poly
+        return poly_config, X_train_poly, X_test_poly
 
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:

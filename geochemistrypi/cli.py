@@ -30,16 +30,21 @@ def _version_callback(value: bool) -> None:
 @app.callback()
 def main(version: Optional[bool] = typer.Option(None, "--version", "-v", help="Show version.", callback=_version_callback, is_eager=True)) -> None:
     """
-    Geochemistry π is a Python framework for data-driven geochemistry discovery.
-    It automates data mining process with frequently-used machine learning algorithm
-      by providing the users with options to choose.
+    Geochemistry π is an open-sourced highly automated machine learning Python framework for data-driven geochemistry discovery.
+    It has the cores components of continous training, machine learning lifecycle management and model serving.
     """
     return
 
 
 @app.command()
-def data_mining(data: str = "", web: bool = False, mlflow: bool = False) -> None:
-    """Apply data mining technique with supervised learning and unsupervised learning methods."""
+def data_mining(
+    data: str = typer.Option("", help="The path of the training data without model inference."),
+    training: str = typer.Option("", help="The path of the training data."),
+    inference: str = typer.Option("", help="The path of the inference data."),
+    mlflow: bool = typer.Option(False, help="Start the mlflow server."),
+    web: bool = False,
+) -> None:
+    """Implement the customized automated machine learning pipeline for geochemistry data mining."""
 
     def start_backend():
         """Start the backend server."""
@@ -72,7 +77,15 @@ def data_mining(data: str = "", web: bool = False, mlflow: bool = False) -> None
             mlflow_thread = threading.Thread(target=start_mlflow)
             mlflow_thread.start()
         else:
-            cli_pipeline(data)
+            # If the data is provided, start the CLI pipeline with continuous training
+            if data:
+                cli_pipeline(data)
+            # If the training data and inference data are provided, start the CLI pipeline with continuous training and inference
+            elif training and inference:
+                cli_pipeline(training, inference)
+            # If no data is provided, use built-in data to start the CLI pipeline with continuous training and inference
+            else:
+                cli_pipeline(training, inference)
 
 
 @app.command()

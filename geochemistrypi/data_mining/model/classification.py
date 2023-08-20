@@ -201,7 +201,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             print("Which strategy do you want to apply?")
             num2option(SAMPLE_BALANCE_STRATEGY)
             sample_balance_num = limit_num_input(SAMPLE_BALANCE_STRATEGY, SECTION[1], num_input)
-            X_train, y_train = resampler(X_train, y_train, SAMPLE_BALANCE_STRATEGY, sample_balance_num - 1)
+            sample_balance_config, X_train, y_train = resampler(X_train, y_train, SAMPLE_BALANCE_STRATEGY, sample_balance_num - 1)
             train_set_resampled = pd.concat([X_train, y_train], axis=1)
             print("Train Set After Resampling:")
             print(train_set_resampled)
@@ -209,8 +209,10 @@ class ClassificationWorkflowBase(WorkflowBase):
             basic_statistic(train_set_resampled)
             save_data(X_train, "X Train After Sample Balance", local_path, mlflow_path)
             save_data(y_train, "Y Train After Sample Balance", local_path, mlflow_path)
+        else:
+            sample_balance_config = None
         clear_output()
-        return X_train, y_train
+        return sample_balance_config, X_train, y_train
 
     @dispatch()
     def common_components(self) -> None:
