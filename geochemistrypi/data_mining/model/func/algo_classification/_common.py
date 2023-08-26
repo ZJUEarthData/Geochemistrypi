@@ -303,7 +303,7 @@ def plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, trained_mod
     )
 
 
-def resampler(X_train: pd.DataFrame, y_train: pd.DataFrame, method: List[str], method_idx: int) -> tuple[pd.DataFrame, pd.DataFrame]:
+def resampler(X_train: pd.DataFrame, y_train: pd.DataFrame, method: List[str], method_idx: int) -> tuple[dict, pd.DataFrame, pd.DataFrame]:
     """Use this method when the classification dataset has an unbalanced number of categories.
 
     Parameters
@@ -348,3 +348,43 @@ def resampler(X_train: pd.DataFrame, y_train: pd.DataFrame, method: List[str], m
         X_train_resampled, y_train_resampled = resampler.fit_resample(X_train, y_train)
         sample_balance_config = {type(resampler[0]).__name__: resampler[0].get_params(), type(resampler[1]).__name__: resampler[1].get_params()}
     return sample_balance_config, X_train_resampled, y_train_resampled
+
+
+def reset_label(y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, original_label: int, new_label: int) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Reset label.
+
+    Parameters
+    ----------
+    y : pd.DataFrame
+        The label data set.
+
+    y_train : pd.DataFrame
+        The label data on train set.
+
+    y_test : pd.DataFrame
+        The label data on test set.
+
+    Returns
+    -------
+    y_reset : pd.DataFrame
+        The label data set after reseting label.
+
+    y_train_reset : pd.DataFrame
+        The label data on train set after reseting label.
+
+    y_test_reset : pd.DataFrame
+        The label data on test set after reseting label.
+    """
+    y_reset = y.replace(original_label, -10000)
+    y_reset = y_reset.replace(new_label, original_label)
+    y_reset = y_reset.replace(-10000, new_label)
+
+    y_train_reset = y_train.replace(original_label, -10000)
+    y_train_reset = y_train_reset.replace(new_label, original_label)
+    y_train_reset = y_train_reset.replace(-10000, new_label)
+
+    y_test_reset = y_test.replace(original_label, -10000)
+    y_test_reset = y_test_reset.replace(new_label, original_label)
+    y_test_reset = y_test_reset.replace(-10000, new_label)
+
+    return y_reset, y_train_reset, y_test_reset

@@ -22,7 +22,7 @@ from ..data.data_readiness import limit_num_input, num2option, num_input
 from ..plot.statistic_plot import basic_statistic
 from ..utils.base import clear_output, save_data, save_fig, save_text
 from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
-from .func.algo_classification._common import cross_validation, plot_2d_decision_boundary, plot_confusion_matrix, plot_precision_recall, plot_ROC, resampler, score
+from .func.algo_classification._common import cross_validation, plot_2d_decision_boundary, plot_confusion_matrix, plot_precision_recall, plot_ROC, resampler, reset_label, score
 from .func.algo_classification._decision_tree import decision_tree_manual_hyper_parameters
 from .func.algo_classification._extra_trees import extra_trees_manual_hyper_parameters
 from .func.algo_classification._logistic_regression import logistic_regression_manual_hyper_parameters, plot_logistic_importance
@@ -213,6 +213,38 @@ class ClassificationWorkflowBase(WorkflowBase):
             sample_balance_config = None
         clear_output()
         return sample_balance_config, X_train, y_train
+
+    @staticmethod
+    def customize_label(y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, local_path: str, mlflow_path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        """Using this function to customize the label to which samples of each category belong."""
+        print("-*-*- Customize Label on Label Set -*-*-")
+        num2option(OPTION)
+        is_customize_label = limit_num_input(OPTION, SECTION[1], num_input)
+        if is_customize_label == 1:
+            print("----Y Data Set----")
+            print(y.value_counts())
+            label_range = int(y.nunique().values)
+            print(f"The range of the new label is between 0 and {label_range-1}")
+            original_new_label = input(
+                "Select the label range you want to process.\n"
+                'Input format1: "[original_label, new_label]", such as "[1, 3]" ---> you want to replace 1 with 3.\n'
+                'Input format2: "[original_label, new_label]; [original_label, new_label]", such as "[1,3]; [0,2]" ---> you want to replace 1 with 3 and 0 with 2.\n'
+                "@input: "
+            )
+            customize_label_sequence = original_new_label.split(";")
+            for i in range(len(customize_label_sequence)):
+                original_label = int(eval(customize_label_sequence[i])[0])
+                new_label = int(eval(customize_label_sequence[i])[1])
+                y, y_train, y_test = reset_label(y, y_train, y_test, original_label, new_label)
+            print("----Y Data Set After Customizing label----")
+            print(y.value_counts())
+            print("Basic Statistical Information: ")
+            basic_statistic(y)
+            save_data(y, "Y Set After Customizing label", local_path, mlflow_path)
+            save_data(y_train, "Y Train After Customizing label", local_path, mlflow_path)
+            save_data(y_test, "Y Test After Customizing label", local_path, mlflow_path)
+        clear_output()
+        return y, y_train, y_test
 
     @dispatch()
     def common_components(self) -> None:

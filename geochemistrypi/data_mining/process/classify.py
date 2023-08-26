@@ -40,6 +40,9 @@ class ClassificationModelSelection(ModelSelectionBase):
 
         self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
 
+        # Customize label
+        y, y_train, y_test = self.clf_workflow.customize_label(y, y_train, y_test, os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH)
+
         # Sample balance
         sample_balance_config, X_train, y_train = self.clf_workflow.sample_balance(X_train, y_train, os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH)
 
@@ -155,6 +158,9 @@ class ClassificationModelSelection(ModelSelectionBase):
         """Train by FLAML framework + RAY framework."""
 
         self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
+
+        # Customize label
+        y, y_train, y_test = self.clf_workflow.customize_label(y, y_train, y_test, os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH)
 
         # Sample balance
         sample_balance_config, X_train, y_train = self.clf_workflow.sample_balance(X_train, y_train, os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH)

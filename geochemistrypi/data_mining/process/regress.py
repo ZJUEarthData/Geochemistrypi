@@ -10,6 +10,7 @@ from ..data.data_readiness import num_input
 from ..model.regression import (
     ClassicalLinearRegression,
     DecisionTreeRegression,
+    ElasticNetRegression,
     ExtraTreesRegression,
     GradientBoostingRegression,
     KNNRegression,
@@ -154,6 +155,16 @@ class RegressionModelSelection(ModelSelectionBase):
                 tol=hyper_parameters["tol"],
                 selection=hyper_parameters["selection"],
             )
+        elif self.model_name == "ElasticNet":
+            hyper_parameters = ElasticNetRegression.manual_hyper_parameters()
+            self.reg_workflow = ElasticNetRegression(
+                alpha=hyper_parameters["alpha"],
+                l1_ratio=hyper_parameters["l1_ratio"],
+                fit_intercept=hyper_parameters["fit_intercept"],
+                max_iter=hyper_parameters["max_iter"],
+                tol=hyper_parameters["tol"],
+                selection=hyper_parameters["selection"],
+            )
 
         self.reg_workflow.show_info()
 
@@ -221,6 +232,8 @@ class RegressionModelSelection(ModelSelectionBase):
             self.reg_workflow = GradientBoostingRegression()
         elif self.model_name == "Lasso Regression":
             self.reg_workflow = LassoRegression()
+        elif self.model_name == "ElasticNet":
+            self.reg_workflow = ElasticNetRegression()
 
         self.reg_workflow.show_info()
 
