@@ -265,7 +265,6 @@ class PolynomialRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         self.normalize = normalize
         self.copy_X = copy_X
         self.n_jobs = n_jobs
-
         self.model = LinearRegression(fit_intercept=self.fit_intercept, copy_X=self.copy_X, n_jobs=self.n_jobs)
 
         self._features_name = None
