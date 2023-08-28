@@ -155,7 +155,7 @@ class RegressionModelSelection(ModelSelectionBase):
                 tol=hyper_parameters["tol"],
                 selection=hyper_parameters["selection"],
             )
-        elif self.model_name == "ElasticNet":
+        elif self.model_name == "Elastic Net":
             hyper_parameters = ElasticNetRegression.manual_hyper_parameters()
             self.reg_workflow = ElasticNetRegression(
                 alpha=hyper_parameters["alpha"],
@@ -232,7 +232,7 @@ class RegressionModelSelection(ModelSelectionBase):
             self.reg_workflow = GradientBoostingRegression()
         elif self.model_name == "Lasso Regression":
             self.reg_workflow = LassoRegression()
-        elif self.model_name == "ElasticNet":
+        elif self.model_name == "Elastic Net":
             self.reg_workflow = ElasticNetRegression()
 
         self.reg_workflow.show_info()

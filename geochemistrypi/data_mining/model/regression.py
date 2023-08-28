@@ -23,7 +23,7 @@ from ..utils.base import clear_output, save_data, save_fig, save_text
 from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
 from .func.algo_regression._common import cross_validation, plot_predicted_vs_actual, plot_residuals, score
 from .func.algo_regression._decision_tree import decision_tree_manual_hyper_parameters
-from .func.algo_regression._elasticNet_regression import elasticNet_regression_manual_hyper_parameters
+from .func.algo_regression._elastic_net import elastic_net_manual_hyper_parameters
 from .func.algo_regression._extra_tree import extra_trees_manual_hyper_parameters
 from .func.algo_regression._gradient_boosting import gradient_boosting_manual_hyper_parameters
 from .func.algo_regression._knn import knn_manual_hyper_parameters
@@ -2870,10 +2870,10 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
 
 
 class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
-    """The automation workflow of using ElasticNet Regression algorithm to make insightful products."""
+    """The automation workflow of using Elastic Net algorithm to make insightful products."""
 
-    name = "ElasticNet"
-    special_function = ["ElasticNet Regression Formula", "2D Scatter Diagram", "3D Scatter Diagram", "2D Line Diagram", "3D Surface Diagram"]
+    name = "Elastic Net"
+    special_function = ["Elastic Net Formula", "2D Scatter Diagram", "3D Scatter Diagram", "2D Line Diagram", "3D Surface Diagram"]
 
     def __init__(
         self,
@@ -2886,7 +2886,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         tol: float = 1e-4,
         warm_start: bool = False,
         positive: bool = False,
-        random_state: int = None,
+        random_state: Optional[int] = None,
         selection: str = "cyclic",
     ) -> None:
         """
@@ -2986,7 +2986,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
         print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
-        hyper_parameters = elasticNet_regression_manual_hyper_parameters()
+        hyper_parameters = elastic_net_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
 
