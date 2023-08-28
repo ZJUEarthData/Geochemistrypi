@@ -4,7 +4,7 @@ Cluster analysis itself is not one specific algorithm, but the general task to b
 
 
 ## 1. Preparation
-First, after ensuring the Geochemistry Pi framework has been installed successfully (if not, please see docs), we run the python framework in command line interface to process our program: If you do not input own data, you can run:
+First, after ensuring the Geochemistry Pi framework has been installed successfully (if not, please see [docs](https://github.com/ZJUEarthData/geochemistrypi/blob/main/docs/source/For%20User/Installation%20Manual.md)), we run the python framework in command line interface to process our program: If you do not input own data, you can run:
 ```
 geochemistrypi data-mining
 ```
@@ -22,6 +22,7 @@ As an example for clustering, at the beginning, we should enter 3:
 (User) ➜ @Number:
 ```
 **Import data**
+
 By entering the number 2, you can see the information below on your screen (if using the data provided by us):
 
 ```
@@ -80,7 +81,8 @@ Index - Column Name
 ```
 
 **World Map Projection**
-After press enter to move forward, we can choose whether to project specific elements in the world map.
+
+After pressing enter to move forward, we can choose whether to project specific elements in the world map.
 ```
 -*-*- World Map Projection -*-*-
 World Map Projection for A Specific Element Option:
@@ -143,14 +145,14 @@ Index - Column Name
 47 - U(PPM)
 --------------------
 (Plot) ➜ @Number:
-**Choose the mode you need to use.**
 ```
-We enter 10 as an example, after enter the number 10, we can get the path where the image is saved:
+We enter 10 as an example, after entering the number 10, we can get the path where the image is saved:
 ```
 Save figure 'Map Projection - AL2O3(WT%)' in D:\test\geopi_output\clf\example\artifacts\image\map.
 ```
-![Map Projection - AL2O3(WT%)](https://github.com/Darlx/image/blob/main/Map%20Projection%20-%20AL2O3(WT%25).png)
+![Map Projection - AL2O3(WT%)](https://github.com/Darlx/image/raw/main/Map%20Projection%20-%20AL2O3(WT%25).png)
 <font color=gray size=1><center>Figure 1 Map Projection - AL2O3(WT%)</center></font>
+
 After that，you can make a choice again in the following option:
 ```
 Do you want to continue to project a new element in the World Map?
@@ -158,11 +160,12 @@ Do you want to continue to project a new element in the World Map?
 2 - No
 (Plot) ➜ @Number:
 ```
-If we enter 1, we can make other drawing, and if we enter 2, we can step into next mode. We enter 2 here to move forward.
+If we enter 1, we can make another drawing, and if we enter 2, we can step into next mode. We enter 2 here to move forward.
 
 ## 2. Data processing
 **Data select**
-It’s not necessary to deal with all the data, so in this part, we can choose the data according to our task. In this example, we choose column 8 - SIO2(WT%), 9 - TIO2(WT%), so we enter [8, 9]:
+
+It's not necessary to deal with all the data, so in this part, we can choose the data according to our task. In this example, we choose column 8 - SIO2(WT%), 9 - TIO2(WT%), so we enter [8, 9]:
 ```
 Select the data range you want to process.
 Input format:
@@ -232,6 +235,7 @@ Successfully store 'Data Selected' in 'Data Selected.xlsx' in D:\test\geopi_outp
 (Press Enter key to move forward.)
 ```
 **Deal with missing value**
+
 After choosing the data, we can use some imputation techniques to deal with the missing value, we can see the values information below:
 ```
 -*-*- Imputation -*-*-
@@ -251,7 +255,9 @@ Note: you don't need to deal with the missing values, we'll just pass this step!
 (Press Enter key to move forward.)
 ```
 In this example we don’t need to deal with the missing value, so just move forward.
+
 **Feature engineering**
+
 Then, you can construct some features with entering 1.
 ```
 -*-*- Feature Engineering -*-*-
@@ -335,7 +341,7 @@ min       0.218000     0.000000     0.000000
 max      56.301066     6.970000   358.397400
 (Press Enter key to move forward.)
 ```
-After construct a new feature, we can enter 1 to construct another or enter 2 to move forward, and we enter 2 here:
+After constructing a new feature, we can enter 1 to construct another or enter 2 to move forward, and we enter 2 here:
 ```
 Do you want to continue to construct a new feature?
 1 - Yes
@@ -373,7 +379,7 @@ Clusters Number: The number of clusters to form as well as the number of centroi
 Designate the clustering number for KMeans in advance, such as 8.
 (Model) ➜ Clusters Number: 5
 ```
-And we also need to initialize the centroids, here are two methods, we select the first for the example:
+And we also need to initialize the centroids, here are two methods, we select k-means++ for the example:
 ```
 Init: Method for initialization of centroids. The centroids represent the center points of the clusters in the dataset.
 Please specify the method for initialization of centroids. It is generally recommended to leave it set to k-means++.
@@ -400,7 +406,7 @@ Auto: selects 'elkan' for dense data and 'full' for sparse data. 'elkan' is gene
 3 - elkan
 (Model) ➜ @Number:1
 ```
-Then you can start to run the kmeans model with the dataset.
+Then we can start to run the kmeans model with the dataset.
 
 
 ## 5. Results
@@ -453,8 +459,8 @@ Successfully store 'Silhouette Diagram - Data With Labels' in 'Silhouette Diagra
 Successfully store 'Silhouette Diagram - Cluster Centers' in 'Silhouette Diagram - Cluster Centers.xlsx' in D:\test\geopi_output\Clustering\example\artifacts\image\model_output.
 ```
 
-## 6. 2 dimensions graphs of data
-choose  two dimensions of data to draw the plot, we choose 1 - SIO2(WT%) and 2 - TIO2(WT%) as example, and the Cluster Two-Dimensional Diagram will be saved under artifacts\image\model_output:
+## 6. Two-dimensional graphs of data
+We need to select two dimensions of data to draw the plot, we select 1 - SIO2(WT%) and 2 - TIO2(WT%) as example, and the Cluster Two-Dimensional Diagram will be saved under artifacts\image\model_output:
 ```
 -----* 2 Dimensions Data Selection *-----
 The software  is going to draw related 2d graphs.
@@ -481,8 +487,8 @@ Save figure 'Cluster Two-Dimensional Diagram - KMeans' in D:\test\geopi_output\c
 Successfully store 'Cluster Two-Dimensional Diagram - KMeans' in 'Cluster Two-Dimensional Diagram - KMeans.xlsx' in D:\test\geopi_output\clustering\example\artifacts\image\model_output.
 ```
 
-## 7. 3 dimensions graphs of data
-choose three columns of data to draw the plot，we choose all three data in the example and the Cluster Three-Dimensional Diagram will be saved under artifacts\image\model_output:
+## 7. Three-dimensional graphs of data
+We need to choose three columns of data to draw the plot，so we choose all three data in the example and the Cluster Three-Dimensional Diagram will be saved under artifacts\image\model_output:
 ```
 -----* 3 Dimensions Data Selection *-----
 The software is going to draw related 3d graphs.
@@ -518,15 +524,15 @@ Successfully store the trained model 'KMeans' in 'KMeans.pkl' in D:\test\geopi_o
 Successfully store the trained model 'KMeans' in 'KMeans.joblib' in D:\test\geopi_output\clustering\example\artifacts\model.
 ```
 Together with the kmeans clustering result, some related diagrams will also be generated and saved into the artifacts/images/model_output folder.
-![Silhouette Diagram - KMeans.png](https://github.com/Darlx/image/blob/main/Silhouette%20Diagram%20-%20KMeans1.png)
+![Silhouette Diagram - KMeans.png](https://github.com/Darlx/image/raw/main/Silhouette%20Diagram%20-%20KMeans1.png)
 
 <font color=gray size=1><center>Figure 2 Silhouette Diagram - KMeans</center></font>
 
-![Cluster Two-Dimensional Diagram - KMeans.png](https://github.com/Darlx/image/blob/main/Cluster%20Two-Dimensional%20Diagram%20-%20KMeans1.png)
+![Cluster Two-Dimensional Diagram - KMeans.png](https://github.com/Darlx/image/raw/main/Cluster%20Two-Dimensional%20Diagram%20-%20KMeans1.png)
 
 <font color=gray size=1><center>Figure 3 Cluster Two-Dimensional Diagram - KMeans</center></font>
 
-![Cluster Three-Dimensional Diagram - KMeans.png](https://github.com/Darlx/image/blob/main/Cluster%20Three-Dimensional%20Diagram%20-%20KMeans1.png)
+![Cluster Three-Dimensional Diagram - KMeans.png](https://github.com/Darlx/image/raw/main/Cluster%20Three-Dimensional%20Diagram%20-%20KMeans1.png)
 
 <font color=gray size=1><center>Figure 4 Cluster Three-Dimensional Diagram - KMeans</center></font>
 

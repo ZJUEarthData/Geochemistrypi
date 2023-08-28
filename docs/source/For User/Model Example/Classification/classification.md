@@ -5,7 +5,7 @@ Classification is a supervised learning task, in which the training data we feed
 Note：If your task is binary classification, the label must be set to either 0 or 1. All metric values would be calculated from the label 1 by default, such as precision, accurary and so on.
 
 ## 1. Preparation
-After ensuring the Geochemistry Pi framework has been installed successfully (if not, please see docs), we run the python framework in command line interface to process our program: If you do not input own data, you can run:
+After ensuring the Geochemistry Pi framework has been installed successfully (if not, please see [docs](https://github.com/ZJUEarthData/geochemistrypi/blob/main/docs/source/For%20User/Installation%20Manual.md)), we run the python framework in command line interface to process our program: If you do not input own data, you can run:
 ```
 geochemistrypi data-mining
 ```
@@ -26,7 +26,6 @@ As an example for classification, at the beginning, we should enter 2.
 **Import data**
 
 By entering the number 2, you can see the information below on your screen (if using the data provided by us):
-
 ```
 Successfully loading the built-in data set 'Data_Classification.xlsx'.
 --------------------
@@ -83,7 +82,8 @@ Index - Column Name
 ```
 
 **World Map Projection**
-After press enter to move forward, we can choose whether to project specific elements in the world map.
+
+After pressing enter to move forward, we can choose whether to project specific elements in the world map.
 ```
 -*-*- World Map Projection -*-*-
 World Map Projection for A Specific Element Option:
@@ -146,14 +146,14 @@ Index - Column Name
 47 - U(PPM)
 --------------------
 (Plot) ➜ @Number:
-**Choose the mode you need to use.**
 ```
-We enter 10 as an example, after enter the number 10, we can get the path where the image is saved:
+We enter 10 as an example, after entering the number 10, we can get the path where the image is saved:
 ```
 Save figure 'Map Projection - AL2O3(WT%)' in D:\test\geopi_output\clf\example\artifacts\image\map.
 ```
-![Map Projection - AL2O3(WT%)](https://github.com/Darlx/image/blob/main/Map%20Projection%20-%20AL2O3(WT%25).png)
+![Map Projection - AL2O3(WT%)](https://github.com/Darlx/image/raw/main/img1/Map%20Projection%20-%20AL2O3(WT%25).png)
 <font color=gray size=1><center>Figure 1 Map Projection - AL2O3(WT%)</center></font>
+
 After that，you can make a choice again in the following option:
 ```
 Do you want to continue to project a new element in the World Map?
@@ -161,11 +161,12 @@ Do you want to continue to project a new element in the World Map?
 2 - No
 (Plot) ➜ @Number:
 ```
-If we enter 1, we can make other drawing, and if we enter 2, we can step into next mode. We enter 2 here to move forward.
+If we enter 1, we can make another drawing, and if we enter 2, we can step into next mode. We enter 2 here to move forward.
 
 ## 2. Data processing
 **Data select**
-It’s not necessary to deal with all the data, so in this part, we can choose the data according to our task. In this example, we choose column 1 as the Y, and column 8-16 as X, so we enter 3; [8, 16] :
+
+It's not necessary to deal with all the data, so in this part, we can choose the data according to our task. In this example, we choose column 1 as the Y, and column 8-16 as X, so we enter 3; [8, 16] :
 ```
 -*-*- Data Selection -*-*-
 --------------------
@@ -224,7 +225,7 @@ Format 1: "[**, **]; **; [**, **]", such as "[1, 3]; 7; [10, 13]" --> you want t
 Format 2: "xx", such as "7" --> you want to deal with the columns 7
 @input: 3; [8, 16]
 ```
-After press enter, we can see the chosen data:
+After pressing enter, we can see the chosen data:
 ```
 Index - Column Name
 3 - Label
@@ -284,6 +285,7 @@ D:\test\geopi_output\clf\example\artifacts\image\statistic.
 Successfully store 'Data Original' in 'Data Original.xlsx' in D:\test\geopi_output\clf\example\artifacts\data.
 ```
 **Deal with missing value**
+
 After choosing the data, we can use some imputation techniques to deal with the missing value, we can see the values information below:
 ```
 -*-*- Imputation -*-*-
@@ -318,9 +320,10 @@ dtype: float64
 Note: you don't need to deal with the missing values, we'll just pass this step!
 (Press Enter key to move forward.)
 ```
-In this example we don’t need to deal with the missing value, so just move forward.
+In this example we don't need to deal with the missing value, so just move forward.
 
 **Feature engineering**
+
 Then, you can construct some features with entering 1 here:
 ```
 -*-*- Feature Engineering -*-*-
@@ -448,7 +451,7 @@ max       1.00000    56.301066     6.970000    48.223000    15.421000    18.2700
 (Press Enter key to move forward.)
 ```
 
-After construct a new feature, we can enter 1 to construct another or enter 2 to step forward, and we enter 2 here:
+After constructing a new feature, we can enter 1 to construct another or enter 2 to move forward, and we enter 2 here:
 ```
 Do you want to continue to construct a new feature?
 1 - Yes
@@ -459,7 +462,6 @@ And all the selected and constructed data will be stored in the path below:
 ```
 Successfully store 'Data Selected Imputed Feature-Engineering' in 'Data Selected Imputed Feature-Engineering.xlsx' in D:\test\geopi_output\clf\example\artifacts\data.
 ```
-
 
 ## 3. Train-Test Data Preparation
 
@@ -473,6 +475,7 @@ Then we can move forward to next mode, we need to choose the mode here to proces
 (Model) ➜ @Number:
 ```
 Before we start the classification model training, we have to specify our X and Y data set. in the example of our selected data set, we take column [2,11] as our X set and column 1 as Y.
+
 **Show you the X data**
 ```
 -*-*- Data Split - X Set and Y Set -*-*-
@@ -542,6 +545,7 @@ Successfully store 'X Without Scaling' in 'X Without Scaling.xlsx' in D:\test\ge
 (Press Enter key to move forward.)
 ```
 **Feature Scaling on X data**
+
 We can also do feature scaling here just by entering 1, and two methods can be applied, we select Min-max Scaling here, so just enter 1:
 ```
 -*-*- Feature Scaling on X Set -*-*-
@@ -585,6 +589,7 @@ Successfully store 'X With Scaling' in 'X With Scaling.xlsx' in D:\test\geopi_ou
 (Press Enter key to move forward.)
 ```
 **Select Y data**
+
 Just enter 1 to choose column 1 as Y:
 ```
 -*-*- Data Split - X Set and Y Set-*-*-
@@ -648,6 +653,7 @@ Successfully store 'Y' in 'Y.xlsx' in D:\test\geopi_output\clf\example\artifacts
 (Press Enter key to move forward.)
 ```
 **Split the data**
+
 Then we have to split our data set in to training data and testing data, we can simply spedcify the spliting ratio in the command line,we set a ratio at 0.2 here, so enter 0.2:
 ```
 -*-*- Data Split - Train Set and Test Set -*-*-
@@ -657,7 +663,7 @@ Notice: Normally, set 20% of the dataset aside as test set, such as 0.2
 
 
 ## 4. Model Selection
-After preparing the data ,the next is to selecting the mode, in current version, 7 classification models are provided, and we can also choose to use them all. In this example, we select Xgboost as our model, so enter 6:
+After preparing the data, the next is selecting the mode, in current version, 7 classification models are provided, and we can also choose to use them all. In this example, we select Xgboost as our model, so enter 6:
 ```
 -*-*- Model Selection -*-*-:
 1 - Logistic Regression
@@ -685,7 +691,7 @@ And we can choose whether to implement sample balance on train set, we enter 1 h
 2 - No
 (Data) ➜ @Number:1
 ```
-After implement sample balance, we need to select the strategy, three strategies are provided, we select over sampling here, so enter 1:
+After implementing sample balance, we need to select the strategy, three strategies are provided, we select over sampling here, so enter 1:
 ```
 Which strategy do you want to apply?
 1 - Over Sampling
@@ -728,8 +734,8 @@ Successfully store 'Y Train After Sample Balance' in 'Y Train After Sample Balan
 
 ## 5. Results
 
-*-**-* Xgboost is running ... *-**-*
 ```
+*-**-* Xgboost is running ... *-**-*
 Expected Functionality:
 +  Model Score
 +  Confusion Matrix
