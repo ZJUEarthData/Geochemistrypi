@@ -42,7 +42,7 @@ REGRESSION_MODELS = [
     "Xgboost",
     "Multi-layer Perceptron",
     "Lasso Regression",
-    "ElasticNet",
+    "Elastic Net",
 ]
 CLASSIFICATION_MODELS = [
     "Logistic Regression",
@@ -57,7 +57,7 @@ CLUSTERING_MODELS = ["KMeans", "DBSCAN"]
 DECOMPOSITION_MODELS = ["PCA", "T-SNE", "MDS"]
 
 # Special AutoML models
-NON_AUTOML_MODELS = ["Linear Regression", "Polynomial Regression", "Lasso Regression", "ElasticNet"]
+NON_AUTOML_MODELS = ["Linear Regression", "Polynomial Regression", "Lasso Regression", "Elastic Net"]
 RAY_FLAML = ["Multi-layer Perceptron"]
 
 IMPUTING_STRATEGY = ["Mean Value", "Median Value", "Most Frequent Value", "Constant(Specified Value)"]
