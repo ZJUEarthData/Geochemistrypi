@@ -372,7 +372,7 @@ Which model do you want to apply?(Enter the Corresponding Number)
 
 ## 4. Hyper-Parameters Specification
 
-Before starting the training process, you have to specify the number of clusters for our kmeans model, here we enter 5 :
+Before starting the training process, you have to specify the number of clusters for our kmeans model, here we enter 5:
 ```
 -*-*- Hyper-parameters Specification -*-*-
 Clusters Number: The number of clusters to form as well as the number of centroids to generate.
