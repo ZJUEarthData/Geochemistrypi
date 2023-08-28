@@ -11,7 +11,7 @@ from flaml import AutoML
 from multipledispatch import dispatch
 from rich import print
 from sklearn.ensemble import ExtraTreesRegressor, GradientBoostingRegressor, RandomForestRegressor
-from sklearn.linear_model import Lasso, LinearRegression
+from sklearn.linear_model import ElasticNet, Lasso, LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import PolynomialFeatures
@@ -23,6 +23,7 @@ from ..utils.base import clear_output, save_data, save_fig, save_text
 from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
 from .func.algo_regression._common import cross_validation, plot_predicted_vs_actual, plot_residuals, score
 from .func.algo_regression._decision_tree import decision_tree_manual_hyper_parameters
+from .func.algo_regression._elasticNet_regression import elasticNet_regression_manual_hyper_parameters
 from .func.algo_regression._extra_tree import extra_trees_manual_hyper_parameters
 from .func.algo_regression._gradient_boosting import gradient_boosting_manual_hyper_parameters
 from .func.algo_regression._knn import knn_manual_hyper_parameters
@@ -2860,6 +2861,206 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 feature_data=LassoRegression.X_test,
                 target_data=LassoRegression.y_test,
                 y_test_predict=LassoRegression.y_test_predict,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        else:
+            pass
+
+
+class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
+    """The automation workflow of using ElasticNet Regression algorithm to make insightful products."""
+
+    name = "ElasticNet"
+    special_function = ["ElasticNet Regression Formula", "2D Scatter Diagram", "3D Scatter Diagram", "2D Line Diagram", "3D Surface Diagram"]
+
+    def __init__(
+        self,
+        alpha: float = 1.0,
+        l1_ratio: float = 0.5,
+        fit_intercept: bool = True,
+        precompute: bool = False,
+        max_iter: int = 1000,
+        copy_X: bool = True,
+        tol: float = 1e-4,
+        warm_start: bool = False,
+        positive: bool = False,
+        random_state: int = None,
+        selection: str = "cyclic",
+    ) -> None:
+        """
+        Parameters
+        ----------
+        alpha : float, default=1.0
+            Constant that multiplies the penalty terms. Defaults to 1.0.
+            See the notes for the exact mathematical meaning of this
+            parameter. ``alpha = 0`` is equivalent to an ordinary least square,
+            solved by the :class:`LinearRegression` object. For numerical
+            reasons, using ``alpha = 0`` with the ``Lasso`` object is not advised.
+            Given this, you should use the :class:`LinearRegression` object.
+
+        l1_ratio : float, default=0.5
+            The ElasticNet mixing parameter, with ``0 <= l1_ratio <= 1``. For
+            ``l1_ratio = 0`` the penalty is an L2 penalty. ``For l1_ratio = 1`` it
+            is an L1 penalty.  For ``0 < l1_ratio < 1``, the penalty is a
+            combination of L1 and L2.
+
+        fit_intercept : bool, default=True
+            Whether the intercept should be estimated or not. If ``False``, the
+            data is assumed to be already centered.
+
+        precompute : bool or array-like of shape (n_features, n_features),\
+                    default=False
+            Whether to use a precomputed Gram matrix to speed up
+            calculations. The Gram matrix can also be passed as argument.
+            For sparse input this option is always ``False`` to preserve sparsity.
+
+        max_iter : int, default=1000
+            The maximum number of iterations.
+
+        copy_X : bool, default=True
+            If ``True``, X will be copied; else, it may be overwritten.
+
+        tol : float, default=1e-4
+            The tolerance for the optimization: if the updates are
+            smaller than ``tol``, the optimization code checks the
+            dual gap for optimality and continues until it is smaller
+            than ``tol``, see Notes below.
+
+        warm_start : bool, default=False
+            When set to ``True``, reuse the solution of the previous call to fit as
+            initialization, otherwise, just erase the previous solution.
+            See :term:`the Glossary <warm_start>`.
+
+        positive : bool, default=False
+            When set to ``True``, forces the coefficients to be positive.
+
+        random_state : int, RandomState instance, default=None
+            The seed of the pseudo random number generator that selects a random
+            feature to update. Used when ``selection`` == 'random'.
+            Pass an int for reproducible output across multiple function calls.
+            See :term:`Glossary <random_state>`.
+
+        selection : {'cyclic', 'random'}, default='cyclic'
+            If set to 'random', a random coefficient is updated every iteration
+            rather than looping over features sequentially by default. This
+            (setting to 'random') often leads to significantly faster convergence
+            especially when tol is higher than 1e-4.
+
+        References
+        ----------
+        Scikit-learn API: sklearn.linear_model.ElasticNet
+        https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ElasticNet.html
+        """
+        super().__init__()
+        self.alpha = alpha
+        self.l1_ratio = l1_ratio
+        self.fit_intercept = fit_intercept
+        self.precompute = precompute
+        self.max_iter = max_iter
+        self.copy_X = copy_X
+        self.tol = tol
+        self.warm_start = warm_start
+        self.positive = positive
+        self.random_state = random_state
+        self.selection = selection
+
+        self.model = ElasticNet(
+            alpha=self.alpha,
+            l1_ratio=self.l1_ratio,
+            fit_intercept=self.fit_intercept,
+            precompute=self.precompute,
+            max_iter=self.max_iter,
+            copy_X=self.copy_X,
+            tol=self.tol,
+            warm_start=self.warm_start,
+            positive=self.positive,
+            random_state=self.random_state,
+            selection=self.selection,
+        )
+
+        self.naming = ElasticNetRegression.name
+
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
+        """Manual hyper-parameters specification."""
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = elasticNet_regression_manual_hyper_parameters()
+        clear_output()
+        return hyper_parameters
+
+    def special_components(self, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+        self._show_formula(
+            coef=[self.model.coef_],
+            intercept=self.model.intercept_,
+            features_name=ElasticNetRegression.X_train.columns,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
+            mlflow_path="root",
+        )
+        columns_num = ElasticNetRegression.X.shape[1]
+        if columns_num > 2:
+            # choose one of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(ElasticNetRegression.X_test, 1)
+            self._plot_2d_scatter_diagram(
+                feature_data=two_dimen_data,
+                target_data=ElasticNetRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            # choose two of dimensions to draw
+            three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(ElasticNetRegression.X_test, 2)
+            self._plot_3d_scatter_diagram(
+                feature_data=three_dimen_data,
+                target_data=ElasticNetRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        elif columns_num == 2:
+            # choose one of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(ElasticNetRegression.X_test, 1)
+            self._plot_2d_scatter_diagram(
+                feature_data=two_dimen_data,
+                target_data=ElasticNetRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            # no need to choose
+            self._plot_3d_scatter_diagram(
+                feature_data=ElasticNetRegression.X_test,
+                target_data=ElasticNetRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            self._plot_3d_surface_diagram(
+                feature_data=ElasticNetRegression.X_test,
+                target_data=ElasticNetRegression.y_test,
+                y_test_predict=ElasticNetRegression.y_test_predict,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        elif columns_num == 1:
+            # no need to choose
+            self._plot_2d_scatter_diagram(
+                feature_data=ElasticNetRegression.X_test,
+                target_data=ElasticNetRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            self._plot_2d_line_diagram(
+                feature_data=ElasticNetRegression.X_test,
+                target_data=ElasticNetRegression.y_test,
+                y_test_predict=ElasticNetRegression.y_test_predict,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
