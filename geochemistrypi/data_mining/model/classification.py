@@ -224,13 +224,14 @@ class ClassificationWorkflowBase(WorkflowBase):
             print("----Y Data Set----")
             print(y.value_counts())
             label_range = int(y.nunique().values)
-            print(f"The range of the new label is between 0 and {label_range-1}")
-            original_new_label = input(
-                "Select the label range you want to process.\n"
-                'Input format1: "[original_label, new_label]", such as "[1, 3]" ---> you want to replace 1 with 3.\n'
-                'Input format2: "[original_label, new_label]; [original_label, new_label]", such as "[1,3]; [0,2]" ---> you want to replace 1 with 3 and 0 with 2.\n'
-                "@input: "
-            )
+            print("When doing customization, the initial label should start from 0.")
+            print("Case 1: For binary classification, the range of the new label must be from 0 to 1.")
+            print("For example, if your original labels are 2 and 4, you can replace them with 0 and 1 respectively.")
+            print("Input format: '\[original label, new label]', such as '[2, 0]; [4, 1]' ---> you want to replace 2 with 0 and 4 with 1.")
+            print(f"Case 2: For multi-classification, the range of the new label must be from 0 to the number of labels - 1 ({label_range}).")
+            print("For example, if your original labels are 2, 4 and 6, you can replace them with 0, 1 and 2 respectively.")
+            print("Input format: '\[original label, new label]', such as '[2, 0]; [4, 1]; [6, 2]' ---> you want to replace 2 with 0, 4 with 1 and 6 with 2.")
+            original_new_label = input("Select the label range you want to process.\n" "@input: ")
             customize_label_sequence = original_new_label.split(";")
             for i in range(len(customize_label_sequence)):
                 original_label = int(eval(customize_label_sequence[i])[0])
