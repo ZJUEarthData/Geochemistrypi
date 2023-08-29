@@ -388,9 +388,12 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
         selected_columns = X_train.columns
         # If feature_engineering_config is not {}, then apply feature engineering with the same operation to the input data.
         if feature_engineering_config:
+            print("The same feature engineering operation will be applied to the inference data.")
             new_feature_builder = FeatureConstructor(inference_data)
             inference_data_fe = new_feature_builder.batch_build(feature_engineering_config)
         else:
+            print("You have not applied feature engineering to the training data.")
+            print("Hence, no feature engineering operation will be applied to the inference data.")
             inference_data_fe = inference_data
         inference_data_fe_selected = inference_data_fe[selected_columns]
         save_data(inference_data, "Inference Data Original", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)

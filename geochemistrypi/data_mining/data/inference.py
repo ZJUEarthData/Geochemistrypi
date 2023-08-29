@@ -72,6 +72,7 @@ def build_transform_pipeline(imputation_config: Dict, feature_scaling_config: Di
         The transform pipeline configuration and the transform pipeline object.
     """
     print("-*-*- Transform Pipeline -*-*-")
+    print("Build the transform pipeline according to the previous operations.")
     # Aggregate transformer configuartion.
     transformer_config = {}
     transformer_config.update(imputation_config)
@@ -120,6 +121,7 @@ def model_inference(inference_data: pd.DataFrame, is_inference: bool, feature_en
     # If inference_data is not None and is_inference is True, then run the model inference.
     if (inference_data is not None) and (is_inference is True):
         print("-*-*- Model Inference -*-*-")
+        print("Use the trained model to make predictions on the inference data.")
         # If transformer_config is not {}, then transform the inference data with the transform pipeline.
         if transformer_config:
             inference_data_transformed = transform_pipeline.transform(inference_data)
