@@ -9,6 +9,7 @@ from ..model.classification import (
     ClassificationWorkflowBase,
     DecisionTreeClassification,
     ExtraTreesClassification,
+    GradientBoostingClassification,
     LogisticRegressionClassification,
     MLPClassification,
     RandomForestClassification,
@@ -120,7 +121,18 @@ class ClassificationModelSelection(ModelSelectionBase):
                 oob_score=hyper_parameters["oob_score"],
                 max_samples=hyper_parameters["max_samples"],
             )
-
+        elif self.model_name == "Gradient Boosting":
+            hyper_parameters = GradientBoostingClassification.manual_hyper_parameters()
+            self.clf_workflow = GradientBoostingClassification(
+                n_estimators=hyper_parameters["n_estimators"],
+                learning_rate=hyper_parameters["learning_rate"],
+                max_depth=hyper_parameters["max_depth"],
+                min_samples_split=hyper_parameters["min_samples_split"],
+                min_samples_leaf=hyper_parameters["min_samples_leaf"],
+                max_features=hyper_parameters["max_features"],
+                subsample=hyper_parameters["subsample"],
+                loss=hyper_parameters["loss"],
+            )
         self.clf_workflow.show_info()
 
         # Use Scikit-learn style API to process input data
@@ -180,6 +192,8 @@ class ClassificationModelSelection(ModelSelectionBase):
             self.clf_workflow = MLPClassification()
         elif self.model_name == "Extra-Trees":
             self.clf_workflow = ExtraTreesClassification()
+        elif self.model_name == "Gradient Boosting":
+            self.clf_workflow = GradientBoostingClassification()
 
         self.clf_workflow.show_info()
 

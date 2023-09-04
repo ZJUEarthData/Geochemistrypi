@@ -44,15 +44,7 @@ REGRESSION_MODELS = [
     "Lasso Regression",
     "Elastic Net",
 ]
-CLASSIFICATION_MODELS = [
-    "Logistic Regression",
-    "Support Vector Machine",
-    "Decision Tree",
-    "Random Forest",
-    "Extra-Trees",
-    "Xgboost",
-    "Multi-layer Perceptron",
-]
+CLASSIFICATION_MODELS = ["Logistic Regression", "Support Vector Machine", "Decision Tree", "Random Forest", "Extra-Trees", "Xgboost", "Multi-layer Perceptron", "Gradient Boosting"]
 CLUSTERING_MODELS = ["KMeans", "DBSCAN"]
 DECOMPOSITION_MODELS = ["PCA", "T-SNE", "MDS"]
 
