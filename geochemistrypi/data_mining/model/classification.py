@@ -17,7 +17,7 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 
-from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, OPTION, RAY_FLAML, SAMPLE_BALANCE_STRATEGY, SECTION
+from ..constants import CUSTOMIZE_LABEL_STRATEGY, MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, OPTION, RAY_FLAML, SAMPLE_BALANCE_STRATEGY, SECTION
 from ..data.data_readiness import limit_num_input, num2option, num_input
 from ..plot.statistic_plot import basic_statistic
 from ..utils.base import clear_output, save_data, save_fig, save_text
@@ -222,26 +222,17 @@ class ClassificationWorkflowBase(WorkflowBase):
         num2option(OPTION)
         is_customize_label = limit_num_input(OPTION, SECTION[1], num_input)
         if is_customize_label == 1:
-            print("----Y Data Set----")
-            print(y.value_counts())
-            label_range = int(y.nunique().values)
-            print("When doing customization, the initial label should start from 0.")
-            print("Case 1: For binary classification, the range of the new label must be from 0 to 1.")
-            print("For example, if your original labels are 2 and 4, you can replace them with 0 and 1 respectively.")
-            print("Input format: '\[original label, new label]', such as '[2, 0]; [4, 1]' ---> you want to replace 2 with 0 and 4 with 1.")
-            print(f"Case 2: For multi-classification, the range of the new label must be from 0 to the number of labels - 1 ({label_range}).")
-            print("For example, if your original labels are 2, 4 and 6, you can replace them with 0, 1 and 2 respectively.")
-            print("Input format: '\[original label, new label]', such as '[2, 0]; [4, 1]; [6, 2]' ---> you want to replace 2 with 0, 4 with 1 and 6 with 2.")
-            original_new_label = input("Select the label range you want to process.\n" "@input: ")
-            customize_label_sequence = original_new_label.split(";")
-            for i in range(len(customize_label_sequence)):
-                original_label = int(eval(customize_label_sequence[i])[0])
-                new_label = int(eval(customize_label_sequence[i])[1])
-                y, y_train, y_test = reset_label(y, y_train, y_test, original_label, new_label)
-            print("----Y Data Set After Customizing label----")
-            print(y.value_counts())
-            print("Basic Statistical Information: ")
-            basic_statistic(y)
+            y_show = y.copy()
+            print("Which strategy do you want to apply?")
+            num2option(CUSTOMIZE_LABEL_STRATEGY)
+            customize_label_num = limit_num_input(CUSTOMIZE_LABEL_STRATEGY, SECTION[1], num_input)
+            y, y_train, y_test = reset_label(y, y_train, y_test, CUSTOMIZE_LABEL_STRATEGY, customize_label_num - 1)
+            y_show = pd.concat([y_show, y], axis=1)
+            y_show = y_show.drop_duplicates().reset_index(drop=True)
+            y_show.columns = ["original_label", "new_label"]
+            print("------------------------------------")
+            print("Originla label VS Customizing label:")
+            print(y_show)
             save_data(y, "Y Set After Customizing label", local_path, mlflow_path)
             save_data(y_train, "Y Train After Customizing label", local_path, mlflow_path)
             save_data(y_test, "Y Test After Customizing label", local_path, mlflow_path)
