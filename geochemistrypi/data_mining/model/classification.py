@@ -2480,7 +2480,6 @@ class GradientBoostingClassification(TreeWorkflowMixin, ClassificationWorkflowBa
 
     name = "Gradient Boosting"
     special_function = ["Feature Importance Diagram", "Single Tree Diagram"]
-    # special_function = []
 
     def __init__(
         self,
@@ -2812,7 +2811,6 @@ class GradientBoostingClassification(TreeWorkflowMixin, ClassificationWorkflowBa
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
-        # pass
 
     @dispatch(bool)
     def special_components(self, is_automl: bool, **kwargs) -> None:
@@ -2833,4 +2831,3 @@ class GradientBoostingClassification(TreeWorkflowMixin, ClassificationWorkflowBa
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
-        # pass
