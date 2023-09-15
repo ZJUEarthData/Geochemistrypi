@@ -57,3 +57,5 @@ IMPUTING_STRATEGY = ["Mean Value", "Median Value", "Most Frequent Value", "Const
 FEATURE_SCALING_STRATEGY = ["Min-max Scaling", "Standardization"]
 
 SAMPLE_BALANCE_STRATEGY = ["Over Sampling", "Under Sampling", "Oversampling and Undersampling"]
+
+CUSTOMIZE_LABEL_STRATEGY = ["Automatic coding", "Custom numeric labels", "Custom non-numeric labels"]
