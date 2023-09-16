@@ -385,7 +385,7 @@ def reset_label(y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, me
     """
     y_colunm_name = list(y)[0]
     label_range = int(y.nunique().values)
-    if method[method_idx] == "Automatic coding":
+    if method[method_idx] == "Automatic Coding":
         label_encoder = LabelEncoder()
         label_encoder.fit(y.squeeze())
         y_reset = label_encoder.transform(y.squeeze())
@@ -394,8 +394,8 @@ def reset_label(y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, me
         y_train_reset = pd.DataFrame({y_colunm_name: y_train_reset})
         y_test_reset = label_encoder.transform(y_test.squeeze())
         y_test_reset = pd.DataFrame({y_colunm_name: y_test_reset})
-    elif method[method_idx] == "Custom numeric labels":
-        print("When doing customization, the initial label should start from 0.")
+    elif method[method_idx] == "Custom Numeric Labels":
+        print("When doing customization, the new label should start from 0.")
         print("Case 1: For binary classification, the range of the new label must be from 0 to 1.")
         print("For example, if your original labels are 2 and 4, you can replace them with 0 and 1 respectively.")
         print("Input format: [bold green][original label,[/bold green] [bold green]new label][/bold green], such as [bold green][2, 0]; [4, 1][/bold green].")
@@ -413,8 +413,8 @@ def reset_label(y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, me
         y_train_reset = pd.DataFrame({y_colunm_name: y_train_reset})
         y_test_reset = y_test.squeeze().map(customize_label_mapping)
         y_test_reset = pd.DataFrame({y_colunm_name: y_test_reset})
-    elif method[method_idx] == "Custom non-numeric labels":
-        print("When doing customization, the initial label should start from 0.")
+    elif method[method_idx] == "Custom Non-numeric Labels":
+        print("When doing customization, the new label should start from 0.")
         print("Case 1: For binary classification, the range of the new label must be from 0 to 1.")
         print("For example, if your original labels are 'A' and 'B', you can replace them with 0 and 1 respectively.")
         print("Input format: [bold green]['original label', new label][/bold green], such as [bold green]['A', 0]; ['B', 1][/bold green].")
