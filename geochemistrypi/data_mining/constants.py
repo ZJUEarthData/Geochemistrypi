@@ -59,3 +59,5 @@ FEATURE_SCALING_STRATEGY = ["Min-max Scaling", "Standardization"]
 SAMPLE_BALANCE_STRATEGY = ["Over Sampling", "Under Sampling", "Oversampling and Undersampling"]
 
 CUSTOMIZE_LABEL_STRATEGY = ["Automatic Coding", "Custom Numeric Labels", "Custom Non-numeric Labels"]
+
+FEATURE_SELECTION_STRATEGY = ["GenericUnivariateSelect", "SelectKBest"]
