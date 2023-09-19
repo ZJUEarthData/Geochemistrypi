@@ -19,6 +19,7 @@ from ..model.regression import (
     PolynomialRegression,
     RandomForestRegression,
     RegressionWorkflowBase,
+    SGDRegression,
     SVMRegression,
     XgboostRegression,
 )
@@ -165,6 +166,21 @@ class RegressionModelSelection(ModelSelectionBase):
                 tol=hyper_parameters["tol"],
                 selection=hyper_parameters["selection"],
             )
+        elif self.model_name == "SGD Regression":
+            hyper_parameters = SGDRegression.manual_hyper_parameters()
+            self.reg_workflow = SGDRegression(
+                loss=hyper_parameters["loss"],
+                penalty=hyper_parameters["penalty"],
+                alpha=hyper_parameters["alpha"],
+                l1_ratio=hyper_parameters["l1_ratio"],
+                fit_intercept=hyper_parameters["fit_intercept"],
+                max_iter=hyper_parameters["max_iter"],
+                tol=hyper_parameters["tol"],
+                shuffle=hyper_parameters["shuffle"],
+                learning_rate=hyper_parameters["learning_rate"],
+                eta0=hyper_parameters["eta0"],
+                power_t=hyper_parameters["power_t"],
+            )
 
         self.reg_workflow.show_info()
 
@@ -234,6 +250,8 @@ class RegressionModelSelection(ModelSelectionBase):
             self.reg_workflow = LassoRegression()
         elif self.model_name == "Elastic Net":
             self.reg_workflow = ElasticNetRegression()
+        elif self.model_name == "SGD Regression":
+            self.reg_workflow = SGDRegression()
 
         self.reg_workflow.show_info()
 

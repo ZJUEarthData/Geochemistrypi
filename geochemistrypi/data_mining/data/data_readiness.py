@@ -402,6 +402,10 @@ def str_input(option_list: List[str], prefix: Optional[str] = None) -> str:
     option: str
         A string of the desired option.
     """
+    if "None" in option_list:
+        option_list.remove("None")
+        option_list.append("None")
+
     num2option(option_list)
     option_num = limit_num_input(option_list, prefix, num_input)
     option = option_list[option_num - 1]
