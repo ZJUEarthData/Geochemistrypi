@@ -10,6 +10,7 @@ from ..model.classification import (
     DecisionTreeClassification,
     ExtraTreesClassification,
     GradientBoostingClassification,
+    KNNClassification,
     LogisticRegressionClassification,
     MLPClassification,
     RandomForestClassification,
@@ -133,6 +134,16 @@ class ClassificationModelSelection(ModelSelectionBase):
                 subsample=hyper_parameters["subsample"],
                 loss=hyper_parameters["loss"],
             )
+        elif self.model_name == "K-Nearest Neighbors":
+            hyper_parameters = KNNClassification.manual_hyper_parameters()
+            self.clf_workflow = KNNClassification(
+                n_neighbors=hyper_parameters["n_neighbors"],
+                weights=hyper_parameters["weights"],
+                algorithm=hyper_parameters["algorithm"],
+                leaf_size=hyper_parameters["leaf_size"],
+                p=hyper_parameters["p"],
+                metric=hyper_parameters["metric"],
+            )
         self.clf_workflow.show_info()
 
         # Use Scikit-learn style API to process input data
@@ -194,6 +205,8 @@ class ClassificationModelSelection(ModelSelectionBase):
             self.clf_workflow = ExtraTreesClassification()
         elif self.model_name == "Gradient Boosting":
             self.clf_workflow = GradientBoostingClassification()
+        elif self.model_name == "K-Nearest Neighbors":
+            self.clf_workflow = KNNClassification()
 
         self.clf_workflow.show_info()
 
