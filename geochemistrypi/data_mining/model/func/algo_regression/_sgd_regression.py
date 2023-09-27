@@ -23,6 +23,8 @@ def sgd_regression_manual_hyper_parameters() -> Dict:
     print("Please specify the penalty (regularization term) you want to use. The default is 'l2'.")
     penalties = ["l2", "l1", "elasticnet", "None"]
     penalty = str_input(penalties, SECTION[2])
+    if penalty == "None":
+        penalty = None
 
     l1_ratio = None
     if penalty == "elasticnet":
