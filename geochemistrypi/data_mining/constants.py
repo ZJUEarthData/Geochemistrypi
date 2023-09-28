@@ -43,6 +43,7 @@ REGRESSION_MODELS = [
     "Multi-layer Perceptron",
     "Lasso Regression",
     "Elastic Net",
+    "SGD Regression",
 ]
 CLASSIFICATION_MODELS = [
     "Logistic Regression",
