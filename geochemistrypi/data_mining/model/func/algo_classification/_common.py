@@ -385,6 +385,7 @@ def reset_label(y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, me
     """
     y_colunm_name = list(y)[0]
     label_range = int(y.nunique().values)
+    print("----Originla label----\n", y.drop_duplicates().reset_index(drop=True))
     if method[method_idx] == "Automatic Coding":
         label_encoder = LabelEncoder()
         label_encoder.fit(y.squeeze())
@@ -405,7 +406,7 @@ def reset_label(y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, me
         print("Input format: [bold green][original label,[/bold green] [bold green]new label][/bold green], such as [bold green][2, 0]; [4, 1]; [6, 2][/bold green].")
         print("This means you want to replace 2 with 0, 4 with 1 and 6 with 2.")
         original_new_label = input("Select the label range you want to process.\n" "@input: ")
-        label_sequence = re.findall(r"\[(\d+)\,(\d+)\]", original_new_label)
+        label_sequence = re.findall(r"\[(\d+)\,\s*(\d+)\]", original_new_label)
         customize_label_mapping = {int(label): int(value) for label, value in label_sequence}
         y_reset = y.squeeze().map(customize_label_mapping)
         y_reset = pd.DataFrame({y_colunm_name: y_reset})
@@ -424,7 +425,7 @@ def reset_label(y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, me
         print("Input format: [bold green]['original label', new label][/bold green], such as [bold green]['A', 2]; ['B', 0]; ['C', 1][/bold green].")
         print("This means you want to replace A with 2, B with 0 and C with 1.")
         original_new_label = input("Select the label range you want to process.\n" "@input: ")
-        label_sequence = re.findall(r"\[\'(.*?)\',(\d+)\]", original_new_label)
+        label_sequence = re.findall(r"\[\'(.*?)\',\s*(\d+)\]", original_new_label)
         customize_label_mapping = {label: int(value) for label, value in label_sequence}
         y_reset = y.squeeze().map(customize_label_mapping)
         y_reset = pd.DataFrame({y_colunm_name: y_reset})
