@@ -40,9 +40,9 @@ def sgd_regression_manual_hyper_parameters() -> Dict:
     print("Maximum Number of Iterations: The maximum number of iterations for training. The default is 1000.")
     max_iter = num_input(SECTION[2], "@Max Iterations: ")
 
-    print("Tolerance: The tolerance for stopping criteria. A good starting value could be between 1e-6 and 1e-3, such as 1e-4. The default is 1e-3.")
+    print("Tolerance: The tolerance for stopping criteria. A good starting value could be between 0.000001 and 0.001, such as 0.0001. The default is 0.001.")
     print("If you choose to not set a tolerance value (by pressing Enter without input), training will continue until convergence.")
-    tol = float_input(1e-3, SECTION[2], "@Tolerance: ")
+    tol = float_input(0.001, SECTION[2], "@Tolerance: ")
 
     print("Shuffle: Whether or not to shuffle the training data after each epoch.")
     shuffle = bool_input(SECTION[2])
