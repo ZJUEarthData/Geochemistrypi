@@ -229,7 +229,7 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
         print("-*-*- Hypothesis Testing on Imputation Method -*-*-")
         print("Null Hypothesis: The distributions of the data set before and after imputing remain the same.")
         print("Thoughts: Check which column rejects null hypothesis.")
-        print("Statistics Test Method: kruskal Test")
+        print("Statistics Test Method: Kruskal Test")
         monte_carlo_simulator(
             data_selected,
             data_selected_imputed,
@@ -334,7 +334,7 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
             feature_selection_config, X = feature_selector(X, y, mode_num, FEATURE_SELECTION_STRATEGY, feature_selection_num - 1)
             print("--Selected Features-")
             show_data_columns(X.columns)
-            save_data(X, "X After feature selection", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+            save_data(X, "X After Feature Selection", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
         else:
             feature_selection_config = {}
         clear_output()

@@ -3112,28 +3112,34 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             a tolerance of epsilon.
             More details about the losses formulas can be found in the
             :ref:`User Guide <sgd_mathematical_formulation>`.
+
         penalty : {'l2', 'l1', 'elasticnet', None}, default='l2'
             The penalty (aka regularization term) to be used. Defaults to 'l2'
             which is the standard regularizer for linear SVM models. 'l1' and
             'elasticnet' might bring sparsity to the model (feature selection)
             not achievable with 'l2'. No penalty is added when set to `None`.
+
         alpha : float, default=0.0001
             Constant that multiplies the regularization term. The higher the
             value, the stronger the regularization.
             Also used to compute the learning rate when set to `learning_rate` is
             set to 'optimal'.
+
         l1_ratio : float, default=0.15
             The Elastic Net mixing parameter, with 0 <= l1_ratio <= 1.
             l1_ratio=0 corresponds to L2 penalty, l1_ratio=1 to L1.
             Only used if `penalty` is 'elasticnet'.
+
         fit_intercept : bool, default=True
             Whether the intercept should be estimated or not. If False, the
             data is assumed to be already centered.
+
         max_iter : int, default=1000
             The maximum number of passes over the training data (aka epochs).
             It only impacts the behavior in the ``fit`` method, and not the
             :meth:`partial_fit` method.
             .. versionadded:: 0.19
+
         tol : float or None, default=1e-3
             The stopping criterion. If it is not None, training will stop
             when (loss > best_loss - tol) for ``n_iter_no_change`` consecutive
@@ -3141,10 +3147,13 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             Convergence is checked against the training loss or the
             validation loss depending on the `early_stopping` parameter.
             .. versionadded:: 0.19
+
         shuffle : bool, default=True
             Whether or not the training data should be shuffled after each epoch.
+
         verbose : int, default=0
             The verbosity level.
+
         epsilon : float, default=0.1
             Epsilon in the epsilon-insensitive loss functions; only if `loss` is
             'huber', 'epsilon_insensitive', or 'squared_epsilon_insensitive'.
@@ -3152,10 +3161,12 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             important to get the prediction exactly right.
             For epsilon-insensitive, any differences between the current prediction
             and the correct label are ignored if they are less than this threshold.
+
         random_state : int, RandomState instance, default=None
             Used for shuffling the data, when ``shuffle`` is set to ``True``.
             Pass an int for reproducible output across multiple function calls.
             See :term:`Glossary <random_state>`.
+
         learning_rate : str, default='invscaling'
             The learning rate schedule:
             - 'constant': `eta = eta0`
@@ -3168,11 +3179,14 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             early_stopping is True, the current learning rate is divided by 5.
                 .. versionadded:: 0.20
                     Added 'adaptive' option
+
         eta0 : float, default=0.01
             The initial learning rate for the 'constant', 'invscaling' or
             'adaptive' schedules. The default value is 0.01.
+
         power_t : float, default=0.25
             The exponent for inverse scaling learning rate.
+
         early_stopping : bool, default=False
             Whether to use early stopping to terminate training when validation
             score is not improving. If set to True, it will automatically set aside
@@ -3182,12 +3196,14 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             epochs.
             .. versionadded:: 0.20
                 Added 'early_stopping' option
+
         validation_fraction : float, default=0.1
             The proportion of training data to set aside as validation set for
             early stopping. Must be between 0 and 1.
             Only used if `early_stopping` is True.
             .. versionadded:: 0.20
                 Added 'validation_fraction' option
+
         n_iter_no_change : int, default=5
             Number of iterations with no improvement to wait before stopping
             fitting.
@@ -3195,6 +3211,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             validation loss depending on the `early_stopping` parameter.
             .. versionadded:: 0.20
                 Added 'n_iter_no_change' option
+
         warm_start : bool, default=False
             When set to True, reuse the solution of the previous call to fit as
             initialization, otherwise, just erase the previous solution.
@@ -3206,12 +3223,14 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             depending on the number of samples already seen. Calling ``fit`` resets
             this counter, while ``partial_fit``  will result in increasing the
             existing counter.
+
         average : bool or int, default=False
             When set to True, computes the averaged SGD weights across all
             updates and stores the result in the ``coef_`` attribute. If set to
             an int greater than 1, averaging will begin once the total number of
             samples seen reaches `average`. So ``average=10`` will begin
             averaging after seeing 10 samples.
+
         References
         ----------
         Scikit-learn API: sklearn.linear_model.SGDRegressor
