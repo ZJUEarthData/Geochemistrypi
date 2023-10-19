@@ -140,9 +140,18 @@ Geochemistrypi will generate null value report for the selected dataset:
         (Press Enter key to move forward.)
 Note that if there is missing value in the dataset, you have to choose a strategy to deal with missing values.
 
-        1- mean: use mean value to replace missing values
-        2- median: use the mid-value to replace missing values
-        3- Most frequent: use the most frequent value to replace missing values
+
+```
+-*-*- Strategy for Missing Values -*-*-
+1 - Mean Value
+2 - Median Value
+3 - Most Frequent Value
+4 - Constant(Specified Value)
+Which strategy do you want to apply?
+(Data) ➜ @Number: 1
+Successfully fill the missing values with the mean value of each feature column respectively.
+(Press Enter key to move forward.)
+```
 
 ####Feature Engineering
 
@@ -162,17 +171,26 @@ e - CAO(WT%)
 f - MGO(WT%)
 g - MNO(WT%)
 h - NA2O(WT%)
-Name the constructed feature (column name):
-@input: new feature
-Build up new feature with the combination of 4 basic arithmatic operator.
+Name the constructed feature (column name), like 'NEW-COMPOUND':
+@input: new Feature
+Build up new feature with the combination of basic arithmatic operators, including '+', '-', '*', '/', '()'.
 Input example 1: a * b - c
 --> Step 1: Multiply a column with b column;
 --> Step 2: Subtract c from the result of Step 1;
 Input example 2: (d + 5 * f) / g
---> Step 1: multiply 5 with f;
+--> Step 1: Multiply 5 with f;
 --> Step 2: Plus d column with the result of Step 1;
 --> Step 3: Divide the result of Step 1 by g;
-@input: b * c + d
+Input example 3: pow(a, b) + c * d
+--> Step 1: Raise the base a to the power of the exponent b;
+--> Step 2: Multiply the value of c by the value of d;
+--> Step 3: Add the result of Step 1 to the result of Step 2;
+Input example 4: log(a)/b - c
+--> Step 1: Take the logarithm of the value a;
+--> Step 2: Divide the result of Step 1 by the value of b;
+--> Step 3: Subtract the value of c from the result of Step 2;
+You can use mean(x) to calculate the average value.
+@input: b*c+d
 ```
 And then it would show you the new feature.
 

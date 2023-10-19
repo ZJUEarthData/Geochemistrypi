@@ -114,7 +114,7 @@ def distribution_plot(col: pd.Index, df: pd.DataFrame) -> None:
     save_data(df, "Distribution Histogram", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_STATISTIC_PATH"), MLFLOW_ARTIFACT_IMAGE_STATISTIC_PATH)
 
 
-def logged_distribution_plot(col: pd.Index, df: pd.DataFrame) -> None:
+def log_distribution_plot(col: pd.Index, df: pd.DataFrame) -> None:
     """The histogram containing the respective distribution subplots after log transformation of the required columns.
 
     Parameters

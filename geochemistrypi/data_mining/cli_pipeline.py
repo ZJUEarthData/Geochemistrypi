@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 from time import sleep
+from typing import Optional
 
 import mlflow
 from rich import print
@@ -12,6 +13,7 @@ from .constants import (
     CLUSTERING_MODELS,
     DECOMPOSITION_MODELS,
     FEATURE_SCALING_STRATEGY,
+    FEATURE_SELECTION_STRATEGY,
     IMPUTING_STRATEGY,
     MLFLOW_ARTIFACT_DATA_PATH,
     MODE_OPTION,
@@ -26,10 +28,11 @@ from .constants import (
 from .data.data_readiness import basic_info, create_sub_data_set, data_split, float_input, limit_num_input, np2pd, num2option, num_input, read_data, show_data_columns
 from .data.feature_engineering import FeatureConstructor
 from .data.imputation import imputer
-from .data.preprocessing import feature_scaler
+from .data.inference import build_transform_pipeline, model_inference
+from .data.preprocessing import feature_scaler, feature_selector
 from .data.statistic import monte_carlo_simulator
 from .plot.map_plot import process_world_map
-from .plot.statistic_plot import basic_statistic, correlation_plot, distribution_plot, is_imputed, is_null_value, logged_distribution_plot, probability_plot, ratio_null_vs_filled
+from .plot.statistic_plot import basic_statistic, correlation_plot, distribution_plot, is_imputed, is_null_value, log_distribution_plot, probability_plot, ratio_null_vs_filled
 from .process.classify import ClassificationModelSelection
 from .process.cluster import ClusteringModelSelection
 from .process.decompose import DecompositionModelSelection
@@ -38,8 +41,17 @@ from .utils.base import check_package, clear_output, create_geopi_output_dir, ge
 from .utils.mlflow_utils import retrieve_previous_experiment_id
 
 
-def cli_pipeline(file_name: str) -> None:
-    """The command line interface for Geochemistry π."""
+def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = None) -> None:
+    """The command line interface for Geochemistry π.
+
+    Parameters
+    ----------
+    training_data_path : str
+        The path of the training data.
+
+    inference_data_path : str, optional
+        The path of the inference data, by default None
+    """
 
     # TODO: If the argument is False, hide all Python level warnings. Developers can turn it on by setting the argument to True.
     show_warning(False)
@@ -56,9 +68,9 @@ def cli_pipeline(file_name: str) -> None:
     # <-- User Data Loading -->
     with console.status("[bold green]Data Loading...[/bold green]", spinner="dots"):
         sleep(1.5)
-    if file_name:
+    if training_data_path:
         # If the user provides file name, then load the data from the file.
-        data = read_data(file_name=file_name, is_own_data=1)
+        data = read_data(file_path=training_data_path, is_own_data=1)
         print("[bold green]Successfully Loading Own Data![bold green]")
     else:
         print("[bold red]No Data File Provided![/bold red]")
@@ -136,23 +148,42 @@ def cli_pipeline(file_name: str) -> None:
 
     # <--- Built-in Data Loading --->
     logger.debug("Built-in Data Loading")
-    # If the user doesn't provide the file name, then load the built-in data set.
-    if not file_name:
+    # If the user doesn't provide the training data path, then use the built-in data.
+    is_built_in_data = False
+    if not training_data_path:
         print("-*-*- Built-in Data Option-*-*-")
         num2option(TEST_DATA_OPTION)
-        test_data_num = limit_num_input(TEST_DATA_OPTION, SECTION[0], num_input)
-        if test_data_num == 1:
-            file_name = "Data_Regression.xlsx"
-        elif test_data_num == 2:
-            file_name = "Data_Classification.xlsx"
-        elif test_data_num == 3:
-            file_name = "Data_Clustering.xlsx"
-        elif test_data_num == 4:
-            file_name = "Data_Decomposition.xlsx"
-        data = read_data(file_name=file_name)
-        print(f"Successfully loading the built-in data set '{file_name}'.")
+        built_in_data_num = limit_num_input(TEST_DATA_OPTION, SECTION[0], num_input)
+        if built_in_data_num == 1:
+            training_data_path = "Data_Regression.xlsx"
+        elif built_in_data_num == 2:
+            training_data_path = "Data_Classification.xlsx"
+        elif built_in_data_num == 3:
+            training_data_path = "Data_Clustering.xlsx"
+        elif built_in_data_num == 4:
+            training_data_path = "Data_Decomposition.xlsx"
+        data = read_data(file_path=training_data_path)
+        is_built_in_data = True
+        print(f"Successfully loading the built-in training data set '{training_data_path}'.")
         show_data_columns(data.columns)
         clear_output()
+    # If the user doesn't provide the inference data path, then use the built-in data.
+    if (not inference_data_path) and is_built_in_data:
+        print("-*-*- Inference Data -*-*-")
+        if built_in_data_num == 1:
+            inference_data_path = "Data_Regression.xlsx"
+        elif built_in_data_num == 2:
+            inference_data_path = "Data_Classification.xlsx"
+        elif built_in_data_num == 3:
+            inference_data_path = "Data_Clustering.xlsx"
+        elif built_in_data_num == 4:
+            inference_data_path = "Data_Decomposition.xlsx"
+        inference_data = read_data(file_path=inference_data_path)
+        print(f"Successfully loading the built-in inference data set '{inference_data_path}'.")
+        show_data_columns(inference_data.columns)
+        clear_output()
+    else:
+        inference_data = None
 
     # <--- World Map Projection --->
     logger.debug("World Map Projection")
@@ -173,7 +204,7 @@ def cli_pipeline(file_name: str) -> None:
     basic_statistic(data_selected)
     correlation_plot(data_selected.columns, data_selected)
     distribution_plot(data_selected.columns, data_selected)
-    logged_distribution_plot(data_selected.columns, data_selected)
+    log_distribution_plot(data_selected.columns, data_selected)
     GEOPI_OUTPUT_ARTIFACTS_DATA_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH")
     save_data(data, "Data Original", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
     save_data(data_selected, "Data Selected", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
@@ -191,14 +222,14 @@ def cli_pipeline(file_name: str) -> None:
         num2option(IMPUTING_STRATEGY)
         print("Which strategy do you want to apply?")
         strategy_num = limit_num_input(IMPUTING_STRATEGY, SECTION[1], num_input)
-        data_selected_imputed_np = imputer(data_selected, IMPUTING_STRATEGY[strategy_num - 1])
+        imputation_config, data_selected_imputed_np = imputer(data_selected, IMPUTING_STRATEGY[strategy_num - 1])
         data_selected_imputed = np2pd(data_selected_imputed_np, data_selected.columns)
         del data_selected_imputed_np
         clear_output()
         print("-*-*- Hypothesis Testing on Imputation Method -*-*-")
         print("Null Hypothesis: The distributions of the data set before and after imputing remain the same.")
         print("Thoughts: Check which column rejects null hypothesis.")
-        print("Statistics Test Method: kruskal Test")
+        print("Statistics Test Method: Kruskal Test")
         monte_carlo_simulator(
             data_selected,
             data_selected_imputed,
@@ -207,7 +238,6 @@ def cli_pipeline(file_name: str) -> None:
             test="kruskal",
             confidence=0.05,
         )
-        # TODO(sany sanyhew1097618435@163.com): Kruskal Wallis Test - P value - why near 1?
         # print("The statistics test method: Kruskal Wallis Test")
         # monte_carlo_simulator(data_processed, data_processed_imputed, sample_size=50,
         #                       iteration=100, test='kruskal', confidence=0.05)
@@ -219,14 +249,16 @@ def cli_pipeline(file_name: str) -> None:
         clear_output()
     else:
         # if the selected data set doesn't need imputation, which means there are no missing values.
+        imputation_config = {}
         data_selected_imputed = data_selected
 
     # <--- Feature Engineering --->
     logger.debug("Feature Engineering")
     print("-*-*- Feature Engineering -*-*-")
-    feature_built = FeatureConstructor(data_selected_imputed)
-    feature_built.process_feature_engineering()
-    data_selected_imputed_fe = feature_built.data
+    feature_builder = FeatureConstructor(data_selected_imputed)
+    data_selected_imputed_fe = feature_builder.build()
+    # feature_engineering_config is possible to be {}
+    feature_engineering_config = feature_builder.config
     del data_selected_imputed
 
     # <--- Mode Selection --->
@@ -263,7 +295,7 @@ def cli_pipeline(file_name: str) -> None:
             print("Which strategy do you want to apply?")
             num2option(FEATURE_SCALING_STRATEGY)
             feature_scaling_num = limit_num_input(FEATURE_SCALING_STRATEGY, SECTION[1], num_input)
-            X_scaled_np = feature_scaler(X, FEATURE_SCALING_STRATEGY, feature_scaling_num - 1)
+            feature_scaling_config, X_scaled_np = feature_scaler(X, FEATURE_SCALING_STRATEGY, feature_scaling_num - 1)
             X = np2pd(X_scaled_np, X.columns)
             del X_scaled_np
             print("Data Set After Scaling:")
@@ -271,6 +303,8 @@ def cli_pipeline(file_name: str) -> None:
             print("Basic Statistical Information: ")
             basic_statistic(X)
             save_data(X, "X With Scaling", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+        else:
+            feature_scaling_config = {}
         clear_output()
 
         # create Y data set
@@ -287,6 +321,22 @@ def cli_pipeline(file_name: str) -> None:
         print("Basic Statistical Information: ")
         basic_statistic(y)
         save_data(y, "Y", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+        clear_output()
+
+        # <--- Feature Selection --->
+        print("-*-*- Feature Selection -*-*-")
+        num2option(OPTION)
+        is_feature_selection = limit_num_input(OPTION, SECTION[1], num_input)
+        if is_feature_selection == 1:
+            print("Which strategy do you want to apply?")
+            num2option(FEATURE_SELECTION_STRATEGY)
+            feature_selection_num = limit_num_input(FEATURE_SELECTION_STRATEGY, SECTION[1], num_input)
+            feature_selection_config, X = feature_selector(X, y, mode_num, FEATURE_SELECTION_STRATEGY, feature_selection_num - 1)
+            print("--Selected Features-")
+            show_data_columns(X.columns)
+            save_data(X, "X After Feature Selection", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+        else:
+            feature_selection_config = {}
         clear_output()
 
         # create training data and testing data
@@ -307,6 +357,8 @@ def cli_pipeline(file_name: str) -> None:
         clear_output()
     else:
         # unsupervised learning
+        feature_scaling_config = {}
+        feature_selection_config = {}
         X = data_selected_imputed_fe
         X_train = data_selected_imputed_fe
         y, X_test, y_train, y_test = None, None, None, None
@@ -331,7 +383,7 @@ def cli_pipeline(file_name: str) -> None:
     model_num = limit_num_input(MODELS, SECTION[2], num_input)
     clear_output()
 
-    # AutoML-training
+    # AutoML hyper parameter tuning control
     is_automl = False
     model_name = MODELS[model_num - 1]
     # If the model is supervised learning, then allow the user to use AutoML.
@@ -345,7 +397,29 @@ def cli_pipeline(file_name: str) -> None:
                 is_automl = True
             clear_output()
 
-    # Model trained selection
+    # Model inference control
+    is_inference = False
+    # If the model is supervised learning, then allow the user to use model inference.
+    if mode_num == 1 or mode_num == 2:
+        print("-*-*- Feature Engineering on Inference Data  -*-*-")
+        is_inference = True
+        selected_columns = X_train.columns
+        # If feature_engineering_config is not {}, then apply feature engineering with the same operation to the input data.
+        if feature_engineering_config:
+            print("The same feature engineering operation will be applied to the inference data.")
+            new_feature_builder = FeatureConstructor(inference_data)
+            inference_data_fe = new_feature_builder.batch_build(feature_engineering_config)
+        else:
+            print("You have not applied feature engineering to the training data.")
+            print("Hence, no feature engineering operation will be applied to the inference data.")
+            inference_data_fe = inference_data
+        inference_data_fe_selected = inference_data_fe[selected_columns]
+        save_data(inference_data, "Inference Data Original", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+        save_data(inference_data_fe, "Inference Data Feature-Engineering", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+        save_data(inference_data_fe_selected, "Inference Data Feature-Engineering Selected", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+        clear_output()
+
+    # <--- Model Training --->
     logger.debug("Model Training")
     # If the user doesn't choose all models, then run the designated model.
     if model_num != all_models_num:
@@ -356,6 +430,17 @@ def cli_pipeline(file_name: str) -> None:
             run.activate(X, y, X_train, X_test, y_train, y_test)
         else:
             run.activate(X, y, X_train, X_test, y_train, y_test, is_automl)
+        clear_output()
+
+        # <--- Transform Pipeline --->
+        logger.debug("Transform Pipeline")
+        transformer_config, transform_pipeline = build_transform_pipeline(imputation_config, feature_scaling_config, feature_selection_config, run, X_train, y_train)
+        clear_output()
+
+        # <--- Model Inference --->
+        logger.debug("Model Inference")
+        model_inference(inference_data_fe_selected, is_inference, feature_engineering_config, run, transformer_config, transform_pipeline)
+        clear_output()
     else:
         # Run all models
         for i in range(len(MODELS) - 1):
@@ -373,5 +458,13 @@ def cli_pipeline(file_name: str) -> None:
                     else:
                         # If is_automl is True, and MODELS[i] is not in the NON_AUTOML_MODELS, then run the model with AutoML.
                         run.activate(X, y, X_train, X_test, y_train, y_test, is_automl)
+
+                # <--- Transform Pipeline --->
+                logger.debug("Transform Pipeline")
+                transformer_config, transform_pipeline = build_transform_pipeline(imputation_config, feature_scaling_config, feature_selection_config, run, X_train, y_train)
+
+                # <--- Model Inference --->
+                logger.debug("Model Inference")
+                model_inference(inference_data_fe_selected, is_inference, feature_engineering_config, run, transformer_config, transform_pipeline)
                 clear_output()
     mlflow.end_run()

@@ -4,12 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "geochemistrypi"
-version = "0.3.0"
+version = "0.4.0.dev2"
 authors = [
   { name="Can He", email="sanyhew1097618435@163.com" },
 ]
 maintainers = [] 
-description = "A Python framework for data-driven geochemistry discovery"
+description = "A highly automated machine learning Python framework for data-driven geochemistry discovery"
 readme = "README.md"
 license = { file="LICENSE" }
 requires-python = "~=3.9"

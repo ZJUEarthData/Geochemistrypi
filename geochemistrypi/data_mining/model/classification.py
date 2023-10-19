@@ -13,19 +13,21 @@ from rich import print
 from sklearn.ensemble import ExtraTreesClassifier, GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 
-from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, OPTION, RAY_FLAML, SAMPLE_BALANCE_STRATEGY, SECTION
+from ..constants import CUSTOMIZE_LABEL_STRATEGY, MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, OPTION, RAY_FLAML, SAMPLE_BALANCE_STRATEGY, SECTION
 from ..data.data_readiness import limit_num_input, num2option, num_input
 from ..plot.statistic_plot import basic_statistic
 from ..utils.base import clear_output, save_data, save_fig, save_text
 from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
-from .func.algo_classification._common import cross_validation, plot_2d_decision_boundary, plot_confusion_matrix, plot_precision_recall, plot_ROC, resampler, score
+from .func.algo_classification._common import cross_validation, plot_2d_decision_boundary, plot_confusion_matrix, plot_precision_recall, plot_ROC, resampler, reset_label, score
 from .func.algo_classification._decision_tree import decision_tree_manual_hyper_parameters
 from .func.algo_classification._extra_trees import extra_trees_manual_hyper_parameters
 from .func.algo_classification._gradient_boosting import gradient_boosting_manual_hyper_parameters
+from .func.algo_classification._knn import knn_manual_hyper_parameters
 from .func.algo_classification._logistic_regression import logistic_regression_manual_hyper_parameters, plot_logistic_importance
 from .func.algo_classification._multi_layer_perceptron import multi_layer_perceptron_manual_hyper_parameters
 from .func.algo_classification._rf import random_forest_manual_hyper_parameters
@@ -202,7 +204,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             print("Which strategy do you want to apply?")
             num2option(SAMPLE_BALANCE_STRATEGY)
             sample_balance_num = limit_num_input(SAMPLE_BALANCE_STRATEGY, SECTION[1], num_input)
-            X_train, y_train = resampler(X_train, y_train, SAMPLE_BALANCE_STRATEGY, sample_balance_num - 1)
+            sample_balance_config, X_train, y_train = resampler(X_train, y_train, SAMPLE_BALANCE_STRATEGY, sample_balance_num - 1)
             train_set_resampled = pd.concat([X_train, y_train], axis=1)
             print("Train Set After Resampling:")
             print(train_set_resampled)
@@ -210,8 +212,34 @@ class ClassificationWorkflowBase(WorkflowBase):
             basic_statistic(train_set_resampled)
             save_data(X_train, "X Train After Sample Balance", local_path, mlflow_path)
             save_data(y_train, "Y Train After Sample Balance", local_path, mlflow_path)
+        else:
+            sample_balance_config = None
         clear_output()
-        return X_train, y_train
+        return sample_balance_config, X_train, y_train
+
+    @staticmethod
+    def customize_label(y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, local_path: str, mlflow_path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        """Using this function to customize the label to which samples of each category belong."""
+        print("-*-*- Customize Label on Label Set -*-*-")
+        num2option(OPTION)
+        is_customize_label = limit_num_input(OPTION, SECTION[1], num_input)
+        if is_customize_label == 1:
+            y_show = y.copy()
+            print("Which strategy do you want to apply?")
+            num2option(CUSTOMIZE_LABEL_STRATEGY)
+            customize_label_num = limit_num_input(CUSTOMIZE_LABEL_STRATEGY, SECTION[1], num_input)
+            y, y_train, y_test = reset_label(y, y_train, y_test, CUSTOMIZE_LABEL_STRATEGY, customize_label_num - 1)
+            y_show = pd.concat([y_show, y], axis=1)
+            y_show = y_show.drop_duplicates().reset_index(drop=True)
+            y_show.columns = ["original_label", "new_label"]
+            print("------------------------------------")
+            print("Originla label VS Customizing label:")
+            print(y_show)
+            save_data(y, "Y Set After Customizing label", local_path, mlflow_path)
+            save_data(y_train, "Y Train After Customizing label", local_path, mlflow_path)
+            save_data(y_test, "Y Test After Customizing label", local_path, mlflow_path)
+        clear_output()
+        return y, y_train, y_test
 
     @dispatch()
     def common_components(self) -> None:
@@ -2454,7 +2482,6 @@ class GradientBoostingClassification(TreeWorkflowMixin, ClassificationWorkflowBa
 
     name = "Gradient Boosting"
     special_function = ["Feature Importance Diagram", "Single Tree Diagram"]
-    # special_function = []
 
     def __init__(
         self,
@@ -2786,7 +2813,6 @@ class GradientBoostingClassification(TreeWorkflowMixin, ClassificationWorkflowBa
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
-        # pass
 
     @dispatch(bool)
     def special_components(self, is_automl: bool, **kwargs) -> None:
@@ -2807,4 +2833,151 @@ class GradientBoostingClassification(TreeWorkflowMixin, ClassificationWorkflowBa
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
-        # pass
+
+
+class KNNClassification(ClassificationWorkflowBase):
+    """The automation workflow of using KNN algorithm to make insightful products."""
+
+    name = "K-Nearest Neighbors"
+    special_function = []
+
+    def __init__(
+        self,
+        n_neighbors: int = 5,
+        *,
+        weights: str = "uniform",
+        algorithm: str = "auto",
+        leaf_size: int = 30,
+        p: int = 2,
+        metric: str = "minkowski",
+        metric_params: Optional[Dict] = None,
+        n_jobs: Optional[int] = None,
+    ) -> None:
+        """
+        Parameters
+        ----------
+        n_neighbors : int, default=5
+            Number of neighbors to use by default for :meth:`kneighbors` queries.
+
+        weights : {'uniform', 'distance'}, callable or None, default='uniform'
+            Weight function used in prediction.  Possible values:
+
+            - 'uniform' : uniform weights.  All points in each neighborhood
+            are weighted equally.
+            - 'distance' : weight points by the inverse of their distance.
+            in this case, closer neighbors of a query point will have a
+            greater influence than neighbors which are further away.
+            - [callable] : a user-defined function which accepts an
+            array of distances, and returns an array of the same shape
+            containing the weights.
+
+        algorithm : {'auto', 'ball_tree', 'kd_tree', 'brute'}, default='auto'
+            Algorithm used to compute the nearest neighbors:
+
+            - 'ball_tree' will use :class:`BallTree`
+            - 'kd_tree' will use :class:`KDTree`
+            - 'brute' will use a brute-force search.
+            - 'auto' will attempt to decide the most appropriate algorithm
+            based on the values passed to :meth:`fit` method.
+
+            Note: fitting on sparse input will override the setting of
+            this parameter, using brute force.
+
+        leaf_size : int, default=30
+            Leaf size passed to BallTree or KDTree.  This can affect the
+            speed of the construction and query, as well as the memory
+            required to store the tree.  The optimal value depends on the
+            nature of the problem.
+
+        p : int, default=2
+            Power parameter for the Minkowski metric. When p = 1, this is
+            equivalent to using manhattan_distance (l1), and euclidean_distance
+            (l2) for p = 2. For arbitrary p, minkowski_distance (l_p) is used.
+
+        metric : str or callable, default='minkowski'
+            Metric to use for distance computation. Default is "minkowski", which
+            results in the standard Euclidean distance when p = 2. See the
+            documentation of `scipy.spatial.distance
+            <https://docs.scipy.org/doc/scipy/reference/spatial.distance.html>`_ and
+            the metrics listed in
+            :class:`~sklearn.metrics.pairwise.distance_metrics` for valid metric
+            values.
+
+            If metric is "precomputed", X is assumed to be a distance matrix and
+            must be square during fit. X may be a :term:`sparse graph`, in which
+            case only "nonzero" elements may be considered neighbors.
+
+            If metric is a callable function, it takes two arrays representing 1D
+            vectors as inputs and must return one value indicating the distance
+            between those vectors. This works for Scipy's metrics, but is less
+            efficient than passing the metric name as a string.
+
+        metric_params : dict, default=None
+            Additional keyword arguments for the metric function.
+
+        n_jobs : int, default=None
+            The number of parallel jobs to run for neighbors search.
+            ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
+            ``-1`` means using all processors. See :term:`Glossary <n_jobs>`
+            for more details.
+            Doesn't affect :meth:`fit` method.
+
+
+        References
+        ----------
+        Scikit-learn API: sklearn.neighbors.KNeighborsClassifier
+        https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.KNeighborsClassifier.html
+        """
+        super().__init__()
+        self.n_neighbors = n_neighbors
+        self.weights = weights
+        self.algorithm = algorithm
+        self.leaf_size = leaf_size
+        self.p = p
+        self.metric = metric
+        self.metric_params = metric_params
+        self.n_jobs = n_jobs
+
+        self.model = KNeighborsClassifier(
+            n_neighbors=self.n_neighbors,
+            weights=self.weights,
+            algorithm=self.algorithm,
+            leaf_size=self.leaf_size,
+            p=self.p,
+            metric=self.metric,
+            metric_params=self.metric_params,
+            n_jobs=self.n_jobs,
+        )
+
+        self.naming = KNNClassification.name
+
+    @property
+    def settings(self) -> Dict:
+        """The configuration to implement AutoML by FLAML framework."""
+        configuration = {
+            "time_budget": 10,  # total running time in seconds
+            "metric": "accuracy",
+            "estimator_list": ["kneighbor"],  # list of ML learners
+            "task": "classification",  # task type
+            # "log_file_name": f"{self.naming} - automl.log",  # flaml log file
+            # "log_training_metric": True,  # whether to log training metric
+        }
+        return configuration
+
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
+        """Manual hyper-parameters specification."""
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = knn_manual_hyper_parameters()
+        clear_output()
+        return hyper_parameters
+
+    @dispatch()
+    def special_components(self, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        pass
+
+    @dispatch(bool)
+    def special_components(self, is_automl: bool, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by FLAML framework."""
+        pass

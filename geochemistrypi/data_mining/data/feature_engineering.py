@@ -2,8 +2,8 @@
 import os
 import string
 import time
+from typing import Dict
 
-import numpy as np
 import pandas as pd
 from rich import print
 
@@ -28,9 +28,10 @@ class FeatureConstructor(object):
         self._postfix_expr = []
         self.map_dict = {}
         self._result = None
+        self.config = {}
 
     def index2name(self) -> None:
-        """Pattern: [letter : column name], e.g. a : 1st column name; b : 2nd column name."""
+        """Show the index of columns in the data set. The display pattern is [letter : column name], e.g. a : 1st column name; b : 2nd column name."""
         columns_name = self.data.columns
         print("Selected data set:")
         for i in range(len(columns_name)):
@@ -40,15 +41,18 @@ class FeatureConstructor(object):
     def _get_column(self, index: str) -> str:
         return self.map_dict[index]
 
-    def name_feature(self) -> None:
+    def input_feature_name(self) -> None:
+        """Name the constructed feature (column name), like 'NEW-COMPOUND'."""
         while True:
             self.feature_name = input("Name the constructed feature (column name), like 'NEW-COMPOUND': \n" "@input: ")
             if len(self.feature_name) == 0:
                 print("Sorry!You haven't named it yet!")
             else:
                 break
+        return self.feature_name
 
     def input_expression(self) -> None:
+        """Input the expression of the constructed feature."""
         expression = input(
             "Build up new feature with the combination of basic arithmatic operators,"
             " including '+', '-', '*', '/', '()'.\n"
@@ -89,31 +93,29 @@ class FeatureConstructor(object):
                     expression = input("-----* Please enter again *-----\n@input: ")
                 else:
                     break
+        return self._infix_expr
 
-    def evaluate(self) -> None:
-        """Evaluate the expression."""
-
-        np.array(["dummy"])  # dummy array to skip the flake8 warning - F401 'numpy as np' imported but unused'
-        self._infix_expr = self._infix_expr.replace("sin", "np.sin")
-        self._infix_expr = self._infix_expr.replace("cos", "np.cos")
-        self._infix_expr = self._infix_expr.replace("tan", "np.tan")
-        self._infix_expr = self._infix_expr.replace("pi", "np.pi")
-        self._infix_expr = self._infix_expr.replace("pow", "np.power")
-        self._infix_expr = self._infix_expr.replace("mean", "np.mean")
-        self._infix_expr = self._infix_expr.replace("std", "np.std")
-        self._infix_expr = self._infix_expr.replace("var", "np.var")
-        self._infix_expr = self._infix_expr.replace("log", "np.log")
+    def _evaluate_expression(self, feature_name, feature_expression) -> None:
+        feature_expression = feature_expression.replace("sin", "np.sin")
+        feature_expression = feature_expression.replace("cos", "np.cos")
+        feature_expression = feature_expression.replace("tan", "np.tan")
+        feature_expression = feature_expression.replace("pi", "np.pi")
+        feature_expression = feature_expression.replace("pow", "np.power")
+        feature_expression = feature_expression.replace("mean", "np.mean")
+        feature_expression = feature_expression.replace("std", "np.std")
+        feature_expression = feature_expression.replace("var", "np.var")
+        feature_expression = feature_expression.replace("log", "np.log")
         try:
-            self._result = eval(self._infix_expr)
-            if isinstance(self._result, pd.DataFrame) or isinstance(self._result, pd.Series):
-                self._result.name = self.feature_name
+            new_feature_column = eval(feature_expression)
+            if isinstance(new_feature_column, pd.Series) or isinstance(new_feature_column, pd.DataFrame):
+                new_feature_column.name = feature_name
             else:
-                self._result = pd.Series([self._result for i in range(self.data.shape[0])])
-                self._result.name = self.feature_name
+                new_feature_column = pd.Series([new_feature_column for _ in range(self.data.shape[0])], name=feature_name)
         except SyntaxError:
             print("The expression contains a syntax error.")
         except ZeroDivisionError:
             print("The expression contains a division by zero.")
+        return new_feature_column
 
     def letter_map(self) -> None:
         """Map the letter to the column name."""
@@ -136,8 +138,8 @@ class FeatureConstructor(object):
                     else:
                         self._infix_expr += ww
 
-    def process_feature_engineering(self) -> None:
-        """Process the feature engineering."""
+    def build(self) -> None:
+        """Build the new feature."""
         print("The Selected Data Set:")
         show_data_columns(self.data.columns)
         fe_flag = 0
@@ -149,20 +151,20 @@ class FeatureConstructor(object):
                 num2option(OPTION)
                 is_feature_engineering = limit_num_input(OPTION, SECTION[1], num_input)
             if is_feature_engineering == 1:
-                feature_built = FeatureConstructor(self.data)
-                feature_built.index2name()
-                feature_built.name_feature()
-                feature_built.input_expression()
-                feature_built.evaluate()
+                self.index2name()
+                new_feature_name = self.input_feature_name()
+                new_feature_expression = self.input_expression()
+                instruction = {new_feature_name: new_feature_expression}
+                self.config.update(instruction)
+                new_feature_column = self._evaluate_expression(new_feature_name, new_feature_expression)
                 clear_output()
-                # update the original data with a new feature
-                data_processed_imputed = feature_built.create_data_set()
-                self.data = data_processed_imputed
+                # Append the new feature to the original data and update the data
+                self.data = self.append_feature(new_feature_column)
                 clear_output()
-                basic_info(data_processed_imputed)
-                basic_statistic(data_processed_imputed)
+                basic_info(self.data)
+                basic_statistic(self.data)
                 clear_output()
-                print("Do you want to continue to construct a new feature?")
+                print("Do you want to continue to build a new feature? ")
                 num2option(OPTION)
                 fe_flag = limit_num_input(OPTION, SECTION[1], num_input)
                 if fe_flag == 1:
@@ -177,9 +179,16 @@ class FeatureConstructor(object):
                 save_data(self.data, "Data Selected Imputed Feature-Engineering", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
                 clear_output()
                 break
+        return self.data
 
-    def create_data_set(self) -> pd.DataFrame:
-        """Create a new data set with the new feature."""
-        print(f'Successfully construct a new feature "{self.feature_name}".')
-        print(self._result)
-        return pd.concat([self.data, self._result], axis=1)
+    def batch_build(self, feature_engineering_config: Dict) -> None:
+        for feature_name, feature_expression in feature_engineering_config.items():
+            new_feature_column = self._evaluate_expression(feature_name, feature_expression)
+            self.data = self.append_feature(new_feature_column)
+        return self.data
+
+    def append_feature(self, new_feature_column: pd.Series) -> None:
+        """Append the new feature to the original data."""
+        print(f"Successfully construct a new feature {new_feature_column.name}.")
+        print(new_feature_column)
+        return pd.concat([self.data, new_feature_column], axis=1)

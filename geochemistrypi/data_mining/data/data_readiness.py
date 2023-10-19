@@ -14,13 +14,13 @@ from ..constants import BUILT_IN_DATASET_PATH
 # from utils.exceptions import InvalidFileError
 
 
-def read_data(file_name: Optional[str] = None, is_own_data: int = 2, prefix: Optional[str] = None, slogan: Optional[str] = "@File: "):
+def read_data(file_path: Optional[str] = None, is_own_data: int = 2, prefix: Optional[str] = None, slogan: Optional[str] = "@File: "):
     """Read the data set.
 
     Parameters
     ----------
-    file_name : str, optional
-        The name of the data set, by default None
+    file_path : str, optional
+        The path of the data set, by default None
 
     is_own_data : int, default=2
         1: own data set; 2: built-in data set
@@ -37,9 +37,9 @@ def read_data(file_name: Optional[str] = None, is_own_data: int = 2, prefix: Opt
         The data set read
     """
     if is_own_data == 1:
-        data_path = file_name
+        data_path = file_path
     else:
-        data_path = os.path.join(BUILT_IN_DATASET_PATH, file_name)
+        data_path = os.path.join(BUILT_IN_DATASET_PATH, file_path)
     try:
         if data_path.endswith(".xlsx"):
             data = pd.read_excel(data_path, engine="openpyxl")
