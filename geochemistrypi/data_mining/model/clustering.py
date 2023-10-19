@@ -7,11 +7,12 @@ import numpy as np
 import pandas as pd
 from rich import print
 from sklearn import metrics
-from sklearn.cluster import DBSCAN, AffinityPropagation, KMeans
+from sklearn.cluster import DBSCAN, AffinityPropagation, AgglomerativeClustering, KMeans
 
 from ..constants import MLFLOW_ARTIFACT_DATA_PATH, MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH
 from ..utils.base import clear_output, save_data, save_fig
 from ._base import WorkflowBase
+from .func.algo_clustering._agglomerative import agglomerative_manual_hyper_parameters, scatter2d
 from .func.algo_clustering._dbscan import dbscan_manual_hyper_parameters, dbscan_result_plot
 from .func.algo_clustering._kmeans import kmeans_manual_hyper_parameters, plot_silhouette_diagram, scatter2d, scatter3d
 
@@ -398,6 +399,191 @@ class DBSCANClustering(ClusteringWorkflowBase):
         )
 
 
+class AggClustering(ClusteringWorkflowBase):
+    """The automation workflow of using Agglomerative Clustering to make insightful products."""
+
+    name = "Agglomerative"
+    special_function = ["Scatter 2d Plot"]
+
+    def __init__(
+        self,
+        n_clusters=2,
+        affinity="deprecated",
+        metric=None,
+        memory=None,
+        connectivity=None,
+        compute_full_tree="auto",
+        linkage="ward",
+        distance_threshold=None,
+        compute_distances=False,
+    ) -> None:
+        """
+        Parameters
+        ----------
+        n_clusters : int or None, default=2
+            The number of clusters to find. It must be ``None`` if
+            ``distance_threshold`` is not ``None``.
+
+        affinity : str or callable, default='euclidean'
+            The metric to use when calculating distance between instances in a
+            feature array. If metric is a string or callable, it must be one of
+            the options allowed by :func:`sklearn.metrics.pairwise_distances` for
+            its metric parameter.
+            If linkage is "ward", only "euclidean" is accepted.
+            If "precomputed", a distance matrix (instead of a similarity matrix)
+            is needed as input for the fit method.
+
+            .. deprecated:: 1.2
+                `affinity` was deprecated in version 1.2 and will be renamed to
+                `metric` in 1.4.
+
+        metric : str or callable, default=None
+            Metric used to compute the linkage. Can be "euclidean", "l1", "l2",
+            "manhattan", "cosine", or "precomputed". If set to `None` then
+            "euclidean" is used. If linkage is "ward", only "euclidean" is
+            accepted. If "precomputed", a distance matrix is needed as input for
+            the fit method.
+
+            .. versionadded:: 1.2
+
+        memory : str or object with the joblib.Memory interface, default=None
+            Used to cache the output of the computation of the tree.
+            By default, no caching is done. If a string is given, it is the
+            path to the caching directory.
+
+        connectivity : array-like or callable, default=None
+            Connectivity matrix. Defines for each sample the neighboring
+            samples following a given structure of the data.
+            This can be a connectivity matrix itself or a callable that transforms
+            the data into a connectivity matrix, such as derived from
+            `kneighbors_graph`. Default is ``None``, i.e, the
+            hierarchical clustering algorithm is unstructured.
+
+        compute_full_tree : 'auto' or bool, default='auto'
+            Stop early the construction of the tree at ``n_clusters``. This is
+            useful to decrease computation time if the number of clusters is not
+            small compared to the number of samples. This option is useful only
+            when specifying a connectivity matrix. Note also that when varying the
+            number of clusters and using caching, it may be advantageous to compute
+            the full tree. It must be ``True`` if ``distance_threshold`` is not
+            ``None``. By default `compute_full_tree` is "auto", which is equivalent
+            to `True` when `distance_threshold` is not `None` or that `n_clusters`
+            is inferior to the maximum between 100 or `0.02 * n_samples`.
+            Otherwise, "auto" is equivalent to `False`.
+
+        linkage : {'ward', 'complete', 'average', 'single'}, default='ward'
+            Which linkage criterion to use. The linkage criterion determines which
+            distance to use between sets of observation. The algorithm will merge
+            the pairs of cluster that minimize this criterion.
+
+            - 'ward' minimizes the variance of the clusters being merged.
+            - 'average' uses the average of the distances of each observation of
+              the two sets.
+            - 'complete' or 'maximum' linkage uses the maximum distances between
+              all observations of the two sets.
+            - 'single' uses the minimum of the distances between all observations
+              of the two sets.
+
+            .. versionadded:: 0.20
+                Added the 'single' option
+
+        distance_threshold : float, default=None
+            The linkage distance threshold at or above which clusters will not be
+            merged. If not ``None``, ``n_clusters`` must be ``None`` and
+            ``compute_full_tree`` must be ``True``.
+
+            .. versionadded:: 0.21
+
+        compute_distances : bool, default=False
+            Computes distances between clusters even if `distance_threshold` is not
+            used. This can be used to make dendrogram visualization, but introduces
+            a computational and memory overhead.
+
+            .. versionadded:: 0.24
+
+        References
+        ----------------------------------------
+        sklearn.cluster.AgglomerativeClustering
+        https://scikit-learn.org/stable/modules/generated/sklearn.cluster.AgglomerativeClustering.html
+        """
+
+        super().__init__()
+        self.n_clusters = n_clusters
+        self.distance_threshold = distance_threshold
+        self.memory = memory
+        self.connectivity = connectivity
+        self.compute_full_tree = compute_full_tree
+        self.linkage = linkage
+        self.affinity = affinity
+        self.metric = metric
+        self.compute_distances = compute_distances
+
+        self.model = AgglomerativeClustering(
+            n_clusters=self.n_clusters,
+            affinity=self.affinity,
+            memory=self.memory,
+            connectivity=self.connectivity,
+            compute_full_tree=self.compute_full_tree,
+            linkage=self.linkage,
+            distance_threshold=self.distance_threshold,
+            compute_distances=self.compute_distances,
+        )
+
+        self.naming = AggClustering.name
+
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
+        """Manual hyper-parameters specification."""
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = agglomerative_manual_hyper_parameters()
+        clear_output()
+        return hyper_parameters
+
+    @staticmethod
+    def _scatter2d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+        """Plot the two-dimensional diagram of the clustering result."""
+        print("-----* Cluster Two-Dimensional Diagram *-----")
+        scatter2d(data, cluster_labels, algorithm_name)
+        save_fig(f"Cluster Two-Dimensional Diagram - {algorithm_name}", local_path, mlflow_path)
+        data_with_labels = pd.concat([data, cluster_labels], axis=1)
+        save_data(data_with_labels, f"Cluster Two-Dimensional Diagram - {algorithm_name}", local_path, mlflow_path)
+
+    def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        # Draw graphs when the number of principal components > 3
+        if self.X.shape[1] >= 3:
+            # choose two of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(self.X, 2)
+            self._scatter2d(
+                data=two_dimen_data,
+                cluster_labels=self.clustering_result["clustering result"],
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        elif self.X.shape[1] == 3:
+            # choose two of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(self.X, 2)
+            self._scatter2d(
+                data=two_dimen_data,
+                cluster_labels=self.clustering_result["clustering result"],
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        elif self.X.shape[1] == 2:
+            self._scatter2d(
+                data=self.X,
+                cluster_labels=self.clustering_result["clustering result"],
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        else:
+            pass
+
+
 class AffinityPropagationClustering(ClusteringWorkflowBase):
     name = "AffinityPropagation"
 
@@ -450,11 +636,6 @@ class SpectralClustering(ClusteringWorkflowBase):
 
 class WardHierarchicalClustering(ClusteringWorkflowBase):
     name = "WardHierarchical"
-    pass
-
-
-class AgglomerativeClustering(ClusteringWorkflowBase):
-    name = "Agglomerative"
     pass
 
 

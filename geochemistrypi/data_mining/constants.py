@@ -44,7 +44,7 @@ REGRESSION_MODELS = [
     "Lasso Regression",
 ]
 CLASSIFICATION_MODELS = ["Logistic Regression", "Support Vector Machine", "Decision Tree", "Random Forest", "Extra-Trees", "Xgboost", "Multi-layer Perceptron", "Gradient Boosting"]
-CLUSTERING_MODELS = ["KMeans", "DBSCAN"]
+CLUSTERING_MODELS = ["KMeans", "DBSCAN", "Agglomerative"]
 DECOMPOSITION_MODELS = ["PCA", "T-SNE", "MDS"]
 
 # Special AutoML models
