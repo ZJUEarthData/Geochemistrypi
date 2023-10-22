@@ -11,7 +11,7 @@ from flaml import AutoML
 from multipledispatch import dispatch
 from rich import print
 from sklearn.ensemble import ExtraTreesRegressor, GradientBoostingRegressor, RandomForestRegressor
-from sklearn.linear_model import Lasso, LinearRegression
+from sklearn.linear_model import ElasticNet, Lasso, LinearRegression, SGDRegressor
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import PolynomialFeatures
@@ -23,6 +23,7 @@ from ..utils.base import clear_output, save_data, save_fig, save_text
 from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
 from .func.algo_regression._common import cross_validation, plot_predicted_vs_actual, plot_residuals, score
 from .func.algo_regression._decision_tree import decision_tree_manual_hyper_parameters
+from .func.algo_regression._elastic_net import elastic_net_manual_hyper_parameters
 from .func.algo_regression._extra_tree import extra_trees_manual_hyper_parameters
 from .func.algo_regression._gradient_boosting import gradient_boosting_manual_hyper_parameters
 from .func.algo_regression._knn import knn_manual_hyper_parameters
@@ -31,6 +32,7 @@ from .func.algo_regression._linear_regression import linear_regression_manual_hy
 from .func.algo_regression._multi_layer_perceptron import multi_layer_perceptron_manual_hyper_parameters
 from .func.algo_regression._polynomial_regression import polynomial_regression_manual_hyper_parameters
 from .func.algo_regression._rf import random_forest_manual_hyper_parameters
+from .func.algo_regression._sgd_regression import sgd_regression_manual_hyper_parameters
 from .func.algo_regression._svr import svr_manual_hyper_parameters
 from .func.algo_regression._xgboost import xgboost_manual_hyper_parameters
 
@@ -275,6 +277,7 @@ class PolynomialRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         poly_features = PolynomialFeatures(degree=self.degree, include_bias=self.include_bias, interaction_only=self.interaction_only, order=self.order)
         X_train_poly = poly_features.fit_transform(X_train)
         X_test_poly = poly_features.fit_transform(X_test)
+        poly_config = {type(poly_features).__name__: poly_features.get_params()}
         try:
             # scikit-learn >= 1.0
             self._features_name = poly_features.get_feature_names_out()
@@ -282,7 +285,7 @@ class PolynomialRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._features_name = poly_features.get_feature_names()
         X_train_poly = pd.DataFrame(X_train_poly, columns=self._features_name)
         X_test_poly = pd.DataFrame(X_test_poly, columns=self._features_name)
-        return X_train_poly, X_test_poly
+        return poly_config, X_train_poly, X_test_poly
 
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
@@ -2858,6 +2861,505 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 feature_data=LassoRegression.X_test,
                 target_data=LassoRegression.y_test,
                 y_test_predict=LassoRegression.y_test_predict,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        else:
+            pass
+
+
+class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
+    """The automation workflow of using Elastic Net algorithm to make insightful products."""
+
+    name = "Elastic Net"
+    special_function = ["Elastic Net Formula", "2D Scatter Diagram", "3D Scatter Diagram", "2D Line Diagram", "3D Surface Diagram"]
+
+    def __init__(
+        self,
+        alpha: float = 1.0,
+        l1_ratio: float = 0.5,
+        fit_intercept: bool = True,
+        precompute: bool = False,
+        max_iter: int = 1000,
+        copy_X: bool = True,
+        tol: float = 1e-4,
+        warm_start: bool = False,
+        positive: bool = False,
+        random_state: Optional[int] = None,
+        selection: str = "cyclic",
+    ) -> None:
+        """
+        Parameters
+        ----------
+        alpha : float, default=1.0
+            Constant that multiplies the penalty terms. Defaults to 1.0.
+            See the notes for the exact mathematical meaning of this
+            parameter. ``alpha = 0`` is equivalent to an ordinary least square,
+            solved by the :class:`LinearRegression` object. For numerical
+            reasons, using ``alpha = 0`` with the ``Lasso`` object is not advised.
+            Given this, you should use the :class:`LinearRegression` object.
+
+        l1_ratio : float, default=0.5
+            The ElasticNet mixing parameter, with ``0 <= l1_ratio <= 1``. For
+            ``l1_ratio = 0`` the penalty is an L2 penalty. ``For l1_ratio = 1`` it
+            is an L1 penalty.  For ``0 < l1_ratio < 1``, the penalty is a
+            combination of L1 and L2.
+
+        fit_intercept : bool, default=True
+            Whether the intercept should be estimated or not. If ``False``, the
+            data is assumed to be already centered.
+
+        precompute : bool or array-like of shape (n_features, n_features),\
+                    default=False
+            Whether to use a precomputed Gram matrix to speed up
+            calculations. The Gram matrix can also be passed as argument.
+            For sparse input this option is always ``False`` to preserve sparsity.
+
+        max_iter : int, default=1000
+            The maximum number of iterations.
+
+        copy_X : bool, default=True
+            If ``True``, X will be copied; else, it may be overwritten.
+
+        tol : float, default=1e-4
+            The tolerance for the optimization: if the updates are
+            smaller than ``tol``, the optimization code checks the
+            dual gap for optimality and continues until it is smaller
+            than ``tol``, see Notes below.
+
+        warm_start : bool, default=False
+            When set to ``True``, reuse the solution of the previous call to fit as
+            initialization, otherwise, just erase the previous solution.
+            See :term:`the Glossary <warm_start>`.
+
+        positive : bool, default=False
+            When set to ``True``, forces the coefficients to be positive.
+
+        random_state : int, RandomState instance, default=None
+            The seed of the pseudo random number generator that selects a random
+            feature to update. Used when ``selection`` == 'random'.
+            Pass an int for reproducible output across multiple function calls.
+            See :term:`Glossary <random_state>`.
+
+        selection : {'cyclic', 'random'}, default='cyclic'
+            If set to 'random', a random coefficient is updated every iteration
+            rather than looping over features sequentially by default. This
+            (setting to 'random') often leads to significantly faster convergence
+            especially when tol is higher than 1e-4.
+
+        References
+        ----------
+        Scikit-learn API: sklearn.linear_model.ElasticNet
+        https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ElasticNet.html
+        """
+        super().__init__()
+        self.alpha = alpha
+        self.l1_ratio = l1_ratio
+        self.fit_intercept = fit_intercept
+        self.precompute = precompute
+        self.max_iter = max_iter
+        self.copy_X = copy_X
+        self.tol = tol
+        self.warm_start = warm_start
+        self.positive = positive
+        self.random_state = random_state
+        self.selection = selection
+
+        self.model = ElasticNet(
+            alpha=self.alpha,
+            l1_ratio=self.l1_ratio,
+            fit_intercept=self.fit_intercept,
+            precompute=self.precompute,
+            max_iter=self.max_iter,
+            copy_X=self.copy_X,
+            tol=self.tol,
+            warm_start=self.warm_start,
+            positive=self.positive,
+            random_state=self.random_state,
+            selection=self.selection,
+        )
+
+        self.naming = ElasticNetRegression.name
+
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
+        """Manual hyper-parameters specification."""
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = elastic_net_manual_hyper_parameters()
+        clear_output()
+        return hyper_parameters
+
+    def special_components(self, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+        self._show_formula(
+            coef=[self.model.coef_],
+            intercept=self.model.intercept_,
+            features_name=ElasticNetRegression.X_train.columns,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
+            mlflow_path="root",
+        )
+        columns_num = ElasticNetRegression.X.shape[1]
+        if columns_num > 2:
+            # choose one of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(ElasticNetRegression.X_test, 1)
+            self._plot_2d_scatter_diagram(
+                feature_data=two_dimen_data,
+                target_data=ElasticNetRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            # choose two of dimensions to draw
+            three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(ElasticNetRegression.X_test, 2)
+            self._plot_3d_scatter_diagram(
+                feature_data=three_dimen_data,
+                target_data=ElasticNetRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        elif columns_num == 2:
+            # choose one of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(ElasticNetRegression.X_test, 1)
+            self._plot_2d_scatter_diagram(
+                feature_data=two_dimen_data,
+                target_data=ElasticNetRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            # no need to choose
+            self._plot_3d_scatter_diagram(
+                feature_data=ElasticNetRegression.X_test,
+                target_data=ElasticNetRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            self._plot_3d_surface_diagram(
+                feature_data=ElasticNetRegression.X_test,
+                target_data=ElasticNetRegression.y_test,
+                y_test_predict=ElasticNetRegression.y_test_predict,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        elif columns_num == 1:
+            # no need to choose
+            self._plot_2d_scatter_diagram(
+                feature_data=ElasticNetRegression.X_test,
+                target_data=ElasticNetRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            self._plot_2d_line_diagram(
+                feature_data=ElasticNetRegression.X_test,
+                target_data=ElasticNetRegression.y_test,
+                y_test_predict=ElasticNetRegression.y_test_predict,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        else:
+            pass
+
+
+class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
+    """The automation workflow of using Stochastic Gradient Descent - SGD algorithm to make insightful products."""
+
+    name = "SGD Regression"
+    special_function = ["SGD Regression Formula", "2D Scatter Diagram", "3D Scatter Diagram", "2D Line Diagram", "3D Surface Diagram"]
+
+    def __init__(
+        self,
+        loss: str = "squared_error",
+        penalty: str = "l2",
+        alpha: float = 0.0001,
+        l1_ratio: float = 0.15,
+        fit_intercept: bool = True,
+        max_iter: int = 1000,
+        tol: Union[float, None] = 0.001,
+        shuffle: bool = True,
+        verbose: int = 0,
+        epsilon: float = 0.1,
+        random_state: Optional[int] = None,
+        learning_rate: str = "invscaling",
+        eta0: float = 0.01,
+        power_t: float = 0.25,
+        early_stopping: bool = False,
+        validation_fraction: float = 0.1,
+        n_iter_no_change: int = 5,
+        warm_start: bool = False,
+        average: Union[bool, int] = False,
+    ) -> None:
+        """
+        Parameters
+        ----------
+        loss : str, default='squared_error'
+            The loss function to be used. The possible values are 'squared_error',
+            'huber', 'epsilon_insensitive', or 'squared_epsilon_insensitive'
+            The 'squared_error' refers to the ordinary least squares fit.
+            'huber' modifies 'squared_error' to focus less on getting outliers
+            correct by switching from squared to linear loss past a distance of
+            epsilon. 'epsilon_insensitive' ignores errors less than epsilon and is
+            linear past that; this is the loss function used in SVR.
+            'squared_epsilon_insensitive' is the same but becomes squared loss past
+            a tolerance of epsilon.
+            More details about the losses formulas can be found in the
+            :ref:`User Guide <sgd_mathematical_formulation>`.
+
+        penalty : {'l2', 'l1', 'elasticnet', None}, default='l2'
+            The penalty (aka regularization term) to be used. Defaults to 'l2'
+            which is the standard regularizer for linear SVM models. 'l1' and
+            'elasticnet' might bring sparsity to the model (feature selection)
+            not achievable with 'l2'. No penalty is added when set to `None`.
+
+        alpha : float, default=0.0001
+            Constant that multiplies the regularization term. The higher the
+            value, the stronger the regularization.
+            Also used to compute the learning rate when set to `learning_rate` is
+            set to 'optimal'.
+
+        l1_ratio : float, default=0.15
+            The Elastic Net mixing parameter, with 0 <= l1_ratio <= 1.
+            l1_ratio=0 corresponds to L2 penalty, l1_ratio=1 to L1.
+            Only used if `penalty` is 'elasticnet'.
+
+        fit_intercept : bool, default=True
+            Whether the intercept should be estimated or not. If False, the
+            data is assumed to be already centered.
+
+        max_iter : int, default=1000
+            The maximum number of passes over the training data (aka epochs).
+            It only impacts the behavior in the ``fit`` method, and not the
+            :meth:`partial_fit` method.
+            .. versionadded:: 0.19
+
+        tol : float or None, default=1e-3
+            The stopping criterion. If it is not None, training will stop
+            when (loss > best_loss - tol) for ``n_iter_no_change`` consecutive
+            epochs.
+            Convergence is checked against the training loss or the
+            validation loss depending on the `early_stopping` parameter.
+            .. versionadded:: 0.19
+
+        shuffle : bool, default=True
+            Whether or not the training data should be shuffled after each epoch.
+
+        verbose : int, default=0
+            The verbosity level.
+
+        epsilon : float, default=0.1
+            Epsilon in the epsilon-insensitive loss functions; only if `loss` is
+            'huber', 'epsilon_insensitive', or 'squared_epsilon_insensitive'.
+            For 'huber', determines the threshold at which it becomes less
+            important to get the prediction exactly right.
+            For epsilon-insensitive, any differences between the current prediction
+            and the correct label are ignored if they are less than this threshold.
+
+        random_state : int, RandomState instance, default=None
+            Used for shuffling the data, when ``shuffle`` is set to ``True``.
+            Pass an int for reproducible output across multiple function calls.
+            See :term:`Glossary <random_state>`.
+
+        learning_rate : str, default='invscaling'
+            The learning rate schedule:
+            - 'constant': `eta = eta0`
+            - 'optimal': `eta = 1.0 / (alpha * (t + t0))`
+            where t0 is chosen by a heuristic proposed by Leon Bottou.
+            - 'invscaling': `eta = eta0 / pow(t, power_t)`
+            - 'adaptive': eta = eta0, as long as the training keeps decreasing.
+            Each time n_iter_no_change consecutive epochs fail to decrease the
+            training loss by tol or fail to increase validation score by tol if
+            early_stopping is True, the current learning rate is divided by 5.
+                .. versionadded:: 0.20
+                    Added 'adaptive' option
+
+        eta0 : float, default=0.01
+            The initial learning rate for the 'constant', 'invscaling' or
+            'adaptive' schedules. The default value is 0.01.
+
+        power_t : float, default=0.25
+            The exponent for inverse scaling learning rate.
+
+        early_stopping : bool, default=False
+            Whether to use early stopping to terminate training when validation
+            score is not improving. If set to True, it will automatically set aside
+            a fraction of training data as validation and terminate
+            training when validation score returned by the `score` method is not
+            improving by at least `tol` for `n_iter_no_change` consecutive
+            epochs.
+            .. versionadded:: 0.20
+                Added 'early_stopping' option
+
+        validation_fraction : float, default=0.1
+            The proportion of training data to set aside as validation set for
+            early stopping. Must be between 0 and 1.
+            Only used if `early_stopping` is True.
+            .. versionadded:: 0.20
+                Added 'validation_fraction' option
+
+        n_iter_no_change : int, default=5
+            Number of iterations with no improvement to wait before stopping
+            fitting.
+            Convergence is checked against the training loss or the
+            validation loss depending on the `early_stopping` parameter.
+            .. versionadded:: 0.20
+                Added 'n_iter_no_change' option
+
+        warm_start : bool, default=False
+            When set to True, reuse the solution of the previous call to fit as
+            initialization, otherwise, just erase the previous solution.
+            See :term:`the Glossary <warm_start>`.
+            Repeatedly calling fit or partial_fit when warm_start is True can
+            result in a different solution than when calling fit a single time
+            because of the way the data is shuffled.
+            If a dynamic learning rate is used, the learning rate is adapted
+            depending on the number of samples already seen. Calling ``fit`` resets
+            this counter, while ``partial_fit``  will result in increasing the
+            existing counter.
+
+        average : bool or int, default=False
+            When set to True, computes the averaged SGD weights across all
+            updates and stores the result in the ``coef_`` attribute. If set to
+            an int greater than 1, averaging will begin once the total number of
+            samples seen reaches `average`. So ``average=10`` will begin
+            averaging after seeing 10 samples.
+
+        References
+        ----------
+        Scikit-learn API: sklearn.linear_model.SGDRegressor
+        https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDRegressor.html
+        """
+        super().__init__()
+        self.loss = loss
+        self.penalty = penalty
+        self.alpha = alpha
+        self.l1_ratio = l1_ratio
+        self.fit_intercept = fit_intercept
+        self.max_iter = max_iter
+        self.tol = tol
+        self.shuffle = shuffle
+        self.verbose = verbose
+        self.epsilon = epsilon
+        self.random_state = random_state
+        self.learning_rate = learning_rate
+        self.eta0 = eta0
+        self.power_t = power_t
+        self.early_stopping = early_stopping
+        self.validation_fraction = validation_fraction
+        self.n_iter_no_change = n_iter_no_change
+        self.warm_start = warm_start
+        self.average = average
+
+        self.model = SGDRegressor(
+            loss=self.loss,
+            penalty=self.penalty,
+            alpha=self.alpha,
+            l1_ratio=self.l1_ratio,
+            fit_intercept=self.fit_intercept,
+            max_iter=self.max_iter,
+            tol=self.tol,
+            shuffle=self.shuffle,
+            verbose=self.verbose,
+            epsilon=self.epsilon,
+            random_state=self.random_state,
+            learning_rate=self.learning_rate,
+            eta0=self.eta0,
+            power_t=self.power_t,
+            early_stopping=self.early_stopping,
+            validation_fraction=self.validation_fraction,
+            n_iter_no_change=self.n_iter_no_change,
+            warm_start=self.warm_start,
+            average=self.average,
+        )
+
+        self.naming = SGDRegression.name
+
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
+        """Manual hyper-parameters specification."""
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = sgd_regression_manual_hyper_parameters()
+        clear_output()
+        return hyper_parameters
+
+    def special_components(self, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+        self._show_formula(
+            coef=[self.model.coef_],
+            intercept=self.model.intercept_,
+            features_name=SGDRegression.X_train.columns,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
+            mlflow_path="root",
+        )
+        columns_num = SGDRegression.X.shape[1]
+        if columns_num > 2:
+            # choose one of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(SGDRegression.X_test, 1)
+            self._plot_2d_scatter_diagram(
+                feature_data=two_dimen_data,
+                target_data=SGDRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            # choose two of dimensions to draw
+            three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(SGDRegression.X_test, 2)
+            self._plot_3d_scatter_diagram(
+                feature_data=three_dimen_data,
+                target_data=SGDRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        elif columns_num == 2:
+            # choose one of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(SGDRegression.X_test, 1)
+            self._plot_2d_scatter_diagram(
+                feature_data=two_dimen_data,
+                target_data=SGDRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            # no need to choose
+            self._plot_3d_scatter_diagram(
+                feature_data=SGDRegression.X_test,
+                target_data=SGDRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            self._plot_3d_surface_diagram(
+                feature_data=SGDRegression.X_test,
+                target_data=SGDRegression.y_test,
+                y_test_predict=SGDRegression.y_test_predict,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        elif columns_num == 1:
+            # no need to choose
+            self._plot_2d_scatter_diagram(
+                feature_data=SGDRegression.X_test,
+                target_data=SGDRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            self._plot_2d_line_diagram(
+                feature_data=SGDRegression.X_test,
+                target_data=SGDRegression.y_test,
+                y_test_predict=SGDRegression.y_test_predict,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,

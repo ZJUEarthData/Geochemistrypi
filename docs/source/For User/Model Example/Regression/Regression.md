@@ -19,10 +19,7 @@ Overall, regression is a powerful tool for predicting numerical values, and is u
 By running this line of command, the following output should show up on your screen:
 
 ```python
-Geochemistry Py v.1.0.0 - Beta Version
-....... Initializing .......
--*-*- Data Loading -*-*-
-Built-in Data Option:
+-*-*- Built-in Data Option-*-*-
 1 - Data For Regression
 2 - Data For Classification
 3 - Data For Clustering
@@ -33,10 +30,7 @@ Built-in Data Option:
 Enter the serial number of the sub-menu you want to choose and press `Enter`. In this doc, we will focus on the usage of Regression function, to do that, enter `1` and press `Enter`.
 
 ```python
-Geochemistry Py v.1.0.0 - Beta Version
-....... Initializing .......
--*-*- Data Loading -*-*-
-Built-in Data Option:
+-*-*- Built-in Data Option-*-*-
 1 - Data For Regression
 2 - Data For Classification
 3 - Data For Clustering
@@ -260,11 +254,17 @@ min      0.230000    0.000000    1.371100   13.170000
 75%      6.233341    1.243656    3.330000   22.185450
 max      8.110000    3.869550    8.145000   25.362000
 Successfully calculate the pair-wise correlation coefficient among the selected columns.
-Save figure 'Correlation Plot' in /home/yucheng/output/images/statistic.
+Save figure 'Correlation Plot' in C:\Users\86188\geopi_output\GeoPi - Rock Classification\Xgboost Algorithm - Test 1\artifacts\image\statistic.
+Successfully store 'Correlation Plot' in 'Correlation Plot.xlsx' in C:\Users\86188\geopi_output\GeoPi - Rock Classification\Xgboost Algorithm - Test 1\artifacts\image\statistic.
 Successfully draw the distribution plot of the selected columns.
-Save figure 'Distribution Histogram' in /home/yucheng/output/images/statistic.
+Save figure 'Distribution Histogram' in C:\Users\86188\geopi_output\GeoPi - Rock Classification\Xgboost Algorithm - Test 1\artifacts\image\statistic.
+Successfully store 'Distribution Histogram' in 'Distribution Histogram.xlsx' in C:\Users\86188\geopi_output\GeoPi - Rock Classification\Xgboost Algorithm - Test 1\artifacts\image\statistic.
 Successfully draw the distribution plot after log transformation of the selected columns.
-Save figure 'Distribution Histogram After Log Transformation' in /home/yucheng/output/images/statistic.
+Save figure 'Distribution Histogram After Log Transformation' in C:\Users\86188\geopi_output\GeoPi - Rock Classification\Xgboost Algorithm - Test 1\artifacts\image\statistic.
+Successfully store 'Distribution Histogram After Log Transformation' in 'Distribution Histogram After Log Transformation.xlsx' in C:\Users\86188\geopi_output\GeoPi - Rock Classification\Xgboost Algorithm - Test
+1\artifacts\image\statistic.
+Successfully store 'Data Original' in 'Data Original.xlsx' in C:\Users\86188\geopi_output\GeoPi - Rock Classification\Xgboost Algorithm - Test 1\artifacts\data.
+Successfully store 'Data Selected' in 'Data Selected.xlsx' in C:\Users\86188\geopi_output\GeoPi - Rock Classification\Xgboost Algorithm - Test 1\artifacts\data.
 (Press Enter key to move forward.)
 ```
 
@@ -306,38 +306,40 @@ Note: you'd better use imputation techniques to deal with the missing values.
 (Press Enter key to move forward.)
 ```
 
-Here, we choose ”1 - Mean” as our strategy:
+Here, we choose ”1 - Mean Values” as our strategy:
 
 ```python
 -*-*- Strategy for Missing Values -*-*-
-1 - Mean
-2 - Median
-3 - Most Frequent
+1 - Mean Value
+2 - Median Value
+3 - Most Frequent Value
+4 - Constant(Specified Value)
 Which strategy do you want to apply?
 (Data) ➜ @Number: 1
 Successfully fill the missing values with the mean value of each feature column respectively.
 (Press Enter key to move forward.)
 ```
 
-Here, the pragram is performing a hypothesis testing on the imputation method used to fill missing values in a dataset. The null hypothesis is that the distribution of the data set before and after imputing remains the same. The Wilcoxon Test is used to test this hypothesis, with a significance level of 0.05. Monte Carlo simulation is used with 100 iterations, each with a sample size of half the dataset (54 in this case). The p-values are calculated for each column and the columns that reject the null hypothesis are identified.
+Here, the pragram is performing a hypothesis testing on the imputation method used to fill missing values in a dataset. The null hypothesis is that the distribution of the data set before and after imputing remains the same. The Kruskal Test is used to test this hypothesis, with a significance level of 0.05. Monte Carlo simulation is used with 100 iterations, each with a sample size of half the dataset (54 in this case). The p-values are calculated for each column and the columns that reject the null hypothesis are identified.
 
 ```python
 -*-*- Hypothesis Testing on Imputation Method -*-*-
 Null Hypothesis: The distributions of the data set before and after imputing remain the same.
 Thoughts: Check which column rejects null hypothesis.
-Statistics Test Method: Wilcoxon Test
+Statistics Test Method: kruskal Test
 Significance Level:  0.05
 The number of iterations of Monte Carlo simulation:  100
 The size of the sample for each iteration (half of the whole data set):  54
 Average p-value:
-AL2O3(WT%) 0.0
-CR2O3(WT%) nan
-FEOT(WT%) 0.0
-CAO(WT%) 0.0
-Note: 'p-value = 0' means imputation method doesn't apply to that column.
+AL2O3(WT%) 1.0
+CR2O3(WT%) 0.9327453056346102
+FEOT(WT%) 1.0
+CAO(WT%) 1.0
+Note: 'p-value < 0.05' means imputation method doesn't apply to that column.
 The columns which rejects null hypothesis: None
 Successfully draw the respective probability plot (origin vs. impute) of the selected columns
-Save figure 'Probability Plot' in /home/yucheng/output/images/statistic.
+Save figure 'Probability Plot' in C:\Users\86188\geopi_output\GeoPi - Rock Classification\Xgboost Algorithm - Test 1\artifacts\image\statistic.
+Successfully store 'Probability Plot' in 'Probability Plot.xlsx' in C:\Users\86188\geopi_output\GeoPi - Rock Classification\Xgboost Algorithm - Test 1\artifacts\image\statistic.
 <class 'pandas.core.frame.DataFrame'>
 RangeIndex: 109 entries, 0 to 108
 Data columns (total 4 columns):
@@ -360,6 +362,7 @@ min      0.230000    0.000000    1.371100   13.170000
 50%      4.720000    0.956426    2.690000   21.223500
 75%      6.233341    1.170000    3.330000   22.185450
 max      8.110000    3.869550    8.145000   25.362000
+Successfully store 'Data Selected Imputed' in 'Data Selected Imputed.xlsx' in C:\Users\86188\geopi_output\GeoPi - Rock Classification\Xgboost Algorithm - Test 1\artifacts\data.
 (Press Enter key to move forward.)
 ```
 
@@ -397,16 +400,25 @@ a - AL2O3(WT%)
 b - CR2O3(WT%)
 c - FEOT(WT%)
 d - CAO(WT%)
-Name the constructed feature (column name):
+Name the constructed feature (column name), like 'NEW-COMPOUND':
 @input: new Feature
-Build up new feature with the combination of 4 basic arithmatic operator.
+Build up new feature with the combination of basic arithmatic operators, including '+', '-', '*', '/', '()'.
 Input example 1: a * b - c
 --> Step 1: Multiply a column with b column;
 --> Step 2: Subtract c from the result of Step 1;
 Input example 2: (d + 5 * f) / g
---> Step 1: multiply 5 with f;
+--> Step 1: Multiply 5 with f;
 --> Step 2: Plus d column with the result of Step 1;
 --> Step 3: Divide the result of Step 1 by g;
+Input example 3: pow(a, b) + c * d
+--> Step 1: Raise the base a to the power of the exponent b;
+--> Step 2: Multiply the value of c by the value of d;
+--> Step 3: Add the result of Step 1 to the result of Step 2;
+Input example 4: log(a)/b - c
+--> Step 1: Take the logarithm of the value a;
+--> Step 2: Divide the result of Step 1 by the value of b;
+--> Step 3: Subtract the value of c from the result of Step 2;
+You can use mean(x) to calculate the average value.
 @input: b*c+d
 ```
 
@@ -454,10 +466,10 @@ max      8.110000    3.869550    8.145000   25.362000    29.231800
 (Press Enter key to move forward.)
 ```
 
-After building the new feature, we chan choose the mode to process data, in this doc, we choose “1 - Regression”:
+After building the new feature, we can choose the mode to process data, in this doc, we choose “1 - Regression”:
 
 ```python
--*-*- Mode Options -*-*-
+-*-*- Mode Selection -*-*-
 1 - Regression
 2 - Classification
 3 - Clustering
@@ -548,13 +560,16 @@ After checking the output, you should be able to see a menu to choose a machine 
 -*-*- Model Selection -*-*-:
 1 - Linear Regression
 2 - Polynomial Regression
-3 - Support Vector Machine
-4 - Decision Tree
-5 - Random Forest
-6 - Extra-Trees
-7 - Xgboost
-8 - Multi-layer Perceptron
-9 - All models above to be trained
+3 - K-Nearest Neighbors
+4 - Support Vector Machine
+5 - Decision Tree
+6 - Random Forest
+7 - Extra-Trees
+8 - Gradient Boosting
+9 - Xgboost
+10 - Multi-layer Perceptron
+11 - Lasso Regression
+12 - All models above to be trained
 Which model do you want to apply?(Enter the Corresponding Number)
 (Model) ➜ @Number: 2
 ```
@@ -570,6 +585,9 @@ Expected Functionality:
 +  Cross Validation
 +  Model Prediction
 +  Model Persistence
++  Predicted vs. Actual Diagram
++  Residuals Diagram
++  Permutation Importance Diagram
 +  Polynomial Regression Formula
 -----* Model Score *-----
 Root Mean Square Error: 1.2981800081993564
@@ -648,4 +666,6 @@ Successfully store 'Y Test Predict' in 'Y Test Predict.xlsx' in /home/yucheng/ou
 -----* Model Persistence *-----
 Successfully store the trained model 'Polynomial Regression' in 'Polynomial_Regression_2023-02-24.pkl' in /home/yucheng/output/trained_models.
 Successfully store the trained model 'Polynomial Regression' in 'Polynomial_Regression_2023-02-24.joblib' in /home/yucheng/output/trained_models.
+```
+
 ```

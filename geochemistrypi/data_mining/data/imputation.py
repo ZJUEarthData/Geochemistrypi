@@ -8,7 +8,7 @@ from ..constants import SECTION
 from .data_readiness import float_input
 
 
-def imputer(data: pd.DataFrame, method: str) -> np.ndarray:
+def imputer(data: pd.DataFrame, method: str) -> tuple[dict, np.ndarray]:
     """Apply imputation on missing values.
 
     Parameters
@@ -21,6 +21,9 @@ def imputer(data: pd.DataFrame, method: str) -> np.ndarray:
 
     Returns
     -------
+    imputation_config : dict
+        The imputation configuration.
+
     data_imputed : np.ndarray
         The dataset after imputing.
     """
@@ -32,8 +35,10 @@ def imputer(data: pd.DataFrame, method: str) -> np.ndarray:
     }[method]
     if method2option == "constant":
         filled_value = float_input(0, SECTION[2], "@Specified Value: ")
-        imp = SimpleImputer(missing_values=np.nan, strategy=method2option, fill_value=filled_value)
+        imputer = SimpleImputer(missing_values=np.nan, strategy=method2option, fill_value=filled_value)
     else:
-        imp = SimpleImputer(missing_values=np.nan, strategy=method2option)
+        imputer = SimpleImputer(missing_values=np.nan, strategy=method2option)
     print(f"Successfully fill the missing values with the {method2option} value " f"of each feature column respectively.")
-    return imp.fit_transform(data)
+    data_imputed = imputer.fit_transform(data)
+    imputation_config = {type(imputer).__name__: imputer.get_params()}
+    return imputation_config, data_imputed

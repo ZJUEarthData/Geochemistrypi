@@ -13,7 +13,7 @@ Takeaway:
 
     <img width="1174" alt="image" src="https://user-images.githubusercontent.com/47497750/236991014-7c17248c-54cc-41f0-af15-796a67de5307.png">
 
-3. Use `git clone <url>` to clone the remote codebase into your local machine through the command line. No worry if your shell (command line) looks different from mine.
+3. Use `git clone <url>` to clone the remote codebase into your local machine through the command line. No worry if your shell (command line) looks different from mine (The operations are same in the Mac and Windows systems).
 
     <img width="920" alt="image" src="https://user-images.githubusercontent.com/47497750/236991322-843c9497-3c32-42d0-a564-1979e093a8d1.png">
 
@@ -21,9 +21,13 @@ Takeaway:
 
     <img width="921" alt="image" src="https://user-images.githubusercontent.com/47497750/237021355-0fff7b74-ebd8-47f6-8c76-8918b11fc8ec.png">
 
+    <img width="921" alt="image" src="https://user-images.githubusercontent.com/66153455/262966478-311bb75e-e149-410b-9074-7aba7b4bbb03.jpg">
+
 5. Use `pre-commit install` to set up the git hook scripts, which will be used later on, no need to worry! You only need to run this  command once in this local repository unless you clone another one again in other local directory.
 
     <img width="920" alt="image" src="https://user-images.githubusercontent.com/47497750/237022518-7e0dfa23-7b49-46f3-adf2-ec1f83651f44.png">
+
+    <img width="920" alt="image" src="https://user-images.githubusercontent.com/66153455/262966493-d147a599-4b18-4974-80e3-00b1f620c96b.jpg">
 
 6. Use **Visual Studio Code** (Recommended IDE) to open the codebase and don't forget to activate your virtual environment as the picture shows below.
 
@@ -32,6 +36,8 @@ Takeaway:
 7. Create a new git branch to develop on your own path. You can name the branch name as your identification or as the function you are going to build up.
 
     <img width="1219" alt="image" src="https://user-images.githubusercontent.com/47497750/237028303-e3edf748-2f76-40a3-8247-3869656dfc88.png">
+
+    <img width="1219" alt="image" src="https://user-images.githubusercontent.com/66153455/262966498-aaa905ab-63a5-4231-845d-b217180b998f.jpg">
 
 8. Do some modifications on the codebase. For example, in this case, I update the badge information of READM.md.
 

@@ -10,6 +10,7 @@ from ..data.data_readiness import num_input
 from ..model.regression import (
     ClassicalLinearRegression,
     DecisionTreeRegression,
+    ElasticNetRegression,
     ExtraTreesRegression,
     GradientBoostingRegression,
     KNNRegression,
@@ -18,6 +19,7 @@ from ..model.regression import (
     PolynomialRegression,
     RandomForestRegression,
     RegressionWorkflowBase,
+    SGDRegression,
     SVMRegression,
     XgboostRegression,
 )
@@ -30,6 +32,7 @@ class RegressionModelSelection(ModelSelectionBase):
     def __init__(self, model_name: str) -> None:
         self.model_name = model_name
         self.reg_workflow = RegressionWorkflowBase()
+        self.transformer_config = {}
 
     @dispatch(object, object, object, object, object, object)
     def activate(
@@ -53,7 +56,8 @@ class RegressionModelSelection(ModelSelectionBase):
                 interaction_only=hyper_parameters["interaction_only"],
                 include_bias=hyper_parameters["include_bias"],
             )
-            X_train, X_test = self.reg_workflow.poly(X_train, X_test)
+            poly_config, X_train, X_test = self.reg_workflow.poly(X_train, X_test)
+            self.transformer_config.update(poly_config)
             self.reg_workflow.data_upload(X_train=X_train, X_test=X_test)
         elif self.model_name == "Xgboost":
             hyper_parameters = XgboostRegression.manual_hyper_parameters()
@@ -152,6 +156,31 @@ class RegressionModelSelection(ModelSelectionBase):
                 tol=hyper_parameters["tol"],
                 selection=hyper_parameters["selection"],
             )
+        elif self.model_name == "Elastic Net":
+            hyper_parameters = ElasticNetRegression.manual_hyper_parameters()
+            self.reg_workflow = ElasticNetRegression(
+                alpha=hyper_parameters["alpha"],
+                l1_ratio=hyper_parameters["l1_ratio"],
+                fit_intercept=hyper_parameters["fit_intercept"],
+                max_iter=hyper_parameters["max_iter"],
+                tol=hyper_parameters["tol"],
+                selection=hyper_parameters["selection"],
+            )
+        elif self.model_name == "SGD Regression":
+            hyper_parameters = SGDRegression.manual_hyper_parameters()
+            self.reg_workflow = SGDRegression(
+                loss=hyper_parameters["loss"],
+                penalty=hyper_parameters["penalty"],
+                alpha=hyper_parameters["alpha"],
+                l1_ratio=hyper_parameters["l1_ratio"],
+                fit_intercept=hyper_parameters["fit_intercept"],
+                max_iter=hyper_parameters["max_iter"],
+                tol=hyper_parameters["tol"],
+                shuffle=hyper_parameters["shuffle"],
+                learning_rate=hyper_parameters["learning_rate"],
+                eta0=hyper_parameters["eta0"],
+                power_t=hyper_parameters["power_t"],
+            )
 
         self.reg_workflow.show_info()
 
@@ -174,7 +203,7 @@ class RegressionModelSelection(ModelSelectionBase):
         self.reg_workflow.data_save(y_test_predict, "Y Test Predict", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Model Prediction")
 
         # Save the trained model
-        self.reg_workflow.save_model()
+        self.reg_workflow.model_save()
 
     @dispatch(object, object, object, object, object, object, bool)
     def activate(
@@ -196,7 +225,9 @@ class RegressionModelSelection(ModelSelectionBase):
             print("Please specify the maximal degree of the polynomial features.")
             poly_degree = num_input(SECTION[2], "@Degree:")
             self.reg_workflow = PolynomialRegression(degree=poly_degree)
-            X_train, X_test = self.reg_workflow.poly(X_train, X_test)
+            poly_config, X_train, X_test = self.reg_workflow.poly(X_train, X_test)
+            self.transformer_config.update(poly_config)
+            self.reg_workflow.data_upload(X_train=X_train, X_test=X_test)
         elif self.model_name == "Xgboost":
             self.reg_workflow = XgboostRegression()
         elif self.model_name == "Decision Tree":
@@ -217,6 +248,10 @@ class RegressionModelSelection(ModelSelectionBase):
             self.reg_workflow = GradientBoostingRegression()
         elif self.model_name == "Lasso Regression":
             self.reg_workflow = LassoRegression()
+        elif self.model_name == "Elastic Net":
+            self.reg_workflow = ElasticNetRegression()
+        elif self.model_name == "SGD Regression":
+            self.reg_workflow = SGDRegression()
 
         self.reg_workflow.show_info()
 
@@ -242,4 +277,4 @@ class RegressionModelSelection(ModelSelectionBase):
         self.reg_workflow.data_save(y_test_predict, "Y Test Predict", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Model Prediction")
 
         # Save the trained model
-        self.reg_workflow.save_model(is_automl)
+        self.reg_workflow.model_save(is_automl)
