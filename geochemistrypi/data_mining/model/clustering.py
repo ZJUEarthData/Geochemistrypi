@@ -5,6 +5,7 @@ from typing import Dict, Optional, Union
 import mlflow
 import numpy as np
 import pandas as pd
+from numpy.typing import ArrayLike
 from rich import print
 from sklearn import metrics
 from sklearn.cluster import DBSCAN, AffinityPropagation, AgglomerativeClustering, KMeans
@@ -407,15 +408,15 @@ class AggClustering(ClusteringWorkflowBase):
 
     def __init__(
         self,
-        n_clusters=2,
-        affinity="deprecated",
-        metric=None,
-        memory=None,
-        connectivity=None,
-        compute_full_tree="auto",
-        linkage="ward",
-        distance_threshold=None,
-        compute_distances=False,
+        n_clusters: int = 2,
+        affinity: str = "deprecated",
+        metric: str = None,
+        memory: str = None,
+        connectivity: ArrayLike = None,
+        compute_full_tree: str = "auto",
+        linkage: str = "ward",
+        distance_threshold: float = None,
+        compute_distances: bool = False,
     ) -> None:
         """
         Parameters
@@ -502,7 +503,7 @@ class AggClustering(ClusteringWorkflowBase):
             .. versionadded:: 0.24
 
         References
-        ----------------------------------------
+        ---------------------------------------
         sklearn.cluster.AgglomerativeClustering
         https://scikit-learn.org/stable/modules/generated/sklearn.cluster.AgglomerativeClustering.html
         """
