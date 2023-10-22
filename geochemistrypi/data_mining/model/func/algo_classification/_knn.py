@@ -48,12 +48,12 @@ def knn_manual_hyper_parameters() -> Dict:
         "metric": metric,
     }
     if not leaf_size:
-        # Use the default value provided by sklearn.neighbors.KNeighborsRegressor
+        # Use the default value provided by sklearn.neighbors.KNeighborsClassifier
         hyper_parameters["leaf_size"] = 30
     else:
         hyper_parameters["leaf_size"] = leaf_size
     if not p:
-        # Use the default value provided by sklearn.neighbors.KNeighborsRegressor
+        # Use the default value provided by sklearn.neighbors.KNeighborsClassifier
         hyper_parameters["p"] = 2
     else:
         hyper_parameters["p"] = p

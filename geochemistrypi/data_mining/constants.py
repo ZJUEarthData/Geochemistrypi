@@ -43,8 +43,19 @@ REGRESSION_MODELS = [
     "Multi-layer Perceptron",
     "Lasso Regression",
     "Elastic Net",
+    "SGD Regression",
 ]
-CLASSIFICATION_MODELS = ["Logistic Regression", "Support Vector Machine", "Decision Tree", "Random Forest", "Extra-Trees", "Xgboost", "Multi-layer Perceptron", "Gradient Boosting"]
+CLASSIFICATION_MODELS = [
+    "Logistic Regression",
+    "Support Vector Machine",
+    "Decision Tree",
+    "Random Forest",
+    "Extra-Trees",
+    "Xgboost",
+    "Multi-layer Perceptron",
+    "Gradient Boosting",
+    "K-Nearest Neighbors",
+]
 CLUSTERING_MODELS = ["KMeans", "DBSCAN"]
 DECOMPOSITION_MODELS = ["PCA", "T-SNE", "MDS"]
 
@@ -57,3 +68,7 @@ IMPUTING_STRATEGY = ["Mean Value", "Median Value", "Most Frequent Value", "Const
 FEATURE_SCALING_STRATEGY = ["Min-max Scaling", "Standardization"]
 
 SAMPLE_BALANCE_STRATEGY = ["Over Sampling", "Under Sampling", "Oversampling and Undersampling"]
+
+CUSTOMIZE_LABEL_STRATEGY = ["Automatic Coding", "Custom Numeric Labels", "Custom Non-numeric Labels"]
+
+FEATURE_SELECTION_STRATEGY = ["GenericUnivariateSelect", "SelectKBest"]

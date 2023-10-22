@@ -13,6 +13,7 @@ from .constants import (
     CLUSTERING_MODELS,
     DECOMPOSITION_MODELS,
     FEATURE_SCALING_STRATEGY,
+    FEATURE_SELECTION_STRATEGY,
     IMPUTING_STRATEGY,
     MLFLOW_ARTIFACT_DATA_PATH,
     MODE_OPTION,
@@ -28,7 +29,7 @@ from .data.data_readiness import basic_info, create_sub_data_set, data_split, fl
 from .data.feature_engineering import FeatureConstructor
 from .data.imputation import imputer
 from .data.inference import build_transform_pipeline, model_inference
-from .data.preprocessing import feature_scaler
+from .data.preprocessing import feature_scaler, feature_selector
 from .data.statistic import monte_carlo_simulator
 from .plot.map_plot import process_world_map
 from .plot.statistic_plot import basic_statistic, correlation_plot, distribution_plot, is_imputed, is_null_value, log_distribution_plot, probability_plot, ratio_null_vs_filled
@@ -228,7 +229,7 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
         print("-*-*- Hypothesis Testing on Imputation Method -*-*-")
         print("Null Hypothesis: The distributions of the data set before and after imputing remain the same.")
         print("Thoughts: Check which column rejects null hypothesis.")
-        print("Statistics Test Method: kruskal Test")
+        print("Statistics Test Method: Kruskal Test")
         monte_carlo_simulator(
             data_selected,
             data_selected_imputed,
@@ -322,6 +323,22 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
         save_data(y, "Y", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
         clear_output()
 
+        # <--- Feature Selection --->
+        print("-*-*- Feature Selection -*-*-")
+        num2option(OPTION)
+        is_feature_selection = limit_num_input(OPTION, SECTION[1], num_input)
+        if is_feature_selection == 1:
+            print("Which strategy do you want to apply?")
+            num2option(FEATURE_SELECTION_STRATEGY)
+            feature_selection_num = limit_num_input(FEATURE_SELECTION_STRATEGY, SECTION[1], num_input)
+            feature_selection_config, X = feature_selector(X, y, mode_num, FEATURE_SELECTION_STRATEGY, feature_selection_num - 1)
+            print("--Selected Features-")
+            show_data_columns(X.columns)
+            save_data(X, "X After Feature Selection", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+        else:
+            feature_selection_config = {}
+        clear_output()
+
         # create training data and testing data
         print("-*-*- Data Split - Train Set and Test Set -*-*-")
         print("Notice: Normally, set 20% of the dataset aside as test set, such as 0.2")
@@ -341,6 +358,7 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
     else:
         # unsupervised learning
         feature_scaling_config = {}
+        feature_selection_config = {}
         X = data_selected_imputed_fe
         X_train = data_selected_imputed_fe
         y, X_test, y_train, y_test = None, None, None, None
@@ -416,7 +434,7 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
 
         # <--- Transform Pipeline --->
         logger.debug("Transform Pipeline")
-        transformer_config, transform_pipeline = build_transform_pipeline(imputation_config, feature_scaling_config, run, X_train)
+        transformer_config, transform_pipeline = build_transform_pipeline(imputation_config, feature_scaling_config, feature_selection_config, run, X_train, y_train)
         clear_output()
 
         # <--- Model Inference --->
@@ -443,7 +461,7 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
 
                 # <--- Transform Pipeline --->
                 logger.debug("Transform Pipeline")
-                transformer_config, transform_pipeline = build_transform_pipeline(imputation_config, feature_scaling_config, run, X_train)
+                transformer_config, transform_pipeline = build_transform_pipeline(imputation_config, feature_scaling_config, feature_selection_config, run, X_train, y_train)
 
                 # <--- Model Inference --->
                 logger.debug("Model Inference")

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import re
 from typing import Dict, List
 
 import matplotlib.pyplot as plt
@@ -11,6 +12,7 @@ from imblearn.under_sampling import RandomUnderSampler
 from rich import print
 from sklearn.metrics import ConfusionMatrixDisplay, accuracy_score, confusion_matrix, f1_score, precision_recall_curve, precision_score, recall_score, roc_curve
 from sklearn.model_selection import cross_validate
+from sklearn.preprocessing import LabelEncoder
 
 
 def score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> Dict:
@@ -350,7 +352,7 @@ def resampler(X_train: pd.DataFrame, y_train: pd.DataFrame, method: List[str], m
     return sample_balance_config, X_train_resampled, y_train_resampled
 
 
-def reset_label(y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, original_label: int, new_label: int) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def reset_label(y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, method: List[str], method_idx: int) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Reset label.
 
     Parameters
@@ -364,6 +366,12 @@ def reset_label(y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, or
     y_test : pd.DataFrame
         The label data on test set.
 
+    method : list
+        The specific method of customizing label.
+
+    method_idx : int
+        The index corresponding to the specific method of customizing label.
+
     Returns
     -------
     y_reset : pd.DataFrame
@@ -375,16 +383,55 @@ def reset_label(y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, or
     y_test_reset : pd.DataFrame
         The label data on test set after reseting label.
     """
-    y_reset = y.replace(original_label, -10000)
-    y_reset = y_reset.replace(new_label, original_label)
-    y_reset = y_reset.replace(-10000, new_label)
-
-    y_train_reset = y_train.replace(original_label, -10000)
-    y_train_reset = y_train_reset.replace(new_label, original_label)
-    y_train_reset = y_train_reset.replace(-10000, new_label)
-
-    y_test_reset = y_test.replace(original_label, -10000)
-    y_test_reset = y_test_reset.replace(new_label, original_label)
-    y_test_reset = y_test_reset.replace(-10000, new_label)
+    y_colunm_name = list(y)[0]
+    label_range = int(y.nunique().values)
+    print("----Originla label----\n", y.drop_duplicates().reset_index(drop=True))
+    if method[method_idx] == "Automatic Coding":
+        label_encoder = LabelEncoder()
+        label_encoder.fit(y.squeeze())
+        y_reset = label_encoder.transform(y.squeeze())
+        y_reset = pd.DataFrame({y_colunm_name: y_reset})
+        y_train_reset = label_encoder.transform(y_train.squeeze())
+        y_train_reset = pd.DataFrame({y_colunm_name: y_train_reset})
+        y_test_reset = label_encoder.transform(y_test.squeeze())
+        y_test_reset = pd.DataFrame({y_colunm_name: y_test_reset})
+    elif method[method_idx] == "Custom Numeric Labels":
+        print("When doing customization, the new label should start from 0.")
+        print("Case 1: For binary classification, the range of the new label must be from 0 to 1.")
+        print("For example, if your original labels are 2 and 4, you can replace them with 0 and 1 respectively.")
+        print("Input format: [bold green][original label,[/bold green] [bold green]new label][/bold green], such as [bold green][2, 0]; [4, 1][/bold green].")
+        print("This means you want to replace 2 with 0 and 4 with 1.")
+        print(f"Case 2: For multi-classification, the range of the new label must be from 0 to {label_range}(the number of category - 1).")
+        print("For example, if your original labels are 2, 4 and 6, you can replace them with 0, 1 and 2 respectively.")
+        print("Input format: [bold green][original label,[/bold green] [bold green]new label][/bold green], such as [bold green][2, 0]; [4, 1]; [6, 2][/bold green].")
+        print("This means you want to replace 2 with 0, 4 with 1 and 6 with 2.")
+        original_new_label = input("Select the label range you want to process.\n" "@input: ")
+        label_sequence = re.findall(r"\[(\d+)\,\s*(\d+)\]", original_new_label)
+        customize_label_mapping = {int(label): int(value) for label, value in label_sequence}
+        y_reset = y.squeeze().map(customize_label_mapping)
+        y_reset = pd.DataFrame({y_colunm_name: y_reset})
+        y_train_reset = y_train.squeeze().map(customize_label_mapping)
+        y_train_reset = pd.DataFrame({y_colunm_name: y_train_reset})
+        y_test_reset = y_test.squeeze().map(customize_label_mapping)
+        y_test_reset = pd.DataFrame({y_colunm_name: y_test_reset})
+    elif method[method_idx] == "Custom Non-numeric Labels":
+        print("When doing customization, the new label should start from 0.")
+        print("Case 1: For binary classification, the range of the new label must be from 0 to 1.")
+        print("For example, if your original labels are 'A' and 'B', you can replace them with 0 and 1 respectively.")
+        print("Input format: [bold green]['original label', new label][/bold green], such as [bold green]['A', 0]; ['B', 1][/bold green].")
+        print("This means you want to replace A with 0 and B with 1.")
+        print(f"Case 2: For multi-classification, the range of the new label must be from 0 to {label_range}(the number of category - 1).")
+        print("For example, if your original labels are A, B and C, you can replace them with 0, 1 and 2 respectively.")
+        print("Input format: [bold green]['original label', new label][/bold green], such as [bold green]['A', 2]; ['B', 0]; ['C', 1][/bold green].")
+        print("This means you want to replace A with 2, B with 0 and C with 1.")
+        original_new_label = input("Select the label range you want to process.\n" "@input: ")
+        label_sequence = re.findall(r"\[\'(.*?)\',\s*(\d+)\]", original_new_label)
+        customize_label_mapping = {label: int(value) for label, value in label_sequence}
+        y_reset = y.squeeze().map(customize_label_mapping)
+        y_reset = pd.DataFrame({y_colunm_name: y_reset})
+        y_train_reset = y_train.squeeze().map(customize_label_mapping)
+        y_train_reset = pd.DataFrame({y_colunm_name: y_train_reset})
+        y_test_reset = y_test.squeeze().map(customize_label_mapping)
+        y_test_reset = pd.DataFrame({y_colunm_name: y_test_reset})
 
     return y_reset, y_train_reset, y_test_reset

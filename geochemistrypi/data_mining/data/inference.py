@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 from typing import Dict, Optional, Tuple
@@ -6,6 +7,7 @@ import mlflow
 import pandas as pd
 from imblearn.over_sampling import RandomOverSampler
 from imblearn.under_sampling import RandomUnderSampler
+from sklearn.feature_selection import GenericUnivariateSelect, SelectKBest
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import MinMaxScaler, PolynomialFeatures, StandardScaler
@@ -28,6 +30,8 @@ class PipelineConstrutor:
             "PolynomialFeatures": PolynomialFeatures,
             "RandomOverSampler": RandomOverSampler,
             "RandomUnderSampler": RandomUnderSampler,
+            "GenericUnivariateSelect": GenericUnivariateSelect,
+            "SelectKBest": SelectKBest,
         }
 
     def chain(self, transformer_config: Dict) -> object:
@@ -49,7 +53,7 @@ class PipelineConstrutor:
         return make_pipeline(*transformers)
 
 
-def build_transform_pipeline(imputation_config: Dict, feature_scaling_config: Dict, run: object, X_train: pd.DataFrame) -> Tuple[Dict, object]:
+def build_transform_pipeline(imputation_config: Dict, feature_scaling_config: Dict, feature_selection_config: Dict, run: object, X_train: pd.DataFrame, y_train: pd.DataFrame) -> Tuple[Dict, object]:
     """Build the transform pipeline.
 
     Parameters
@@ -59,6 +63,9 @@ def build_transform_pipeline(imputation_config: Dict, feature_scaling_config: Di
 
     feature_scaling_config : Dict
         The feature scaling configuration.
+
+    feature_selection_config : Dict
+        The feature selection configuration.
 
     run : object
         The model selection object.
@@ -77,8 +84,14 @@ def build_transform_pipeline(imputation_config: Dict, feature_scaling_config: Di
     transformer_config = {}
     transformer_config.update(imputation_config)
     transformer_config.update(feature_scaling_config)
+    transformer_config.update(feature_selection_config)
     transformer_config.update(run.transformer_config)
-    transformer_config_str = json.dumps(transformer_config, indent=4)
+    transformer_config_str = copy.deepcopy(transformer_config)
+    for key, value in transformer_config_str.items():
+        for k, v in value.items():
+            if callable(v):
+                transformer_config_str[key][k] = v.__name__
+    transformer_config_str = json.dumps(transformer_config_str, indent=4)
     GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
     save_text(transformer_config_str, "Transform Pipeline Configuration", GEOPI_OUTPUT_ARTIFACTS_PATH, "root")
     # If transformer_config is not {}, then create the transform pipeline.
@@ -86,7 +99,7 @@ def build_transform_pipeline(imputation_config: Dict, feature_scaling_config: Di
         # Create the transform pipeline.
         transform_pipeline = PipelineConstrutor().chain(transformer_config)
         # Fit the transform pipeline with the training data.
-        transform_pipeline.fit(X_train)
+        transform_pipeline.fit(X_train, y_train)
         # Save the transform pipeline.
         GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH")
         save_model(transform_pipeline, "Transform Pipeline", X_train.iloc[[0]], GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH)
