@@ -60,7 +60,7 @@ CLUSTERING_MODELS = ["KMeans", "DBSCAN"]
 DECOMPOSITION_MODELS = ["PCA", "T-SNE", "MDS"]
 
 # Special AutoML models
-NON_AUTOML_MODELS = ["Linear Regression", "Polynomial Regression", "Lasso Regression"]
+NON_AUTOML_MODELS = ["Linear Regression", "Polynomial Regression"]
 RAY_FLAML = ["Multi-layer Perceptron"]
 
 IMPUTING_STRATEGY = ["Mean Value", "Median Value", "Most Frequent Value", "Constant(Specified Value)"]
