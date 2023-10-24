@@ -2781,6 +2781,48 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         )
 
         self.naming = LassoRegression.name
+        self.customized = True
+        self.customized_name = "Lasso"
+
+    @property
+    def settings(self) -> Dict:
+        """The configuration of Lasso to implement AutoML by FLAML framework."""
+        configuration = {
+            "time_budget": 10,  # total running time in seconds
+            "metric": "r2",
+            "estimator_list": [self.customized_name],  # list of ML learners
+            "task": "regression",  # task type
+            # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
+            # "log_training_metric": True,  # whether to log training metric
+        }
+        return configuration
+
+    @property
+    def customization(self) -> object:
+        """The customized Lasso of FLAML framework."""
+        from flaml import tune
+        from flaml.data import REGRESSION
+        from flaml.model import SKLearnEstimator
+        from sklearn.linear_model import Lasso
+
+        class MyLassoRegression(SKLearnEstimator):
+            def __init__(self, task="regression", n_jobs=None, **config):
+                super().__init__(task, **config)
+                if task in REGRESSION:
+                    self.estimator_class = Lasso
+
+            @classmethod
+            def search_space(cls, data_size, task):
+                space = {
+                    "alpha": {"domain": tune.uniform(lower=0.001, upper=10), "init_value": 1},
+                    "fit_intercept": {"domain": tune.choice([True, False])},
+                    "max_iter": {"domain": tune.randint(lower=500, upper=2000), "init_value": 1000},
+                    "tol": {"domain": tune.uniform(lower=1e-5, upper=1e-3), "init_value": 1e-4},
+                    "selection": {"domain": tune.choice(["cyclic", "random"])},
+                }
+                return space
+
+        return MyLassoRegression
 
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
@@ -2790,6 +2832,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         clear_output()
         return hyper_parameters
 
+    @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
@@ -2797,6 +2840,85 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         self._show_formula(
             coef=[self.model.coef_],
             intercept=self.model.intercept_,
+            features_name=LassoRegression.X_train.columns,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
+            mlflow_path="root",
+        )
+        columns_num = LassoRegression.X.shape[1]
+        if columns_num > 2:
+            # choose one of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(LassoRegression.X_test, 1)
+            self._plot_2d_scatter_diagram(
+                feature_data=two_dimen_data,
+                target_data=LassoRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            # choose two of dimensions to draw
+            three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(LassoRegression.X_test, 2)
+            self._plot_3d_scatter_diagram(
+                feature_data=three_dimen_data,
+                target_data=LassoRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        elif columns_num == 2:
+            # choose one of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(LassoRegression.X_test, 1)
+            self._plot_2d_scatter_diagram(
+                feature_data=two_dimen_data,
+                target_data=LassoRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            # no need to choose
+            self._plot_3d_scatter_diagram(
+                feature_data=LassoRegression.X_test,
+                target_data=LassoRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            self._plot_3d_surface_diagram(
+                feature_data=LassoRegression.X_test,
+                target_data=LassoRegression.y_test,
+                y_test_predict=LassoRegression.y_test_predict,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        elif columns_num == 1:
+            # no need to choose
+            self._plot_2d_scatter_diagram(
+                feature_data=LassoRegression.X_test,
+                target_data=LassoRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            self._plot_2d_line_diagram(
+                feature_data=LassoRegression.X_test,
+                target_data=LassoRegression.y_test,
+                y_test_predict=LassoRegression.y_test_predict,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        else:
+            pass
+
+    @dispatch(bool)
+    def special_components(self, is_automl: bool, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by FLAML framework."""
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+        self._show_formula(
+            coef=[self.auto_model.coef_],
+            intercept=self.auto_model.intercept_,
             features_name=LassoRegression.X_train.columns,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
@@ -2981,6 +3103,49 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         )
 
         self.naming = ElasticNetRegression.name
+        self.customized = True
+        self.customized_name = "Elastic Net"
+
+    @property
+    def settings(self) -> Dict:
+        """The configuration of Elastic Net to implement AutoML by FLAML framework."""
+        configuration = {
+            "time_budget": 10,  # total running time in seconds
+            "metric": "r2",
+            "estimator_list": [self.customized_name],  # list of ML learners
+            "task": "regression",  # task type
+            # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
+            # "log_training_metric": True,  # whether to log training metric
+        }
+        return configuration
+
+    @property
+    def customization(self) -> object:
+        """The customized Elastic Net of FLAML framework."""
+        from flaml import tune
+        from flaml.data import REGRESSION
+        from flaml.model import SKLearnEstimator
+        from sklearn.linear_model import ElasticNet
+
+        class MyElasticNetRegression(SKLearnEstimator):
+            def __init__(self, task="regression", n_jobs=None, **config):
+                super().__init__(task, **config)
+                if task in REGRESSION:
+                    self.estimator_class = ElasticNet
+
+            @classmethod
+            def search_space(cls, data_size, task):
+                space = {
+                    "alpha": {"domain": tune.uniform(lower=0.001, upper=10), "init_value": 1},
+                    "l1_ratio": {"domain": tune.uniform(lower=0.001, upper=1), "init_value": 0.5},
+                    "fit_intercept": {"domain": tune.choice([True, False])},
+                    "max_iter": {"domain": tune.randint(lower=500, upper=2000), "init_value": 1000},
+                    "tol": {"domain": tune.uniform(lower=1e-5, upper=1e-3), "init_value": 1e-4},
+                    "selection": {"domain": tune.choice(["cyclic", "random"])},
+                }
+                return space
+
+        return MyElasticNetRegression
 
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
@@ -2990,6 +3155,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         clear_output()
         return hyper_parameters
 
+    @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
@@ -2997,6 +3163,85 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         self._show_formula(
             coef=[self.model.coef_],
             intercept=self.model.intercept_,
+            features_name=ElasticNetRegression.X_train.columns,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
+            mlflow_path="root",
+        )
+        columns_num = ElasticNetRegression.X.shape[1]
+        if columns_num > 2:
+            # choose one of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(ElasticNetRegression.X_test, 1)
+            self._plot_2d_scatter_diagram(
+                feature_data=two_dimen_data,
+                target_data=ElasticNetRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            # choose two of dimensions to draw
+            three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(ElasticNetRegression.X_test, 2)
+            self._plot_3d_scatter_diagram(
+                feature_data=three_dimen_data,
+                target_data=ElasticNetRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        elif columns_num == 2:
+            # choose one of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(ElasticNetRegression.X_test, 1)
+            self._plot_2d_scatter_diagram(
+                feature_data=two_dimen_data,
+                target_data=ElasticNetRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            # no need to choose
+            self._plot_3d_scatter_diagram(
+                feature_data=ElasticNetRegression.X_test,
+                target_data=ElasticNetRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            self._plot_3d_surface_diagram(
+                feature_data=ElasticNetRegression.X_test,
+                target_data=ElasticNetRegression.y_test,
+                y_test_predict=ElasticNetRegression.y_test_predict,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        elif columns_num == 1:
+            # no need to choose
+            self._plot_2d_scatter_diagram(
+                feature_data=ElasticNetRegression.X_test,
+                target_data=ElasticNetRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            self._plot_2d_line_diagram(
+                feature_data=ElasticNetRegression.X_test,
+                target_data=ElasticNetRegression.y_test,
+                y_test_predict=ElasticNetRegression.y_test_predict,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        else:
+            pass
+
+    @dispatch(bool)
+    def special_components(self, is_automl: bool, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by FLAML framework."""
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+        self._show_formula(
+            coef=[self.auto_model.coef_],
+            intercept=self.auto_model.intercept_,
             features_name=ElasticNetRegression.X_train.columns,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
