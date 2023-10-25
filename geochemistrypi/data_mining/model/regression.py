@@ -3525,6 +3525,54 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         )
 
         self.naming = SGDRegression.name
+        self.customized = True
+        self.customized_name = "SGD Regression"
+
+    @property
+    def settings(self) -> Dict:
+        """The configuration of SVR to implement AutoML by FLAML framework."""
+        configuration = {
+            "time_budget": 10,  # total running time in seconds
+            "metric": "r2",
+            "estimator_list": [self.customized_name],  # list of ML learners
+            "task": "regression",  # task type
+            # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
+            # "log_training_metric": True,  # whether to log training metric
+        }
+        return configuration
+
+    @property
+    def customization(self) -> object:
+        """The customized SVR of FLAML framework."""
+        from flaml import tune
+        from flaml.data import REGRESSION
+        from flaml.model import SKLearnEstimator
+        from sklearn.linear_model import SGDRegressor
+
+        class MySGDRegression(SKLearnEstimator):
+            def __init__(self, task="regression", n_jobs=None, **config):
+                super().__init__(task, **config)
+                if task in REGRESSION:
+                    self.estimator_class = SGDRegressor
+
+            @classmethod
+            def search_space(cls, data_size, task):
+                space = {
+                    "loss": {"domain": tune.choice(["squared_error", "huber", "epsilon_insensitive", "squared_epsilon_insensitive"]), "init_value": "squared_error"},
+                    "penalty": {"domain": tune.choice(["l2", "l1", "elasticnet", None]), "init_value": "l2"},
+                    "alpha": {"domain": tune.loguniform(lower=0.0001, upper=1), "init_value": 0.0001},
+                    "fit_intercept": {"domain": tune.choice([True, False]), "init_value": True},
+                    "max_iter": {"domain": tune.randint(lower=50, upper=1000), "init_value": 1000},
+                    "tol": {"domain": tune.loguniform(lower=0.000001, upper=0.001), "init_value": 0.001},
+                    "shuffle": {"domain": tune.choice([True, False]), "init_value": True},
+                    "learning_rate": {"domain": tune.choice(["constant", "optimal", "invscaling", "adaptive"]), "init_value": "invscaling"},
+                    "eta0": {"domain": tune.loguniform(lower=0.0001, upper=0.1), "init_value": 0.01},
+                    "power_t": {"domain": tune.uniform(lower=0.1, upper=0.9), "init_value": 0.25},
+                    "l1_ratio": {"domain": tune.uniform(lower=0, upper=1), "init_value": 0.15},
+                }
+                return space
+
+        return MySGDRegression
 
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
@@ -3534,6 +3582,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         clear_output()
         return hyper_parameters
 
+    @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
@@ -3541,6 +3590,85 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         self._show_formula(
             coef=[self.model.coef_],
             intercept=self.model.intercept_,
+            features_name=SGDRegression.X_train.columns,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
+            mlflow_path="root",
+        )
+        columns_num = SGDRegression.X.shape[1]
+        if columns_num > 2:
+            # choose one of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(SGDRegression.X_test, 1)
+            self._plot_2d_scatter_diagram(
+                feature_data=two_dimen_data,
+                target_data=SGDRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            # choose two of dimensions to draw
+            three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(SGDRegression.X_test, 2)
+            self._plot_3d_scatter_diagram(
+                feature_data=three_dimen_data,
+                target_data=SGDRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        elif columns_num == 2:
+            # choose one of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(SGDRegression.X_test, 1)
+            self._plot_2d_scatter_diagram(
+                feature_data=two_dimen_data,
+                target_data=SGDRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            # no need to choose
+            self._plot_3d_scatter_diagram(
+                feature_data=SGDRegression.X_test,
+                target_data=SGDRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            self._plot_3d_surface_diagram(
+                feature_data=SGDRegression.X_test,
+                target_data=SGDRegression.y_test,
+                y_test_predict=SGDRegression.y_test_predict,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        elif columns_num == 1:
+            # no need to choose
+            self._plot_2d_scatter_diagram(
+                feature_data=SGDRegression.X_test,
+                target_data=SGDRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            self._plot_2d_line_diagram(
+                feature_data=SGDRegression.X_test,
+                target_data=SGDRegression.y_test,
+                y_test_predict=SGDRegression.y_test_predict,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        else:
+            pass
+
+    @dispatch(bool)
+    def special_components(self, is_automl: bool, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+        self._show_formula(
+            coef=[self.auto_model.coef_],
+            intercept=self.auto_model.intercept_,
             features_name=SGDRegression.X_train.columns,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
