@@ -3530,7 +3530,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
 
     @property
     def settings(self) -> Dict:
-        """The configuration of SVR to implement AutoML by FLAML framework."""
+        """The configuration of SGD to implement AutoML by FLAML framework."""
         configuration = {
             "time_budget": 10,  # total running time in seconds
             "metric": "r2",
@@ -3543,7 +3543,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
 
     @property
     def customization(self) -> object:
-        """The customized SVR of FLAML framework."""
+        """The customized SGD of FLAML framework."""
         from flaml import tune
         from flaml.data import REGRESSION
         from flaml.model import SKLearnEstimator

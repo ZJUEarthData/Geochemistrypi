@@ -21,6 +21,7 @@ Core capabilities are:
 
 + **Continous Training**
 + **Machine Learning Lifecycle Management**
++ **Model Inference**
 
 Key features are:
 + **Easy to use:** The automation of data mining process provides the users with simple number options to choose.
@@ -29,7 +30,13 @@ Key features are:
 
 Latest Update: follow up by clicking `Starred` and  `Watch` on our [GitHub repository](https://github.com/ZJUEarthData/geochemistrypi), then get email notifications of the newest features automatically.
 
+The following figure is the simplified overview of Geochemistry π: <br>
 
+![Overview of workflow](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/28e174f0-1f2f-4367-96bd-9526352101bd)
+
+The following figure is the frontend-backend separation architecture of Geochemistry: <br>
+
+![Frontend-backend separation architecture of Geochemistry](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/3b27cbdb-ff50-4fa6-b1d1-4c75b253fdff)
 
 ## Quick Installation
 
@@ -125,7 +132,7 @@ The highlight is that through choosing **simple number options**, the users are 
 
 The following figure is the activity diagram of automated ML pipeline in Geochemistry π:
 
-<img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/544cbebc-fe5d-42d4-a0c1-cbe65067f3a5" />
+<img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/b7f8e6bc-0c6c-4917-adfa-f00c6ccbad7b" />
 
 Its data section provides feature engineering based on **arithmatic operation**. It allows the users to have a statistic analysis on the data set as well as on the imputation result, which is supported by the combination of **Monte Carlo simulation** and **hypothesis testing**.
 
@@ -133,27 +140,25 @@ Its models section provides both **supervised learning** and **unsupervised lear
 
 ### Second Phase
 
-Currently, we are building three access ways to provide more user-friendly service, including **web portal**, **CLI package** and **API**. It allows the user to perform **continuous training** by automating the ML pipeline and **machine learning lifecycle management** by unique storage mechanism in different access layers.
+Currently, we are building three access ways to provide more user-friendly service, including **web portal**, **CLI package** and **API**. It allows the user to perform **continuous training** and **model inference** by automating the ML pipeline and **machine learning lifecycle management** by unique storage mechanism in different access layers.
 
 The following figure is the system architecture diagram: <br>
 
-![System Architecture Diagram](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/db51a550-4001-4a20-b79f-ab6c00932378)
+![System Architecture Diagram](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/20b5a2a4-f2de-492d-a2df-9282196d8c4f)
 
-The following figure is the overview of workflow: <br>
-
-![Overview of workflow](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/8646702b-ebdf-4b6a-ac6f-b858f1823bd1)
 
 The following figure is the customized automated ML pipeline: <br>
 
-![Customized automated ML pipeline](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/0636ef1a-1c6a-4306-b6f4-de625e8bdd2e)
+![Customized automated ML pipeline](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/07078b43-30bd-46cf-abad-2da509fae6aa)
 
 The following figure is the design pattern hierarchical architecture: <br>
 
-![Design Pattern Hierarchical Architecture](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/31d47eab-33a3-42cc-9e13-60b0f33bb337)
+![Design Pattern](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/aa84ab12-c95e-4282-a60e-64ba2858c437)
+![Workflow Object](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/f08885bf-1bec-4045-bf6b-82c5c18d3f8f)
 
 The following figure is the storage mechanism: <br>
 
-![Storage Mechanism](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/f9442ea3-bf85-48fa-a316-3f4ca9f12eeb)
+![Storage Mechanism](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/401f3429-c44f-4b76-b085-7a9dcc987cde)
 
 The whole package is under construction and the documentation is progressively evolving.
 
@@ -182,6 +187,7 @@ The whole package is under construction and the documentation is progressively e
 + Yucheng Yan (Andy, University of Sydney, Australia)
 + Ruitao Chang (China University of Geosciences Beijing, China)
 + Zhenglin Xu (Garry, Jilin University, China)
++ Junchi Liao(Roceda, University of Electronic Science and Technology of China, China)
 
 
 
@@ -193,11 +199,11 @@ The whole package is under construction and the documentation is progressively e
 
 **What can you learn?**
 + Learning the full cycle of data mining on tabular data, including the algorithms in regression,classification, clustering, and decomposition.
-+ Learning to be a qualified Python developer, including any Python programing contents towards data mining, basic software engineering techniques like OOP developing, and cooperation tools like Git.
++ Learning to be a qualified Python developer, including any Python programing contents towards data mining, basic software engineering techniques like frontend and backend development framework, and cooperation tools like Git.
 
 **What can you get?**
 
-+ Research internship proof and reference letter after working for > 200 hours.
++ Research internship proof and reference letter after working for >> 100 hours.
 + Chance to pay a visit to Hangzhou, China, sponsored by ZJU Earth Data.
 + Chance to be guided by the experts from IT companies in Silicon Valley and Hangzhou.
 + Bonus depending on your performance.
