@@ -36,7 +36,9 @@ The following figure is the simplified overview of Geochemistry π: <br>
 
 The following figure is the frontend-backend separation architecture of Geochemistry: <br>
 
-![Frontend-backend separation architecture of Geochemistry](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/3b27cbdb-ff50-4fa6-b1d1-4c75b253fdff)
+<div style="text-align:center;">
+  <img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/3b27cbdb-ff50-4fa6-b1d1-4c75b253fdff" alt="Frontend-backend separation architecture of Geochemistry" width="400" />
+</div>
 
 ## Quick Installation
 
@@ -149,7 +151,9 @@ The following figure is the system architecture diagram: <br>
 
 The following figure is the customized automated ML pipeline: <br>
 
-![Customized automated ML pipeline](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/07078b43-30bd-46cf-abad-2da509fae6aa)
+<div style="text-align:center;">
+  <img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/07078b43-30bd-46cf-abad-2da509fae6aa" alt="Customized automated ML pipeline" width="400" />
+</div>
 
 The following figure is the design pattern hierarchical architecture: <br>
 
@@ -158,7 +162,9 @@ The following figure is the design pattern hierarchical architecture: <br>
 
 The following figure is the storage mechanism: <br>
 
-![Storage Mechanism](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/401f3429-c44f-4b76-b085-7a9dcc987cde)
+<div style="text-align:center;">
+  <img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/401f3429-c44f-4b76-b085-7a9dcc987cde" alt="Storage Mechanism" width="500" />
+</div>
 
 The whole package is under construction and the documentation is progressively evolving.
 

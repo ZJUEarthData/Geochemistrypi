@@ -67,7 +67,7 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
 
     # <-- User Data Loading -->
     with console.status("[bold green]Data Loading...[/bold green]", spinner="dots"):
-        sleep(1.5)
+        sleep(1)
     if training_data_path:
         # If the user provides file name, then load the data from the file.
         data = read_data(file_path=training_data_path, is_own_data=1)
@@ -167,7 +167,9 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
         print(f"Successfully loading the built-in training data set '{training_data_path}'.")
         show_data_columns(data.columns)
         clear_output()
-    # If the user doesn't provide the inference data path, then use the built-in data.
+    # If the user doesn't provide the inference data path and the training data is built-in data,
+    #  then use the built-in data as inference data. Otherwise, the inference data is None.
+    #  It means that the user doesn't want to run the model inference.
     if (not inference_data_path) and is_built_in_data:
         print("-*-*- Inference Data -*-*-")
         if built_in_data_num == 1:
@@ -238,9 +240,6 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
             test="kruskal",
             confidence=0.05,
         )
-        # print("The statistics test method: Kruskal Wallis Test")
-        # monte_carlo_simulator(data_processed, data_processed_imputed, sample_size=50,
-        #                       iteration=100, test='kruskal', confidence=0.05)
         probability_plot(data_selected.columns, data_selected, data_selected_imputed)
         basic_info(data_selected_imputed)
         basic_statistic(data_selected_imputed)
@@ -272,6 +271,7 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
     # divide X and y data set when it is supervised learning
     logger.debug("Data Split")
     if mode_num == 1 or mode_num == 2:
+        # Supervised learning
         print("-*-*- Data Split - X Set and Y Set -*-*-")
         print("Divide the processing data set into X (feature value) and Y (target value) respectively.")
         # create X data set
@@ -356,11 +356,32 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
         del data_selected_imputed_fe
         clear_output()
     else:
-        # unsupervised learning
-        feature_scaling_config = {}
-        feature_selection_config = {}
+        # Unsupervised learning
+        # Create X data set without data split because it is unsupervised learning
         X = data_selected_imputed_fe
-        X_train = data_selected_imputed_fe
+        # <--- Feature Scaling --->
+        print("-*-*- Feature Scaling on X Set -*-*-")
+        num2option(OPTION)
+        is_feature_scaling = limit_num_input(OPTION, SECTION[1], num_input)
+        if is_feature_scaling == 1:
+            print("Which strategy do you want to apply?")
+            num2option(FEATURE_SCALING_STRATEGY)
+            feature_scaling_num = limit_num_input(FEATURE_SCALING_STRATEGY, SECTION[1], num_input)
+            feature_scaling_config, X_scaled_np = feature_scaler(X, FEATURE_SCALING_STRATEGY, feature_scaling_num - 1)
+            X = np2pd(X_scaled_np, X.columns)
+            del X_scaled_np
+            print("Data Set After Scaling:")
+            print(X)
+            print("Basic Statistical Information: ")
+            basic_statistic(X)
+            save_data(X, "X With Scaling", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+        else:
+            feature_scaling_config = {}
+        clear_output()
+
+        feature_selection_config = {}
+        # Create training data without data split because it is unsupervised learning
+        X_train = X
         y, X_test, y_train, y_test = None, None, None, None
 
     # <--- Model Selection --->
@@ -401,11 +422,11 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
     is_inference = False
     # If the model is supervised learning, then allow the user to use model inference.
     if mode_num == 1 or mode_num == 2:
-        print("-*-*- Feature Engineering on Inference Data  -*-*-")
+        print("-*-*- Feature Engineering on Inference Data -*-*-")
         is_inference = True
         selected_columns = X_train.columns
-        # If feature_engineering_config is not {}, then apply feature engineering with the same operation to the input data.
-        if feature_engineering_config:
+        # If feature_engineering_config is not {} and inference_data is not None, then apply feature engineering with the same operation to the input data.
+        if feature_engineering_config and (inference_data is not None):
             print("The same feature engineering operation will be applied to the inference data.")
             new_feature_builder = FeatureConstructor(inference_data)
             inference_data_fe = new_feature_builder.batch_build(feature_engineering_config)
@@ -418,6 +439,8 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
         save_data(inference_data_fe, "Inference Data Feature-Engineering", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
         save_data(inference_data_fe_selected, "Inference Data Feature-Engineering Selected", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
         clear_output()
+    else:
+        inference_data_fe_selected = None
 
     # <--- Model Training --->
     logger.debug("Model Training")
@@ -439,8 +462,9 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
 
         # <--- Model Inference --->
         logger.debug("Model Inference")
-        model_inference(inference_data_fe_selected, is_inference, feature_engineering_config, run, transformer_config, transform_pipeline)
-        clear_output()
+        if inference_data_fe_selected is not None:
+            model_inference(inference_data_fe_selected, is_inference, run, transformer_config, transform_pipeline)
+            clear_output()
     else:
         # Run all models
         for i in range(len(MODELS) - 1):
@@ -465,6 +489,7 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
 
                 # <--- Model Inference --->
                 logger.debug("Model Inference")
-                model_inference(inference_data_fe_selected, is_inference, feature_engineering_config, run, transformer_config, transform_pipeline)
-                clear_output()
+                if inference_data_fe_selected is not None:
+                    model_inference(inference_data_fe_selected, is_inference, run, transformer_config, transform_pipeline)
+                    clear_output()
     mlflow.end_run()

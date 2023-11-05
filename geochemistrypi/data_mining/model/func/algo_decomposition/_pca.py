@@ -21,7 +21,7 @@ def pca_manual_hyper_parameters() -> Dict:
     print("Please specify the number of components to retain. A good starting range could be between 2 and 10, such as 4.")
     n_components = num_input(SECTION[2], "N Components: ")
     print("SVD Solver: This parameter specifies the algorithm used to perform the singular value decomposition.")
-    print("Please specify the algorithm. It is generally recommended to leave it set to auto.")
+    print("Please specify the algorithm. It is generally recommended to leave it as 'auto'.")
     svd_solvers = ["auto", "full", "arpack", "randomized"]
     svd_solver = str_input(svd_solvers, SECTION[2])
     hyper_parameters = {"n_components": n_components, "svd_solver": svd_solver}
