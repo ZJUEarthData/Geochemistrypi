@@ -144,51 +144,69 @@ def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         The sub data set.
     """
-    sub_data_set_columns_range = input(
-        "Select the data range you want to process.\n"
-        "Input format:\n"
-        'Format 1: "[**, **]; **; [**, **]", such as "[1, 3]; 7; [10, 13]" '
-        "--> you want to deal with the columns 1, 2, 3, 7, 10, 11, 12, 13 \n"
-        'Format 2: "xx", such as "7" --> you want to deal with the columns 7 \n'
-        "@input: "
+    sub_data_set_columns_range = str(
+        input(
+            "Select the data range you want to process.\n"
+            "Input format:\n"
+            'Format 1: "[**, **]; **; [**, **]", such as "[1, 3]; 7; [10, 13]" '
+            "--> you want to deal with the columns 1, 2, 3, 7, 10, 11, 12, 13 \n"
+            'Format 2: "xx", such as "7" --> you want to deal with the columns 7 \n'
+            "@input: "
+        )
     )
     while True:
-        temp = sub_data_set_columns_range.split(";")
-        if len(sub_data_set_columns_range) != 0:
-            for i in range(len(temp)):
-                if isinstance(eval(temp[i]), int):
-                    if int(temp[i]) > int(data.shape[1]):
-                        print("The input {} is incorrect!".format(temp[i]))
-                        print("The number you entered is out of the range of options: 1 - {}".format(data.shape[1]))
-                        time.sleep(0.5)
-                        sub_data_set_columns_range = input("-----* Please enter again *-----\n@input: ")
-                        judge = True
-                        break
-                    else:
-                        judge = False
-                else:
-                    min_max = eval(temp[i])
-                    if int(min_max[0]) >= int(min_max[1]):
-                        print("There is a problem with the format of the data you entered!")
-                        time.sleep(0.5)
-                        sub_data_set_columns_range = input("-----* Please enter again *-----\n@input: ")
-                        judge = True
-                        break
-                    elif int(min_max[1]) > int(data.shape[1]):
-                        print("The input {} is incorrect!".format(temp[i]))
-                        print("The number you entered is out of the range of options: 1 - {}".format(data.shape[1]))
-                        time.sleep(0.5)
-                        sub_data_set_columns_range = input("-----* Please enter again *-----\n@input: ")
-                        judge = True
-                        break
-                    else:
-                        judge = False
-        else:
-            print("You have not entered the sequence number of the selected data!")
-            print("The number you entered should be in the range of options: 1 - {}".format(data.shape[1]))
+        if ("【" in sub_data_set_columns_range) or ("】" in sub_data_set_columns_range):
+            print("There is a problem with the format of the parentheses entered !")
             time.sleep(0.5)
-            sub_data_set_columns_range = input("-----* Please enter again *-----\n@input: ")
+            sub_data_set_columns_range = str(input("-----* Please enter again *-----\n@input: "))
             judge = True
+        else:
+            monitor_number = 0
+            for i in ["[", "]"]:
+                if i in sub_data_set_columns_range:
+                    monitor_number = monitor_number + 1
+            if monitor_number % 2 != 0:
+                print("There is a problem with the format of the parentheses entered !")
+                time.sleep(0.5)
+                sub_data_set_columns_range = str(input("-----* Please enter again *-----\n@input: "))
+                judge = True
+            sub_data_set_columns_range = sub_data_set_columns_range.replace(" ", "")
+            temp = sub_data_set_columns_range.split(";")
+            if len(sub_data_set_columns_range) != 0:
+                for i in range(len(temp)):
+                    if isinstance(eval(temp[i]), int):
+                        if int(temp[i]) > int(data.shape[1]):
+                            print("The input {} is incorrect!".format(temp[i]))
+                            print("The number you entered is out of the range of options: 1 - {}".format(data.shape[1]))
+                            time.sleep(0.5)
+                            sub_data_set_columns_range = input("-----* Please enter again *-----\n@input: ")
+                            judge = True
+                            break
+                        else:
+                            judge = False
+                    else:
+                        min_max = eval(temp[i])
+                        if int(min_max[0]) >= int(min_max[1]):
+                            print("There is a problem with the format of the data you entered!")
+                            time.sleep(0.5)
+                            sub_data_set_columns_range = input("-----* Please enter again *-----\n@input: ")
+                            judge = True
+                            break
+                        elif int(min_max[1]) > int(data.shape[1]):
+                            print("The input {} is incorrect!".format(temp[i]))
+                            print("The number you entered is out of the range of options: 1 - {}".format(data.shape[1]))
+                            time.sleep(0.5)
+                            sub_data_set_columns_range = input("-----* Please enter again *-----\n@input: ")
+                            judge = True
+                            break
+                        else:
+                            judge = False
+            else:
+                print("You have not entered the sequence number of the selected data!")
+                print("The number you entered should be in the range of options: 1 - {}".format(data.shape[1]))
+                time.sleep(0.5)
+                sub_data_set_columns_range = input("-----* Please enter again *-----\n@input: ")
+                judge = True
 
         if judge is False:
             break
@@ -201,23 +219,23 @@ def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
         except SyntaxError:
             print("Warning: Please use English input method editor.")
             judge = True
-            sub_data_set_columns_range = input("@input: ")
+            sub_data_set_columns_range = str(input("@input: "))
         except NameError:
             print("Warning: Please follow the rules and re-enter.")
             judge = True
-            sub_data_set_columns_range = input("@input: ")
+            sub_data_set_columns_range = str(input("@input: "))
         except UnicodeDecodeError:
             print("Warning: Please use English input method editor.")
             judge = True
-            sub_data_set_columns_range = input("@input: ")
+            sub_data_set_columns_range = str(input("@input: "))
         except IndexError:
             print("Warning: Please follow the rules and re-enter.")
             judge = True
-            sub_data_set_columns_range = input("@input: ")
+            sub_data_set_columns_range = str(input("@input: "))
         except TypeError:
             print("Warning: Please follow the rules and re-enter.")
             judge = True
-            sub_data_set_columns_range = input("@input: ")
+            sub_data_set_columns_range = str(input("@input: "))
         else:
             data_checking = data.iloc[:, sub_data_set_columns_selected]
             for i in data_checking.columns.values:
@@ -233,7 +251,7 @@ def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
                     print(f"Warning: The data type of selected column {df_test.columns.values} is not numeric!" " Please make sure that the selected data type is numeric and re-enter.")
                     judge = True
             if judge is True:
-                sub_data_set_columns_range = input("@input: ")
+                sub_data_set_columns_range = str(input("@input: "))
         if judge is False:
             break
 

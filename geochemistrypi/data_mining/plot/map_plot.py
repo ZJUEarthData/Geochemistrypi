@@ -133,8 +133,8 @@ def process_world_map(data: pd.DataFrame) -> None:
     map_flag = 0
     is_map_projection = 0
     detection_index = 0
-    lon = ["LONGITUDE", "Longitude (°E)", "longitude", "Longitude", "经度 (°N)", "经度"]
-    lat = ["LATITUDE", "Latitude (°N)", "latitude", "Latitude", "纬度 (°E)", "纬度"]
+    lon = ["LONGITUDE", "Longitude (°E)", "longitude", "Longitude", "经度 (°N)", "经度", "lng"]
+    lat = ["LATITUDE", "Latitude (°N)", "latitude", "Latitude", "纬度 (°E)", "纬度", "lat"]
     j = [j for j in lat if j in data.columns]
     i = [i for i in lon if i in data.columns]
     if bool(len(j) > 0):
