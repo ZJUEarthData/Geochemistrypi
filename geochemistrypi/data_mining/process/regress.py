@@ -21,7 +21,7 @@ from ..model.regression import (
     RegressionWorkflowBase,
     SGDRegression,
     SVMRegression,
-    XgboostRegression,
+    XGBoostRegression,
 )
 from ._base import ModelSelectionBase
 
@@ -60,8 +60,8 @@ class RegressionModelSelection(ModelSelectionBase):
             self.transformer_config.update(poly_config)
             self.reg_workflow.data_upload(X_train=X_train, X_test=X_test)
         elif self.model_name == "Xgboost":
-            hyper_parameters = XgboostRegression.manual_hyper_parameters()
-            self.reg_workflow = XgboostRegression(
+            hyper_parameters = XGBoostRegression.manual_hyper_parameters()
+            self.reg_workflow = XGBoostRegression(
                 n_estimators=hyper_parameters["n_estimators"],
                 learning_rate=hyper_parameters["learning_rate"],
                 max_depth=hyper_parameters["max_depth"],
@@ -229,7 +229,7 @@ class RegressionModelSelection(ModelSelectionBase):
             self.transformer_config.update(poly_config)
             self.reg_workflow.data_upload(X_train=X_train, X_test=X_test)
         elif self.model_name == "Xgboost":
-            self.reg_workflow = XgboostRegression()
+            self.reg_workflow = XGBoostRegression()
         elif self.model_name == "Decision Tree":
             self.reg_workflow = DecisionTreeRegression()
         elif self.model_name == "Extra-Trees":

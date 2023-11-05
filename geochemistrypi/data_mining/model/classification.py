@@ -1201,7 +1201,7 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         )
 
 
-class XgboostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
+class XGBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
     """The automation workflow of using Xgboost algorithm to make insightful products."""
 
     name = "Xgboost"
@@ -1490,7 +1490,7 @@ class XgboostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             early_stopping_rounds=self.early_stopping_rounds,
         )
 
-        self.naming = XgboostClassification.name
+        self.naming = XGBoostClassification.name
 
     @property
     def settings(self) -> Dict:
@@ -1538,7 +1538,7 @@ class XgboostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         #     mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         # )
         self._plot_feature_importance(
-            X_train=XgboostClassification.X_train,
+            X_train=XGBoostClassification.X_train,
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -1551,7 +1551,7 @@ class XgboostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         """Invoke all special application functions for this algorithms by FLAML framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
-            X_train=XgboostClassification.X_train,
+            X_train=XGBoostClassification.X_train,
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,

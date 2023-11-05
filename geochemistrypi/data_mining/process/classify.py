@@ -15,7 +15,7 @@ from ..model.classification import (
     MLPClassification,
     RandomForestClassification,
     SVMClassification,
-    XgboostClassification,
+    XGBoostClassification,
 )
 from ._base import ModelSelectionBase
 
@@ -80,8 +80,8 @@ class ClassificationModelSelection(ModelSelectionBase):
                 max_samples=hyper_parameters["max_samples"],
             )
         elif self.model_name == "Xgboost":
-            hyper_parameters = XgboostClassification.manual_hyper_parameters()
-            self.clf_workflow = XgboostClassification(
+            hyper_parameters = XGBoostClassification.manual_hyper_parameters()
+            self.clf_workflow = XGBoostClassification(
                 n_estimators=hyper_parameters["n_estimators"],
                 learning_rate=hyper_parameters["learning_rate"],
                 max_depth=hyper_parameters["max_depth"],
@@ -196,7 +196,7 @@ class ClassificationModelSelection(ModelSelectionBase):
         elif self.model_name == "Random Forest":
             self.clf_workflow = RandomForestClassification()
         elif self.model_name == "Xgboost":
-            self.clf_workflow = XgboostClassification()
+            self.clf_workflow = XGBoostClassification()
         elif self.model_name == "Logistic Regression":
             self.clf_workflow = LogisticRegressionClassification()
         elif self.model_name == "Multi-layer Perceptron":

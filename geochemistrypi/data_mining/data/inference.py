@@ -108,7 +108,7 @@ def build_transform_pipeline(imputation_config: Dict, feature_scaling_config: Di
     return transformer_config, transform_pipeline
 
 
-def model_inference(inference_data: pd.DataFrame, is_inference: bool, feature_engineering_config: Dict, run: object, transformer_config: Dict, transform_pipeline: Optional[object] = None):
+def model_inference(inference_data: pd.DataFrame, is_inference: bool, run: object, transformer_config: Dict, transform_pipeline: Optional[object] = None):
     """Run the model inference.
 
     Parameters
@@ -119,9 +119,6 @@ def model_inference(inference_data: pd.DataFrame, is_inference: bool, feature_en
     is_inference : bool
         Whether to run the model inference.
 
-    feature_engineering_config : Dict
-        The feature engineering configuration.
-
     run : object
         The model selection object.
 
@@ -131,8 +128,8 @@ def model_inference(inference_data: pd.DataFrame, is_inference: bool, feature_en
     transform_pipeline : Optional[object], optional
         The transform pipeline object. The default is None.
     """
-    # If inference_data is not None and is_inference is True, then run the model inference.
-    if (inference_data is not None) and (is_inference is True):
+    # If is_inference is True, then run the model inference.
+    if is_inference is True:
         print("-*-*- Model Inference -*-*-")
         print("Use the trained model to make predictions on the inference data.")
         # If transformer_config is not {}, then transform the inference data with the transform pipeline.
