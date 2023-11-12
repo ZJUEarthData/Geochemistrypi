@@ -31,10 +31,10 @@ Welcome to Geochemistry π
 
    Developer Guide <For Developer/Developer Guide/Developer Manual.md>
    Contributing <contributing.rst>
-   Local Deployment <For Developer/Local Deployment.md>
-   Docker Deployment <For Developer/Docker Deployment.md>
+   Deployment <deployment.rst>
    Algorithm Functionality Addition <For Developer/Algorithm Functionality Addition Procedure_geochemistrypi 0.2.0_CN/data_mining_geochemistrypi_020.md>
    Complete Pull Request <For Developer/A Completed Pull Request.md>
+   Common Operations in Sphinx <For Developer/Common Operations in Sphinx.md> 
    Docs Link <For Developer/Developer Docs link.md>
 
 Indices and tables
