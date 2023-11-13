@@ -76,6 +76,23 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
         print("[bold red]No Data File Provided![/bold red]")
         print("[bold green]Built-in Data Loading.[/bold green]")
 
+    # <-- User Inference Data Loading -->
+    with console.status("[bold green]Inference Data Loading...[/bold green]", spinner="dots"):
+        sleep(1)
+    is_built_in_inference_data = False
+    if training_data_path and inference_data_path:
+        # If the user provides file name, then load the inference data from the file.
+        inference_data = read_data(file_path=inference_data_path, is_own_data=1)
+        print("[bold green]Successfully Loading Own Inference Data![bold green]")
+    elif training_data_path and (not inference_data_path):
+        # If the user doesn't provide the inference data path, it means that the user doesn't want to run the model inference.
+        inference_data = None
+        print("[bold red]No Inference Data File Provided![/bold red]")
+    elif (not training_data_path) and (not inference_data_path):
+        is_built_in_inference_data = True
+        print("[bold red]No Inference Data File Provided![/bold red]")
+        print("[bold green]Built-in Inference Data Loading.[/bold green]")
+
     # <-- Dependency Checking -->
     with console.status("[bold green]Denpendency Checking...[/bold green]", spinner="dots"):
         sleep(1.5)
@@ -168,15 +185,23 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
 
     # <--- Built-in Inference Data Loading --->
     logger.debug("Built-in Inference Data Loading")
-    # If the user doesn't provide the inference data path, it means that the user doesn't want to run the model inference.
-    if inference_data_path:
-        print("-*-*- Built-in Inference Data-*-*-")
+    # If the user doesn't provide training data path and inference data path, then use the built-in inference data.
+    if is_built_in_inference_data:
+        print("-*-*- Built-in Inference Data Option-*-*-")
+        num2option(TEST_DATA_OPTION)
+        built_in_inference_data_num = limit_num_input(TEST_DATA_OPTION, SECTION[0], num_input)
+        if built_in_inference_data_num == 1:
+            inference_data_path = "InferenceData_Regression.xlsx"
+        elif built_in_inference_data_num == 2:
+            inference_data_path = "InferenceData_Classification.xlsx"
+        elif built_in_inference_data_num == 3:
+            inference_data_path = "InferenceData_Clustering.xlsx"
+        elif built_in_inference_data_num == 4:
+            inference_data_path = "InferenceData_Decomposition.xlsx"
         inference_data = read_data(file_path=inference_data_path)
         print(f"Successfully loading the built-in inference data set '{inference_data_path}'.")
         show_data_columns(inference_data.columns)
         clear_output()
-    else:
-        inference_data = None
 
     # <--- World Map Projection --->
     logger.debug("World Map Projection")
