@@ -76,6 +76,23 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
         print("[bold red]No Data File Provided![/bold red]")
         print("[bold green]Built-in Data Loading.[/bold green]")
 
+    # <-- User Inference Data Loading -->
+    with console.status("[bold green]Inference Data Loading...[/bold green]", spinner="dots"):
+        sleep(1)
+    is_built_in_inference_data = False
+    if training_data_path and inference_data_path:
+        # If the user provides file name, then load the inference data from the file.
+        inference_data = read_data(file_path=inference_data_path, is_own_data=1)
+        print("[bold green]Successfully Loading Own Inference Data![bold green]")
+    elif training_data_path and (not inference_data_path):
+        # If the user doesn't provide the inference data path, it means that the user doesn't want to run the model inference.
+        inference_data = None
+        print("[bold red]No Inference Data File Provided![/bold red]")
+    elif (not training_data_path) and (not inference_data_path):
+        is_built_in_inference_data = True
+        print("[bold red]No Inference Data File Provided![/bold red]")
+        print("[bold green]Built-in Inference Data Loading.[/bold green]")
+
     # <-- Dependency Checking -->
     with console.status("[bold green]Denpendency Checking...[/bold green]", spinner="dots"):
         sleep(1.5)
@@ -149,7 +166,6 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
     # <--- Built-in Data Loading --->
     logger.debug("Built-in Data Loading")
     # If the user doesn't provide the training data path, then use the built-in data.
-    is_built_in_data = False
     if not training_data_path:
         print("-*-*- Built-in Data Option-*-*-")
         num2option(TEST_DATA_OPTION)
@@ -163,29 +179,29 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
         elif built_in_data_num == 4:
             training_data_path = "Data_Decomposition.xlsx"
         data = read_data(file_path=training_data_path)
-        is_built_in_data = True
         print(f"Successfully loading the built-in training data set '{training_data_path}'.")
         show_data_columns(data.columns)
         clear_output()
-    # If the user doesn't provide the inference data path and the training data is built-in data,
-    #  then use the built-in data as inference data. Otherwise, the inference data is None.
-    #  It means that the user doesn't want to run the model inference.
-    if (not inference_data_path) and is_built_in_data:
-        print("-*-*- Inference Data -*-*-")
-        if built_in_data_num == 1:
-            inference_data_path = "Data_Regression.xlsx"
-        elif built_in_data_num == 2:
-            inference_data_path = "Data_Classification.xlsx"
-        elif built_in_data_num == 3:
-            inference_data_path = "Data_Clustering.xlsx"
-        elif built_in_data_num == 4:
-            inference_data_path = "Data_Decomposition.xlsx"
+
+    # <--- Built-in Inference Data Loading --->
+    logger.debug("Built-in Inference Data Loading")
+    # If the user doesn't provide training data path and inference data path, then use the built-in inference data.
+    if is_built_in_inference_data:
+        print("-*-*- Built-in Inference Data Option-*-*-")
+        num2option(TEST_DATA_OPTION)
+        built_in_inference_data_num = limit_num_input(TEST_DATA_OPTION, SECTION[0], num_input)
+        if built_in_inference_data_num == 1:
+            inference_data_path = "InferenceData_Regression.xlsx"
+        elif built_in_inference_data_num == 2:
+            inference_data_path = "InferenceData_Classification.xlsx"
+        elif built_in_inference_data_num == 3:
+            inference_data_path = "InferenceData_Clustering.xlsx"
+        elif built_in_inference_data_num == 4:
+            inference_data_path = "InferenceData_Decomposition.xlsx"
         inference_data = read_data(file_path=inference_data_path)
         print(f"Successfully loading the built-in inference data set '{inference_data_path}'.")
         show_data_columns(inference_data.columns)
         clear_output()
-    else:
-        inference_data = None
 
     # <--- World Map Projection --->
     logger.debug("World Map Projection")
@@ -425,22 +441,27 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
         print("-*-*- Feature Engineering on Inference Data -*-*-")
         is_inference = True
         selected_columns = X_train.columns
-        # If feature_engineering_config is not {} and inference_data is not None, then apply feature engineering with the same operation to the input data.
-        if feature_engineering_config and (inference_data is not None):
-            print("The same feature engineering operation will be applied to the inference data.")
-            new_feature_builder = FeatureConstructor(inference_data)
-            inference_data_fe = new_feature_builder.batch_build(feature_engineering_config)
+        if inference_data is not None:
+            if feature_engineering_config:
+                # If inference_data is not None and feature_engineering_config is not {}, then apply feature engineering with the same operation to the input data.
+                print("The same feature engineering operation will be applied to the inference data.")
+                new_feature_builder = FeatureConstructor(inference_data)
+                inference_data_fe = new_feature_builder.batch_build(feature_engineering_config)
+                inference_data_fe_selected = inference_data_fe[selected_columns]
+                save_data(inference_data, "Inference Data Original", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                save_data(inference_data_fe, "Inference Data Feature-Engineering", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                save_data(inference_data_fe_selected, "Inference Data Feature-Engineering Selected", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+            else:
+                print("You have not applied feature engineering to the training data.")
+                print("Hence, no feature engineering operation will be applied to the inference data.")
+                inference_data_fe_selected = inference_data[selected_columns]
+                save_data(inference_data, "Inference Data Original", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                save_data(inference_data_fe_selected, "Inference Data Selected", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
         else:
-            print("You have not applied feature engineering to the training data.")
-            print("Hence, no feature engineering operation will be applied to the inference data.")
-            inference_data_fe = inference_data
-        inference_data_fe_selected = inference_data_fe[selected_columns]
-        save_data(inference_data, "Inference Data Original", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
-        save_data(inference_data_fe, "Inference Data Feature-Engineering", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
-        save_data(inference_data_fe_selected, "Inference Data Feature-Engineering Selected", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+            # If the user doesn't provide the inference data path, it means that the user doesn't want to run the model inference.
+            print("You did not enter inference data.")
+            inference_data_fe_selected = None
         clear_output()
-    else:
-        inference_data_fe_selected = None
 
     # <--- Model Training --->
     logger.debug("Model Training")
