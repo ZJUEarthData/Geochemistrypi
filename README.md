@@ -32,13 +32,15 @@ Latest Update: follow up by clicking `Starred` and  `Watch` on our [GitHub repos
 
 The following figure is the simplified overview of Geochemistry π: <br>
 
-![Overview of workflow](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/28e174f0-1f2f-4367-96bd-9526352101bd)
+<p align="center">
+  <img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/28e174f0-1f2f-4367-96bd-9526352101bd" alt="Overview of workflow" width="600" />
+</p>
 
 The following figure is the frontend-backend separation architecture of Geochemistry: <br>
 
-<div style="text-align:center;">
-  <img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/3b27cbdb-ff50-4fa6-b1d1-4c75b253fdff" alt="Frontend-backend separation architecture of Geochemistry" width="400" />
-</div>
+<p align="center">
+  <img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/3b27cbdb-ff50-4fa6-b1d1-4c75b253fdff" alt="Frontend-backend separation architecture of Geochemistry" width="450" />
+</p>
 
 ## Quick Installation
 
@@ -140,6 +142,11 @@ Its data section provides feature engineering based on **arithmatic operation**.
 
 Its models section provides both **supervised learning** and **unsupervised learning** methods from **Scikit-learn** framework, including four types of algorithms, regression, classification, clustering, and dimensional reduction. Integrated with **FLAML** and **Ray** framework, it allows the users to run AutoML easily, fastly and cost-effectively on the built-in supervised learning algorithms in our framework.
 
+The following figure is the hierarchical architecture of Geochemistry π:
+<p align="center">
+  <img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/9c3ddc2b-700c-4685-b52f-f5f9a8931849" alt="Hierarchical Architecture" width="450" />
+</p>
+
 ### Second Phase
 
 Currently, we are building three access ways to provide more user-friendly service, including **web portal**, **CLI package** and **API**. It allows the user to perform **continuous training** and **model inference** by automating the ML pipeline and **machine learning lifecycle management** by unique storage mechanism in different access layers.
@@ -151,9 +158,9 @@ The following figure is the system architecture diagram: <br>
 
 The following figure is the customized automated ML pipeline: <br>
 
-<div style="text-align:center;">
+<p align="center">
   <img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/07078b43-30bd-46cf-abad-2da509fae6aa" alt="Customized automated ML pipeline" width="400" />
-</div>
+</p>
 
 The following figure is the design pattern hierarchical architecture: <br>
 
@@ -162,9 +169,9 @@ The following figure is the design pattern hierarchical architecture: <br>
 
 The following figure is the storage mechanism: <br>
 
-<div style="text-align:center;">
+<p align="center">
   <img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/401f3429-c44f-4b76-b085-7a9dcc987cde" alt="Storage Mechanism" width="500" />
-</div>
+</p>
 
 The whole package is under construction and the documentation is progressively evolving.
 

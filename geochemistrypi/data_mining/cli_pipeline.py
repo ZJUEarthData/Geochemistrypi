@@ -65,20 +65,20 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
     print("\n[bold blue]Welcome to Geochemistry π![/bold blue]")
     print("[bold]Initializing...[/bold]")
 
-    # <-- User Data Loading -->
-    with console.status("[bold green]Data Loading...[/bold green]", spinner="dots"):
-        sleep(1)
+    # <-- User Training Data Loading -->
+    with console.status("[bold green]Training Data Loading...[/bold green]", spinner="dots"):
+        sleep(0.75)
     if training_data_path:
-        # If the user provides file name, then load the data from the file.
+        # If the user provides file name, then load the training data from the file.
         data = read_data(file_path=training_data_path, is_own_data=1)
-        print("[bold green]Successfully Loading Own Data![bold green]")
+        print("[bold green]Successfully Loading Own Training Data![bold green]")
     else:
-        print("[bold red]No Data File Provided![/bold red]")
+        print("[bold red]No Training Data File Provided![/bold red]")
         print("[bold green]Built-in Data Loading.[/bold green]")
 
     # <-- User Inference Data Loading -->
     with console.status("[bold green]Inference Data Loading...[/bold green]", spinner="dots"):
-        sleep(1)
+        sleep(0.75)
     is_built_in_inference_data = False
     if training_data_path and inference_data_path:
         # If the user provides file name, then load the inference data from the file.
@@ -95,7 +95,7 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
 
     # <-- Dependency Checking -->
     with console.status("[bold green]Denpendency Checking...[/bold green]", spinner="dots"):
-        sleep(1.5)
+        sleep(0.75)
     my_os = get_os()
     # Check the dependency of the basemap or cartopy to project the data on the world map later.
     if my_os == "Windows" or my_os == "Linux":
@@ -143,9 +143,10 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
         experiment = mlflow.get_experiment(experiment_id=old_experiment_id)
     else:
         new_experiment_name = Prompt.ask("✨ New Experiment", default="GeoPi - Rock Classification")
-        new_experiment_tag = Prompt.ask("✨ Experiment Tag Version", default="E - v1.0.0")
+        # new_experiment_tag = Prompt.ask("✨ Experiment Tag Version", default="E - v1.0.0")
         try:
-            new_experiment_id = mlflow.create_experiment(name=new_experiment_name, artifact_location=artifact_localtion, tags={"version": new_experiment_tag})
+            # new_experiment_id = mlflow.create_experiment(name=new_experiment_name, artifact_location=artifact_localtion, tags={"version": new_experiment_tag})
+            new_experiment_id = mlflow.create_experiment(name=new_experiment_name, artifact_location=artifact_localtion)
         except mlflow.exceptions.MlflowException as e:
             if "already exists" in str(e):
                 console.print("   The experiment name already exists.", style="bold red")
@@ -157,26 +158,27 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
         experiment = mlflow.get_experiment(experiment_id=new_experiment_id)
     # print("Artifact Location: {}".format(experiment.artifact_location))
     run_name = Prompt.ask("✨ Run Name", default="Xgboost Algorithm - Test 1")
-    run_tag = Prompt.ask("✨ Run Tag Version", default="R - v1.0.0")
-    run_description = Prompt.ask("✨ Run Description", default="Use xgboost for GeoPi classification.")
-    mlflow.start_run(run_name=run_name, experiment_id=experiment.experiment_id, tags={"version": run_tag, "description": run_description})
+    # run_tag = Prompt.ask("✨ Run Tag Version", default="R - v1.0.0")
+    # run_description = Prompt.ask("✨ Run Description", default="Use xgboost for GeoPi classification.")
+    # mlflow.start_run(run_name=run_name, experiment_id=experiment.experiment_id, tags={"version": run_tag, "description": run_description})
+    mlflow.start_run(run_name=run_name, experiment_id=experiment.experiment_id)
     create_geopi_output_dir(experiment.name, run_name)
     clear_output()
 
-    # <--- Built-in Data Loading --->
-    logger.debug("Built-in Data Loading")
-    # If the user doesn't provide the training data path, then use the built-in data.
+    # <--- Built-in Training Data Loading --->
+    logger.debug("Built-in Training Data Loading")
+    # If the user doesn't provide the training data path, then use the built-in training data.
     if not training_data_path:
-        print("-*-*- Built-in Data Option-*-*-")
+        print("-*-*- Built-in Training Data Option-*-*-")
         num2option(TEST_DATA_OPTION)
-        built_in_data_num = limit_num_input(TEST_DATA_OPTION, SECTION[0], num_input)
-        if built_in_data_num == 1:
+        built_in_training_data_num = limit_num_input(TEST_DATA_OPTION, SECTION[0], num_input)
+        if built_in_training_data_num == 1:
             training_data_path = "Data_Regression.xlsx"
-        elif built_in_data_num == 2:
+        elif built_in_training_data_num == 2:
             training_data_path = "Data_Classification.xlsx"
-        elif built_in_data_num == 3:
+        elif built_in_training_data_num == 3:
             training_data_path = "Data_Clustering.xlsx"
-        elif built_in_data_num == 4:
+        elif built_in_training_data_num == 4:
             training_data_path = "Data_Decomposition.xlsx"
         data = read_data(file_path=training_data_path)
         print(f"Successfully loading the built-in training data set '{training_data_path}'.")
@@ -462,6 +464,9 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
             print("You did not enter inference data.")
             inference_data_fe_selected = None
         clear_output()
+    else:
+        # If the model is unsupervised learning, then don't allow the user to use model inference.
+        inference_data_fe_selected = None
 
     # <--- Model Training --->
     logger.debug("Model Training")
