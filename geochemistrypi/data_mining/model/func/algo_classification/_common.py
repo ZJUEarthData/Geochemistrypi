@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import mlflow
 import numpy as np
 import pandas as pd
+from data_mining.constants import CALCULATION_METHOD_OPTION, SECTION
+from data_mining.data.data_readiness import limit_num_input, num2option, num_input
 from imblearn.over_sampling import RandomOverSampler
 from imblearn.pipeline import Pipeline
 from imblearn.under_sampling import RandomUnderSampler
@@ -31,10 +33,24 @@ def score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> Dict:
     scores : dict
         The scores of the classification model.
     """
+    average = "binary"
+    if int(y_true.nunique().values) > 2:
+        print("Please select calculation method:")
+        print("[bold green]Micro[/bold green]: Calculate metrics globally by counting the total true positives, false negatives and false positives.")
+        print("[bold green]Macro[/bold green]: Calculate metrics for each label, and find their unweighted mean. This does not take label imbalance into account.")
+        print("[bold green]Weighted[/bold green]: Calculate metrics for each label, and find their average weighted by support (the number of true instances for each label).")
+        num2option(CALCULATION_METHOD_OPTION)
+        average_num = limit_num_input(CALCULATION_METHOD_OPTION, SECTION[0], num_input)
+        if average_num == 1:
+            average = "micro"
+        elif average_num == 2:
+            average = "macro"
+        elif average_num == 3:
+            average = "weighted"
     accuracy = accuracy_score(y_true, y_predict)
-    precision = precision_score(y_true, y_predict)
-    recall = recall_score(y_true, y_predict)
-    f1 = f1_score(y_true, y_predict)
+    precision = precision_score(y_true, y_predict, average=average)
+    recall = recall_score(y_true, y_predict, average=average)
+    f1 = f1_score(y_true, y_predict, average=average)
     print("Accuracy: ", accuracy)
     print("Precision:", precision)
     print("Recall:", recall)
@@ -177,16 +193,19 @@ def plot_precision_recall(X_test, y_test, trained_model: object, algorithm_name:
     thresholds : np.ndarray
         The thresholds of the model.
     """
-    #  Predict probabilities for the positive class
-    y_probs = trained_model.predict_proba(X_test)[:, 1]
-    precisions, recalls, thresholds = precision_recall_curve(y_test, y_probs)
+    if int(y_test.nunique().values) == 2:
+        #  Predict probabilities for the positive class
+        y_probs = trained_model.predict_proba(X_test)[:, 1]
+        precisions, recalls, thresholds = precision_recall_curve(y_test, y_probs)
 
-    plt.figure()
-    plt.plot(thresholds, precisions[:-1], "b--", label="Precision")
-    plt.plot(thresholds, recalls[:-1], "g-", label="Recall")
-    plt.legend(labels=["Precision", "Recall"], loc="best")
-    plt.title(f"Precision Recall Curve - {algorithm_name}")
-    return y_probs, precisions, recalls, thresholds
+        plt.figure()
+        plt.plot(thresholds, precisions[:-1], "b--", label="Precision")
+        plt.plot(thresholds, recalls[:-1], "g-", label="Recall")
+        plt.legend(labels=["Precision", "Recall"], loc="best")
+        plt.title(f"Precision Recall Curve - {algorithm_name}")
+        return y_probs, precisions, recalls, thresholds
+    else:
+        return None, None, None, None
 
 
 def plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, algorithm_name: str) -> tuple:
@@ -220,15 +239,18 @@ def plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, 
     thresholds : np.ndarray
         The thresholds of the model.
     """
-    y_probs = trained_model.predict_proba(X_test)[:, 1]
-    fpr, tpr, thresholds = roc_curve(y_test, y_probs)
-    plt.figure()
-    plt.plot(fpr, tpr, linewidth=2)
-    plt.plot([0, 1], [0, 1], "r--")
-    plt.xlabel("False Positive Rate")
-    plt.ylabel("True Positive Rate (Recall)")
-    plt.title(f"ROC Curve - {algorithm_name}")
-    return y_probs, fpr, tpr, thresholds
+    if int(y_test.nunique().values) == 2:
+        y_probs = trained_model.predict_proba(X_test)[:, 1]
+        fpr, tpr, thresholds = roc_curve(y_test, y_probs)
+        plt.figure()
+        plt.plot(fpr, tpr, linewidth=2)
+        plt.plot([0, 1], [0, 1], "r--")
+        plt.xlabel("False Positive Rate")
+        plt.ylabel("True Positive Rate (Recall)")
+        plt.title(f"ROC Curve - {algorithm_name}")
+        return y_probs, fpr, tpr, thresholds
+    else:
+        return None, None, None, None
 
 
 def plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, trained_model: object, image_config: Dict) -> None:
