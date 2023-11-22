@@ -154,7 +154,9 @@ class ClassificationWorkflowBase(WorkflowBase):
         print("-----* Confusion Matrix *-----")
         data = plot_confusion_matrix(y_test, y_test_predict, trained_model)
         save_fig(f"Confusion Matrix - {algorithm_name}", local_path, mlflow_path)
-        data = pd.DataFrame(data, columns=["Predicted Negative", "Predicted Positive"], index=["Actual Negative", "Actual Positive"])
+        index = [f"true_{i}" for i in range(int(y_test.nunique().values))]
+        columns = [f"pred_{i}" for i in range(int(y_test.nunique().values))]
+        data = pd.DataFrame(data, columns=columns, index=index)
         save_data(data, f"Confusion Matrix - {algorithm_name}", local_path, mlflow_path, True)
 
     @staticmethod
