@@ -12,12 +12,12 @@ from imblearn.over_sampling import RandomOverSampler
 from imblearn.pipeline import Pipeline
 from imblearn.under_sampling import RandomUnderSampler
 from rich import print
-from sklearn.metrics import ConfusionMatrixDisplay, accuracy_score, confusion_matrix, f1_score, precision_recall_curve, precision_score, recall_score, roc_curve
+from sklearn.metrics import ConfusionMatrixDisplay, accuracy_score, confusion_matrix, f1_score, make_scorer, precision_recall_curve, precision_score, recall_score, roc_curve
 from sklearn.model_selection import cross_validate
 from sklearn.preprocessing import LabelEncoder
 
 
-def score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> Dict:
+def score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> tuple[str, Dict]:
     """Calculate the scores of the classification model.
 
     Parameters
@@ -30,6 +30,9 @@ def score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> Dict:
 
     Returns
     -------
+    average : str
+        Metric parameters.
+
     scores : dict
         The scores of the classification model.
     """
@@ -61,7 +64,7 @@ def score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> Dict:
         "Recall": recall,
         "F1 Score": f1,
     }
-    return scores
+    return average, scores
 
 
 def plot_confusion_matrix(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, trained_model: object) -> np.ndarray:
@@ -120,7 +123,7 @@ def display_cross_validation_scores(scores: np.ndarray, score_name: str) -> Dict
     return cv_scores
 
 
-def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, cv_num: int = 10) -> Dict:
+def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, average: str, cv_num: int = 10) -> Dict:
     """Evaluate metric(s) by cross-validation and also record fit/score times.
 
     Parameters
@@ -134,6 +137,9 @@ def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.D
     y_train : pd.DataFrame (n_samples, n_components)
         The training target values.
 
+    average : str
+        Metric parameters.
+
     cv_num : int
         Determines the cross-validation splitting strategy.
 
@@ -142,8 +148,35 @@ def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.D
     scores_result : dict
         The scores of cross-validation.
     """
-
-    scores = cross_validate(trained_model, X_train, y_train, scoring=("accuracy", "precision", "recall", "f1"), cv=cv_num)
+    if average == "binary":
+        scoring = {
+            "accuracy": make_scorer(accuracy_score),
+            "precision": make_scorer(precision_score, average="binary"),
+            "recall": make_scorer(recall_score, average="binary"),
+            "f1": make_scorer(f1_score, average="binary"),
+        }
+    elif average == "micro":
+        scoring = {
+            "accuracy": make_scorer(accuracy_score),
+            "precision": make_scorer(precision_score, average="micro"),
+            "recall": make_scorer(recall_score, average="micro"),
+            "f1": make_scorer(f1_score, average="micro"),
+        }
+    elif average == "macro":
+        scoring = {
+            "accuracy": make_scorer(accuracy_score),
+            "precision": make_scorer(precision_score, average="macro"),
+            "recall": make_scorer(recall_score, average="macro"),
+            "f1": make_scorer(f1_score, average="macro"),
+        }
+    elif average == "weighted":
+        scoring = {
+            "accuracy": make_scorer(accuracy_score),
+            "precision": make_scorer(precision_score, average="weighted"),
+            "recall": make_scorer(recall_score, average="weighted"),
+            "f1": make_scorer(f1_score, average="weighted"),
+        }
+    scores = cross_validate(trained_model, X_train, y_train, scoring=scoring, cv=cv_num)
     del scores["fit_time"]
     del scores["score_time"]
     # the keys follow the returns of cross_validate in scikit-learn
@@ -193,19 +226,15 @@ def plot_precision_recall(X_test, y_test, trained_model: object, algorithm_name:
     thresholds : np.ndarray
         The thresholds of the model.
     """
-    if int(y_test.nunique().values) == 2:
-        #  Predict probabilities for the positive class
-        y_probs = trained_model.predict_proba(X_test)[:, 1]
-        precisions, recalls, thresholds = precision_recall_curve(y_test, y_probs)
-
-        plt.figure()
-        plt.plot(thresholds, precisions[:-1], "b--", label="Precision")
-        plt.plot(thresholds, recalls[:-1], "g-", label="Recall")
-        plt.legend(labels=["Precision", "Recall"], loc="best")
-        plt.title(f"Precision Recall Curve - {algorithm_name}")
-        return y_probs, precisions, recalls, thresholds
-    else:
-        return None, None, None, None
+    #  Predict probabilities for the positive class
+    y_probs = trained_model.predict_proba(X_test)[:, 1]
+    precisions, recalls, thresholds = precision_recall_curve(y_test, y_probs)
+    plt.figure()
+    plt.plot(thresholds, precisions[:-1], "b--", label="Precision")
+    plt.plot(thresholds, recalls[:-1], "g-", label="Recall")
+    plt.legend(labels=["Precision", "Recall"], loc="best")
+    plt.title(f"Precision Recall Curve - {algorithm_name}")
+    return y_probs, precisions, recalls, thresholds
 
 
 def plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, algorithm_name: str) -> tuple:
@@ -239,18 +268,15 @@ def plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, 
     thresholds : np.ndarray
         The thresholds of the model.
     """
-    if int(y_test.nunique().values) == 2:
-        y_probs = trained_model.predict_proba(X_test)[:, 1]
-        fpr, tpr, thresholds = roc_curve(y_test, y_probs)
-        plt.figure()
-        plt.plot(fpr, tpr, linewidth=2)
-        plt.plot([0, 1], [0, 1], "r--")
-        plt.xlabel("False Positive Rate")
-        plt.ylabel("True Positive Rate (Recall)")
-        plt.title(f"ROC Curve - {algorithm_name}")
-        return y_probs, fpr, tpr, thresholds
-    else:
-        return None, None, None, None
+    y_probs = trained_model.predict_proba(X_test)[:, 1]
+    fpr, tpr, thresholds = roc_curve(y_test, y_probs)
+    plt.figure()
+    plt.plot(fpr, tpr, linewidth=2)
+    plt.plot([0, 1], [0, 1], "r--")
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate (Recall)")
+    plt.title(f"ROC Curve - {algorithm_name}")
+    return y_probs, fpr, tpr, thresholds
 
 
 def plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, trained_model: object, image_config: Dict) -> None:

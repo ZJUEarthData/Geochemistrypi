@@ -121,13 +121,14 @@ class ClassificationWorkflowBase(WorkflowBase):
         return dict()
 
     @staticmethod
-    def _score(y_true: pd.DataFrame, y_predict: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
+    def _score(y_true: pd.DataFrame, y_predict: pd.DataFrame, algorithm_name: str, store_path: str) -> str:
         """Print the classification score report of the model."""
         print("-----* Model Score *-----")
-        scores = score(y_true, y_predict)
+        average, scores = score(y_true, y_predict)
         scores_str = json.dumps(scores, indent=4)
         save_text(scores_str, f"Model Score - {algorithm_name}", store_path)
         mlflow.log_metrics(scores)
+        return average
 
     @staticmethod
     def _classification_report(y_true: pd.DataFrame, y_predict: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
@@ -140,11 +141,11 @@ class ClassificationWorkflowBase(WorkflowBase):
         mlflow.log_artifact(os.path.join(store_path, f"Classification Report - {algorithm_name}.txt"))
 
     @staticmethod
-    def _cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, cv_num: int, algorithm_name: str, store_path: str) -> None:
+    def _cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, average: str, cv_num: int, algorithm_name: str, store_path: str) -> None:
         """Perform cross validation on the model."""
         print("-----* Cross Validation *-----")
         print(f"K-Folds: {cv_num}")
-        scores = cross_validation(trained_model, X_train, y_train, cv_num=cv_num)
+        scores = cross_validation(trained_model, X_train, y_train, average=average, cv_num=cv_num)
         scores_str = json.dumps(scores, indent=4)
         save_text(scores_str, f"Cross Validation - {algorithm_name}", store_path)
 
@@ -248,7 +249,7 @@ class ClassificationWorkflowBase(WorkflowBase):
         """Invoke all common application functions for classification algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        self._score(
+        average = self._score(
             y_true=ClassificationWorkflowBase.y_test,
             y_predict=ClassificationWorkflowBase.y_test_predict,
             algorithm_name=self.naming,
@@ -264,6 +265,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             trained_model=self.model,
             X_train=ClassificationWorkflowBase.X_train,
             y_train=ClassificationWorkflowBase.y_train,
+            average=average,
             cv_num=10,
             algorithm_name=self.naming,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
@@ -276,22 +278,23 @@ class ClassificationWorkflowBase(WorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
-        self._plot_precision_recall(
-            X_test=ClassificationWorkflowBase.X_test,
-            y_test=ClassificationWorkflowBase.y_test,
-            trained_model=self.model,
-            algorithm_name=self.naming,
-            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-        )
-        self._plot_ROC(
-            X_test=ClassificationWorkflowBase.X_test,
-            y_test=ClassificationWorkflowBase.y_test,
-            trained_model=self.model,
-            algorithm_name=self.naming,
-            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-        )
+        if int(ClassificationWorkflowBase.y_test.nunique().values) == 2:
+            self._plot_precision_recall(
+                X_test=ClassificationWorkflowBase.X_test,
+                y_test=ClassificationWorkflowBase.y_test,
+                trained_model=self.model,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            self._plot_ROC(
+                X_test=ClassificationWorkflowBase.X_test,
+                y_test=ClassificationWorkflowBase.y_test,
+                trained_model=self.model,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
         self._plot_permutation_importance(
             X_test=ClassificationWorkflowBase.X_test,
             y_test=ClassificationWorkflowBase.y_test,
@@ -317,7 +320,7 @@ class ClassificationWorkflowBase(WorkflowBase):
         """Invoke all common application functions for classification algorithms by FLAML framework."""
         GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        self._score(
+        average = self._score(
             y_true=ClassificationWorkflowBase.y_test,
             y_predict=ClassificationWorkflowBase.y_test_predict,
             algorithm_name=self.naming,
@@ -333,6 +336,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             trained_model=self.auto_model,
             X_train=ClassificationWorkflowBase.X_train,
             y_train=ClassificationWorkflowBase.y_train,
+            average=average,
             cv_num=10,
             algorithm_name=self.naming,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
@@ -345,22 +349,23 @@ class ClassificationWorkflowBase(WorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
-        self._plot_precision_recall(
-            X_test=ClassificationWorkflowBase.X_test,
-            y_test=ClassificationWorkflowBase.y_test,
-            trained_model=self.auto_model,
-            algorithm_name=self.naming,
-            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-        )
-        self._plot_ROC(
-            X_test=ClassificationWorkflowBase.X_test,
-            y_test=ClassificationWorkflowBase.y_test,
-            trained_model=self.auto_model,
-            algorithm_name=self.naming,
-            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-        )
+        if int(ClassificationWorkflowBase.y_test.nunique().values) == 2:
+            self._plot_precision_recall(
+                X_test=ClassificationWorkflowBase.X_test,
+                y_test=ClassificationWorkflowBase.y_test,
+                trained_model=self.auto_model,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            self._plot_ROC(
+                X_test=ClassificationWorkflowBase.X_test,
+                y_test=ClassificationWorkflowBase.y_test,
+                trained_model=self.auto_model,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
         self._plot_permutation_importance(
             X_test=ClassificationWorkflowBase.X_test,
             y_test=ClassificationWorkflowBase.y_test,
