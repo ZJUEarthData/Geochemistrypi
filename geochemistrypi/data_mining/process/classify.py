@@ -14,6 +14,7 @@ from ..model.classification import (
     LogisticRegressionClassification,
     MLPClassification,
     RandomForestClassification,
+    SGDClassification,
     SVMClassification,
     XGBoostClassification,
 )
@@ -144,6 +145,24 @@ class ClassificationModelSelection(ModelSelectionBase):
                 p=hyper_parameters["p"],
                 metric=hyper_parameters["metric"],
             )
+        elif self.model_name == "Stochastic Gradient Descent":
+            hyper_parameters = SGDClassification.manual_hyper_parameters()
+            self.clf_workflow = SGDClassification(
+                loss=hyper_parameters["loss"],
+                penalty=hyper_parameters["penalty"],
+                alpha=hyper_parameters["alpha"],
+                l1_ratio=hyper_parameters["l1_ratio"],
+                fit_intercept=hyper_parameters["fit_intercept"],
+                max_iter=hyper_parameters["max_iter"],
+                tol=hyper_parameters["tol"],
+                shuffle=hyper_parameters["shuffle"],
+                learning_rate=hyper_parameters["learning_rate"],
+                eta0=hyper_parameters["eta0"],
+                power_t=hyper_parameters["power_t"],
+                early_stopping=hyper_parameters["early_stopping"],
+                validation_fraction=hyper_parameters["validation_fraction"],
+                n_iter_no_change=hyper_parameters["n_iter_no_change"],
+            )
         self.clf_workflow.show_info()
 
         # Use Scikit-learn style API to process input data
@@ -207,6 +226,8 @@ class ClassificationModelSelection(ModelSelectionBase):
             self.clf_workflow = GradientBoostingClassification()
         elif self.model_name == "K-Nearest Neighbors":
             self.clf_workflow = KNNClassification()
+        elif self.model_name == "Stochastic Gradient Descent":
+            self.clf_workflow = SGDClassification()
 
         self.clf_workflow.show_info()
 

@@ -55,6 +55,7 @@ CLASSIFICATION_MODELS = [
     "Multi-layer Perceptron",
     "Gradient Boosting",
     "K-Nearest Neighbors",
+    "Stochastic Gradient Descent",
 ]
 CLUSTERING_MODELS = ["KMeans", "DBSCAN"]
 DECOMPOSITION_MODELS = ["PCA", "T-SNE", "MDS"]
