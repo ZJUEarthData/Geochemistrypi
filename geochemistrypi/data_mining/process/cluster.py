@@ -61,6 +61,9 @@ class ClusteringModelSelection(ModelSelectionBase):
         # Save the model hyper-parameters
         self.clt_workflow.save_hyper_parameters(hyper_parameters, self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
 
+        # Common components for every clustering algorithm
+        self.clt_workflow.common_components()
+
         # special components of different algorithms
         self.clt_workflow.special_components()
 

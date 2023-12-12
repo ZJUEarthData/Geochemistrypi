@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import json
 import os
 from typing import Dict, Optional, Union
 
@@ -6,14 +7,14 @@ import mlflow
 import numpy as np
 import pandas as pd
 from rich import print
-from sklearn import metrics
 from sklearn.cluster import DBSCAN, AffinityPropagation, KMeans
 
 from ..constants import MLFLOW_ARTIFACT_DATA_PATH, MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH
-from ..utils.base import clear_output, save_data, save_fig
+from ..utils.base import clear_output, save_data, save_fig, save_text
 from ._base import WorkflowBase
+from .func.algo_clustering._common import plot_results, plot_silhouette_diagram, score
 from .func.algo_clustering._dbscan import dbscan_manual_hyper_parameters, dbscan_result_plot
-from .func.algo_clustering._kmeans import kmeans_manual_hyper_parameters, plot_silhouette_diagram, scatter2d, scatter3d
+from .func.algo_clustering._kmeans import kmeans_manual_hyper_parameters, scatter2d, scatter3d
 
 
 class ClusteringWorkflowBase(WorkflowBase):
@@ -51,6 +52,63 @@ class ClusteringWorkflowBase(WorkflowBase):
         print(self.clustering_result)
         GEOPI_OUTPUT_ARTIFACTS_DATA_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH")
         save_data(self.clustering_result, f"{self.naming} Result", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+
+    @staticmethod
+    def _score(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
+        """Calculate the score of the model."""
+        print("-----* Model Score *-----")
+        scores = score(data, labels)
+        scores_str = json.dumps(scores, indent=4)
+        save_text(scores_str, f"Model Score - {algorithm_name}", store_path)
+        mlflow.log_metrics(scores)
+
+    @staticmethod
+    def _plot_results(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str, cluster_centers_: pd.DataFrame, local_path: str, mlflow_path: str) -> None:
+        """Plot the cluster_results ."""
+        print("-----* results diagram *-----")
+        plot_results(data, labels, algorithm_name, cluster_centers_)
+        save_fig(f"results - {algorithm_name}", local_path, mlflow_path)
+        data = pd.concat([data, labels], axis=1)
+        save_data(data, f"results - {algorithm_name}", local_path, mlflow_path)
+
+    @staticmethod
+    def _plot_silhouette_diagram(data: pd.DataFrame, labels: pd.DataFrame, cluster_centers_: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+        """Plot the silhouette diagram of the clustering result."""
+        print("-----* Silhouette Diagram *-----")
+        plot_silhouette_diagram(data, labels, algorithm_name)
+        save_fig(f"Silhouette Diagram - {algorithm_name}", local_path, mlflow_path)
+        data_with_labels = pd.concat([data, labels], axis=1)
+        save_data(data_with_labels, "Silhouette Diagram - Data With Labels", local_path, mlflow_path)
+        if isinstance(cluster_centers_, pd.DataFrame):
+            cluster_center_data = pd.DataFrame(cluster_centers_, columns=data.columns)
+            save_data(cluster_center_data, "Silhouette Diagram - Cluster Centers", local_path, mlflow_path)
+
+    def common_components(self) -> None:
+        """Invoke all common application functions for clustering algorithms."""
+        GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._score(
+            data=self.X,
+            labels=self.clustering_result["clustering result"],
+            algorithm_name=self.naming,
+            store_path=GEOPI_OUTPUT_METRICS_PATH,
+        )
+        self._plot_results(
+            data=self.X,
+            labels=self.clustering_result["clustering result"],
+            cluster_centers_=self.get_cluster_centers(),
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._plot_silhouette_diagram(
+            data=self.X,
+            labels=self.clustering_result["clustering result"],
+            cluster_centers_=self.get_cluster_centers(),
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
 
 
 class KMeansClustering(ClusteringWorkflowBase):
@@ -176,35 +234,6 @@ class KMeansClustering(ClusteringWorkflowBase):
         clear_output()
         return hyper_parameters
 
-    def _get_scores(self):
-        """Get the scores of the clustering result."""
-        print("-----* KMeans Scores *-----")
-        print("Inertia Score: ", self.model.inertia_)
-        print("Calinski Harabasz Score: ", metrics.calinski_harabasz_score(self.X, self.model.labels_))
-        print("Silhouette Score: ", metrics.silhouette_score(self.X, self.model.labels_))
-        mlflow.log_metric("Inertia Score", self.model.inertia_)
-        mlflow.log_metric("Calinski Harabasz Score", metrics.calinski_harabasz_score(self.X, self.model.labels_))
-        mlflow.log_metric("Silhouette Score", metrics.silhouette_score(self.X, self.model.labels_))
-
-    @staticmethod
-    def _plot_silhouette_diagram(
-        data: pd.DataFrame,
-        cluster_labels: pd.DataFrame,
-        cluster_centers_: np.ndarray,
-        n_clusters: int,
-        algorithm_name: str,
-        local_path: str,
-        mlflow_path: str,
-    ) -> None:
-        """Plot the silhouette diagram of the clustering result."""
-        print("-----* Silhouette Diagram *-----")
-        plot_silhouette_diagram(data, cluster_labels, cluster_centers_, n_clusters, algorithm_name)
-        save_fig(f"Silhouette Diagram - {algorithm_name}", local_path, mlflow_path)
-        data_with_labels = pd.concat([data, cluster_labels], axis=1)
-        save_data(data_with_labels, "Silhouette Diagram - Data With Labels", local_path, mlflow_path)
-        cluster_center_data = pd.DataFrame(cluster_centers_, columns=data.columns)
-        save_data(cluster_center_data, "Silhouette Diagram - Cluster Centers", local_path, mlflow_path)
-
     @staticmethod
     def _scatter2d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the two-dimensional diagram of the clustering result."""
@@ -226,16 +255,7 @@ class KMeansClustering(ClusteringWorkflowBase):
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        self._get_scores()
-        self._plot_silhouette_diagram(
-            data=self.X,
-            cluster_labels=self.clustering_result["clustering result"],
-            cluster_centers_=self.get_cluster_centers(),
-            n_clusters=self.n_clusters,
-            algorithm_name=self.naming,
-            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-        )
+
         # Draw graphs when the number of principal components > 3
         if self.X.shape[1] >= 3:
             # choose two of dimensions to draw
