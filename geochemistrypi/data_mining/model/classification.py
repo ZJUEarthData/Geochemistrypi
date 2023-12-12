@@ -11,7 +11,7 @@ from flaml import AutoML
 from multipledispatch import dispatch
 from rich import print
 from sklearn.ensemble import ExtraTreesClassifier, GradientBoostingClassifier, RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.metrics import classification_report
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
@@ -31,6 +31,7 @@ from .func.algo_classification._knn import knn_manual_hyper_parameters
 from .func.algo_classification._logistic_regression import logistic_regression_manual_hyper_parameters, plot_logistic_importance
 from .func.algo_classification._multi_layer_perceptron import multi_layer_perceptron_manual_hyper_parameters
 from .func.algo_classification._rf import random_forest_manual_hyper_parameters
+from .func.algo_classification._sgd_classification import sgd_classificaiton_manual_hyper_parameters
 from .func.algo_classification._svc import svc_manual_hyper_parameters
 from .func.algo_classification._xgboost import xgboost_manual_hyper_parameters
 
@@ -2988,3 +2989,351 @@ class KNNClassification(ClassificationWorkflowBase):
     def special_components(self, is_automl: bool, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
         pass
+
+
+class SGDClassification(LinearWorkflowMixin, ClassificationWorkflowBase):
+    """The automation workflow of using Stochastic Gradient Descent - SGD algorithm to make insightful products."""
+
+    name = "Stochastic Gradient Descent"
+    special_function = ["SGD Formula"]
+
+    def __init__(
+        self,
+        loss: str = "log_loss",
+        penalty: str = "l2",
+        alpha: float = 0.0001,
+        l1_ratio: float = 0.15,
+        fit_intercept: bool = True,
+        max_iter: int = 1000,
+        tol: Union[float, None] = 0.001,
+        shuffle: bool = True,
+        verbose: int = 0,
+        epsilon: float = 0.1,
+        n_jobs: int = None,
+        random_state: Optional[int] = None,
+        learning_rate: str = "optimal",
+        eta0: float = 0.0,
+        power_t: float = 0.5,
+        early_stopping: bool = False,
+        validation_fraction: float = 0.1,
+        n_iter_no_change: int = 5,
+        class_weight: Union[dict, str] = None,
+        warm_start: bool = False,
+        average: Union[bool, int] = False,
+    ) -> None:
+        """
+        Parameters
+        ----------
+        loss : {'hinge', 'log_loss', 'modified_huber', 'squared_hinge',\
+            'perceptron', 'squared_error', 'huber', 'epsilon_insensitive',\
+            'squared_epsilon_insensitive'}, default='hinge'
+            The loss function to be used.
+
+            - 'hinge' gives a linear SVM.
+            - 'log_loss' gives logistic regression, a probabilistic classifier.
+            - 'modified_huber' is another smooth loss that brings tolerance to
+            outliers as well as probability estimates.
+            - 'squared_hinge' is like hinge but is quadratically penalized.
+            - 'perceptron' is the linear loss used by the perceptron algorithm.
+            - The other losses, 'squared_error', 'huber', 'epsilon_insensitive' and
+            'squared_epsilon_insensitive' are designed for regression but can be useful
+            in classification as well; see
+            :class:`~sklearn.linear_model.SGDRegressor` for a description.
+
+            More details about the losses formulas can be found in the
+            :ref:`User Guide <sgd_mathematical_formulation>`.
+
+        penalty : {'l2', 'l1', 'elasticnet', None}, default='l2'
+            The penalty (aka regularization term) to be used. Defaults to 'l2'
+            which is the standard regularizer for linear SVM models. 'l1' and
+            'elasticnet' might bring sparsity to the model (feature selection)
+            not achievable with 'l2'. No penalty is added when set to `None`.
+
+        alpha : float, default=0.0001
+            Constant that multiplies the regularization term. The higher the
+            value, the stronger the regularization. Also used to compute the
+            learning rate when `learning_rate` is set to 'optimal'.
+            Values must be in the range `[0.0, inf)`.
+
+        l1_ratio : float, default=0.15
+            The Elastic Net mixing parameter, with 0 <= l1_ratio <= 1.
+            l1_ratio=0 corresponds to L2 penalty, l1_ratio=1 to L1.
+            Only used if `penalty` is 'elasticnet'.
+            Values must be in the range `[0.0, 1.0]`.
+
+        fit_intercept : bool, default=True
+            Whether the intercept should be estimated or not. If False, the
+            data is assumed to be already centered.
+
+        max_iter : int, default=1000
+            The maximum number of passes over the training data (aka epochs).
+            It only impacts the behavior in the ``fit`` method, and not the
+            :meth:`partial_fit` method.
+            Values must be in the range `[1, inf)`.
+
+            .. versionadded:: 0.19
+
+        tol : float or None, default=1e-3
+            The stopping criterion. If it is not None, training will stop
+            when (loss > best_loss - tol) for ``n_iter_no_change`` consecutive
+            epochs.
+            Convergence is checked against the training loss or the
+            validation loss depending on the `early_stopping` parameter.
+            Values must be in the range `[0.0, inf)`.
+
+            .. versionadded:: 0.19
+
+        shuffle : bool, default=True
+            Whether or not the training data should be shuffled after each epoch.
+
+        verbose : int, default=0
+            The verbosity level.
+            Values must be in the range `[0, inf)`.
+
+        epsilon : float, default=0.1
+            Epsilon in the epsilon-insensitive loss functions; only if `loss` is
+            'huber', 'epsilon_insensitive', or 'squared_epsilon_insensitive'.
+            For 'huber', determines the threshold at which it becomes less
+            important to get the prediction exactly right.
+            For epsilon-insensitive, any differences between the current prediction
+            and the correct label are ignored if they are less than this threshold.
+            Values must be in the range `[0.0, inf)`.
+
+        n_jobs : int, default=None
+            The number of CPUs to use to do the OVA (One Versus All, for
+            multi-class problems) computation.
+            ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
+            ``-1`` means using all processors. See :term:`Glossary <n_jobs>`
+            for more details.
+
+        random_state : int, RandomState instance, default=None
+            Used for shuffling the data, when ``shuffle`` is set to ``True``.
+            Pass an int for reproducible output across multiple function calls.
+            See :term:`Glossary <random_state>`.
+            Integer values must be in the range `[0, 2**32 - 1]`.
+
+        learning_rate : str, default='optimal'
+            The learning rate schedule:
+
+            - 'constant': `eta = eta0`
+            - 'optimal': `eta = 1.0 / (alpha * (t + t0))`
+            where `t0` is chosen by a heuristic proposed by Leon Bottou.
+            - 'invscaling': `eta = eta0 / pow(t, power_t)`
+            - 'adaptive': `eta = eta0`, as long as the training keeps decreasing.
+            Each time n_iter_no_change consecutive epochs fail to decrease the
+            training loss by tol or fail to increase validation score by tol if
+            `early_stopping` is `True`, the current learning rate is divided by 5.
+
+                .. versionadded:: 0.20
+                    Added 'adaptive' option
+
+        eta0 : float, default=0.0
+            The initial learning rate for the 'constant', 'invscaling' or
+            'adaptive' schedules. The default value is 0.0 as eta0 is not used by
+            the default schedule 'optimal'.
+            Values must be in the range `(0.0, inf)`.
+
+        power_t : float, default=0.5
+            The exponent for inverse scaling learning rate [default 0.5].
+            Values must be in the range `(-inf, inf)`.
+
+        early_stopping : bool, default=False
+            Whether to use early stopping to terminate training when validation
+            score is not improving. If set to `True`, it will automatically set aside
+            a stratified fraction of training data as validation and terminate
+            training when validation score returned by the `score` method is not
+            improving by at least tol for n_iter_no_change consecutive epochs.
+
+            .. versionadded:: 0.20
+                Added 'early_stopping' option
+
+        validation_fraction : float, default=0.1
+            The proportion of training data to set aside as validation set for
+            early stopping. Must be between 0 and 1.
+            Only used if `early_stopping` is True.
+            Values must be in the range `(0.0, 1.0)`.
+
+            .. versionadded:: 0.20
+                Added 'validation_fraction' option
+
+        n_iter_no_change : int, default=5
+            Number of iterations with no improvement to wait before stopping
+            fitting.
+            Convergence is checked against the training loss or the
+            validation loss depending on the `early_stopping` parameter.
+            Integer values must be in the range `[1, max_iter)`.
+
+            .. versionadded:: 0.20
+                Added 'n_iter_no_change' option
+
+        class_weight : dict, {class_label: weight} or "balanced", default=None
+            Preset for the class_weight fit parameter.
+
+            Weights associated with classes. If not given, all classes
+            are supposed to have weight one.
+
+            The "balanced" mode uses the values of y to automatically adjust
+            weights inversely proportional to class frequencies in the input data
+            as ``n_samples / (n_classes * np.bincount(y))``.
+
+        warm_start : bool, default=False
+            When set to True, reuse the solution of the previous call to fit as
+            initialization, otherwise, just erase the previous solution.
+            See :term:`the Glossary <warm_start>`.
+
+            Repeatedly calling fit or partial_fit when warm_start is True can
+            result in a different solution than when calling fit a single time
+            because of the way the data is shuffled.
+            If a dynamic learning rate is used, the learning rate is adapted
+            depending on the number of samples already seen. Calling ``fit`` resets
+            this counter, while ``partial_fit`` will result in increasing the
+            existing counter.
+
+        average : bool or int, default=False
+            When set to `True`, computes the averaged SGD weights across all
+            updates and stores the result in the ``coef_`` attribute. If set to
+            an int greater than 1, averaging will begin once the total number of
+            samples seen reaches `average`. So ``average=10`` will begin
+            averaging after seeing 10 samples.
+            Integer values must be in the range `[1, n_samples]`.
+
+
+        References
+        ----------
+        Scikit-learn API: sklearn.linear_model.SGDClassifier
+        https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDClassifier.html
+        """
+
+        super().__init__()
+        self.loss = loss
+        self.penalty = penalty
+        self.alpha = alpha
+        self.l1_ratio = l1_ratio
+        self.fit_intercept = fit_intercept
+        self.max_iter = max_iter
+        self.tol = tol
+        self.shuffle = shuffle
+        self.verbose = verbose
+        self.epsilon = epsilon
+        self.n_jobs = n_jobs
+        self.random_state = random_state
+        self.learning_rate = learning_rate
+        self.eta0 = eta0
+        self.power_t = power_t
+        self.early_stopping = early_stopping
+        self.validation_fraction = validation_fraction
+        self.n_iter_no_change = n_iter_no_change
+        self.class_weight = class_weight
+        self.warm_start = warm_start
+        self.average = average
+
+        self.model = SGDClassifier(
+            loss=self.loss,
+            penalty=self.penalty,
+            alpha=self.alpha,
+            l1_ratio=self.l1_ratio,
+            fit_intercept=self.fit_intercept,
+            max_iter=self.max_iter,
+            tol=self.tol,
+            shuffle=self.shuffle,
+            verbose=self.verbose,
+            epsilon=self.epsilon,
+            n_jobs=self.n_jobs,
+            random_state=self.random_state,
+            learning_rate=self.learning_rate,
+            eta0=self.eta0,
+            power_t=self.power_t,
+            early_stopping=self.early_stopping,
+            validation_fraction=self.validation_fraction,
+            n_iter_no_change=self.n_iter_no_change,
+            class_weight=self.class_weight,
+            warm_start=self.warm_start,
+            average=self.average,
+        )
+
+        self.naming = SGDClassification.name
+        self.customized = True
+        self.customized_name = "Stochastic Gradient Descent"
+
+    @property
+    def settings(self) -> Dict:
+        """The configuration of SGD to implement AutoML by FLAML framework."""
+        configuration = {
+            "time_budget": 10,  # total running time in seconds
+            "metric": "accuracy",
+            "estimator_list": [self.customized_name],  # list of ML learners
+            "task": "classification",  # task type
+            # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
+            # "log_training_metric": True,  # whether to log training metric
+        }
+        return configuration
+
+    @property
+    def customization(self) -> object:
+        """The customized SGD of FLAML framework."""
+        from flaml import tune
+        from flaml.data import CLASSIFICATION
+        from flaml.model import SKLearnEstimator
+        from sklearn.linear_model import SGDClassifier
+
+        class MySGDClassification(SKLearnEstimator):
+            def __init__(self, task="classification", n_jobs=None, **config):
+                super().__init__(task, **config)
+                if task in CLASSIFICATION:
+                    self.estimator_class = SGDClassifier
+
+            @classmethod
+            def search_space(cls, data_size, task):
+                space = {
+                    "loss": {"domain": tune.choice(["log_loss", "modified_huber"]), "init_value": "log_loss"},
+                    "penalty": {"domain": tune.choice(["l2", "l1", "elasticnet", None]), "init_value": "l2"},
+                    "alpha": {"domain": tune.loguniform(lower=0.0001, upper=1), "init_value": 0.0001},
+                    "l1_ratio": {"domain": tune.uniform(lower=0, upper=1), "init_value": 0.15},
+                    "fit_intercept": {"domain": tune.choice([True, False]), "init_value": True},
+                    "max_iter": {"domain": tune.randint(lower=50, upper=1000), "init_value": 1000},
+                    "tol": {"domain": tune.loguniform(lower=0.000001, upper=0.001), "init_value": 0.001},
+                    "shuffle": {"domain": tune.choice([True, False]), "init_value": True},
+                    "learning_rate": {"domain": tune.choice(["constant", "optimal", "invscaling", "adaptive"]), "init_value": "optimal"},
+                    "eta0": {"domain": tune.loguniform(lower=0.000001, upper=0.1), "init_value": 0.000001},
+                    "power_t": {"domain": tune.uniform(lower=0.1, upper=0.9), "init_value": 0.5},
+                    "early_stopping": {"domain": tune.choice([True, False]), "init_value": False},
+                    "validation_fraction": {"domain": tune.uniform(lower=0.000001, upper=1), "init_vlue": 0.1},
+                    "warm_start": {"domain": tune.choice([True, False]), "init_value": False},
+                }
+                return space
+
+        return MySGDClassification
+
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
+        """Manual hyper-parameters specification."""
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = sgd_classificaiton_manual_hyper_parameters()
+        clear_output()
+        return hyper_parameters
+
+    @dispatch()
+    def special_components(self, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+        self._show_formula(
+            coef=[self.model.coef_],
+            intercept=self.model.intercept_,
+            features_name=SGDClassification.X_train.columns,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
+            mlflow_path="root",
+        )
+
+    @dispatch(bool)
+    def special_components(self, is_automl: bool = False, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by FLAML framework."""
+        GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+        self._show_formula(
+            coef=self.auto_model.coef_,
+            intercept=self.auto_model.intercept_,
+            features_name=SGDClassification.X.columns,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
+            mlflow_path="root",
+        )
