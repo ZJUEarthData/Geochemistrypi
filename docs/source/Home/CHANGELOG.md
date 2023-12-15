@@ -2,14 +2,42 @@
 
 All notable changes to this project will be documented in this file.
 
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
 
 
 ## [Unreleased]
 
-+ MLOps core of model serving in command line interface
-+ MLOps core of continuous training in web interface.
++ MLOps core of continuous training in web interface
+
+## [0.4.0] - 2023-12-15
+
+### Added
+
++ MLOps core of model inference in command line interface using transformer pipeline
++ Multi-class label and binary label training for all classification models
++ CSV data file import
++ Reduced data storage in decomposition
++ Data selection function with null, space and Chinese parentheses dection functionality
++ label customization in classification
++ Feature selection function
++ Design diagrams of the whole project
++ Feature scaling for unsupervised learning
++ Built-in inference dataset loading
++ Silhouette score frequency diagram for all clustering model
++ Two clustering model score for all clustering model
++ New Models:
+  + Regression Models
+    + Elastic Net
+    + Stochastic Gradient Regression
+  + Classification Models
+    + Gradient Boosting
+    + K-Nearest Neighbors
+    + Stochastic Gradient Descent
 
 
+### Changed
++ Lasso regression model with automatic parameter tuning functionality
 
 ## [0.3.0] - 2023-08-11
 
@@ -83,6 +111,7 @@ All notable changes to this project will be documented in this file.
 
 
 [ unreleased ]: https://github.com/ZJUEarthData/geochemistrypi
+[ 0.4.0 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.3.0...v0.4.0
 [ 0.3.0 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.2.1...v0.3.0
 [ 0.2.1 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.2.0...v0.2.1
 [ 0.2.0 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.1.0...v0.2.0
