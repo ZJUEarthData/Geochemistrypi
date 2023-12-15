@@ -44,7 +44,7 @@ The following figure is the frontend-backend separation architecture of Geochemi
 
 ## Quick Installation
 
-One instruction to download on **command line**, such as Terminal on macOS, Command Prompt on Windows.
+One instruction to download on **command line**, such as Terminal on macOS, Power Shell on Windows.
 ```
 pip install geochemistrypi
 ```
@@ -52,12 +52,16 @@ One instruction to download on **Jupyter Notebook** or **Google Colab**.
 ```
 !pip install geochemistrypi
 ```
+Check the latest version of our software:
+```
+geochemistrypi --version
+```
 **Note**: For more detail on installation, please refer to our online documentation in **Installation Manual** under the section of **FOR USER**. Over there, we highly recommend to use virtual environment (Conda) to avoid dependency version problems.
 
 
 ## Quick Update
 
-One instruction to update the software to the latest version on **command line**, such as Terminal on macOS, Command Prompt on Windows.
+One instruction to update the software to the latest version on **command line**, such as Terminal on macOS, Power Shell on Windows.
 ```
 pip install --upgrade geochemistrypi
 ```
@@ -98,9 +102,27 @@ On Jupyter Notebook / Google Colab:
 ```
 !geochemistrypi data-mining --data your_own_data_set.xlsx
 ```
-**Note**: Currently, only `.xlsx` file is supported. Please specify the path your data file exists. For Google Colab, don't forget to upload your dataset first.
+**Note**: Currently, `.xlsx` and `.csv` files are supported. Please specify the path your data file exists. For Google Colab, don't forget to upload your dataset first.
 
-### Case 3: Activate MLflow web interface
+### Case 3: Implement model inference on application data
+
+On command line:
+
+```
+geochemistrypi data-mining --training your_own_training_data.xlsx --inference your_own_inference_data.xlsx
+```
+
+On Jupyter Notebook / Google Colab:
+
+```
+!geochemistrypi data-mining --training your_own_training_data.xlsx --inference your_own_inference_data.xlsx
+```
+**Note**: Please make sure the column names (data schema) in both training data file and inference data file are the same. Because the operations you perform via our software on the training data will be record automatically and subsequently applied to the inference data in the same order.
+
+The training data in our pipeline will be divided into the train set and test set used for training the ML model and evaluating the model's performance. The score includes two types. The first type is the scores from the prediction on the test set while the second type is cv scores from the cross validation on the train set.
+
+
+### Case 4: Activate MLflow web interface
 
 On command line:
 
@@ -113,9 +135,9 @@ On Jupyter Notebook / Google Colab:
 ```
 !geochemistrypi data-mining --mlflow
 ```
-**Note**: Once you run our software, there are two folders (`geopi_output` and `geopi_tracking`) generated automatically. Make sure the directory where you execute the above command should have the genereted file `geopi_tracking`.
+**Note**: Once you run our software, there are two folders (`geopi_output` and `geopi_tracking`) generated automatically. Make sure the directory where you execute using the above command should have the genereted file `geopi_tracking`.
 
-Copy the address in the displayed result into any browser to open the MLflow web interface. The address is normally like this http://127.0.0.1:5000. Search MLflow online to see more operations and usages.
+Copy the URL shown on the console into any browser to open the MLflow web interface. The URL is normally like this http://127.0.0.1:5000. Search MLflow online to see more operations and usages.
 
 For more details: Please refer to:
 
@@ -190,6 +212,7 @@ The whole package is under construction and the documentation is progressively e
 + Yongkang Chan (Kill-virus, Lanzhou University, China)
 + Mengying Ye (Mary, Jilin University, China)
 + Mengqi Gao (China University of Geosciences, Beijing, China)
++ Chengtu Li（Trenki, Henan Polytechnic University, Beijing, China）
 
 **Product Group**:
 + Yang Lyu (Daisy, Zhejiang University, China)
@@ -211,8 +234,8 @@ The whole package is under construction and the documentation is progressively e
 **Key Point: All things are done online, remote work (\*^▽^\*)**
 
 **What can you learn?**
-+ Learning the full cycle of data mining on tabular data, including the algorithms in regression,classification, clustering, and decomposition.
-+ Learning to be a qualified Python developer, including any Python programing contents towards data mining, basic software engineering techniques like frontend and backend development framework, and cooperation tools like Git.
++ Learning the full cycle of data mining (Scikit-learn, Ray, Mlflow) on tabular data, including the algorithms in regression,classification, clustering, and decomposition.
++ Learning to be a qualified Python developer, including any Python programing contents towards data mining, basic software engineering techniques like frontend (React, Typescript, Ant Design scaffold) and backend (SQL & NoSQL database, RESFful API, FastAPI) development, and cooperation tools like Git.
 
 **What can you get?**
 
