@@ -26,6 +26,7 @@ class DecompositionWorkflowBase(WorkflowBase):
 
         # the extra attributes that decomposition algorithm needs
         self.X_reduced = None
+        self.mode = "Decomposition"
 
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
         """Fit the model."""

@@ -47,6 +47,7 @@ class RegressionWorkflowBase(WorkflowBase):
         # These two attributes are used for the customized models of FLAML framework
         self.customized = False
         self.customized_name = None
+        self.mode = "Regression"
 
     @dispatch(object, object)
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:

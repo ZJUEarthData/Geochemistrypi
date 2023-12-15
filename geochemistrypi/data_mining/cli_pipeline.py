@@ -265,7 +265,7 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
         del data_selected
         clear_output()
     else:
-        # if the selected data set doesn't need imputation, which means there are no missing values.
+        # If the selected data set doesn't need imputation, which means there are no missing values.
         imputation_config = {}
         data_selected_imputed = data_selected
 
