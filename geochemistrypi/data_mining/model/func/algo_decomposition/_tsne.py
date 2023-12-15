@@ -24,8 +24,14 @@ def tsne_manual_hyper_parameters() -> Dict:
     print("Please specify the learning rate. A good starting range could be between 10 and 1000, such as 200.")
     learning_rate = float_input(200, SECTION[2], "Learning Rate: ")
     print("Number of Iterations: This parameter controls how many iterations the optimization will run for.")
-    print("Please specify the number of iterations. A good starting range could be between 250 and 1000, such as 500.")
-    n_iter = num_input(SECTION[2], "Number of Iterations: ")
+    print("Please specify the number of iterations. A good starting range could be between 250 and 1000, such as 500. The minimum is 250.")
+    is_valid = False
+    while not is_valid:
+        n_iter = num_input(SECTION[2], "Number of Iterations: ")
+        if n_iter >= 250:
+            is_valid = True
+        else:
+            print("Please enter a number greater than or equal to 250.")
     print("Early Exaggeration: This parameter controls how tight natural clusters in the original space are in the embedded space and how much space will be between them.")
     print("Please specify the early exaggeration. A good starting range could be between 5 and 50, such as 12.")
     early_exaggeration = float_input(12, SECTION[2], "Early Exaggeration: ")

@@ -58,9 +58,14 @@ def sgd_classificaiton_manual_hyper_parameters() -> Dict:
     early_stopping = bool_input(SECTION[2])
 
     print("Validation Fraction: The proportion of training data to set aside as validation set for early stopping.")
-    print("A good starting value could be between 0.000001 and 1, such as 0.1. The default is 0.1.")
-    validation_fraction = float_input(0.1, SECTION[2], "@Validation Fraction: ")
-
+    print("It must be in range (0, 1). A good starting value could be between 0.000001 and 1, such as 0.1. The default is 0.1.")
+    is_valid = False
+    while not is_valid:
+        validation_fraction = float_input(0.1, SECTION[2], "@Validation Fraction: ")
+        if 0 < validation_fraction < 1:
+            is_valid = True
+        else:
+            print("The validation fraction must be in range (0, 1).")
     print("Number of Iterations With No Improvement: Number of iterations with no improvement to wait before stopping fitting.")
     print("A good starting value could be between 1 and maximum number of iterations, such as 5. The default is 5.")
     n_iter_no_change = num_input(SECTION[2], "@Iterations With No Improvement: ")

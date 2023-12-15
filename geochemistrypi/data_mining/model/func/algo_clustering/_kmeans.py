@@ -40,7 +40,7 @@ def kmeans_manual_hyper_parameters() -> Dict:
     return hyper_parameters
 
 
-def plot_silhouette_diagram(data: pd.DataFrame, cluster_labels: pd.DataFrame, cluster_centers_: np.ndarray, n_clusters: int, algorithm_name: str) -> None:
+def plot_silhouette_diagram_kmeans(data: pd.DataFrame, cluster_labels: pd.DataFrame, cluster_centers_: np.ndarray, n_clusters: int, algorithm_name: str) -> None:
     """
     Draw the silhouette diagram for analysis.
 

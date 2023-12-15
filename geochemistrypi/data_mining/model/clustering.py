@@ -14,7 +14,7 @@ from ..utils.base import clear_output, save_data, save_fig, save_text
 from ._base import WorkflowBase
 from .func.algo_clustering._common import plot_results, plot_silhouette_diagram, score
 from .func.algo_clustering._dbscan import dbscan_manual_hyper_parameters, dbscan_result_plot
-from .func.algo_clustering._kmeans import kmeans_manual_hyper_parameters, scatter2d, scatter3d
+from .func.algo_clustering._kmeans import kmeans_manual_hyper_parameters, plot_silhouette_diagram_kmeans, scatter2d, scatter3d
 
 
 class ClusteringWorkflowBase(WorkflowBase):
@@ -25,6 +25,7 @@ class ClusteringWorkflowBase(WorkflowBase):
     def __init__(self):
         super().__init__()
         self.clustering_result = None
+        self.mode = "Clustering"
 
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
         """Fit the model according to the given training data."""
@@ -93,14 +94,14 @@ class ClusteringWorkflowBase(WorkflowBase):
             algorithm_name=self.naming,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
-        self._plot_results(
-            data=self.X,
-            labels=self.clustering_result["clustering result"],
-            cluster_centers_=self.get_cluster_centers(),
-            algorithm_name=self.naming,
-            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-        )
+        # self._plot_results(
+        #     data=self.X,
+        #     labels=self.clustering_result["clustering result"],
+        #     cluster_centers_=self.get_cluster_centers(),
+        #     algorithm_name=self.naming,
+        #     local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+        #     mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        # )
         self._plot_silhouette_diagram(
             data=self.X,
             labels=self.clustering_result["clustering result"],
@@ -226,6 +227,15 @@ class KMeansClustering(ClusteringWorkflowBase):
 
         self.naming = KMeansClustering.name
 
+    def _get_inertia_scores(self, algorithm_name: str, store_path: str) -> None:
+        """Get the scores of the clustering result."""
+        print("-----* KMeans Inertia Scores *-----")
+        print("Inertia Score: ", self.model.inertia_)
+        inertia_scores = {"Inertia Score": self.model.inertia_}
+        mlflow.log_metrics(inertia_scores)
+        inertia_scores_str = json.dumps(inertia_scores, indent=4)
+        save_text(inertia_scores_str, f"KMeans Inertia Scores - {algorithm_name}", store_path)
+
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
@@ -233,6 +243,25 @@ class KMeansClustering(ClusteringWorkflowBase):
         hyper_parameters = kmeans_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
+
+    @staticmethod
+    def _plot_silhouette_diagram_kmeans(
+        data: pd.DataFrame,
+        cluster_labels: pd.DataFrame,
+        cluster_centers_: np.ndarray,
+        n_clusters: int,
+        algorithm_name: str,
+        local_path: str,
+        mlflow_path: str,
+    ) -> None:
+        """Plot the silhouette diagram of the clustering result."""
+        print("-----* KMeans's Silhouette Diagram *-----")
+        plot_silhouette_diagram_kmeans(data, cluster_labels, cluster_centers_, n_clusters, algorithm_name)
+        save_fig(f"KMeans's Silhouette Diagram - {algorithm_name}", local_path, mlflow_path)
+        data_with_labels = pd.concat([data, cluster_labels], axis=1)
+        save_data(data_with_labels, "KMeans's Silhouette Diagram - Data With Labels", local_path, mlflow_path)
+        cluster_center_data = pd.DataFrame(cluster_centers_, columns=data.columns)
+        save_data(cluster_center_data, "KMeans's Silhouette Diagram - Cluster Centers", local_path, mlflow_path)
 
     @staticmethod
     def _scatter2d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
@@ -254,7 +283,21 @@ class KMeansClustering(ClusteringWorkflowBase):
 
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._get_inertia_scores(
+            algorithm_name=self.naming,
+            store_path=GEOPI_OUTPUT_METRICS_PATH,
+        )
+        self._plot_silhouette_diagram_kmeans(
+            data=self.X,
+            cluster_labels=self.clustering_result["clustering result"],
+            cluster_centers_=self.get_cluster_centers(),
+            n_clusters=self.n_clusters,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
 
         # Draw graphs when the number of principal components > 3
         if self.X.shape[1] >= 3:
