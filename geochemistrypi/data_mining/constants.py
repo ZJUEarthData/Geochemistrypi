@@ -39,11 +39,14 @@ REGRESSION_MODELS = [
     "Random Forest",
     "Extra-Trees",
     "Gradient Boosting",
-    "Xgboost",
+    "XGBoost",
     "Multi-layer Perceptron",
     "Lasso Regression",
     "Elastic Net",
     "SGD Regression",
+    # "Bagging Regression",
+    # "Decision Tree",
+    # Histogram-based Gradient Boosting,
 ]
 CLASSIFICATION_MODELS = [
     "Logistic Regression",
@@ -51,14 +54,36 @@ CLASSIFICATION_MODELS = [
     "Decision Tree",
     "Random Forest",
     "Extra-Trees",
-    "Xgboost",
+    "XGBoost",
     "Multi-layer Perceptron",
     "Gradient Boosting",
     "K-Nearest Neighbors",
     "Stochastic Gradient Descent",
+    # "Bagging Classification",
+    # "Decision Tree",
+    # Histogram-based Gradient Boosting,
 ]
 CLUSTERING_MODELS = ["KMeans", "DBSCAN"]
 DECOMPOSITION_MODELS = ["PCA", "T-SNE", "MDS"]
+
+# The model can deal with missing values
+# Reference: https://scikit-learn.org/stable/modules/impute.html#estimators-that-handle-nan-values
+REGRESSION_MODELS_WITH_MISSING_VALUES = [
+    "XGBoost",
+    # "Bagging Regression",
+    # "Decision Tree",
+    # Histogram-based Gradient Boosting,
+]
+CLASSIFICATION_MODELS_WITH_MISSING_VALUES = [
+    "XGBoost",
+    # "Bagging Classification",
+    # "Decision Tree",
+    # Histogram-based Gradient Boosting,
+]
+CLUSTERING_MODELS_WITH_MISSING_VALUES = [
+    # "HDBSCAN"
+]
+
 
 # Special AutoML models
 NON_AUTOML_MODELS = ["Linear Regression", "Polynomial Regression"]

@@ -1211,9 +1211,9 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
 
 
 class XGBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
-    """The automation workflow of using Xgboost algorithm to make insightful products."""
+    """The automation workflow of using XGBoost algorithm to make insightful products."""
 
-    name = "Xgboost"
+    name = "XGBoost"
     special_function = ["Feature Importance Diagram"]
 
     # https: // xgboost.readthedocs.io / en / stable / python / python_api.html  # module-xgboost.sklearn
@@ -1419,10 +1419,10 @@ class XGBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
 
         References
         ----------
-        [1] Xgboost Python API Reference - Scikit-Learn API
+        [1] XGBoost Python API Reference - Scikit-Learn API
             https://xgboost.readthedocs.io/en/latest/python/python_api.html#module-xgboost.sklearn
 
-        [2] Xgboost API for the scikit-learn wrapper:
+        [2] XGBoost API for the scikit-learn wrapper:
             https://github.com/dmlc/xgboost/blob/master/python-package/xgboost/sklearn.py
         """
         super().__init__()
@@ -1526,7 +1526,7 @@ class XGBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
     # def _plot_tree(trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
     #     # TODO: (solve the problem of failed to execute WindowsPath('dot'), make sure the Graphviz executables are on your systems' PATH
     #     # Drawing diagrams of the first decision tree of xgboost
-    #     print("-----* Xgboost's Single Tree Diagram *-----")
+    #     print("-----* XGBoost's Single Tree Diagram *-----")
     #     xgboost.plot_tree(trained_model)
     #     # node_params = {
     #     #     'shape': 'box',

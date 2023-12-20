@@ -33,9 +33,9 @@ dependencies = [
     "openpyxl==3.0.10",
     "pandas==1.5.2",
     "joblib==1.2.0",
-    "flaml==1.0.14",                # required to run Xgboost + FLMAL
-    "numpy==1.23.5",                # required to run Xgboost + FLMAL
-    "xgboost==1.6.2",               # required to run Xgboost + FLAML and be compatible with M2 chip on Mac
+    "flaml==1.0.14",                # required to run XGBoost + FLMAL
+    "numpy==1.23.5",                # required to run XGBoost + FLMAL
+    "xgboost==1.6.2",               # required to run XGBoost + FLAML and be compatible with M2 chip on Mac
     "threadpoolctl==3.1.0",         # required to draw 3d plot for KMeans
     "matplotlib==3.5.2",            # required to draw 3d plot for KMeans
     "fastapi",                      # backend framework

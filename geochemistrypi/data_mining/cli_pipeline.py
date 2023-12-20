@@ -10,7 +10,9 @@ from rich.prompt import Confirm, Prompt
 
 from .constants import (
     CLASSIFICATION_MODELS,
+    CLASSIFICATION_MODELS_WITH_MISSING_VALUES,
     CLUSTERING_MODELS,
+    CLUSTERING_MODELS_WITH_MISSING_VALUES,
     DECOMPOSITION_MODELS,
     FEATURE_SCALING_STRATEGY,
     FEATURE_SELECTION_STRATEGY,
@@ -21,6 +23,7 @@ from .constants import (
     OPTION,
     OUTPUT_PATH,
     REGRESSION_MODELS,
+    REGRESSION_MODELS_WITH_MISSING_VALUES,
     SECTION,
     TEST_DATA_OPTION,
     WORKING_PATH,
@@ -32,7 +35,7 @@ from .data.inference import build_transform_pipeline, model_inference
 from .data.preprocessing import feature_scaler, feature_selector
 from .data.statistic import monte_carlo_simulator
 from .plot.map_plot import process_world_map
-from .plot.statistic_plot import basic_statistic, correlation_plot, distribution_plot, is_imputed, is_null_value, log_distribution_plot, probability_plot, ratio_null_vs_filled
+from .plot.statistic_plot import basic_statistic, check_missing_value, correlation_plot, distribution_plot, is_null_value, log_distribution_plot, probability_plot, ratio_null_vs_filled
 from .process.classify import ClassificationModelSelection
 from .process.cluster import ClusteringModelSelection
 from .process.decompose import DecompositionModelSelection
@@ -157,7 +160,7 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
                 raise e
         experiment = mlflow.get_experiment(experiment_id=new_experiment_id)
     # print("Artifact Location: {}".format(experiment.artifact_location))
-    run_name = Prompt.ask("✨ Run Name", default="Xgboost Algorithm - Test 1")
+    run_name = Prompt.ask("✨ Run Name", default="XGBoost Algorithm - Test 1")
     # run_tag = Prompt.ask("✨ Run Tag Version", default="R - v1.0.0")
     # run_description = Prompt.ask("✨ Run Description", default="Use xgboost for GeoPi classification.")
     # mlflow.start_run(run_name=run_name, experiment_id=experiment.experiment_id, tags={"version": run_tag, "description": run_description})
@@ -219,7 +222,7 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
     print("The Selected Data Set:")
     print(data_selected)
     clear_output()
-    print("Basic Statistical Information: ")
+    print("-*-*- Basic Statistical Information -*-*-")
     basic_info(data_selected)
     basic_statistic(data_selected)
     correlation_plot(data_selected.columns, data_selected)
@@ -232,11 +235,26 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
 
     # <--- Imputation --->
     logger.debug("Imputation")
-    print("-*-*- Imputation -*-*-")
+    print("-*-*- Missing Value Check -*-*-")
     is_null_value(data_selected)
     ratio_null_vs_filled(data_selected)
-    imputed_flag = is_imputed(data_selected)
+    missing_value_flag = check_missing_value(data_selected)
     clear_output()
+    if missing_value_flag:
+        # Ask the user whether to use imputation techniques to deal with the missing values.
+        print("-*-*- Imputation Option -*-*-")
+        num2option(OPTION)
+        imputation_num = limit_num_input(OPTION, SECTION[1], num_input)
+        if imputation_num == 1:
+            imputed_flag = True
+        else:
+            imputed_flag = False
+        clear_output()
+    else:
+        # Allow the user not to use imputation techniques to deal with the missing values.
+        # Subsequently, in the mode selection, only regression, classification and clustering models are available.
+        # In the corresponding model selection, only the models that support missing values are available.
+        imputed_flag = False
     if imputed_flag:
         print("-*-*- Strategy for Missing Values -*-*-")
         num2option(IMPUTING_STRATEGY)
@@ -281,8 +299,16 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
     # <--- Mode Selection --->
     logger.debug("Mode Selection")
     print("-*-*- Mode Selection -*-*-")
-    num2option(MODE_OPTION)
-    mode_num = limit_num_input(MODE_OPTION, SECTION[2], num_input)
+    # If the selected data set is with missing values and is not been imputed, then only allow the user to choose regression, classification and clustering modes.
+    # Otherwise, allow the user to choose decomposition modes.
+    if missing_value_flag and not imputed_flag:
+        # Delete the decomposition mode because it doesn't support missing values.
+        MODE_OPTION.remove("Dimensional Reduction")
+        num2option(MODE_OPTION)
+        mode_num = limit_num_input(MODE_OPTION, SECTION[2], num_input)
+    else:
+        num2option(MODE_OPTION)
+        mode_num = limit_num_input(MODE_OPTION, SECTION[2], num_input)
     clear_output()
 
     # <--- Data Segmentation --->
@@ -359,7 +385,7 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
 
         # create training data and testing data
         print("-*-*- Data Split - Train Set and Test Set -*-*-")
-        print("Notice: Normally, set 20% of the dataset aside as test set, such as 0.2")
+        print("Notice: Normally, set 20% of the dataset aside as test set, such as 0.2.")
         test_ratio = float_input(default=0.2, prefix=SECTION[1], slogan="@Test Ratio: ")
         train_test_data = data_split(X, y, test_ratio)
         for key, value in train_test_data.items():
@@ -404,14 +430,20 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
 
     # <--- Model Selection --->
     logger.debug("Model Selection")
-    print("-*-*- Model Selection -*-*-:")
-    Modes2Models = {1: REGRESSION_MODELS, 2: CLASSIFICATION_MODELS, 3: CLUSTERING_MODELS, 4: DECOMPOSITION_MODELS}
-    Modes2Initiators = {
-        1: RegressionModelSelection,
-        2: ClassificationModelSelection,
-        3: ClusteringModelSelection,
-        4: DecompositionModelSelection,
-    }
+    print("-*-*- Model Selection -*-*-")
+    # If the selected data set is with missing values and is not been imputed, then only allow the user to choose regression, classification and clustering models.
+    # Otherwise, allow the user to choose decomposition models.
+    if missing_value_flag and not imputed_flag:
+        Modes2Models = {1: REGRESSION_MODELS_WITH_MISSING_VALUES, 2: CLASSIFICATION_MODELS_WITH_MISSING_VALUES, 3: CLUSTERING_MODELS_WITH_MISSING_VALUES}
+        Modes2Initiators = {1: RegressionModelSelection, 2: ClassificationModelSelection, 3: ClusteringModelSelection}
+    else:
+        Modes2Models = {1: REGRESSION_MODELS, 2: CLASSIFICATION_MODELS, 3: CLUSTERING_MODELS, 4: DECOMPOSITION_MODELS}
+        Modes2Initiators = {
+            1: RegressionModelSelection,
+            2: ClassificationModelSelection,
+            3: ClusteringModelSelection,
+            4: DecompositionModelSelection,
+        }
     MODELS = Modes2Models[mode_num]
     num2option(MODELS)
     # Add the option of all models
