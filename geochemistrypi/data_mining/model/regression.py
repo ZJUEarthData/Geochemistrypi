@@ -310,9 +310,9 @@ class PolynomialRegression(LinearWorkflowMixin, RegressionWorkflowBase):
 
 
 class XGBoostRegression(TreeWorkflowMixin, RegressionWorkflowBase):
-    """The automation workflow of using Xgboost algorithm to make insightful products."""
+    """The automation workflow of using XGBoost algorithm to make insightful products."""
 
-    name = "Xgboost"
+    name = "XGBoost"
     special_function = ["Feature Importance Diagram"]
 
     # In fact, it's used for type hint in the original xgboost package.
@@ -516,10 +516,10 @@ class XGBoostRegression(TreeWorkflowMixin, RegressionWorkflowBase):
 
         References
         ----------
-        [1] Xgboost Python API Reference - Scikit-Learn API
+        [1] XGBoost Python API Reference - Scikit-Learn API
             https://xgboost.readthedocs.io/en/latest/python/python_api.html#module-xgboost.sklearn
 
-        [2] Xgboost API for the scikit-learn wrapper:
+        [2] XGBoost API for the scikit-learn wrapper:
             https://github.com/dmlc/xgboost/blob/master/python-package/xgboost/sklearn.py
         """
 

@@ -80,7 +80,7 @@ class ClassificationModelSelection(ModelSelectionBase):
                 oob_score=hyper_parameters["oob_score"],
                 max_samples=hyper_parameters["max_samples"],
             )
-        elif self.model_name == "Xgboost":
+        elif self.model_name == "XGBoost":
             hyper_parameters = XGBoostClassification.manual_hyper_parameters()
             self.clf_workflow = XGBoostClassification(
                 n_estimators=hyper_parameters["n_estimators"],
@@ -214,7 +214,7 @@ class ClassificationModelSelection(ModelSelectionBase):
             self.clf_workflow = DecisionTreeClassification()
         elif self.model_name == "Random Forest":
             self.clf_workflow = RandomForestClassification()
-        elif self.model_name == "Xgboost":
+        elif self.model_name == "XGBoost":
             self.clf_workflow = XGBoostClassification()
         elif self.model_name == "Logistic Regression":
             self.clf_workflow = LogisticRegressionClassification()

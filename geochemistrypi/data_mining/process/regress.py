@@ -59,7 +59,7 @@ class RegressionModelSelection(ModelSelectionBase):
             poly_config, X_train, X_test = self.reg_workflow.poly(X_train, X_test)
             self.transformer_config.update(poly_config)
             self.reg_workflow.data_upload(X_train=X_train, X_test=X_test)
-        elif self.model_name == "Xgboost":
+        elif self.model_name == "XGBoost":
             hyper_parameters = XGBoostRegression.manual_hyper_parameters()
             self.reg_workflow = XGBoostRegression(
                 n_estimators=hyper_parameters["n_estimators"],
@@ -228,7 +228,7 @@ class RegressionModelSelection(ModelSelectionBase):
             poly_config, X_train, X_test = self.reg_workflow.poly(X_train, X_test)
             self.transformer_config.update(poly_config)
             self.reg_workflow.data_upload(X_train=X_train, X_test=X_test)
-        elif self.model_name == "Xgboost":
+        elif self.model_name == "XGBoost":
             self.reg_workflow = XGBoostRegression()
         elif self.model_name == "Decision Tree":
             self.reg_workflow = DecisionTreeRegression()

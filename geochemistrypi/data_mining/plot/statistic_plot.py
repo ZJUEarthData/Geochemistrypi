@@ -37,7 +37,7 @@ def is_null_value(data: pd.DataFrame) -> None:
     print("--" * 10)
 
 
-def is_imputed(data: pd.DataFrame) -> bool:
+def check_missing_value(data: pd.DataFrame) -> bool:
     """Check whether the data set has null value or not.
 
     Parameters
@@ -54,7 +54,7 @@ def is_imputed(data: pd.DataFrame) -> bool:
     if flag:
         print("Note: you'd better use imputation techniques to deal with the missing values.")
     else:
-        print("Note: you don't need to deal with the missing values, we'll just pass this step!")
+        print("Note: The provided data set is complete without missing values, we'll just pass this step!")
     return flag
 
 
