@@ -17,6 +17,7 @@ from .constants import (
     FEATURE_SCALING_STRATEGY,
     FEATURE_SELECTION_STRATEGY,
     IMPUTING_STRATEGY,
+    MISSING_VALUE_STRATEGY,
     MLFLOW_ARTIFACT_DATA_PATH,
     MODE_OPTION,
     NON_AUTOML_MODELS,
@@ -45,7 +46,12 @@ from .utils.mlflow_utils import retrieve_previous_experiment_id
 
 
 def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = None) -> None:
-    """The command line interface for Geochemistry π.
+    """The command line interface software for Geochemistry π.
+    The business logic of this CLI software can be found in the figures in the README.md file.
+    It provides three  MLOps core functionalities:
+        1. Continuous Training
+        2. Machine Learning Lifecycle Management
+        3. Model Inference
 
     Parameters
     ----------
@@ -233,32 +239,73 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
     save_data(data_selected, "Data Selected", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
     clear_output()
 
-    # <--- Imputation --->
-    logger.debug("Imputation")
+    # <--- Missing Value Process --->
+    # When detecting no missing values in the selected data, this section will be skipped.
+    # Otherwise, there are three scenarios to deal with the missing values.
+    # 1. Keep the missing values. Subsequently, in the following section, only the models that support missing values are available.
+    # 2. Drop the rows with missing values. It means the impuation is not applied.
+    # 3. Impute the missing values with one of the imputation techniques.
+    # Reference: https://scikit-learn.org/stable/modules/impute.html
+    logger.debug("Missing Value")
     print("-*-*- Missing Value Check -*-*-")
     is_null_value(data_selected)
     ratio_null_vs_filled(data_selected)
+    # missing_value_flag and process_missing_value_flag will be used in mode selection and model selection to differeniate two scenarios.
+    # 1. the selected data set is with missing values -> the user can choose regression, classification and clustering modes and the models support missing values.
+    # 2. the selected data set is without missing values -> the user can choose all modes and all models.
     missing_value_flag = check_missing_value(data_selected)
+    process_missing_value_flag = False
+    # drop_rows_with_missing_value_flag will be used in the inference section to differeniate two scenarios.
+    # 1. Dropping the rows with missing values, before implementing the model inference, the missing value in the inference data set should be dropped as well.
+    # 2. Don't drop the rows with missing values, before implementing the model inference, the inference data set should be imputed as well.
+    # Because dropping the rows with missing values use pandas.DataFrame.dropna() method, while imputing the missing values use sklearn.impute.SimpleImputer() method.
+    drop_rows_with_missing_value_flag = False
     clear_output()
     if missing_value_flag:
         # Ask the user whether to use imputation techniques to deal with the missing values.
-        print("-*-*- Imputation Option -*-*-")
+        print("-*-*- Missing Values Process-*-*-")
+        print("Do you want to deal with the missing values?")
         num2option(OPTION)
-        imputation_num = limit_num_input(OPTION, SECTION[1], num_input)
-        if imputation_num == 1:
-            imputed_flag = True
-        else:
-            imputed_flag = False
+        is_process_missing_value = limit_num_input(OPTION, SECTION[1], num_input)
         clear_output()
+        if is_process_missing_value == 1:
+            process_missing_value_flag = True
+            # If the user wants to deal with the missing values, then ask the user which strategy to use.
+            print("-*-*- Strategy for Missing Values -*-*-")
+            num2option(MISSING_VALUE_STRATEGY)
+            print("Notice: Drop the rows with missing values may lead to a significant loss of data if too many features are chosen.")
+            print("Which strategy do you want to apply?")
+            missing_value_strategy_num = limit_num_input(MISSING_VALUE_STRATEGY, SECTION[1], num_input)
+            if missing_value_strategy_num == 1:
+                # Drop the rows with missing values
+                data_selected_dropped = data_selected.dropna()
+                print("Successfully drop the rows with missing values.")
+                print("The Selected Data Set After Dropping:")
+                print(data_selected_dropped)
+                print("Basic Statistical Information:")
+                save_data(data_selected_dropped, "Data Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                drop_rows_with_missing_value_flag = True
+                imputed_flag = False
+            elif missing_value_strategy_num == 2:
+                # Don't drop the rows with missing values but use imputation techniques to deal with the missing values later.
+                # No need to save the data set here because it will be saved after imputation.
+                imputed_flag = True
+            clear_output()
+        else:
+            # Don't deal with the missing values, which means neither drop the rows with missing values nor use imputation techniques.
+            imputed_flag = False
+            save_data(data_selected, "Data Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
     else:
-        # Allow the user not to use imputation techniques to deal with the missing values.
-        # Subsequently, in the mode selection, only regression, classification and clustering models are available.
-        # In the corresponding model selection, only the models that support missing values are available.
+        # If the selected data set doesn't have missing values, then don't deal with the missing values.
         imputed_flag = False
+        save_data(data_selected, "Data Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+    data_selected = data_selected_dropped if drop_rows_with_missing_value_flag else data_selected
+    # If the selected data set contains missing values and the user wants to deal with the missing values and choose not to drop the rows with missing values,
+    # then use imputation techniques to deal with the missing values.
     if imputed_flag:
-        print("-*-*- Strategy for Missing Values -*-*-")
+        print("-*-*- Imputation Method Option -*-*-")
         num2option(IMPUTING_STRATEGY)
-        print("Which strategy do you want to apply?")
+        print("Which method do you want to apply?")
         strategy_num = limit_num_input(IMPUTING_STRATEGY, SECTION[1], num_input)
         imputation_config, data_selected_imputed_np = imputer(data_selected, IMPUTING_STRATEGY[strategy_num - 1])
         data_selected_imputed = np2pd(data_selected_imputed_np, data_selected.columns)
@@ -279,7 +326,7 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
         probability_plot(data_selected.columns, data_selected, data_selected_imputed)
         basic_info(data_selected_imputed)
         basic_statistic(data_selected_imputed)
-        save_data(data_selected_imputed, "Data Selected Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+        save_data(data_selected_imputed, "Data Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
         del data_selected
         clear_output()
     else:
@@ -299,9 +346,17 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
     # <--- Mode Selection --->
     logger.debug("Mode Selection")
     print("-*-*- Mode Selection -*-*-")
-    # If the selected data set is with missing values and is not been imputed, then only allow the user to choose regression, classification and clustering modes.
-    # Otherwise, allow the user to choose decomposition modes.
-    if missing_value_flag and not imputed_flag:
+    # The following scenarios support three modes (regression, classification and clustering) with the models that support missing values.
+    # Because finally, the data contains missing values.
+    # 1. missing value flag = True, process_missing_value_flag = False, drop rows with missing values flag = Flase, imputed flag = False
+    # The following scenarios support four modes with all models.
+    # Because finally, the data is complete.
+    # 1. missing value flag = True, process_missing_value_flag = True, drop rows with missing values flag = True, imputed flag = False
+    # 2. missing value flag = True, process_missing_value_flag = True, drop rows with missing values flag = False, imputed flag = True
+    # 3. missing value flag = False, process_missing_value_flag = False, drop rows with missing values flag = False, imputed flag = False
+    # If the selected data set is with missing values and is not been imputed, then only allow the user to choose regression, classification and clustering models.
+    # Otherwise, allow the user to choose decomposition models.
+    if missing_value_flag and not process_missing_value_flag:
         # Delete the decomposition mode because it doesn't support missing values.
         MODE_OPTION.remove("Dimensional Reduction")
         num2option(MODE_OPTION)
@@ -351,7 +406,7 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
             feature_scaling_config = {}
         clear_output()
 
-        # create Y data set
+        # Create Y data set
         print("-*-*- Data Split - X Set and Y Set-*-*-")
         print("Selected sub data set to create Y data set:")
         show_data_columns(data_selected_imputed_fe.columns)
@@ -383,7 +438,7 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
             feature_selection_config = {}
         clear_output()
 
-        # create training data and testing data
+        # Create training data and testing data
         print("-*-*- Data Split - Train Set and Test Set -*-*-")
         print("Notice: Normally, set 20% of the dataset aside as test set, such as 0.2.")
         test_ratio = float_input(default=0.2, prefix=SECTION[1], slogan="@Test Ratio: ")
@@ -431,9 +486,17 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
     # <--- Model Selection --->
     logger.debug("Model Selection")
     print("-*-*- Model Selection -*-*-")
+    # The following scenarios support three modes (regression, classification and clustering) with the models that support missing values.
+    # Because finally, the data contains missing values.
+    # 1. missing value flag = True, process_missing_value_flag = False, drop rows with missing values flag = Flase, imputed flag = False
+    # The following scenarios support four modes with all models.
+    # Because finally, the data is complete.
+    # 1. missing value flag = True, process_missing_value_flag = True, drop rows with missing values flag = True, imputed flag = False
+    # 2. missing value flag = True, process_missing_value_flag = True, drop rows with missing values flag = False, imputed flag = True
+    # 3. missing value flag = False, process_missing_value_flag = False, drop rows with missing values flag = False, imputed flag = False
     # If the selected data set is with missing values and is not been imputed, then only allow the user to choose regression, classification and clustering models.
     # Otherwise, allow the user to choose decomposition models.
-    if missing_value_flag and not imputed_flag:
+    if missing_value_flag and not process_missing_value_flag:
         Modes2Models = {1: REGRESSION_MODELS_WITH_MISSING_VALUES, 2: CLASSIFICATION_MODELS_WITH_MISSING_VALUES, 3: CLUSTERING_MODELS_WITH_MISSING_VALUES}
         Modes2Initiators = {1: RegressionModelSelection, 2: ClassificationModelSelection, 3: ClusteringModelSelection}
     else:
@@ -501,6 +564,10 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
         inference_data_fe_selected = None
 
     # <--- Model Training --->
+    # In this section, there are two scenarios which are either choosing one model to run or choosing all models.
+    # In both scenarios, after the model training is finished, the transform pipeline will be created.
+    # Subsequently, the model inference will be executed if the user provides the inference data.
+    # Technically, the transform pipeline contains the operations on the training data and it will be applied to the inference data in the same order.
     logger.debug("Model Training")
     # If the user doesn't choose all models, then run the designated model.
     if model_num != all_models_num:
@@ -514,14 +581,24 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
         clear_output()
 
         # <--- Transform Pipeline --->
+        # Construct the transform pipeline using sklearn.pipeline.make_pipeline method.
         logger.debug("Transform Pipeline")
+        print("-*-*- Transform Pipeline Construction -*-*-")
         transformer_config, transform_pipeline = build_transform_pipeline(imputation_config, feature_scaling_config, feature_selection_config, run, X_train, y_train)
         clear_output()
 
         # <--- Model Inference --->
+        # If the user provides the inference data, then run the model inference.
+        # If the user chooses to drop the rows with missing values, then before running the model inference, need to drop the rows with missing values in inference data either.
         logger.debug("Model Inference")
         if inference_data_fe_selected is not None:
-            model_inference(inference_data_fe_selected, is_inference, run, transformer_config, transform_pipeline)
+            print("-*-*- Model Inference -*-*-")
+            if drop_rows_with_missing_value_flag:
+                inference_data_fe_selected_dropped = inference_data_fe_selected.dropna()
+                model_inference(inference_data_fe_selected_dropped, is_inference, run, transformer_config, transform_pipeline)
+                save_data(inference_data_fe_selected_dropped, "Inference Data Feature-Engineering Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+            else:
+                model_inference(inference_data_fe_selected, is_inference, run, transformer_config, transform_pipeline)
             clear_output()
     else:
         # Run all models
@@ -542,12 +619,22 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
                         run.activate(X, y, X_train, X_test, y_train, y_test, is_automl)
 
                 # <--- Transform Pipeline --->
+                # Construct the transform pipeline using sklearn.pipeline.make_pipeline method.
                 logger.debug("Transform Pipeline")
+                print("-*-*- Transform Pipeline Construction -*-*-")
                 transformer_config, transform_pipeline = build_transform_pipeline(imputation_config, feature_scaling_config, feature_selection_config, run, X_train, y_train)
 
                 # <--- Model Inference --->
+                # If the user provides the inference data, then run the model inference.
+                # If the user chooses to drop the rows with missing values, then before running the model inference, need to drop the rows with missing values in inference data either.
                 logger.debug("Model Inference")
                 if inference_data_fe_selected is not None:
-                    model_inference(inference_data_fe_selected, is_inference, run, transformer_config, transform_pipeline)
+                    print("-*-*- Model Inference -*-*-")
+                    if drop_rows_with_missing_value_flag:
+                        inference_data_fe_selected_dropped = inference_data_fe_selected.dropna()
+                        model_inference(inference_data_fe_selected_dropped, is_inference, run, transformer_config, transform_pipeline)
+                        save_data(inference_data_fe_selected_dropped, "Inference Data Feature-Engineering Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                    else:
+                        model_inference(inference_data_fe_selected, is_inference, run, transformer_config, transform_pipeline)
                     clear_output()
     mlflow.end_run()

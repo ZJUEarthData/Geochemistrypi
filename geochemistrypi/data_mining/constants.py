@@ -89,6 +89,8 @@ CLUSTERING_MODELS_WITH_MISSING_VALUES = [
 NON_AUTOML_MODELS = ["Linear Regression", "Polynomial Regression"]
 RAY_FLAML = ["Multi-layer Perceptron"]
 
+MISSING_VALUE_STRATEGY = ["Drop Rows with Missing Values ", "Impute Missing Values"]
+
 IMPUTING_STRATEGY = ["Mean Value", "Median Value", "Most Frequent Value", "Constant(Specified Value)"]
 
 FEATURE_SCALING_STRATEGY = ["Min-max Scaling", "Standardization"]
