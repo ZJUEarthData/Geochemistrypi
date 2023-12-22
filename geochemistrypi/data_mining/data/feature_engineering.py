@@ -171,12 +171,12 @@ class FeatureConstructor(object):
                     clear_output()
                     continue
                 else:
-                    save_data(self.data, "Data Selected Imputed Feature-Engineering", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                    save_data(self.data, "Data Selected Dropped-Imputed Feature-Engineering", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
                     print("Exit Feature Engineering Mode.")
                     clear_output()
                     break
             else:
-                save_data(self.data, "Data Selected Imputed Feature-Engineering", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                save_data(self.data, "Data Selected Dropped-Imputed Feature-Engineering", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
                 clear_output()
                 break
         return self.data
