@@ -409,7 +409,7 @@ class AggClustering(ClusteringWorkflowBase):
     def __init__(
         self,
         n_clusters: int = 2,
-        affinity: str = "deprecated",
+        affinity: str = "euclidean",
         metric: str = None,
         memory: str = None,
         connectivity: ArrayLike = None,
@@ -552,37 +552,13 @@ class AggClustering(ClusteringWorkflowBase):
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        # Draw graphs when the number of principal components > 3
-        if self.X.shape[1] >= 3:
-            # choose two of dimensions to draw
-            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(self.X, 2)
-            self._scatter2d(
-                data=two_dimen_data,
-                cluster_labels=self.clustering_result["clustering result"],
-                algorithm_name=self.naming,
-                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            )
-        elif self.X.shape[1] == 3:
-            # choose two of dimensions to draw
-            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(self.X, 2)
-            self._scatter2d(
-                data=two_dimen_data,
-                cluster_labels=self.clustering_result["clustering result"],
-                algorithm_name=self.naming,
-                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            )
-        elif self.X.shape[1] == 2:
-            self._scatter2d(
-                data=self.X,
-                cluster_labels=self.clustering_result["clustering result"],
-                algorithm_name=self.naming,
-                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            )
-        else:
-            pass
+        self._scatter2d(
+            data=self.X,
+            cluster_labels=self.clustering_result["clustering result"],
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
 
 
 class AffinityPropagationClustering(ClusteringWorkflowBase):

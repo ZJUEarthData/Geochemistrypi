@@ -19,7 +19,7 @@ def agglomerative_manual_hyper_parameters() -> Dict:
     hyper_parameters : dict
     """
     print("N Clusters: The number of clusters to form as well as the number of centroids to generate.")
-    print("Please specify the number of clusters for KMeans. A good starting range could be between 2 and 10, such as 4.")
+    print("Please specify the number of clusters for Agglomerative. A good starting range could be between 2 and 10, such as 4.")
     n_clusters = num_input(SECTION[2], "N Clusters: ")
     print("linkage: The linkage criterion determines which distance to use between sets of observation. ")
     print("Please specify the linkage criterion. It is generally recommended to leave it set to ward.")
@@ -33,8 +33,8 @@ def agglomerative_manual_hyper_parameters() -> Dict:
 
 
 def scatter2d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str) -> None:
-
-    markers = [".", "o", "s", "D", "^", "v", "<", ">", "p", "*", "H", "1", "3", "P", "+"]
+    """make 2d scatter plot for clustering results"""
+    markers = ["+", "v", ".", "d", "o", "s", "1", "D", "X", "^", "p", "<", "*", "H", "3", "P"]
     colors = [
         "#1f77b4",
         "#ff7f0e",
@@ -57,12 +57,15 @@ def scatter2d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: 
         "#7f7f7f",
         "#bcbd22",
     ]
+
     marker_cycle = cycle(markers)
     color_cycle = cycle(colors)
-    fig, ax = plt.subplots(figsize=(14, 10))
-    categorys = np.unique(cluster_labels)
+    fig, ax = plt.subplots(figsize=(10, 10))
+    cluster_labels = cluster_labels + 1
 
+    categorys = np.unique(cluster_labels)
     for category in categorys:
+        # for category in categorys:
         markers = next(marker_cycle)
         colors = next(color_cycle)
         ax.scatter(
@@ -71,7 +74,7 @@ def scatter2d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: 
             label=str(category),
             color=colors,
             marker=markers,
-            s=13,
+            s=30,
             linewidths=0.01,
             path_effects=[withStroke(linewidth=3, foreground="black")],
         )
