@@ -20,7 +20,7 @@ author = "ZJUEarthData"
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 # extensions = []
-extensions = ["sphinxcontrib.napoleon", "sphinxcontrib.apidoc", "sphinx.ext.viewcode", "sphinx.ext.todo", "m2r2"]
+extensions = ["sphinx.ext.napoleon", "sphinxcontrib.apidoc", "sphinx.ext.viewcode", "sphinx.ext.todo", "m2r2"]
 
 templates_path = ["_templates"]
 exclude_patterns = []
