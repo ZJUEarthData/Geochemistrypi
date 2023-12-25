@@ -31,8 +31,9 @@ language = "EN"
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 
-html_theme = "furo"
+# html_theme = "furo"
 # html_theme = 'classic'
+html_theme = "sphinx_rtd_theme"
 html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 html_static_path = ["_static"]
 
@@ -59,11 +60,11 @@ project_path = "../../geochemistrypi"
 # autodoc_mock_imports = ["geochemistrypi"]
 sys.path.insert(0, os.path.abspath("../.."))
 # sys.path.insert(0, os.path.abspath(project_path))
-print(os.path.abspath(project_path))
-sys.path.insert(1, os.path.abspath("../../geochemistrypi/"))
-sys.path.insert(2, os.path.abspath("../../geochemistrypi/data_mining/"))
-sys.path.insert(3, os.path.abspath(".."))
-sys.path.append("../geochemistrypy/geochemistrypy")
+# print(os.path.abspath(project_path))
+# sys.path.insert(1, os.path.abspath("../../geochemistrypi/"))
+# sys.path.insert(2, os.path.abspath("../../geochemistrypi/data_mining/"))
+# sys.path.insert(3, os.path.abspath(".."))
+# sys.path.append("../geochemistrypy/geochemistrypy")
 # ...
 
 apidoc_module_dir = project_path
