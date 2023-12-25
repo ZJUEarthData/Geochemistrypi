@@ -1819,6 +1819,8 @@ class LogisticRegressionClassification(LinearWorkflowMixin, ClassificationWorkfl
             coef=self.model.coef_,
             intercept=self.model.intercept_,
             features_name=LogisticRegressionClassification.X.columns,
+            regression_classification="Classification",
+            y_train=LogisticRegressionClassification.y,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
             mlflow_path="root",
@@ -1840,6 +1842,8 @@ class LogisticRegressionClassification(LinearWorkflowMixin, ClassificationWorkfl
             coef=self.auto_model.coef_,
             intercept=self.auto_model.intercept_,
             features_name=LogisticRegressionClassification.X.columns,
+            regression_classification="Classification",
+            y_train=LogisticRegressionClassification.y,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
             mlflow_path="root",
@@ -3317,25 +3321,29 @@ class SGDClassification(LinearWorkflowMixin, ClassificationWorkflowBase):
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        # GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
-        # self._show_formula(
-        #     coef=[self.model.coef_],
-        #     intercept=self.model.intercept_,
-        #     features_name=SGDClassification.X_train.columns,
-        #     algorithm_name=self.naming,
-        #     local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
-        #     mlflow_path="root",
-        # )
+        GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+        self._show_formula(
+            coef=[self.model.coef_],
+            intercept=self.model.intercept_,
+            features_name=SGDClassification.X_train.columns,
+            regression_classification="Classification",
+            y_train=SGDClassification.y,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
+            mlflow_path="root",
+        )
 
     @dispatch(bool)
     def special_components(self, is_automl: bool = False, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
-        # GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
-        # self._show_formula(
-        #     coef=self.auto_model.coef_,
-        #     intercept=self.auto_model.intercept_,
-        #     features_name=SGDClassification.X.columns,
-        #     algorithm_name=self.naming,
-        #     local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
-        #     mlflow_path="root",
-        # )
+        GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+        self._show_formula(
+            coef=self.auto_model.coef_,
+            intercept=self.auto_model.intercept_,
+            features_name=SGDClassification.X.columns,
+            regression_classification="Classification",
+            y_train=SGDClassification.y,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
+            mlflow_path="root",
+        )
