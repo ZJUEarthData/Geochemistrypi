@@ -11,7 +11,7 @@ from flaml import AutoML
 from multipledispatch import dispatch
 from rich import print
 from sklearn.ensemble import ExtraTreesRegressor, GradientBoostingRegressor, RandomForestRegressor
-from sklearn.linear_model import ElasticNet, Lasso, LinearRegression, SGDRegressor
+from sklearn.linear_model import BayesianRidge, ElasticNet, Lasso, LinearRegression, SGDRegressor
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import PolynomialFeatures
@@ -21,6 +21,7 @@ from sklearn.tree import DecisionTreeRegressor
 from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, RAY_FLAML
 from ..utils.base import clear_output, save_data, save_fig, save_text
 from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
+from .func.algo_regression._bayesianridge_regression import bayesian_ridge_manual_hyper_parameters
 from .func.algo_regression._common import cross_validation, plot_predicted_vs_actual, plot_residuals, score
 from .func.algo_regression._decision_tree import decision_tree_manual_hyper_parameters
 from .func.algo_regression._elastic_net import elastic_net_manual_hyper_parameters
@@ -3740,3 +3741,172 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             )
         else:
             pass
+
+
+class BayesianRidgeRegression(RegressionWorkflowBase):
+    """The automation workflow of using Bayesian ridge regression  algorithm to make insightful products."""
+
+    name = "BayesianRidge Regression"
+    special_function = []
+
+    def __init__(
+        self,
+        tol: float = 0.001,
+        alpha_1: float = 0.000001,
+        alpha_2: float = 0.000001,
+        lambda_1: float = 0.000001,
+        lambda_2: float = 0.000001,
+        alpha_init: float = None,
+        lambda_init: float = None,
+        compute_score: bool = False,
+        fit_intercept: bool = True,
+        copy_X: bool = True,
+        verbose: bool = False,
+    ) -> None:
+        """
+        Parameters
+        ------------
+        max_iter : int, default=None
+        Maximum number of iterations over the complete dataset before stopping independently of any early stopping criterion. If , it corresponds to .Nonemax_iter=300
+
+        Changed in version 1.3.
+
+        tol : float, default=1e-3
+        Stop the algorithm if w has converged.
+
+        alpha_1 : float, default=1e-6
+        Hyper-parameter : shape parameter for the Gamma distribution prior over the alpha parameter.
+
+        alpha_2 : float, default=1e-6
+        Hyper-parameter : inverse scale parameter (rate parameter) for the Gamma distribution prior over the alpha parameter.
+
+        lambda_1 : float, default=1e-6
+        Hyper-parameter : shape parameter for the Gamma distribution prior over the lambda parameter.
+
+        lambda_2 : float, default=1e-6
+        Hyper-parameter : inverse scale parameter (rate parameter) for the Gamma distribution prior over the lambda parameter.
+
+        alpha_init : float, default=None
+        Initial value for alpha (precision of the noise). If not set, alpha_init is 1/Var(y).
+
+        New in version 0.22.
+
+        lambda_init : float, default=None
+        Initial value for lambda (precision of the weights). If not set, lambda_init is 1.
+
+        New in version 0.22.
+
+        compute_score : bool, default=False
+        If True, compute the log marginal likelihood at each iteration of the optimization.
+
+        fit_intercept : bool, default=True
+        Whether to calculate the intercept for this model. The intercept is not treated as a probabilistic parameter and
+        thus has no associated variance. If set to False, no intercept will be used in calculations (i.e. data is expect
+        ed to be centered).
+
+        copy_X : bool, default=True
+        If True, X will be copied; else, it may be overwritten.
+
+        verbose : bool, default=False
+        Verbose mode when fitting the model.
+
+        n_iter : int
+        Maximum number of iterations. Should be greater than or equal to 1.
+
+        References
+        ----------
+        Scikit-learn API: sklearn.linear_model.BayesianRidge
+        https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.BayesianRidge.html
+        """
+        super().__init__()
+        self.tol = tol
+        self.alpha_1 = alpha_1
+        self.alpha_2 = alpha_2
+        self.lambda_1 = lambda_1
+        self.lambda_2 = lambda_2
+        self.alpha_init = alpha_init
+        self.lambda_init = lambda_init
+        self.compute_score = compute_score
+        self.fit_intercept = fit_intercept
+        self.copy_X = copy_X
+        self.verbose = verbose
+
+        self.model = BayesianRidge(
+            tol=self.tol,
+            alpha_1=self.alpha_1,
+            alpha_2=self.alpha_2,
+            lambda_1=self.lambda_1,
+            lambda_2=self.lambda_2,
+            alpha_init=self.alpha_init,
+            lambda_init=self.lambda_init,
+            compute_score=self.compute_score,
+            fit_intercept=self.compute_score,
+            copy_X=self.copy_X,
+            verbose=self.verbose,
+        )
+
+        self.naming = BayesianRidgeRegression.name
+        self.customized = True
+        self.customized_name = "BayesianRidge Regression"
+
+    @property
+    def settings(self) -> Dict:
+        """The configuration of BayesianRidge to implement AutoML by FLAML framework."""
+        configuration = {
+            "time_budget": 10,  # total running time in seconds
+            "metric": "r2",
+            "estimator_list": [self.customized_name],  # list of ML learners
+            "task": "regression",  # task type
+            # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
+            # "log_training_metric": True,  # whether to log training metric
+        }
+        return configuration
+
+    @property
+    def customization(self) -> object:
+        """The customized BayesianRidge of FLAML framework."""
+        from flaml import tune
+        from flaml.data import REGRESSION
+        from flaml.model import SKLearnEstimator
+        from sklearn.linear_model import BayesianRidge
+
+        class MyBayesianRidgeRegression(SKLearnEstimator):
+            def __init__(self, task="regression", n_jobs=None, **config):
+                super().__init__(task, **config)
+                if task in REGRESSION:
+                    self.estimator_class = BayesianRidge
+
+            @classmethod
+            def search_space(cls, data_size, task):
+                space = {
+                    "tol": {"domain": tune.loguniform(lower=0.000001, upper=0.001), "init_value": 0.001},
+                    "alpha_1": {"domain": tune.loguniform(lower=0.0001, upper=1), "init_value": 0.000001},
+                    "alpha_2": {"domain": tune.loguniform(lower=0.0001, upper=1), "init_value": 0.000001},
+                    "lambda_1": {"domain": tune.loguniform(lower=0.0001, upper=1), "init_value": 0.000001},
+                    "lambda_2": {"domain": tune.loguniform(lower=0.0001, upper=1), "init_value": 0.000001},
+                    "alpha_init": {"domain": tune.loguniform(lower=0.0001, upper=1), "init_value": 0.000001},
+                    "lambda_init": {"domain": tune.loguniform(lower=0.0001, upper=1), "init_value": 0.000001},
+                    "compute_score": {"domain": tune.choice([True, False]), "init_value": False},
+                    "fit_intercept": {"domain": tune.choice([True, False]), "init_value": True},
+                    "copy_X": {"domain": tune.choice([True, False]), "init_value": True},
+                    "verbose": {"domain": tune.choice([True, False]), "init_value": False},
+                }
+                return space
+
+        return MyBayesianRidgeRegression
+
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
+        """Manual hyper-parameters specification."""
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = bayesian_ridge_manual_hyper_parameters()
+        clear_output()
+        return hyper_parameters
+
+    @dispatch()
+    def special_components(self, **kwargs) -> None:
+        pass
+
+    @dispatch(bool)
+    def special_components(self, is_automl: bool, **kwargs) -> None:
+        pass

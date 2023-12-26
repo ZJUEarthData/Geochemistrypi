@@ -8,6 +8,7 @@ from rich import print
 from ..constants import MLFLOW_ARTIFACT_DATA_PATH, SECTION
 from ..data.data_readiness import num_input
 from ..model.regression import (
+    BayesianRidgeRegression,
     ClassicalLinearRegression,
     DecisionTreeRegression,
     ElasticNetRegression,
@@ -181,6 +182,21 @@ class RegressionModelSelection(ModelSelectionBase):
                 eta0=hyper_parameters["eta0"],
                 power_t=hyper_parameters["power_t"],
             )
+        elif self.model_name == "BayesianRidge Regression":
+            hyper_parameters = BayesianRidgeRegression.manual_hyper_parameters()
+            self.reg_workflow = BayesianRidgeRegression(
+                tol=hyper_parameters["tol"],
+                alpha_1=hyper_parameters["alpha_1"],
+                alpha_2=hyper_parameters["alpha_2"],
+                lambda_1=hyper_parameters["lambda_1"],
+                lambda_2=hyper_parameters["lambda_2"],
+                alpha_init=hyper_parameters["alpha_init"],
+                lambda_init=hyper_parameters["lambda_init"],
+                compute_score=hyper_parameters["compute_score"],
+                fit_intercept=hyper_parameters["fit_intercept"],
+                copy_X=hyper_parameters["copy_X"],
+                verbose=hyper_parameters["verbose"],
+            )
 
         self.reg_workflow.show_info()
 
@@ -252,6 +268,8 @@ class RegressionModelSelection(ModelSelectionBase):
             self.reg_workflow = ElasticNetRegression()
         elif self.model_name == "SGD Regression":
             self.reg_workflow = SGDRegression()
+        elif self.model_name == "BayesianRidge Regression":
+            self.reg_workflow = BayesianRidgeRegression()
 
         self.reg_workflow.show_info()
 
