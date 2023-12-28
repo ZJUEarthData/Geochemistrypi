@@ -32,7 +32,6 @@ Welcome to Geochemistry π
    Contributing <contributing.rst>
    Local Deployment <For Developer/Local Deployment.md>
    Docker Deployment <For Developer/Docker Deployment.md>
-   Algorithm Functionality Addition <For Developer/Algorithm Functionality Addition Procedure_geochemistrypi 0.2.0_CN/data_mining_geochemistrypi_020.md>
    Complete Pull Request <For Developer/A Completed Pull Request.md>
    Add New Model To Framework <For Developer/Add New Model To Framework.md>
    Docs Link <For Developer/Developer Docs link.md>
