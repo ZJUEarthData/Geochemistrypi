@@ -23,7 +23,6 @@ Welcome to Geochemistry π
    Model Example <model example.rst>    
    Contact Us <contact us.rst>
    Docs Link <For User/User Docs link.md>
-   API <python_apis/api.rst>
 
 .. toctree::
    :maxdepth: 3
@@ -33,8 +32,8 @@ Welcome to Geochemistry π
    Contributing <contributing.rst>
    Local Deployment <For Developer/Local Deployment.md>
    Docker Deployment <For Developer/Docker Deployment.md>
-   Algorithm Functionality Addition <For Developer/Algorithm Functionality Addition Procedure_geochemistrypi 0.2.0_CN/data_mining_geochemistrypi_020.md>
    Complete Pull Request <For Developer/A Completed Pull Request.md>
+   Add New Model To Framework <For Developer/Add New Model To Framework.md>
    Docs Link <For Developer/Developer Docs link.md>
 
 Indices and tables

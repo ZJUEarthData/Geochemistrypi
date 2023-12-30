@@ -28,6 +28,14 @@ geochemistrypi.data\_mining.data.imputation module
    :undoc-members:
    :show-inheritance:
 
+geochemistrypi.data\_mining.data.inference module
+-------------------------------------------------
+
+.. automodule:: geochemistrypi.data_mining.data.inference
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 geochemistrypi.data\_mining.data.preprocessing module
 -----------------------------------------------------
 
