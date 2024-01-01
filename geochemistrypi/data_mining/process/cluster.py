@@ -3,8 +3,7 @@ import os
 from typing import Optional
 
 import pandas as pd
-
-from ..model.clustering import ClusteringWorkflowBase, DBSCANClustering, KMeansClustering
+from ..model.clustering import ClusteringWorkflowBase, DBSCANClustering, KMeansClustering, Agglomerative
 from ._base import ModelSelectionBase
 
 
@@ -47,6 +46,12 @@ class ClusteringModelSelection(ModelSelectionBase):
                 algorithm=hyper_parameters["algorithm"],
                 leaf_size=hyper_parameters["leaf_size"],
                 p=hyper_parameters["p"],
+            )
+        elif self.model_name == "Agglomerative":
+            hyper_parameters = Agglomerative.manual_hyper_parameters()
+            self.clt_workflow = Agglomerative(
+                n_clusters=hyper_parameters["n_clusters"],
+                linkage=hyper_parameters["linkage"],
             )
         elif self.model_name == "":
             pass

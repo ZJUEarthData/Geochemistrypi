@@ -64,7 +64,7 @@ CLASSIFICATION_MODELS = [
     # "Decision Tree",
     # Histogram-based Gradient Boosting,
 ]
-CLUSTERING_MODELS = ["KMeans", "DBSCAN"]
+CLUSTERING_MODELS = ["KMeans", "DBSCAN", "Agglomerative"]
 DECOMPOSITION_MODELS = ["PCA", "T-SNE", "MDS"]
 
 # The model can deal with missing values
