@@ -205,7 +205,7 @@ The whole package is under construction and the documentation is progressively e
   Email: sanyhew1097618435@163.com
 
 **Technical Group:**
-+ Jianming Zhao (Jamie, Zhejiang University, China)
++ Jianming Zhao (Jamie, Jilin University, Changchun, China)
 + Jianhao Sun (Jin, China University of Geosciences, Wuhan, China)
 + Kaixin Zheng (Hayne, Sun Yat-sen University, China)
 + Jianing Wang (National University of Singapore, Singapore)
