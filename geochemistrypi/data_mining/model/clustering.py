@@ -12,9 +12,9 @@ from sklearn.cluster import DBSCAN, AffinityPropagation, KMeans
 from ..constants import MLFLOW_ARTIFACT_DATA_PATH, MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH
 from ..utils.base import clear_output, save_data, save_fig, save_text
 from ._base import WorkflowBase
-from .func.algo_clustering._common import plot_results, plot_silhouette_diagram, score
-from .func.algo_clustering._dbscan import dbscan_manual_hyper_parameters, dbscan_result_plot
-from .func.algo_clustering._kmeans import kmeans_manual_hyper_parameters, plot_silhouette_diagram_kmeans, scatter2d, scatter3d
+from .func.algo_clustering._common import plot_silhouette_diagram, plot_silhouette_value_diagram, scatter2d, scatter3d, score
+from .func.algo_clustering._dbscan import dbscan_manual_hyper_parameters
+from .func.algo_clustering._kmeans import kmeans_manual_hyper_parameters
 
 
 class ClusteringWorkflowBase(WorkflowBase):
@@ -64,25 +64,43 @@ class ClusteringWorkflowBase(WorkflowBase):
         mlflow.log_metrics(scores)
 
     @staticmethod
-    def _plot_results(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str, cluster_centers_: pd.DataFrame, local_path: str, mlflow_path: str) -> None:
-        """Plot the cluster_results ."""
-        print("-----* results diagram *-----")
-        plot_results(data, labels, algorithm_name, cluster_centers_)
-        save_fig(f"results - {algorithm_name}", local_path, mlflow_path)
-        data = pd.concat([data, labels], axis=1)
-        save_data(data, f"results - {algorithm_name}", local_path, mlflow_path)
+    def _scatter2d(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+        """Plot the two-dimensional diagram of the clustering result."""
+        print("-----* Cluster Two-Dimensional Diagram *-----")
+        scatter2d(data, labels, algorithm_name)
+        save_fig(f"Cluster Two-Dimensional Diagram - {algorithm_name}", local_path, mlflow_path)
+        data_with_labels = pd.concat([data, labels], axis=1)
+        save_data(data_with_labels, f"Cluster Two-Dimensional Diagram - {algorithm_name}", local_path, mlflow_path)
 
     @staticmethod
-    def _plot_silhouette_diagram(data: pd.DataFrame, labels: pd.DataFrame, cluster_centers_: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _scatter3d(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+        """Plot the three-dimensional diagram of the clustering result."""
+        print("-----* Cluster Three-Dimensional Diagram *-----")
+        scatter3d(data, labels, algorithm_name)
+        save_fig(f"Cluster Three-Dimensional Diagram - {algorithm_name}", local_path, mlflow_path)
+        data_with_labels = pd.concat([data, labels], axis=1)
+        save_data(data_with_labels, f"Cluster Two-Dimensional Diagram - {algorithm_name}", local_path, mlflow_path)
+
+    @staticmethod
+    def _plot_silhouette_diagram(data: pd.DataFrame, labels: pd.DataFrame, model: object, cluster_centers_: np.ndarray, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the silhouette diagram of the clustering result."""
         print("-----* Silhouette Diagram *-----")
-        plot_silhouette_diagram(data, labels, algorithm_name)
+        plot_silhouette_diagram(data, labels, cluster_centers_, model, algorithm_name)
         save_fig(f"Silhouette Diagram - {algorithm_name}", local_path, mlflow_path)
         data_with_labels = pd.concat([data, labels], axis=1)
         save_data(data_with_labels, "Silhouette Diagram - Data With Labels", local_path, mlflow_path)
-        if isinstance(cluster_centers_, pd.DataFrame):
+        if not isinstance(cluster_centers_, str):
             cluster_center_data = pd.DataFrame(cluster_centers_, columns=data.columns)
             save_data(cluster_center_data, "Silhouette Diagram - Cluster Centers", local_path, mlflow_path)
+
+    @staticmethod
+    def _plot_silhouette_value_diagram(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+        """Plot the silhouette value diagram of the clustering result."""
+        print("-----* Silhouette value Diagram *-----")
+        plot_silhouette_value_diagram(data, labels, algorithm_name)
+        save_fig(f"Silhouette value Diagram - {algorithm_name}", local_path, mlflow_path)
+        data_with_labels = pd.concat([data, labels], axis=1)
+        save_data(data_with_labels, "Silhouette value Diagram - Data With Labels", local_path, mlflow_path)
 
     def common_components(self) -> None:
         """Invoke all common application functions for clustering algorithms."""
@@ -94,18 +112,68 @@ class ClusteringWorkflowBase(WorkflowBase):
             algorithm_name=self.naming,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
-        # self._plot_results(
-        #     data=self.X,
-        #     labels=self.clustering_result["clustering result"],
-        #     cluster_centers_=self.get_cluster_centers(),
-        #     algorithm_name=self.naming,
-        #     local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-        #     mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-        # )
+        if self.X.shape[1] >= 3:
+            # choose two of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(self.X, 2)
+            self._scatter2d(
+                data=two_dimen_data,
+                labels=self.clustering_result["clustering result"],
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+
+            # choose three of dimensions to draw
+            three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(self.X, 3)
+            self._scatter3d(
+                data=three_dimen_data,
+                labels=self.clustering_result["clustering result"],
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        elif self.X.shape[1] == 3:
+            # choose two of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(self.X, 2)
+            self._scatter2d(
+                data=two_dimen_data,
+                labels=self.clustering_result["clustering result"],
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+
+            # no need to choose
+            self._scatter3d(
+                data=self.X,
+                labels=self.clustering_result["clustering result"],
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        elif self.X.shape[1] == 2:
+            self._scatter2d(
+                data=self.X,
+                labels=self.clustering_result["clustering result"],
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        else:
+            pass
+
         self._plot_silhouette_diagram(
             data=self.X,
             labels=self.clustering_result["clustering result"],
             cluster_centers_=self.get_cluster_centers(),
+            model=self.model,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._plot_silhouette_value_diagram(
+            data=self.X,
+            labels=self.clustering_result["clustering result"],
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -244,111 +312,13 @@ class KMeansClustering(ClusteringWorkflowBase):
         clear_output()
         return hyper_parameters
 
-    @staticmethod
-    def _plot_silhouette_diagram_kmeans(
-        data: pd.DataFrame,
-        cluster_labels: pd.DataFrame,
-        cluster_centers_: np.ndarray,
-        n_clusters: int,
-        algorithm_name: str,
-        local_path: str,
-        mlflow_path: str,
-    ) -> None:
-        """Plot the silhouette diagram of the clustering result."""
-        print("-----* KMeans's Silhouette Diagram *-----")
-        plot_silhouette_diagram_kmeans(data, cluster_labels, cluster_centers_, n_clusters, algorithm_name)
-        save_fig(f"KMeans's Silhouette Diagram - {algorithm_name}", local_path, mlflow_path)
-        data_with_labels = pd.concat([data, cluster_labels], axis=1)
-        save_data(data_with_labels, "KMeans's Silhouette Diagram - Data With Labels", local_path, mlflow_path)
-        cluster_center_data = pd.DataFrame(cluster_centers_, columns=data.columns)
-        save_data(cluster_center_data, "KMeans's Silhouette Diagram - Cluster Centers", local_path, mlflow_path)
-
-    @staticmethod
-    def _scatter2d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
-        """Plot the two-dimensional diagram of the clustering result."""
-        print("-----* Cluster Two-Dimensional Diagram *-----")
-        scatter2d(data, cluster_labels, algorithm_name)
-        save_fig(f"Cluster Two-Dimensional Diagram - {algorithm_name}", local_path, mlflow_path)
-        data_with_labels = pd.concat([data, cluster_labels], axis=1)
-        save_data(data_with_labels, f"Cluster Two-Dimensional Diagram - {algorithm_name}", local_path, mlflow_path)
-
-    @staticmethod
-    def _scatter3d(data: pd.DataFrame, cluster_labels: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
-        """Plot the three-dimensional diagram of the clustering result."""
-        print("-----* Cluster Three-Dimensional Diagram *-----")
-        scatter3d(data, cluster_labels, algorithm_name)
-        save_fig(f"Cluster Three-Dimensional Diagram - {algorithm_name}", local_path, mlflow_path)
-        data_with_labels = pd.concat([data, cluster_labels], axis=1)
-        save_data(data_with_labels, f"Cluster Two-Dimensional Diagram - {algorithm_name}", local_path, mlflow_path)
-
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
-        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._get_inertia_scores(
             algorithm_name=self.naming,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
-        self._plot_silhouette_diagram_kmeans(
-            data=self.X,
-            cluster_labels=self.clustering_result["clustering result"],
-            cluster_centers_=self.get_cluster_centers(),
-            n_clusters=self.n_clusters,
-            algorithm_name=self.naming,
-            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-        )
-
-        # Draw graphs when the number of principal components > 3
-        if self.X.shape[1] >= 3:
-            # choose two of dimensions to draw
-            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(self.X, 2)
-            self._scatter2d(
-                data=two_dimen_data,
-                cluster_labels=self.clustering_result["clustering result"],
-                algorithm_name=self.naming,
-                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            )
-
-            # choose three of dimensions to draw
-            three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(self.X, 3)
-            self._scatter3d(
-                data=three_dimen_data,
-                cluster_labels=self.clustering_result["clustering result"],
-                algorithm_name=self.naming,
-                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            )
-        elif self.X.shape[1] == 3:
-            # choose two of dimensions to draw
-            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(self.X, 2)
-            self._scatter2d(
-                data=two_dimen_data,
-                cluster_labels=self.clustering_result["clustering result"],
-                algorithm_name=self.naming,
-                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            )
-
-            # no need to choose
-            self._scatter3d(
-                data=self.X,
-                cluster_labels=self.clustering_result["clustering result"],
-                algorithm_name=self.naming,
-                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            )
-        elif self.X.shape[1] == 2:
-            self._scatter2d(
-                data=self.X,
-                cluster_labels=self.clustering_result["clustering result"],
-                algorithm_name=self.naming,
-                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            )
-        else:
-            pass
 
 
 class DBSCANClustering(ClusteringWorkflowBase):
@@ -440,25 +410,8 @@ class DBSCANClustering(ClusteringWorkflowBase):
         clear_output()
         return hyper_parameters
 
-    @staticmethod
-    def _clustering_result_plot(X: pd.DataFrame, trained_model: any, algorithm_name: str, imag_config: dict, local_path: str, mlflow_path: str) -> None:
-        """Plot the clustering result in 2D graph."""
-        print("-------** Cluster Two-Dimensional Diagram **----------")
-        dbscan_result_plot(X, trained_model, imag_config, algorithm_name)
-        save_fig(f"Cluster Two-Dimensional Diagram - {algorithm_name}", local_path, mlflow_path)
-        save_data(X, f"Cluster Two-Dimensional Diagram - {algorithm_name}", local_path, mlflow_path)
-
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        self._clustering_result_plot(
-            X=self.X,
-            trained_model=self.model,
-            algorithm_name=self.naming,
-            imag_config=self.image_config,
-            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-        )
 
 
 class AffinityPropagationClustering(ClusteringWorkflowBase):
