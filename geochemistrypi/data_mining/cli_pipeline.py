@@ -45,7 +45,7 @@ from .utils.base import check_package, clear_output, create_geopi_output_dir, ge
 from .utils.mlflow_utils import retrieve_previous_experiment_id
 
 
-def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = None) -> None:
+def cli_pipeline(training_data_path: str, application_data_path: Optional[str] = None) -> None:
     """The command line interface software for Geochemistry π.
     The business logic of this CLI software can be found in the figures in the README.md file.
     It provides three  MLOps core functionalities:
@@ -58,11 +58,15 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
     training_data_path : str
         The path of the training data.
 
-    inference_data_path : str, optional
-        The path of the inference data, by default None
+    application_data_path : str, optional
+        The path of the application data, by default None
     """
 
-    # TODO: If the argument is False, hide all Python level warnings. Developers can turn it on by setting the argument to True.
+    # Local test: Uncomment the following line to utilize built-in datasets to test the pipeline. Don't forget to modify the path value to be consistent with your own location.
+    training_data_path = "/Users/can/Documents/github/work/geo_ml/geochemistrypi/geochemistrypi/data_mining/data/dataset/Data_Classification.xlsx"
+    application_data_path = "/Users/can/Documents/github/work/geo_ml/geochemistrypi/geochemistrypi/data_mining/data/dataset/Data_Classification.xlsx"
+
+    # Local test: If the argument is False, hide all Python level warnings. Developers can turn it on by setting the argument to True.
     show_warning(False)
 
     os.makedirs(OUTPUT_PATH, exist_ok=True)
@@ -85,22 +89,22 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
         print("[bold red]No Training Data File Provided![/bold red]")
         print("[bold green]Built-in Data Loading.[/bold green]")
 
-    # <-- User Inference Data Loading -->
-    with console.status("[bold green]Inference Data Loading...[/bold green]", spinner="dots"):
+    # <-- User Application Data Loading -->
+    with console.status("[bold green]Application Data Loading...[/bold green]", spinner="dots"):
         sleep(0.75)
     is_built_in_inference_data = False
-    if training_data_path and inference_data_path:
+    if training_data_path and application_data_path:
         # If the user provides file name, then load the inference data from the file.
-        inference_data = read_data(file_path=inference_data_path, is_own_data=1)
-        print("[bold green]Successfully Loading Own Inference Data![bold green]")
-    elif training_data_path and (not inference_data_path):
+        inference_data = read_data(file_path=application_data_path, is_own_data=1)
+        print("[bold green]Successfully Loading Own Application Data![bold green]")
+    elif training_data_path and (not application_data_path):
         # If the user doesn't provide the inference data path, it means that the user doesn't want to run the model inference.
         inference_data = None
-        print("[bold red]No Inference Data File Provided![/bold red]")
-    elif (not training_data_path) and (not inference_data_path):
+        print("[bold red]No Application Data File Provided![/bold red]")
+    elif (not training_data_path) and (not application_data_path):
         is_built_in_inference_data = True
-        print("[bold red]No Inference Data File Provided![/bold red]")
-        print("[bold green]Built-in Inference Data Loading.[/bold green]")
+        print("[bold red]No Application Data File Provided![/bold red]")
+        print("[bold green]Built-in Application Data Loading.[/bold green]")
 
     # <-- Dependency Checking -->
     with console.status("[bold green]Denpendency Checking...[/bold green]", spinner="dots"):
@@ -194,23 +198,23 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
         show_data_columns(data.columns)
         clear_output()
 
-    # <--- Built-in Inference Data Loading --->
-    logger.debug("Built-in Inference Data Loading")
+    # <--- Built-in Application Data Loading --->
+    logger.debug("Built-in Application Data Loading")
     # If the user doesn't provide training data path and inference data path, then use the built-in inference data.
     if is_built_in_inference_data:
-        print("-*-*- Built-in Inference Data Option-*-*-")
+        print("-*-*- Built-in Application Data Option-*-*-")
         num2option(TEST_DATA_OPTION)
         built_in_inference_data_num = limit_num_input(TEST_DATA_OPTION, SECTION[0], num_input)
         if built_in_inference_data_num == 1:
-            inference_data_path = "InferenceData_Regression.xlsx"
+            application_data_path = "InferenceData_Regression.xlsx"
         elif built_in_inference_data_num == 2:
-            inference_data_path = "InferenceData_Classification.xlsx"
+            application_data_path = "InferenceData_Classification.xlsx"
         elif built_in_inference_data_num == 3:
-            inference_data_path = "InferenceData_Clustering.xlsx"
+            application_data_path = "InferenceData_Clustering.xlsx"
         elif built_in_inference_data_num == 4:
-            inference_data_path = "InferenceData_Decomposition.xlsx"
-        inference_data = read_data(file_path=inference_data_path)
-        print(f"Successfully loading the built-in inference data set '{inference_data_path}'.")
+            application_data_path = "InferenceData_Decomposition.xlsx"
+        inference_data = read_data(file_path=application_data_path)
+        print(f"Successfully loading the built-in inference data set '{application_data_path}'.")
         show_data_columns(inference_data.columns)
         clear_output()
 
@@ -260,14 +264,14 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
     # 2. Don't drop the rows with missing values, before implementing the model inference, the inference data set should be imputed as well.
     # Because dropping the rows with missing values use pandas.DataFrame.dropna() method, while imputing the missing values use sklearn.impute.SimpleImputer() method.
     drop_rows_with_missing_value_flag = False
-    clear_output()
+    # clear_output()
     if missing_value_flag:
+        clear_output()
         # Ask the user whether to use imputation techniques to deal with the missing values.
-        print("-*-*- Missing Values Process-*-*-")
+        print("-*-*- Missing Values Process -*-*-")
         print("Do you want to deal with the missing values?")
         num2option(OPTION)
         is_process_missing_value = limit_num_input(OPTION, SECTION[1], num_input)
-        clear_output()
         if is_process_missing_value == 1:
             process_missing_value_flag = True
             # If the user wants to deal with the missing values, then ask the user which strategy to use.
@@ -279,6 +283,8 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
             if missing_value_strategy_num == 1:
                 # Drop the rows with missing values
                 data_selected_dropped = data_selected.dropna()
+                # Reset the index of the data set after dropping the rows with missing values.
+                data_selected_dropped = data_selected_dropped.reset_index(drop=True)
                 print("Successfully drop the rows with missing values.")
                 print("The Selected Data Set After Dropping:")
                 print(data_selected_dropped)
@@ -295,10 +301,12 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
             # Don't deal with the missing values, which means neither drop the rows with missing values nor use imputation techniques.
             imputed_flag = False
             save_data(data_selected, "Data Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+            clear_output()
     else:
         # If the selected data set doesn't have missing values, then don't deal with the missing values.
         imputed_flag = False
         save_data(data_selected, "Data Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+        clear_output()
     data_selected = data_selected_dropped if drop_rows_with_missing_value_flag else data_selected
     # If the selected data set contains missing values and the user wants to deal with the missing values and choose not to drop the rows with missing values,
     # then use imputation techniques to deal with the missing values.
@@ -368,10 +376,10 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
 
     # <--- Data Segmentation --->
     # divide X and y data set when it is supervised learning
-    logger.debug("Data Split")
+    logger.debug("Data Divsion")
     if mode_num == 1 or mode_num == 2:
         # Supervised learning
-        print("-*-*- Data Split - X Set and Y Set -*-*-")
+        print("-*-*- Data Segmentation - X Set and Y Set -*-*-")
         print("Divide the processing data set into X (feature value) and Y (target value) respectively.")
         # create X data set
         print("Selected sub data set to create X data set:")
@@ -384,6 +392,22 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
         print("Basic Statistical Information: ")
         basic_statistic(X)
         save_data(X, "X Without Scaling", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+        clear_output()
+
+        # Create Y data set
+        print("-*-*- Data Segmentation - X Set and Y Set-*-*-")
+        print("Selected sub data set to create Y data set:")
+        show_data_columns(data_selected_imputed_fe.columns)
+        print("The selected Y data set:")
+        print("Notice: Normally, please choose only one column to be tag column Y, not multiple columns.")
+        print("Notice: For classification model training, please choose the label column which has distinctive integers.")
+        y = create_sub_data_set(data_selected_imputed_fe)
+        print("Successfully create Y data set.")
+        print("The Selected Data Set:")
+        print(y)
+        print("Basic Statistical Information: ")
+        basic_statistic(y)
+        save_data(y, "Y", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
         clear_output()
 
         # <--- Feature Scaling --->
@@ -406,24 +430,8 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
             feature_scaling_config = {}
         clear_output()
 
-        # Create Y data set
-        print("-*-*- Data Split - X Set and Y Set-*-*-")
-        print("Selected sub data set to create Y data set:")
-        show_data_columns(data_selected_imputed_fe.columns)
-        print("The selected Y data set:")
-        print("Notice: Normally, please choose only one column to be tag column Y, not multiple columns.")
-        print("Notice: For classification model training, please choose the label column which has distinctive integers.")
-        y = create_sub_data_set(data_selected_imputed_fe)
-        print("Successfully create Y data set.")
-        print("The Selected Data Set:")
-        print(y)
-        print("Basic Statistical Information: ")
-        basic_statistic(y)
-        save_data(y, "Y", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
-        clear_output()
-
         # <--- Feature Selection --->
-        print("-*-*- Feature Selection -*-*-")
+        print("-*-*- Feature Selection on X set -*-*-")
         num2option(OPTION)
         is_feature_selection = limit_num_input(OPTION, SECTION[1], num_input)
         if is_feature_selection == 1:
@@ -535,7 +543,7 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
     is_inference = False
     # If the model is supervised learning, then allow the user to use model inference.
     if mode_num == 1 or mode_num == 2:
-        print("-*-*- Feature Engineering on Inference Data -*-*-")
+        print("-*-*- Feature Engineering on Application Data -*-*-")
         is_inference = True
         selected_columns = X_train.columns
         if inference_data is not None:
@@ -545,15 +553,15 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
                 new_feature_builder = FeatureConstructor(inference_data)
                 inference_data_fe = new_feature_builder.batch_build(feature_engineering_config)
                 inference_data_fe_selected = inference_data_fe[selected_columns]
-                save_data(inference_data, "Inference Data Original", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
-                save_data(inference_data_fe, "Inference Data Feature-Engineering", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
-                save_data(inference_data_fe_selected, "Inference Data Feature-Engineering Selected", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                save_data(inference_data, "Application Data Original", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                save_data(inference_data_fe, "Application Data Feature-Engineering", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                save_data(inference_data_fe_selected, "Application Data Feature-Engineering Selected", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
             else:
                 print("You have not applied feature engineering to the training data.")
                 print("Hence, no feature engineering operation will be applied to the inference data.")
                 inference_data_fe_selected = inference_data[selected_columns]
-                save_data(inference_data, "Inference Data Original", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
-                save_data(inference_data_fe_selected, "Inference Data Selected", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                save_data(inference_data, "Application Data Original", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                save_data(inference_data_fe_selected, "Application Data Selected", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
         else:
             # If the user doesn't provide the inference data path, it means that the user doesn't want to run the model inference.
             print("You did not enter inference data.")
@@ -596,7 +604,7 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
             if drop_rows_with_missing_value_flag:
                 inference_data_fe_selected_dropped = inference_data_fe_selected.dropna()
                 model_inference(inference_data_fe_selected_dropped, is_inference, run, transformer_config, transform_pipeline)
-                save_data(inference_data_fe_selected_dropped, "Inference Data Feature-Engineering Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                save_data(inference_data_fe_selected_dropped, "Application Data Feature-Engineering Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
             else:
                 model_inference(inference_data_fe_selected, is_inference, run, transformer_config, transform_pipeline)
             clear_output()
@@ -633,7 +641,7 @@ def cli_pipeline(training_data_path: str, inference_data_path: Optional[str] = N
                     if drop_rows_with_missing_value_flag:
                         inference_data_fe_selected_dropped = inference_data_fe_selected.dropna()
                         model_inference(inference_data_fe_selected_dropped, is_inference, run, transformer_config, transform_pipeline)
-                        save_data(inference_data_fe_selected_dropped, "Inference Data Feature-Engineering Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                        save_data(inference_data_fe_selected_dropped, "Application Data Feature-Engineering Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
                     else:
                         model_inference(inference_data_fe_selected, is_inference, run, transformer_config, transform_pipeline)
                     clear_output()
