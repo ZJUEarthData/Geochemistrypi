@@ -18,7 +18,7 @@ def lasso_regression_manual_hyper_parameters() -> Dict:
     print("Please indicate the coefficient of alpha. A good starting range could be between 0.001 and 2, such as 1.")
     alpha = float_input(0.01, SECTION[2], "@Alpha: ")
     print("Fit Intercept: This hyperparameter represents whether the model is evaluated with constant terms.")
-    print("Please indicate whether there is a parameter entry. It is generally recommended to leave it set to True.")
+    print("Please indicate whether there is a parameter entry. It is generally recommended to leave it as True.")
     fit_intercept = bool_input(SECTION[2])
     print("Max Iter: This hyperparameter represents the maximum number of iterations for the solver to converge.")
     print("Please indicate the maximum number of iterations. A good starting range could be between 1000 and 10000, such as 1000.")
@@ -27,7 +27,7 @@ def lasso_regression_manual_hyper_parameters() -> Dict:
     print("Please indicate the tolerance. A good starting range could be between 0.0001 and 0.001, such as 0.0001.")
     tol = float_input(0.0001, SECTION[2], "@Tolerance: ")
     print("Selection: This hyperparameter represents the method of selecting the regularization coefficient.")
-    print("Please indicate the method of selecting the regularization coefficient. It is generally recommended to leave it set to 'cyclic'.")
+    print("Please indicate the method of selecting the regularization coefficient. It is generally recommended to leave it as 'cyclic'.")
     selections = ["cyclic", "random"]
     selection = str_input(selections, SECTION[2])
     hyper_parameters = {

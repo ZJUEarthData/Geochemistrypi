@@ -100,6 +100,6 @@ SAMPLE_BALANCE_STRATEGY = ["Over Sampling", "Under Sampling", "Oversampling and 
 
 CUSTOMIZE_LABEL_STRATEGY = ["Automatic Coding", "Custom Numeric Labels", "Custom Non-numeric Labels"]
 
-FEATURE_SELECTION_STRATEGY = ["GenericUnivariateSelect", "SelectKBest"]
+FEATURE_SELECTION_STRATEGY = ["Generic Univariate Select", "Select K Best"]
 
 CALCULATION_METHOD_OPTION = ["Micro", "Macro", "Weighted"]
