@@ -63,8 +63,8 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     """
 
     # Local test: Uncomment the following line to utilize built-in datasets to test the pipeline. Don't forget to modify the path value to be consistent with your own location.
-    training_data_path = "/Users/can/Documents/github/work/geo_ml/geochemistrypi/geochemistrypi/data_mining/data/dataset/Data_Classification.xlsx"
-    application_data_path = "/Users/can/Documents/github/work/geo_ml/geochemistrypi/geochemistrypi/data_mining/data/dataset/Data_Classification.xlsx"
+    # training_data_path = "/Users/can/Documents/github/work/geo_ml/geochemistrypi/geochemistrypi/data_mining/data/dataset/Data_Classification.xlsx"
+    # application_data_path = "/Users/can/Documents/github/work/geo_ml/geochemistrypi/geochemistrypi/data_mining/data/dataset/Data_Classification.xlsx"
 
     # Local test: If the argument is False, hide all Python level warnings. Developers can turn it on by setting the argument to True.
     show_warning(False)
