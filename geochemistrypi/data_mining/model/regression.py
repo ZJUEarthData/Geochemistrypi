@@ -545,6 +545,7 @@ class XGBoostRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         self.base_score = base_score
         self.missing = missing
         self.num_parallel_tree = num_parallel_tree
+        self.random_state = random_state
         self.n_jobs = n_jobs
         self.monotone_constraints = monotone_constraints
         self.interaction_constraints = interaction_constraints
@@ -558,10 +559,6 @@ class XGBoostRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         if kwargs:
             self.kwargs = kwargs
 
-        if random_state:
-            self.random_state = random_state
-
-        # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
         self.model = xgboost.XGBRegressor(
             n_estimators=self.n_estimators,
             objective=self.objective,
@@ -821,16 +818,11 @@ class DecisionTreeRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         self.min_samples_leaf = (min_samples_leaf,)
         self.min_weight_fraction_leaf = (min_weight_fraction_leaf,)
         self.max_features = (max_features,)
+        self.random_state = (random_state,)
         self.max_leaf_nodes = (max_leaf_nodes,)
         self.min_impurity_decrease = (min_impurity_decrease,)
-        self.ccp_alpha = (ccp_alpha,)
+        self.ccp_alpha = ccp_alpha
 
-        if random_state:
-            self.random_state = (random_state,)
-        else:
-            self.random_state = (self.random_state,)
-
-        # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
         self.model = DecisionTreeRegressor(
             criterion=self.criterion[0],
             splitter=self.splitter[0],
@@ -842,7 +834,7 @@ class DecisionTreeRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             random_state=self.random_state[0],
             max_leaf_nodes=self.max_leaf_nodes[0],
             min_impurity_decrease=self.min_impurity_decrease[0],
-            ccp_alpha=self.ccp_alpha[0],
+            ccp_alpha=self.ccp_alpha,
         )
         self.naming = DecisionTreeRegression.name
         self.customized = True
@@ -1143,15 +1135,12 @@ class ExtraTreesRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         self.bootstrap = bootstrap
         self.oob_score = oob_score
         self.n_jobs = n_jobs
+        self.random_state = random_state
         self.verbose = verbose
         self.warm_start = warm_start
         self.ccp_alpha = ccp_alpha
         self.max_samples = max_samples
 
-        if random_state:
-            self.random_state = random_state
-
-        # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
         self.model = ExtraTreesRegressor(
             n_estimators=self.n_estimators,
             criterion=self.criterion,
@@ -1257,7 +1246,7 @@ class RandomForestRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         bootstrap: bool = True,
         oob_score: bool = False,
         n_jobs: int = None,
-        random_state: Optional[int] = None,
+        random_state: int = None,
         verbose: int = 0,
         warm_start: bool = False,
         # class_weight=None,
@@ -1441,16 +1430,13 @@ class RandomForestRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         self.bootstrap = bootstrap
         self.oob_score = oob_score
         self.n_jobs = n_jobs
+        self.random_state = random_state
         self.verbose = verbose
         self.warm_start = warm_start
         # self.class_weight = class_weight
         self.ccp_alpha = ccp_alpha
         self.max_samples = max_samples
 
-        if random_state:
-            self.random_state = random_state
-
-        # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
         self.model = RandomForestRegressor(
             n_estimators=self.n_estimators,
             criterion=self.criterion,
@@ -1889,6 +1875,7 @@ class MLPRegression(RegressionWorkflowBase):
         self.learning_rate_init = learning_rate_init
         self.max_iter = max_iter
         self.shuffle = shuffle
+        self.random_state = random_state
         self.tol = tol
         self.verbose = verbose
         self.warm_start = warm_start
@@ -1899,10 +1886,6 @@ class MLPRegression(RegressionWorkflowBase):
         self.epsilon = epsilon
         self.n_iter_no_change = n_iter_no_change
 
-        if random_state:
-            self.random_state = random_state
-
-        # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
         self.model = MLPRegressor(
             hidden_layer_sizes=self.hidden_layer_sizes,
             activation=self.activation,
@@ -2564,6 +2547,7 @@ class GradientBoostingRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         self.max_depth = max_depth
         self.min_impurity_decrease = min_impurity_decrease
         self.init = init
+        self.random_state = random_state
         self.max_features = max_features
         self.alpha = alpha
         self.verbose = verbose
@@ -2574,10 +2558,6 @@ class GradientBoostingRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         self.tol = tol
         self.ccp_alpha = ccp_alpha
 
-        if random_state:
-            self.random_state = random_state
-
-        # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
         self.model = GradientBoostingRegressor(
             loss=self.loss,
             learning_rate=self.learning_rate,
@@ -2786,12 +2766,9 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         self.tol = tol
         self.warm_start = warm_start
         self.positive = positive
+        self.random_state = random_state
         self.selection = selection
 
-        if random_state:
-            self.random_state = random_state
-
-        # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
         self.model = Lasso(
             alpha=self.alpha,
             fit_intercept=self.fit_intercept,
@@ -3110,12 +3087,9 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         self.tol = tol
         self.warm_start = warm_start
         self.positive = positive
+        self.random_state = random_state
         self.selection = selection
 
-        if random_state:
-            self.random_state = random_state
-
-        # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
         self.model = ElasticNet(
             alpha=self.alpha,
             l1_ratio=self.l1_ratio,
@@ -3520,6 +3494,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         self.shuffle = shuffle
         self.verbose = verbose
         self.epsilon = epsilon
+        self.random_state = random_state
         self.learning_rate = learning_rate
         self.eta0 = eta0
         self.power_t = power_t
@@ -3529,10 +3504,6 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         self.warm_start = warm_start
         self.average = average
 
-        if random_state:
-            self.random_state = random_state
-
-        # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
         self.model = SGDRegressor(
             loss=self.loss,
             penalty=self.penalty,

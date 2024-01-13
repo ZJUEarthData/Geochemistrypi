@@ -107,7 +107,7 @@ On Jupyter Notebook / Google Colab:
 
 **Note**: There are four built-in data sets corresponding to four kinds of model pattern.
 
-### Case 2: Run with your own data set without model inference
+### Case 2: Run with your own data set
 
 On command line:
 

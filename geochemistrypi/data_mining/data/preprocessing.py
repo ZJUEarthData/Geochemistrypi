@@ -73,7 +73,7 @@ def feature_selector(X: pd.DataFrame, y: pd.DataFrame, feature_selection_task: i
     X_selected : pd.DataFrame
         The feature dataset after selecting.
     """
-    print("-- Original Features --")
+    print("--Original Features-")
     show_data_columns(X.columns)
 
     features_num = len(X.columns)
@@ -85,9 +85,9 @@ def feature_selector(X: pd.DataFrame, y: pd.DataFrame, feature_selection_task: i
     elif feature_selection_task == 2:
         score_func = f_classif
 
-    if method[method_idx] == "Generic Univariate Select":
+    if method[method_idx] == "GenericUnivariateSelect":
         selector = GenericUnivariateSelect(score_func=score_func, mode="k_best", param=features_retain_num)
-    elif method[method_idx] == "Select K Best":
+    elif method[method_idx] == "SelectKBest":
         selector = SelectKBest(score_func=score_func, k=features_retain_num)
 
     try:

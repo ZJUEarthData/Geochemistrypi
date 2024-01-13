@@ -40,7 +40,7 @@ def main(version: Optional[bool] = typer.Option(None, "--version", "-v", help="S
 def data_mining(
     data: str = typer.Option("", help="The path of the training data without model inference."),
     training: str = typer.Option("", help="The path of the training data."),
-    application: str = typer.Option("", help="The path of the inference data."),
+    inference: str = typer.Option("", help="The path of the inference data."),
     mlflow: bool = typer.Option(False, help="Start the mlflow server."),
     web: bool = False,
 ) -> None:
@@ -81,11 +81,11 @@ def data_mining(
             if data:
                 cli_pipeline(data)
             # If the training data and inference data are provided, start the CLI pipeline with continuous training and inference
-            elif training and application:
-                cli_pipeline(training, application)
+            elif training and inference:
+                cli_pipeline(training, inference)
             # If no data is provided, use built-in data to start the CLI pipeline with continuous training and inference
             else:
-                cli_pipeline(training, application)
+                cli_pipeline(training, inference)
 
 
 @app.command()

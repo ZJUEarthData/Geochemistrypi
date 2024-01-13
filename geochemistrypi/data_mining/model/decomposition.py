@@ -189,11 +189,8 @@ class PCADecomposition(DecompositionWorkflowBase):
         self.iterated_power = iterated_power
         # self.n_oversamples = n_oversamples
         # self.power_iteration_normalizer = power_iteration_normalizer
+        self.random_state = random_state
 
-        if random_state:
-            self.random_state = random_state
-
-        # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
         self.model = PCA(
             n_components=self.n_components,
             copy=self.copy,
@@ -491,15 +488,12 @@ class TSNEDecomposition(DecompositionWorkflowBase):
         self.metric_params = metric_params
         self.init = init
         self.verbose = verbose
+        self.random_state = random_state
         self.method = method
         self.angle = angle
         self.n_jobs = n_jobs
         self.square_distances = square_distances
 
-        if random_state:
-            self.random_state = random_state
-
-        # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
         self.model = TSNE(
             n_components=self.n_components,
             perplexity=self.perplexity,
@@ -624,13 +618,10 @@ class MDSDecomposition(DecompositionWorkflowBase):
         self.verbose = verbose
         self.eps = eps
         self.n_jobs = n_jobs
+        self.random_state = random_state
         self.dissimilarity = dissimilarity
         # self.normalized_stress = normalized_stress
 
-        if random_state:
-            self.random_state = random_state
-
-        # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
         self.model = MDS(
             n_components=self.n_components,
             metric=self.metric,

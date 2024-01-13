@@ -17,7 +17,7 @@ def logistic_regression_manual_hyper_parameters() -> Dict:
     hyper_parameters : dict
     """
     print("Penalty: This hyperparameter specifies the norm used in the penalization.")
-    print("Please specify the norm used in the penalization. It is generally recommended to leave it as 'l2'.")
+    print("Please specify the norm used in the penalization. It is generally recommended to leave it set to l2.")
     penalties = ["l1", "l2", "elasticnet", "None"]
     penalty = str_input(penalties, SECTION[2])
     if penalty == "None":
@@ -28,12 +28,12 @@ def logistic_regression_manual_hyper_parameters() -> Dict:
     l1_ratio = None
     if penalty == "l1":
         print("Solver: This hyperparameter specifies the algorithm to use in the optimization problem.")
-        print("Please specify the algorithm to use in the optimization problem. It is generally recommended to leave it as 'liblinear'.")
+        print("Please specify the algorithm to use in the optimization problem. It is generally recommended to leave it set to liblinear.")
         solvers = ["liblinear", "saga"]
         solver = str_input(solvers, SECTION[2])
     elif penalty == "l2" or penalty == "none":
         print("Solver: This hyperparameter specifies the algorithm to use in the optimization problem.")
-        print("Please specify the algorithm to use in the optimization problem. It is generally recommended to leave it as 'lbfgs'.")
+        print("Please specify the algorithm to use in the optimization problem. It is generally recommended to leave it set to lbfgs.")
         solvers = ["newton-cg", "lbfgs", "sag", "saga"]
         solver = str_input(solvers, SECTION[2])
     elif penalty == "elasticnet":
@@ -48,7 +48,7 @@ def logistic_regression_manual_hyper_parameters() -> Dict:
         "Class Weight: This hyperparameter specifies the weights associated with classes. It can be set to 'balanced'"
         " to automatically adjust the weights inversely proportional to the class frequencies in the input data."
     )
-    print("Please specify the weights associated with classes. It is generally recommended to leave it as None.")
+    print("Please specify the weights associated with classes. It is generally recommended to leave it set to None.")
     class_weights = ["None", "balanced"]
     class_weight = str_input(class_weights, SECTION[2])
     if class_weight == "None":
