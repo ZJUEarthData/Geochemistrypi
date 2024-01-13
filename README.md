@@ -92,7 +92,7 @@ On Jupyter Notebook / Google Colab:
 ```
 **Note**: There are four built-in data sets corresponding to four kinds of model pattern.
 
-### Case 2: Run with your own data set
+### Case 2: Run with your own data set without model inference
 
 On command line:
 ```

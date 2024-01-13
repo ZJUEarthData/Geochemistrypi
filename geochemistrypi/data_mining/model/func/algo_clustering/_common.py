@@ -38,22 +38,25 @@ def score(data: pd.DataFrame, labels: pd.DataFrame) -> Dict:
     return scores
 
 
-def scatter2d(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str) -> None:
+def scatter2d(data: pd.DataFrame, labels: pd.DataFrame, cluster_centers_: np.ndarray, algorithm_name: str) -> None:
     """
     Draw the result-2D diagram for analysis.
 
     Parameters
     ----------
     data : pd.DataFrame (n_samples, n_components)
-       The true values.
+       The features of the data.
 
     labels : pd.DataFrame (n_samples,)
         Labels of each point.
 
+    cluster_centers_: np.ndarray (n_samples,)
+        Coordinates of cluster centers. If the algorithm stops before fully converging (see tol and max_iter), these will not be consistent with labels_.
+
     algorithm_name : str
         the name of the algorithm
     """
-    markers = ["+", "v", ".", "d", "o", "s", "1", "D", "X", "^", "p", "<", "*", "H", "3", "P"]
+    # markers = ["+", "v", ".", "d", "o", "s", "1", "D", "X", "^", "p", "<", "*", "H", "3", "P"]
     colors = [
         "#1f77b4",
         "#ff7f0e",
@@ -77,17 +80,29 @@ def scatter2d(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str) -> 
         "#bcbd22",
     ]
 
-    marker_cycle = cycle(markers)
+    # marker_cycle = cycle(markers)
     color_cycle = cycle(colors)
 
     fig = plt.figure()
     fig.set_size_inches(18, 10)
     plt.subplot(111)
+    # Plot the data
     for i, label in enumerate(set(labels)):
         cluster_data = data[labels == label]
         color = next(color_cycle)
-        marker = next(marker_cycle)
+        # marker = next(marker_cycle)
+        marker = "."
         plt.scatter(cluster_data.iloc[:, 0], cluster_data.iloc[:, 1], c=color, marker=marker)
+
+    # Plot the cluster centers
+    if not isinstance(cluster_centers_, str):
+        # Draw white circles at cluster centers
+        plt.scatter(cluster_centers_[:, 0], cluster_centers_[:, 1], c="white", marker="o", alpha=1, s=200, edgecolor="k")
+
+        # Label the cluster centers
+        for i, c in enumerate(cluster_centers_):
+            plt.scatter(c[0], c[1], marker="$%d$" % i, alpha=1, s=50, edgecolor="k")
+
     plt.xlabel(f"{data.columns[0]}")
     plt.ylabel(f"{data.columns[1]}")
     plt.title(f"Cluster Data Bi-plot - {algorithm_name}")
@@ -100,7 +115,7 @@ def scatter3d(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str) -> 
     Parameters
     ----------
     data : pd.DataFrame (n_samples, n_components)
-       The true values.
+       The features of the data.
 
     labels : pd.DataFrame (n_samples,)
         Labels of each point.
@@ -113,15 +128,16 @@ def scatter3d(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str) -> 
     fig = plt.figure(figsize=(12, 6), facecolor="w")
     plt.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.9)
 
+    # Plot the data without cluster results
     ax = fig.add_subplot(121, projection="3d")
-    ax.scatter(data.iloc[:, 0], data.iloc[:, 1], data.iloc[:, 2], alpha=0.3, c="#FF0000", s=6)
+    ax.scatter(data.iloc[:, 0], data.iloc[:, 1], data.iloc[:, 2], alpha=0.3, c="#FF0000", marker=".")
     ax.set_xlabel(namelist[0])
     ax.set_ylabel(namelist[1])
     ax.set_zlabel(namelist[2])
     plt.grid(True)
 
     ax2 = fig.add_subplot(122, projection="3d")
-    markers = ["+", "v", ".", "d", "o", "s", "1", "D", "X", "^", "p", "<", "*", "H", "3", "P"]
+    # markers = ["+", "v", ".", "d", "o", "s", "1", "D", "X", "^", "p", "<", "*", "H", "3", "P"]
     colors = [
         "#1f77b4",
         "#ff7f0e",
@@ -144,13 +160,15 @@ def scatter3d(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str) -> 
         "#7f7f7f",
         "#bcbd22",
     ]
-    marker_cycle = cycle(markers)
+    # marker_cycle = cycle(markers)
     color_cycle = cycle(colors)
 
+    # Plot the data with cluster results
     for i, label in enumerate(set(labels)):
         cluster_data = data[labels == label]
         color = next(color_cycle)
-        marker = next(marker_cycle)
+        # marker = next(marker_cycle)
+        marker = "."
         ax2.scatter(cluster_data.iloc[:, 0], cluster_data.iloc[:, 1], cluster_data.iloc[:, 2], c=color, marker=marker, s=6, cmap=plt.cm.Paired, edgecolors="none")
 
     ax2.set_xlabel(namelist[0])
@@ -271,12 +289,10 @@ def plot_silhouette_diagram(data: pd.DataFrame, labels: pd.DataFrame, cluster_ce
     ax2.scatter(data.iloc[:, 0], data.iloc[:, 1], marker=".", s=30, lw=0, alpha=0.7, c=colors, edgecolor="k")
 
     if not isinstance(cluster_centers_, str):
-        # Labeling the clusters
-        centers = cluster_centers_
         # Draw white circles at cluster centers
         ax2.scatter(
-            centers[:, 0],
-            centers[:, 1],
+            cluster_centers_[:, 0],
+            cluster_centers_[:, 1],
             marker="o",
             c="white",
             alpha=1,
@@ -284,7 +300,8 @@ def plot_silhouette_diagram(data: pd.DataFrame, labels: pd.DataFrame, cluster_ce
             edgecolor="k",
         )
 
-        for i, c in enumerate(centers):
+        # Label the cluster centers
+        for i, c in enumerate(cluster_centers_):
             ax2.scatter(c[0], c[1], marker="$%d$" % i, alpha=1, s=50, edgecolor="k")
 
     ax2.set_title("The visualization of the clustered data.")

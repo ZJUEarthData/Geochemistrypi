@@ -15,7 +15,7 @@ def svr_manual_hyper_parameters() -> Dict:
     hyper_parameters : dict
     """
     print("Kernel: This hyperparameter specifies the kernel function to be used for mapping the input data to a higher-dimensional feature space.")
-    print("Please specify the kernel type to be used in the algorithm. It is generally recommended to leave it set to Radial basis function (RBF) kernel.")
+    print("Please specify the kernel type to be used in the algorithm. It is generally recommended to leave it as 'Radial Basis Function (RBF) Kernel'.")
     kernels = ["linear", "poly", "rbf", "sigmoid"]
     kernel = str_input(kernels, SECTION[2])
     degree = None
@@ -41,7 +41,7 @@ def svr_manual_hyper_parameters() -> Dict:
     C = float_input(1, SECTION[2], "@C: ")
     print("Shrinking: This hyperparameter specifies whether to use the shrinking heuristic.")
     print("The shrinking heuristic is a technique that speeds up the training process by only considering the support vectors in the decision function.")
-    print("Please specify whether to use the shrinking heuristic. It is generally recommended to leave it set to True.")
+    print("Please specify whether to use the shrinking heuristic. It is generally recommended to leave it as True.")
     shrinking = bool_input(SECTION[2])
     hyper_parameters = {"kernel": kernel, "C": C, "shrinking": shrinking}
     if not degree:

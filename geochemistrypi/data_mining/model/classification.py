@@ -533,6 +533,10 @@ class SVMClassification(ClassificationWorkflowBase):
         self.decision_function_shape = decision_function_shape
         self.break_ties = break_ties
 
+        if random_state:
+            self.random_state = random_state
+
+        # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
         self.model = SVC(
             C=self.C,
             kernel=self.kernel,
@@ -784,6 +788,10 @@ class DecisionTreeClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         self.class_weight = class_weight
         self.ccp_alpha = ccp_alpha
 
+        if random_state:
+            self.random_state = random_state
+
+        # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
         self.model = DecisionTreeClassifier(
             criterion=self.criterion,
             splitter=self.splitter,
@@ -916,7 +924,7 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         bootstrap: bool = True,
         oob_score: bool = False,
         n_jobs: Optional[int] = -1,
-        random_state: Optional[int] = 42,
+        random_state: Optional[int] = None,
         verbose: int = 0,
         warm_start: bool = False,
         class_weight: Union[str, dict, list[dict], None] = None,
@@ -1118,13 +1126,16 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         self.bootstrap = bootstrap
         self.oob_score = oob_score
         self.n_jobs = n_jobs
-        self.random_state = random_state
         self.verbose = verbose
         self.warm_start = warm_start
         self.class_weight = class_weight
         self.ccp_alpha = ccp_alpha
         self.max_samples = max_samples
 
+        if random_state:
+            self.random_state = random_state
+
+        # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
         self.model = RandomForestClassifier(
             n_estimators=self.n_estimators,
             criterion=self.criterion,
@@ -1449,7 +1460,6 @@ class XGBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         self.base_score = base_score
         self.missing = missing
         self.num_parallel_tree = num_parallel_tree
-        self.random_state = random_state
         self.n_jobs = n_jobs
         self.monotone_constraints = monotone_constraints
         self.interaction_constraints = interaction_constraints
@@ -1460,9 +1470,14 @@ class XGBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         self.enable_categorical = enable_categorical
         self.eval_metric = eval_metric
         self.early_stopping_rounds = early_stopping_rounds
+
         if kwargs:
             self.kwargs = kwargs
 
+        if random_state:
+            self.random_state = random_state
+
+        # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
         self.model = xgboost.XGBClassifier(
             n_estimators=self.n_estimators,
             objective=self.objective,
@@ -1750,17 +1765,19 @@ class LogisticRegressionClassification(LinearWorkflowMixin, ClassificationWorkfl
         self.fit_intercept = fit_intercept
         self.intercept_scaling = intercept_scaling
         self.class_weight = class_weight
-        self.random_state = random_state
         self.solver = solver
         self.max_iter = max_iter
         self.multi_class = multi_class
         self.n_jobs = n_jobs
-        self.random_state = random_state
         self.verbose = verbose
         self.warm_start = warm_start
         self.class_weight = class_weight
         self.l1_ratio = l1_ratio
 
+        if random_state:
+            self.random_state = random_state
+
+        # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
         self.model = LogisticRegression(
             penalty=self.penalty,
             dual=self.dual,
@@ -2046,7 +2063,6 @@ class MLPClassification(ClassificationWorkflowBase):
         self.power_t = (power_t,)
         self.max_iter = (max_iter,)
         self.shuffle = (shuffle,)
-        self.random_state = (random_state,)
         self.tol = (tol,)
         self.verbose = (verbose,)
         self.warm_start = (warm_start,)
@@ -2060,6 +2076,12 @@ class MLPClassification(ClassificationWorkflowBase):
         self.n_iter_no_change = (n_iter_no_change,)
         self.max_fun = (max_fun,)
 
+        if random_state:
+            self.random_state = (random_state,)
+        else:
+            self.random_state = (self.random_state,)
+
+        # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
         self.model = MLPClassifier(
             hidden_layer_sizes=self.hidden_layer_sizes[0],
             activation=self.activation[0],
@@ -2394,13 +2416,16 @@ class ExtraTreesClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         self.bootstrap = bootstrap
         self.oob_score = oob_score
         self.n_jobs = n_jobs
-        self.random_state = random_state
         self.verbose = verbose
         self.warm_start = warm_start
         self.class_weight = class_weight
         self.ccp_alpha = ccp_alpha
         self.max_samples = max_samples
 
+        if random_state:
+            self.random_state = random_state
+
+        # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
         self.model = ExtraTreesClassifier(
             n_estimators=self.n_estimators,
             criterion=self.criterion,
@@ -2715,7 +2740,6 @@ class GradientBoostingClassification(TreeWorkflowMixin, ClassificationWorkflowBa
         self.init = (init,)
         self.subsample = (subsample,)
         self.max_features = (max_features,)
-        self.random_state = (random_state,)
         self.verbose = (verbose,)
         self.max_leaf_nodes = (max_leaf_nodes,)
         self.min_impurity_decrease = (min_impurity_decrease,)
@@ -2725,6 +2749,12 @@ class GradientBoostingClassification(TreeWorkflowMixin, ClassificationWorkflowBa
         self.tol = (tol,)
         self.ccp_alpha = (ccp_alpha,)
 
+        if random_state:
+            self.random_state = (random_state,)
+        else:
+            self.random_state = (self.random_state,)
+
+        # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
         self.model = GradientBoostingClassifier(
             loss=self.loss[0],
             learning_rate=self.learning_rate[0],
@@ -3218,7 +3248,6 @@ class SGDClassification(LinearWorkflowMixin, ClassificationWorkflowBase):
         self.verbose = verbose
         self.epsilon = epsilon
         self.n_jobs = n_jobs
-        self.random_state = random_state
         self.learning_rate = learning_rate
         self.eta0 = eta0
         self.power_t = power_t
@@ -3229,6 +3258,10 @@ class SGDClassification(LinearWorkflowMixin, ClassificationWorkflowBase):
         self.warm_start = warm_start
         self.average = average
 
+        if random_state:
+            self.random_state = random_state
+
+        # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
         self.model = SGDClassifier(
             loss=self.loss,
             penalty=self.penalty,

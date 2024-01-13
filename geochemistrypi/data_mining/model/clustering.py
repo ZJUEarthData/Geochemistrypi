@@ -64,10 +64,10 @@ class ClusteringWorkflowBase(WorkflowBase):
         mlflow.log_metrics(scores)
 
     @staticmethod
-    def _scatter2d(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _scatter2d(data: pd.DataFrame, labels: pd.DataFrame, cluster_centers_: np.ndarray, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the two-dimensional diagram of the clustering result."""
         print("-----* Cluster Two-Dimensional Diagram *-----")
-        scatter2d(data, labels, algorithm_name)
+        scatter2d(data, labels, cluster_centers_, algorithm_name)
         save_fig(f"Cluster Two-Dimensional Diagram - {algorithm_name}", local_path, mlflow_path)
         data_with_labels = pd.concat([data, labels], axis=1)
         save_data(data_with_labels, f"Cluster Two-Dimensional Diagram - {algorithm_name}", local_path, mlflow_path)
@@ -118,6 +118,7 @@ class ClusteringWorkflowBase(WorkflowBase):
             self._scatter2d(
                 data=two_dimen_data,
                 labels=self.clustering_result["clustering result"],
+                cluster_centers_=self.get_cluster_centers(),
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -138,6 +139,7 @@ class ClusteringWorkflowBase(WorkflowBase):
             self._scatter2d(
                 data=two_dimen_data,
                 labels=self.clustering_result["clustering result"],
+                cluster_centers_=self.get_cluster_centers(),
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -155,6 +157,7 @@ class ClusteringWorkflowBase(WorkflowBase):
             self._scatter2d(
                 data=self.X,
                 labels=self.clustering_result["clustering result"],
+                cluster_centers_=self.get_cluster_centers(),
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -277,10 +280,13 @@ class KMeansClustering(ClusteringWorkflowBase):
         self.tol = tol
         self.n_init = n_init
         self.verbose = verbose
-        self.random_state = random_state
         self.copy_x = copy_x
         self.algorithm = algorithm
 
+        if random_state:
+            self.random_state = random_state
+
+        # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
         self.model = KMeans(
             n_clusters=self.n_clusters,
             init=self.init,
@@ -438,16 +444,20 @@ class AffinityPropagationClustering(ClusteringWorkflowBase):
         self.verbose = verbose
         self.preference = preference
         self.affinity = affinity
-        self.random_state = random_state
+
+        if random_state:
+            self.random_state = random_state
+
+        # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
         self.model = AffinityPropagation(
             damping=self.damping,
             max_iter=self.max_iter,
             convergence_iter=self.convergence_iter,
             copy=self.copy,
-            preference=None,
-            affinity="euclidean",
-            verbose=False,
-            random_state=None,
+            preference=self.preference,
+            affinity=self.affinity,
+            verbose=self.verbose,
+            random_state=self.random_state,
         )
         self.naming = AffinityPropagationClustering.name
 

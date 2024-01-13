@@ -129,7 +129,7 @@ def model_inference(inference_data: pd.DataFrame, is_inference: bool, run: objec
     """
     # If is_inference is True, then run the model inference.
     if is_inference is True:
-        print("Use the trained model to make predictions on the inference data.")
+        print("Use the trained model to make predictions on the application data.")
         # If transformer_config is not {}, then transform the inference data with the transform pipeline.
         if transformer_config:
             inference_data_transformed = transform_pipeline.transform(inference_data)
@@ -139,4 +139,4 @@ def model_inference(inference_data: pd.DataFrame, is_inference: bool, run: objec
         inference_data_predicted_np = loaded_model.predict(inference_data_transformed)
         inference_data_predicted = np2pd(inference_data_predicted_np, ["Predicted Value"])
         GEOPI_OUTPUT_ARTIFACTS_DATA_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH")
-        save_data(inference_data_predicted, "Inference Data Predicted", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+        save_data(inference_data_predicted, "Application Data Predicted", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
