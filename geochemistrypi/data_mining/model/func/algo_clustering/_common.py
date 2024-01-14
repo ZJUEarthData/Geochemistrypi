@@ -56,7 +56,7 @@ def scatter2d(data: pd.DataFrame, labels: pd.DataFrame, cluster_centers_: np.nda
     algorithm_name : str
         the name of the algorithm
     """
-    # markers = ["+", "v", ".", "d", "o", "s", "1", "D", "X", "^", "p", "<", "*", "H", "3", "P"]
+    markers = ["+", "v", ".", "d", "o", "s", "1", "D", "X", "^", "p", "<", "*", "H", "3", "P"]
     colors = [
         "#1f77b4",
         "#ff7f0e",
@@ -80,7 +80,7 @@ def scatter2d(data: pd.DataFrame, labels: pd.DataFrame, cluster_centers_: np.nda
         "#bcbd22",
     ]
 
-    # marker_cycle = cycle(markers)
+    marker_cycle = cycle(markers)
     color_cycle = cycle(colors)
 
     fig = plt.figure()
@@ -90,8 +90,7 @@ def scatter2d(data: pd.DataFrame, labels: pd.DataFrame, cluster_centers_: np.nda
     for i, label in enumerate(set(labels)):
         cluster_data = data[labels == label]
         color = next(color_cycle)
-        # marker = next(marker_cycle)
-        marker = "."
+        marker = next(marker_cycle)
         plt.scatter(cluster_data.iloc[:, 0], cluster_data.iloc[:, 1], c=color, marker=marker)
 
     # Plot the cluster centers
@@ -137,7 +136,7 @@ def scatter3d(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str) -> 
     plt.grid(True)
 
     ax2 = fig.add_subplot(122, projection="3d")
-    # markers = ["+", "v", ".", "d", "o", "s", "1", "D", "X", "^", "p", "<", "*", "H", "3", "P"]
+    markers = ["+", "v", ".", "d", "o", "s", "1", "D", "X", "^", "p", "<", "*", "H", "3", "P"]
     colors = [
         "#1f77b4",
         "#ff7f0e",
@@ -160,15 +159,14 @@ def scatter3d(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str) -> 
         "#7f7f7f",
         "#bcbd22",
     ]
-    # marker_cycle = cycle(markers)
+    marker_cycle = cycle(markers)
     color_cycle = cycle(colors)
 
     # Plot the data with cluster results
     for i, label in enumerate(set(labels)):
         cluster_data = data[labels == label]
         color = next(color_cycle)
-        # marker = next(marker_cycle)
-        marker = "."
+        marker = next(marker_cycle)
         ax2.scatter(cluster_data.iloc[:, 0], cluster_data.iloc[:, 1], cluster_data.iloc[:, 2], c=color, marker=marker, s=6, cmap=plt.cm.Paired, edgecolors="none")
 
     ax2.set_xlabel(namelist[0])
