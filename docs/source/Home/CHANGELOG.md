@@ -10,6 +10,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 + MLOps core of continuous training in web interface
 
+## [0.5.0] - 2023-01-14
+
+### Added
+
++ Missing value process with three options
++ Fixed random state for all models
++ New Models:
+  + Regression Models
+    + Bayesian Ridge Regression
+  + Clustering Models
+    + Agglomerative Clustering
+
+### Changed
+
++ Renamed command to implement model inference
+
+
 ## [0.4.0] - 2023-12-15
 
 ### Added
@@ -35,9 +52,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
     + K-Nearest Neighbors
     + Stochastic Gradient Descent
 
-
 ### Changed
 + Lasso regression model with automatic parameter tuning functionality
+
 
 ## [0.3.0] - 2023-08-11
 
@@ -111,6 +128,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 
 [ unreleased ]: https://github.com/ZJUEarthData/geochemistrypi
+[ 0.5.0 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.4.0...v0.5.0
 [ 0.4.0 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.3.0...v0.4.0
 [ 0.3.0 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.2.1...v0.3.0
 [ 0.2.1 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.2.0...v0.2.1
