@@ -11,9 +11,9 @@
 
 ---
 
-**Documentation**: `<a href="https://geochemistrypi.readthedocs.io" target="_blank">`https://geochemistrypi.readthedocs.io`</a>`
+**Documentation**: <a href="https://geochemistrypi.readthedocs.io" target="_blank">https://geochemistrypi.readthedocs.io</a>
 
-**Source Code**: `<a href="https://github.com/ZJUEarthData/geochemistrypi" target="_blank">`https://github.com/ZJUEarthData/geochemistrypi`</a>`
+ **Source Code**: <a href="https://github.com/ZJUEarthData/geochemistrypi" target="_blank">https://github.com/ZJUEarthData/geochemistrypi</a>
 
 ---
 
@@ -33,13 +33,13 @@ Key features are:
 
 Latest Update: follow up by clicking `Starred` and  `Watch` on our [GitHub repository](https://github.com/ZJUEarthData/geochemistrypi), then get email notifications of the newest features automatically.
 
-The following figure is the simplified overview of Geochemistry π: `<br>`
+The following figure is the simplified overview of Geochemistry π: <br>
 
 <p align="center">
   <img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/28e174f0-1f2f-4367-96bd-9526352101bd" alt="Overview of workflow" width="600" />
 </p>
 
-The following figure is the frontend-backend separation architecture of Geochemistry: `<br>`
+The following figure is the frontend-backend separation architecture of Geochemistry: <br>
 
 <p align="center">
   <img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/3b27cbdb-ff50-4fa6-b1d1-4c75b253fdff" alt="Frontend-backend separation architecture of Geochemistry" width="450" />
@@ -128,16 +128,16 @@ On Jupyter Notebook / Google Colab:
 On command line:
 
 ```
-geochemistrypi data-mining --training your_own_training_data.xlsx --inference your_own_inference_data.xlsx
+geochemistrypi data-mining --training your_own_training_data.xlsx --application your_own_application_data.xlsx
 ```
 
 On Jupyter Notebook / Google Colab:
 
 ```
-!geochemistrypi data-mining --training your_own_training_data.xlsx --inference your_own_inference_data.xlsx
+!geochemistrypi data-mining --training your_own_training_data.xlsx --application your_own_application_data.xlsx
 ```
 
-**Note**: Please make sure the column names (data schema) in both training data file and inference data file are the same. Because the operations you perform via our software on the training data will be record automatically and subsequently applied to the inference data in the same order.
+**Note**: Please make sure the column names (data schema) in both training data file and application data file are the same. Because the operations you perform via our software on the training data will be record automatically and subsequently applied to the application data in the same order.
 
 The training data in our pipeline will be divided into the train set and test set used for training the ML model and evaluating the model's performance. The score includes two types. The first type is the scores from the prediction on the test set while the second type is cv scores from the cross validation on the train set.
 
@@ -176,7 +176,7 @@ The highlight is that through choosing **simple number options**, the users are 
 
 The following figure is the activity diagram of automated ML pipeline in Geochemistry π:
 
-<img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/b7f8e6bc-0c6c-4917-adfa-f00c6ccbad7b" />
+<img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/d7b45a7d-4c6d-472b-9498-c9ccb992212e" />
 
 Its data section provides feature engineering based on **arithmatic operation**. It allows the users to have a statistic analysis on the data set as well as on the imputation result, which is supported by the combination of **Monte Carlo simulation** and **hypothesis testing**.
 
@@ -192,22 +192,22 @@ The following figure is the hierarchical architecture of Geochemistry π:
 
 Currently, we are building three access ways to provide more user-friendly service, including **web portal**, **CLI package** and **API**. It allows the user to perform **continuous training** and **model inference** by automating the ML pipeline and **machine learning lifecycle management** by unique storage mechanism in different access layers.
 
-The following figure is the system architecture diagram: `<br>`
+The following figure is the system architecture diagram: <br>
 
 ![System Architecture Diagram](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/20b5a2a4-f2de-492d-a2df-9282196d8c4f)
 
-The following figure is the customized automated ML pipeline: `<br>`
+The following figure is the customized automated ML pipeline: <br>
 
 <p align="center">
-  <img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/07078b43-30bd-46cf-abad-2da509fae6aa" alt="Customized automated ML pipeline" width="400" />
+  <img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/6275472d-9628-4df5-b4a3-c58a65cfc346" alt="Customized automated ML pipeline" width="400" />
 </p>
 
-The following figure is the design pattern hierarchical architecture: `<br>`
+The following figure is the design pattern hierarchical architecture: <br>
 
 ![Design Pattern](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/aa84ab12-c95e-4282-a60e-64ba2858c437)
 ![Workflow Object](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/f08885bf-1bec-4045-bf6b-82c5c18d3f8f)
 
-The following figure is the storage mechanism: `<br>`
+The following figure is the storage mechanism: <br>
 
 <p align="center">
   <img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/401f3429-c44f-4b76-b085-7a9dcc987cde" alt="Storage Mechanism" width="500" />
