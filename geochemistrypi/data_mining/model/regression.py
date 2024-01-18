@@ -11,7 +11,7 @@ from flaml import AutoML
 from multipledispatch import dispatch
 from rich import print
 from sklearn.ensemble import ExtraTreesRegressor, GradientBoostingRegressor, RandomForestRegressor
-from sklearn.linear_model import BayesianRidge, ElasticNet, Lasso, LinearRegression, SGDRegressor
+from sklearn.linear_model import BayesianRidge, ElasticNet, Lasso, LinearRegression, Ridge, SGDRegressor
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import PolynomialFeatures
@@ -33,6 +33,7 @@ from .func.algo_regression._linear_regression import linear_regression_manual_hy
 from .func.algo_regression._multi_layer_perceptron import multi_layer_perceptron_manual_hyper_parameters
 from .func.algo_regression._polynomial_regression import polynomial_regression_manual_hyper_parameters
 from .func.algo_regression._rf import random_forest_manual_hyper_parameters
+from .func.algo_regression._ridge_regression import ridge_regression_manual_hyper_parameters
 from .func.algo_regression._sgd_regression import sgd_regression_manual_hyper_parameters
 from .func.algo_regression._svr import svr_manual_hyper_parameters
 from .func.algo_regression._xgboost import xgboost_manual_hyper_parameters
@@ -3939,3 +3940,366 @@ class BayesianRidgeRegression(RegressionWorkflowBase):
     @dispatch(bool)
     def special_components(self, is_automl: bool, **kwargs) -> None:
         pass
+
+
+class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
+    """The automation workflow of using Lasso to make insightful products."""
+
+    name = "Ridge Regression"
+    special_function = ["Ridge Regression Formula", "2D Scatter Diagram", "3D Scatter Diagram", "2D Line Diagram", "3D Surface Diagram"]
+
+    def __init__(
+        self,
+        alpha: float = 1.0,
+        *,
+        fit_intercept: bool = True,
+        copy_X: bool = True,
+        max_iter: int = 1000,
+        tol: float = 1e-4,
+        solver: str = "auto",
+        positive: bool = False,
+        random_state: Optional[int] = None,
+    ) -> None:
+        """
+        Parameters
+        ----------
+        alpha : {float, ndarray of shape (n_targets,)}, default=1.0
+            Constant that multiplies the L2 term, controlling regularization
+            strength. `alpha` must be a non-negative float i.e. in `[0, inf)`.
+
+            When `alpha = 0`, the objective is equivalent to ordinary least
+            squares, solved by the :class:`LinearRegression` object. For numerical
+            reasons, using `alpha = 0` with the `Ridge` object is not advised.
+            Instead, you should use the :class:`LinearRegression` object.
+
+            If an array is passed, penalties are assumed to be specific to the
+            targets. Hence they must correspond in number.
+
+        fit_intercept : bool, default=True
+            Whether to fit the intercept for this model. If set
+            to false, no intercept will be used in calculations
+            (i.e. ``X`` and ``y`` are expected to be centered).
+
+        copy_X : bool, default=True
+            If True, X will be copied; else, it may be overwritten.
+
+        max_iter : int, default=None
+            Maximum number of iterations for conjugate gradient solver.
+            For 'sparse_cg' and 'lsqr' solvers, the default value is determined
+            by scipy.sparse.linalg. For 'sag' solver, the default value is 1000.
+            For 'lbfgs' solver, the default value is 15000.
+
+        tol : float, default=1e-4
+            The precision of the solution (`coef_`) is determined by `tol` which
+            specifies a different convergence criterion for each solver:
+
+            - 'svd': `tol` has no impact.
+
+            - 'cholesky': `tol` has no impact.
+
+            - 'sparse_cg': norm of residuals smaller than `tol`.
+
+            - 'lsqr': `tol` is set as atol and btol of scipy.sparse.linalg.lsqr,
+              which control the norm of the residual vector in terms of the norms of
+              matrix and coefficients.
+
+            - 'sag' and 'saga': relative change of coef smaller than `tol`.
+
+            - 'lbfgs': maximum of the absolute (projected) gradient=max|residuals|
+              smaller than `tol`.
+
+            .. versionchanged:: 1.2
+               Default value changed from 1e-3 to 1e-4 for consistency with other linear
+               models.
+
+        solver : {'auto', 'svd', 'cholesky', 'lsqr', 'sparse_cg', \
+                'sag', 'saga', 'lbfgs'}, default='auto'
+            Solver to use in the computational routines:
+
+            - 'auto' chooses the solver automatically based on the type of data.
+
+            - 'svd' uses a Singular Value Decomposition of X to compute the Ridge
+              coefficients. It is the most stable solver, in particular more stable
+              for singular matrices than 'cholesky' at the cost of being slower.
+
+            - 'cholesky' uses the standard scipy.linalg.solve function to
+              obtain a closed-form solution.
+
+            - 'sparse_cg' uses the conjugate gradient solver as found in
+              scipy.sparse.linalg.cg. As an iterative algorithm, this solver is
+              more appropriate than 'cholesky' for large-scale data
+              (possibility to set `tol` and `max_iter`).
+
+            - 'lsqr' uses the dedicated regularized least-squares routine
+              scipy.sparse.linalg.lsqr. It is the fastest and uses an iterative
+              procedure.
+
+            - 'sag' uses a Stochastic Average Gradient descent, and 'saga' uses
+              its improved, unbiased version named SAGA. Both methods also use an
+              iterative procedure, and are often faster than other solvers when
+              both n_samples and n_features are large. Note that 'sag' and
+              'saga' fast convergence is only guaranteed on features with
+              approximately the same scale. You can preprocess the data with a
+              scaler from sklearn.preprocessing.
+
+            - 'lbfgs' uses L-BFGS-B algorithm implemented in
+              `scipy.optimize.minimize`. It can be used only when `positive`
+              is True.
+
+            All solvers except 'svd' support both dense and sparse data. However, only
+            'lsqr', 'sag', 'sparse_cg', and 'lbfgs' support sparse input when
+            `fit_intercept` is True.
+
+            .. versionadded:: 0.17
+               Stochastic Average Gradient descent solver.
+            .. versionadded:: 0.19
+               SAGA solver.
+
+        positive : bool, default=False
+            When set to ``True``, forces the coefficients to be positive.
+            Only 'lbfgs' solver is supported in this case.
+
+        random_state : int, RandomState instance, default=None
+            Used when ``solver`` == 'sag' or 'saga' to shuffle the data.
+            See :term:`Glossary <random_state>` for details.
+
+            .. versionadded:: 0.17
+               `random_state` to support Stochastic Average Gradient.
+
+        References
+        ----------
+        Scikit-learn API: sklearn.linear_model.Lasso
+        https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Ridge.html
+
+        """
+        super().__init__()
+        self.alpha = alpha
+        self.fit_intercept = fit_intercept
+        self.copy_X = copy_X
+        self.max_iter = max_iter
+        self.tol = tol
+        self.solver = solver
+        self.positive = positive
+        self.random_state = random_state
+
+        self.model = Ridge(
+            alpha=self.alpha,
+            fit_intercept=self.fit_intercept,
+            copy_X=self.copy_X,
+            max_iter=self.max_iter,
+            tol=self.tol,
+            solver=self.solver,
+            positive=self.positive,
+            random_state=self.random_state,
+        )
+
+        self.naming = RidgeRegression.name
+        self.customized = True
+        self.customized_name = "Ridge"
+
+    @property
+    def settings(self) -> Dict:
+        """The configuration of Lasso to implement AutoML by FLAML framework."""
+        configuration = {
+            "time_budget": 10,  # total running time in seconds
+            "metric": "r2",
+            "estimator_list": [self.customized_name],  # list of ML learners
+            "task": "regression",  # task type
+            # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
+            # "log_training_metric": True,  # whether to log training metric
+        }
+        return configuration
+
+    @property
+    def customization(self) -> object:
+        """The customized Lasso of FLAML framework."""
+        from flaml import tune
+        from flaml.data import REGRESSION
+        from flaml.model import SKLearnEstimator
+        from sklearn.linear_model import Ridge
+
+        class MyRidgeRegression(SKLearnEstimator):
+            def __init__(self, task="regression", n_jobs=None, **config):
+                super().__init__(task, **config)
+                if task in REGRESSION:
+                    self.estimator_class = Ridge
+
+            @classmethod
+            def search_space(cls, data_size, task):
+                space = {
+                    "alpha": {"domain": tune.uniform(lower=0.001, upper=10), "init_value": 1},
+                    "fit_intercept": {"domain": tune.choice([True, False])},
+                    "max_iter": {"domain": tune.randint(lower=500, upper=2000), "init_value": 1000},
+                    "tol": {"domain": tune.uniform(lower=1e-5, upper=1e-3), "init_value": 1e-4},
+                    # "selection": {"domain": tune.choice(["cyclic", "random"])},
+                    # "random_state": {'domain': tune.choice(["", ""])}
+                }
+                return space
+
+        return MyRidgeRegression
+
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
+        """Manual hyper-parameters specification."""
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = ridge_regression_manual_hyper_parameters()
+        clear_output()
+        return hyper_parameters
+
+    @dispatch()
+    def special_components(self, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+        self._show_formula(
+            coef=[self.model.coef_],
+            intercept=self.model.intercept_,
+            features_name=RidgeRegression.X_train.columns,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
+            mlflow_path="root",
+        )
+        columns_num = RidgeRegression.X.shape[1]
+        if columns_num > 2:
+            # choose one of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(RidgeRegression.X_test, 1)
+            self._plot_2d_scatter_diagram(
+                feature_data=two_dimen_data,
+                target_data=RidgeRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            # choose two of dimensions to draw
+            three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(RidgeRegression.X_test, 2)
+            self._plot_3d_scatter_diagram(
+                feature_data=three_dimen_data,
+                target_data=RidgeRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        elif columns_num == 2:
+            # choose one of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(RidgeRegression.X_test, 1)
+            self._plot_2d_scatter_diagram(
+                feature_data=two_dimen_data,
+                target_data=RidgeRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            # no need to choose
+            self._plot_3d_scatter_diagram(
+                feature_data=RidgeRegression.X_test,
+                target_data=RidgeRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            self._plot_3d_surface_diagram(
+                feature_data=RidgeRegression.X_test,
+                target_data=RidgeRegression.y_test,
+                y_test_predict=RidgeRegression.y_test_predict,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        elif columns_num == 1:
+            # no need to choose
+            self._plot_2d_scatter_diagram(
+                feature_data=RidgeRegression.X_test,
+                target_data=RidgeRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            self._plot_2d_line_diagram(
+                feature_data=RidgeRegression.X_test,
+                target_data=RidgeRegression.y_test,
+                y_test_predict=RidgeRegression.y_test_predict,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        else:
+            pass
+
+    @dispatch(bool)
+    def special_components(self, is_automl: bool, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by FLAML framework."""
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+        self._show_formula(
+            coef=[self.auto_model.coef_],
+            intercept=self.auto_model.intercept_,
+            features_name=RidgeRegression.X_train.columns,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
+            mlflow_path="root",
+        )
+        columns_num = RidgeRegression.X.shape[1]
+        if columns_num > 2:
+            # choose one of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(RidgeRegression.X_test, 1)
+            self._plot_2d_scatter_diagram(
+                feature_data=two_dimen_data,
+                target_data=RidgeRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            # choose two of dimensions to draw
+            three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(RidgeRegression.X_test, 2)
+            self._plot_3d_scatter_diagram(
+                feature_data=three_dimen_data,
+                target_data=RidgeRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        elif columns_num == 2:
+            # choose one of dimensions to draw
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(RidgeRegression.X_test, 1)
+            self._plot_2d_scatter_diagram(
+                feature_data=two_dimen_data,
+                target_data=RidgeRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            # no need to choose
+            self._plot_3d_scatter_diagram(
+                feature_data=RidgeRegression.X_test,
+                target_data=RidgeRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            self._plot_3d_surface_diagram(
+                feature_data=RidgeRegression.X_test,
+                target_data=RidgeRegression.y_test,
+                y_test_predict=RidgeRegression.y_test_predict,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        elif columns_num == 1:
+            # no need to choose
+            self._plot_2d_scatter_diagram(
+                feature_data=RidgeRegression.X_test,
+                target_data=RidgeRegression.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            self._plot_2d_line_diagram(
+                feature_data=RidgeRegression.X_test,
+                target_data=RidgeRegression.y_test,
+                y_test_predict=RidgeRegression.y_test_predict,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+        else:
+            pass

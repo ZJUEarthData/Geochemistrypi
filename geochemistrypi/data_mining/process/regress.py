@@ -20,6 +20,7 @@ from ..model.regression import (
     PolynomialRegression,
     RandomForestRegression,
     RegressionWorkflowBase,
+    RidgeRegression,
     SGDRegression,
     SVMRegression,
     XGBoostRegression,
@@ -197,6 +198,14 @@ class RegressionModelSelection(ModelSelectionBase):
                 copy_X=hyper_parameters["copy_X"],
                 verbose=hyper_parameters["verbose"],
             )
+        elif self.model_name == "Ridge Regression":
+            hyper_parameters = RidgeRegression.manual_hyper_parameters()
+            self.reg_workflow = RidgeRegression(
+                alpha=hyper_parameters["alpha"],
+                fit_intercept=hyper_parameters["fit_intercept"],
+                max_iter=hyper_parameters["max_iter"],
+                tol=hyper_parameters["tol"],
+            )
 
         self.reg_workflow.show_info()
 
@@ -270,6 +279,8 @@ class RegressionModelSelection(ModelSelectionBase):
             self.reg_workflow = SGDRegression()
         elif self.model_name == "BayesianRidge Regression":
             self.reg_workflow = BayesianRidgeRegression()
+        elif self.model_name == "Ridge Regression":
+            self.reg_workflow = RidgeRegression()
 
         self.reg_workflow.show_info()
 
