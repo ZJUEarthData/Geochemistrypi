@@ -201,22 +201,21 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     # <--- Built-in Application Data Loading --->
     logger.debug("Built-in Application Data Loading")
     # If the user doesn't provide training data path and inference data path, then use the built-in inference data.
-    if is_built_in_inference_data:
-        print("-*-*- Built-in Application Data Option-*-*-")
-        num2option(TEST_DATA_OPTION)
-        built_in_inference_data_num = limit_num_input(TEST_DATA_OPTION, SECTION[0], num_input)
-        if built_in_inference_data_num == 1:
-            application_data_path = "InferenceData_Regression.xlsx"
-        elif built_in_inference_data_num == 2:
-            application_data_path = "InferenceData_Classification.xlsx"
-        elif built_in_inference_data_num == 3:
-            application_data_path = "InferenceData_Clustering.xlsx"
-        elif built_in_inference_data_num == 4:
-            application_data_path = "InferenceData_Decomposition.xlsx"
+    if is_built_in_inference_data and built_in_training_data_num == 1:
+        application_data_path = "InferenceData_Regression.xlsx"
         inference_data = read_data(file_path=application_data_path)
         print(f"Successfully loading the built-in inference data set '{application_data_path}'.")
         show_data_columns(inference_data.columns)
-        clear_output()
+    elif is_built_in_inference_data and built_in_training_data_num == 2:
+        application_data_path = "InferenceData_Classification.xlsx"
+        inference_data = read_data(file_path=application_data_path)
+        print(f"Successfully loading the built-in inference data set '{application_data_path}'.")
+        show_data_columns(inference_data.columns)
+    elif is_built_in_inference_data and built_in_training_data_num == 3:
+        inference_data = None
+    elif is_built_in_inference_data and built_in_training_data_num == 4:
+        inference_data = None
+    clear_output()
 
     # <--- World Map Projection --->
     logger.debug("World Map Projection")
