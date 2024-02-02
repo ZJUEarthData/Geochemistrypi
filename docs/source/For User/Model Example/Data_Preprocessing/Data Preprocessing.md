@@ -1,3 +1,4 @@
+
 # Data Cleaning & Preprocessing
   When we are working on data-mining or machine learning projects, the quality of your results highly depends on the quality of input data. As a result, data cleaning and preprocessing becomes an important step to make sure your input data is neat and balanced. Normally, data scientists will spend a large portion of their working time on data cleaning. However, Geochemistrypi can conduct this process automatically for you, and you just need to follow some simple steps.
 
@@ -27,7 +28,8 @@ After successfully loading your data, you will be asked if you would like to plo
 If choosing yes, you will be asked to select an element for mapping. We choose 10-AL2O3 as an example:
 
 
-![Map_Projection.png](https://github.com/ZJUEarthData/geochemistrypi/assets/66779478/2502c36d-f5f4-4520-9190-badb62b19dec)
+![Map_Projection](https://github.com/ZJUEarthData/geochemistrypi/assets/127474885/435ca9d7-56b3-4fed-9ccf-ed1f29d67a90)
+
 <font color=gray size=1><center>Figure 1 distribution map of AL2O3</center></font>
 
 
@@ -43,7 +45,7 @@ Input format:
 Format 1: "[**, **]; **; [**, **]", such as "[1, 3]; 7; [10, 13]" --> you want to deal with the columns 1, 2, 3, 7, 10, 11, 12, 13
 Format 2: "xx", such as "7" --> you want to deal with the columns 7
 ````
- 
+
 We use column 3;[10,16] as an example. column [10,16] are different elements, while column 3 consists of their corresponding lables.
 
 There will be some statistic summary outputs as follows:
@@ -112,7 +114,7 @@ There will be some statistic summary outputs as follows:
 #### Missing Value
 Geochemistrypi will generate null value report for the selected dataset:
 
-            -*-*- Imputation -*-*-
+        -*-*- Missing Value Check -*-*-
         Check which column has null values:
         --------------------
         Label         False

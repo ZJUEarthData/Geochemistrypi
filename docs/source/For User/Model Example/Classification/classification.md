@@ -1,3 +1,4 @@
+
 # Classification
 
 Classification is a supervised learning task, in which the training data we feed to the algorithm includes the desired labels. The aim of classification task is to classify each data into the corresponding class. So we have to use dataset with known labels to train a classification model. Then choose one model which has best performance to predict unknown data.
@@ -105,7 +106,7 @@ Successfully store 'y' in 'y.xlsx' in C:\Users\12396\output\data.
 (Press Enter key to move forward.)
 ```
 
-Then we have to split our data set in to training data and testing data, we can simply spedcify the spliting ratio in the command line:
+Note that the type of the value y here must be the same as the type in the label column, otherwise the code will fail.Then we have to split our data set in to training data and testing data, we can simply spedcify the spliting ratio in the command line:
 
 **Split the data**
 
@@ -123,10 +124,12 @@ Since the traing and testing data are ready now, we can selelt a model to start 
     2 - Support Vector Machine
     3 - Decision Tree
     4 - Random Forest
-    5 - Xgboost
-    6 - All models above to be trained
+    5 - Extra-Trees
+    6 - Xgboost
+    7 - Deep Neural Network
+    8 - All models above to be trained
     Which model do you want to apply?(Enter the Corresponding Number)
-    (Model) ➜ @Number: 5
+    (Model) ➜ @Number: 6
     (Press Enter key to move forward.)
 
 Gechemistrypi integrated the autoML library for its machine learning tasks, so we can simply choose to employ automated machine learning with respect to this algorithm.
