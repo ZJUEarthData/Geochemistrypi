@@ -134,7 +134,8 @@ def install_package(package_name: str) -> None:
     """
     import subprocess
 
-    subprocess.check_call(["python", "-m", "pip", "install", package_name])
+    # subprocess.check_call(["python", "-m", "pip", "install", package_name])
+    subprocess.check_call(["python", "-m", "pip", "install", "--quiet", package_name])
 
 
 def clear_output() -> None:

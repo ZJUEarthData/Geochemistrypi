@@ -10,6 +10,23 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from .data_readiness import show_data_columns
 
 
+def MeanNormalization(X: pd.DataFrame) -> np.ndarray:
+    """Apply Mean Normalization to the dataset.
+
+    Parameters
+    ----------
+    X : pd.DataFrame
+        The dataset.
+
+    Returns
+    -------
+    X_scaled : np.ndarray
+        The dataset after applying Mean Normalization.
+    """
+    X_scaled = (X - X.mean()) / (X.max() - X.min())
+    return X_scaled
+
+
 def feature_scaler(X: pd.DataFrame, method: List[str], method_idx: int) -> tuple[dict, np.ndarray]:
     """Apply feature scaling methods.
 
@@ -33,16 +50,31 @@ def feature_scaler(X: pd.DataFrame, method: List[str], method_idx: int) -> tuple
         The dataset after imputing.
     """
     if method[method_idx] == "Min-max Scaling":
-        scaler = MinMaxScaler()
+        try:
+            scaler = MinMaxScaler()
+            X_scaled = scaler.fit_transform(X)
+        except ValueError:
+            print("The selected feature scaling method is not applicable to the dataset!")
+            print("Please check the dataset to find the reason.")
+        feature_scaling_config = {type(scaler).__name__: scaler.get_params()}
+        return feature_scaling_config, X_scaled
     elif method[method_idx] == "Standardization":
-        scaler = StandardScaler()
-    try:
-        X_scaled = scaler.fit_transform(X)
-    except ValueError:
-        print("The selected feature scaling method is not applicable to the dataset!")
-        print("Please check the dataset to find the reason.")
-    feature_scaling_config = {type(scaler).__name__: scaler.get_params()}
-    return feature_scaling_config, X_scaled
+        try:
+            scaler = StandardScaler()
+            X_scaled = scaler.fit_transform(X)
+        except ValueError:
+            print("The selected feature scaling method is not applicable to the dataset!")
+            print("Please check the dataset to find the reason.")
+        feature_scaling_config = {type(scaler).__name__: scaler.get_params()}
+        return feature_scaling_config, X_scaled
+    elif method[method_idx] == "MeanNormalization":
+        try:
+            X_scaled = MeanNormalization(X)
+        except ValueError:
+            print("The selected feature scaling method is not applicable to the dataset!")
+            print("Please check the dataset to find the reason.")
+        feature_scaling_config = {"Customized"}
+        return feature_scaling_config, X_scaled
 
 
 def feature_selector(X: pd.DataFrame, y: pd.DataFrame, feature_selection_task: int, method: List[str], method_idx: int) -> tuple[dict, pd.DataFrame]:
