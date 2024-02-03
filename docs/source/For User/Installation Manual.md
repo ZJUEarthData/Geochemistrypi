@@ -125,38 +125,6 @@ geochemistrypi --version
 
 ## 3. Solutions and Suggestions for Installation Failure <a name="Solutions"> </a>
 
-### 3.1 Use Tsinghua Mirror Source
+If you encounter errors while Installing the software, please refer to the **Q&A** section under **Contact Us** in the **FOR USER** of our online documentation.
 
-If you cannot download our software because Ray/Fiona downloads are too slow or just fail , you can use the pip with Tsinghua mirror source to re-download the package in terms of the specific error.
-```
-pip install ray -i https://pypi.tuna.tsinghua.edu.cn/simple
-```
-+ Reference video: [Solutions to Failures in Direct pip Installation in China.mp4](https://www.bilibili.com/video/BV1zg4y1j7bx/?spm_id_from=333.999.0.0&vd_source=350db2ec0e0c3ee7f424928a21e82674).
-
-### 3.2 Use 'pip install -r requirements/production.txt'
-
-Another way to download related dependecies is to clone the source code from GitHub or Gitee repository firstly:
-
-GitHub Link: https://github.com/ZJUEarthData/geochemistrypi
-
-Gitee Link: https://gitee.com/zju-earth-data/geochemistrypi
-
-After that, unpacking the source code file. Open Terminal on Mac or Command Promt on Window and navigate to the directory to the source code file, use the following command to download the dependency  :
-
-```
-pip install -r requirements/production.txt
-```
-
-Or use the Tsinghua mirror source to download:
-
-```
-pip install -r requirements/production.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
-```
-
-+ Reference video:  [The Fastest Currently Feasible Installation Method in China—Installing from GitHub Using requirements.mp4](https://www.bilibili.com/video/BV1pM411V7iR/?spm_id_from=333.999.0.0&vd_source=350db2ec0e0c3ee7f424928a21e82674)
-
-**Note**: Actually this method can be used for developers to test our latest updates. For more information, please refer to our online documentation in **Local Deployment** under the section of **FOR DEVELOPER**.
-
-### 3.3 Report An Error to Our Team
-
-You can refer to our online documentation in **Contact Us** under the section of **FOR USER**.
+If you are still unable to resolve the issue after consulting, you can visit the **Contact Us** section in our online documentation under **FOR USER**. There, you can report the error to our team.
