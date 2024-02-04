@@ -45,6 +45,14 @@ The following figure is the frontend-backend separation architecture of Geochemi
   <img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/3b27cbdb-ff50-4fa6-b1d1-4c75b253fdff" alt="Frontend-backend separation architecture of Geochemistry" width="450" />
 </p>
 
+
+**Cite the work as:**
+
+ZhangZhou J*, He Can*, Sun Jianhao, Zhao Jianming, Lyu Yang, Wang Shengxin, Zhao Wenyu, Li Anzhou, Ji Xiaohui. Geochemistry π: Automated machine learning python framework for tabular data (2024). Geochemistry, Geophysics,
+Geosystems, 25, e2023GC011324
+
+Download link: https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2023GC011324
+
 ## Quick Installation
 
 One instruction to download on **command line**, such as Terminal on macOS, Power Shell on Windows.
