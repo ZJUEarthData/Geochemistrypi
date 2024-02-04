@@ -1,4 +1,4 @@
-from typing import Dict, Union
+from typing import Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -149,7 +149,7 @@ def plot_feature_importance(columns_name: pd.Index, feature_importance: np.ndarr
 # Used by linear models including classification and regression
 
 
-def show_formula(coef: np.ndarray, intercept: Union[np.ndarray, float], features_name: np.ndarray) -> Dict:
+def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: np.ndarray, regression_classification: str, y_train: pd.DataFrame) -> Dict:
     """Show the formula of linear models.
 
     Parameters
@@ -163,42 +163,61 @@ def show_formula(coef: np.ndarray, intercept: Union[np.ndarray, float], features
     features_name : np.ndarray
         Name of the features.
 
+    regression_classification : str
+        Indicates whether it's a regression or classification model.
+
+    y_train : pd.DataFrame
+        The train label data.
+
     Returns
     -------
     formula : dict
         The formula of linear models.
     """
-    term = []
-    coef = np.around(coef, decimals=3).tolist()[0]
+    formula = {}
 
-    for i in range(len(coef)):
-        # the first value stay the same
-        if i == 0:
-            # not append if zero
-            if coef[i] != 0:
-                temp = str(coef[i]) + features_name[i]
-                term.append(temp)
-        else:
-            # add plus symbol if positive, maintain if negative, not append if zero
-            if coef[i] > 0:
-                temp = "+" + str(coef[i]) + features_name[i]
-                term.append(temp)
-            elif coef[i] < 0:
-                temp = str(coef[i]) + features_name[i]
-                term.append(temp)
-    if type(intercept) == np.ndarray:
-        if intercept[0] >= 0:
-            formula = "".join(term) + "+" + str(intercept[0])
-        else:
-            formula = "".join(term) + str(intercept[0])
-    else:
-        if intercept >= 0:
-            formula = "".join(term) + "+" + str(intercept)
-        else:
-            formula = "".join(term) + str(intercept)
-    print("y =", formula)
+    if regression_classification == "Regression":
+        if len(y_train.columns) == 1:  # Single target
+            coef = np.around(coef, decimals=3)[0]
+            intercept = np.around(intercept, decimals=3)[0]
 
-    return {"y": formula}
+            terms = [("-" if c < 0 else "+") + " " + str(abs(c)) + f if c != 0 else "" for c, f in zip(coef, features_name)]
+            terms_first = (terms[0][2:] if coef[0] > 0 else terms[0]).replace(" ", "")
+            formula["y:"] = terms_first + " " + " ".join(terms[1:]) + (" - " if intercept < 0 else " + ") + str(abs(intercept))
+            print("y = ", formula["y:"])
+
+        else:  # Multiple targets
+            coef = np.around(coef, decimals=3)
+            intercept = np.around(intercept, decimals=3)
+
+            for idx, (coef_temp, intercept_temp) in enumerate(zip(coef, intercept)):
+                terms_temp = [("-" if c < 0 else "+") + " " + str(abs(c)) + f if c != 0 else "" for c, f in zip(coef_temp, features_name)]
+                terms_temp_first = (terms_temp[0][2:] if coef_temp[0] > 0 else terms_temp[0]).replace(" ", "")
+                formula["y (" + y_train.columns[idx] + ") = "] = terms_temp_first + " " + " ".join(terms_temp[1:]) + (" - " if intercept_temp < 0 else " + ") + str(abs(intercept_temp))
+                print("y (" + y_train.columns[idx] + ") = ", formula["y (" + y_train.columns[idx] + ") = "])
+
+    elif regression_classification == "Classification":
+        if coef.shape[0] == 1:  # Binary classification
+            coef = np.around(coef, decimals=3)[0]
+            intercept = np.around(intercept, decimals=3)[0]
+
+            terms = [("-" if c < 0 else "+") + " " + str(abs(c)) + f if c != 0 else "" for c, f in zip(coef, features_name)]
+            terms_first = (terms[0][2:] if coef[0] > 0 else terms[0]).replace(" ", "")
+            formula["y:"] = terms_first + " " + " ".join(terms[1:]) + (" - " if intercept < 0 else " + ") + str(abs(intercept))
+            print("y = ", formula["y:"])
+
+        else:  # Multiclass classification
+            label_min = int(y_train.min())
+            coef = np.around(coef, decimals=3)
+            intercept = np.around(intercept, decimals=3)
+
+            for idx, (coef_temp, intercept_temp) in enumerate(zip(coef, intercept), label_min):  # The range of idx is between label_min and label_max.
+                terms_temp = [("-" if c < 0 else "+") + " " + str(abs(c)) + f if c != 0 else "" for c, f in zip(coef_temp, features_name)]
+                terms_temp_first = (terms_temp[0][2:] if coef_temp[0] > 0 else terms_temp[0]).replace(" ", "")
+                formula[f"y (label={idx}):"] = terms_temp_first + " " + " ".join(terms_temp[1:]) + (" - " if intercept_temp < 0 else " + ") + str(abs(intercept_temp))
+                print(f"y (label={idx}) = ", formula[f"y (label={idx}):"])
+
+    return formula
 
 
 # Used by linear models including classification and regression

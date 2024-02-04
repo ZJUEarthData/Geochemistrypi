@@ -324,10 +324,12 @@ class LinearWorkflowMixin:
     """Mixin class for linear models."""
 
     @staticmethod
-    def _show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: np.ndarray, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _show_formula(
+        coef: np.ndarray, intercept: np.ndarray, features_name: np.ndarray, algorithm_name: str, regression_classification: str, y_train: pd.DataFrame, local_path: str, mlflow_path: str
+    ) -> None:
         """Show the formula."""
         print(f"-----* {algorithm_name} Formula *-----")
-        formula = show_formula(coef, intercept, features_name)
+        formula = show_formula(coef, intercept, features_name, regression_classification, y_train)
         formula_str = json.dumps(formula, indent=4)
         save_text(formula_str, f"{algorithm_name} Formula", local_path, mlflow_path)
 
