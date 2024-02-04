@@ -13,7 +13,7 @@
 
 **Documentation**: <a href="https://geochemistrypi.readthedocs.io" target="_blank">https://geochemistrypi.readthedocs.io</a>
 
- **Source Code**: <a href="https://github.com/ZJUEarthData/geochemistrypi" target="_blank">https://github.com/ZJUEarthData/geochemistrypi</a>
+**Source Code**: <a href="https://github.com/ZJUEarthData/geochemistrypi" target="_blank">https://github.com/ZJUEarthData/geochemistrypi</a>
 
 ---
 
@@ -48,7 +48,7 @@ The following figure is the frontend-backend separation architecture of Geochemi
 
 **Cite the work as:**
 
-ZhangZhou J*, He Can*, Sun Jianhao, Zhao Jianming, Lyu Yang, Wang Shengxin, Zhao Wenyu, Li Anzhou, Ji Xiaohui. Geochemistry π: Automated machine learning python framework for tabular data (2024). Geochemistry, Geophysics,
+ZhangZhou J\*, He Can\*, Sun Jianhao, Zhao Jianming, Lyu Yang, Wang Shengxin, Zhao Wenyu, Li Anzhou, Ji Xiaohui. Geochemistry π: Automated machine learning python framework for tabular data (2024). Geochemistry, Geophysics,
 Geosystems, 25, e2023GC011324
 
 Download link: https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2023GC011324
@@ -235,7 +235,6 @@ The whole package is under construction and the documentation is progressively e
 + Jianming Zhao (Jamie, Zhejiang University, China)
 + Jianhao Sun (Jin, China University of Geosciences, Wuhan, China)
 + Kaixin Zheng (Hayne, Sun Yat-sen University, China)
-+ Jianing Wang (National University of Singapore, Singapore)
 + Yongkang Chan (Kill-virus, Lanzhou University, China)
 + Mengying Ye (Mary, Jilin University, China)
 + Mengqi Gao (China University of Geosciences, Beijing, China)
@@ -244,13 +243,10 @@ The whole package is under construction and the documentation is progressively e
 **Product Group**:
 
 + Yang Lyu (Daisy, Zhejiang University, China)
-+ Wenyu Zhao (Molly, Zhejiang University, China)
 + Keran Li (Kirk, Chengdu University of Technology, China)
-+ Aixiwake·Janganuer (Ayshuak, Sun Yat-sen University, China)
 + Bailun Jiang (EPSI / Lille University, France)
 + Yucheng Yan (Andy, University of Sydney, Australia)
 + Ruitao Chang (China University of Geosciences Beijing, China)
-+ Zhenglin Xu (Garry, Jilin University, China)
 + Junchi Liao(Roceda, University of Electronic Science and Technology of China, China)
 
 ## Join Us :)
@@ -316,6 +312,7 @@ More Videos will be recorded soon.
 ## Contributors
 
 + Shengxin Wang (Samson, Lanzhou University, China)
++ Wenyu Zhao (Molly, Zhejiang University, China)
 + Qiuhao Zhao (Brad, Zhejiang University, China)
 + Anzhou Li (Andrian, Zhejiang University, China)
 + Dan Hu (Notre Dame University, United States)
@@ -324,3 +321,6 @@ More Videos will be recorded soon.
 + Xin Li (The University of Manchester, United Kingdom)
 + Ting Liu (Kira, Sun Yat-sen University, China)
 + Xirui Zhu (Rae, University of York, United Kingdom)
++ Aixiwake·Janganuer (Ayshuak, Sun Yat-sen University, China)
++ Zhenglin Xu (Garry, Jilin University, China)
++ Jianing Wang (National University of Singapore, Singapore)
