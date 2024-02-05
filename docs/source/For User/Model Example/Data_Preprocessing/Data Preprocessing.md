@@ -1,8 +1,10 @@
 
 # Data Cleaning & Preprocessing
-  When we are working on data-mining or machine learning projects, the quality of your results highly depends on the quality of input data. As a result, data cleaning and preprocessing becomes an important step to make sure your input data is neat and balanced. Normally, data scientists will spend a large portion of their working time on data cleaning. However, Geochemistrypi can conduct this process automatically for you, and you just need to follow some simple steps.
+
+When we are working on data-mining or machine learning projects, the quality of your results highly depends on the quality of input data. As a result, data cleaning and preprocessing becomes an important step to make sure your input data is neat and balanced. Normally, data scientists will spend a large portion of their working time on data cleaning. However, Geochemistrypi can conduct this process automatically for you, and you just need to follow some simple steps.
 
 Firstly you need to start the geochemistrypi programm via command line instrucitons. Please refer to **Quick Installation** and **Example** to know how to start geochemistrypi. And now we use a classification data file as a sample.
+
 #### Data Schema
 
 In order to utilize the functions provided by our software, your own data set should satisfy:

@@ -1,14 +1,6 @@
-<p style="text-align: center; font-size: 38px; font-weight: bold;">
-
-Installation Manual
-
-</p>
-
-
+# Installation Manual
 
 #### Contents
-
-
 
 1. [Preparation](#Preparation)
 

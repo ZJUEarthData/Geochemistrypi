@@ -14,6 +14,10 @@
 
 ---
 
+# Introduction
+
+## What it is
+
 Geochemistry π is an **open-sourced highly automated machine learning Python framework** dedicating to build up MLOps level 1 software product for data-driven geochemistry discovery on tabular data.
 
 Core capabilities are:
