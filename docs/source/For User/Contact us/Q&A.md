@@ -1,3 +1,4 @@
+
 # Frequently Asked Questions
 
 **For your reference, we have summarized some problems encountered and solved in the process of development and testing**
@@ -33,6 +34,7 @@ The absolute path of any disk is fine, but the path cannot contain spaces, and i
 No, but the current process is a common data mining process, and we will write an abbreviated introduction afterwards.
 
 **Q6. I'm having trouble installing our software because the download speed for Ray/Fiona is too slow or failing. How should I resolve this issue?**
+
 To resolve the issue of slow or failed downloads for Ray/Fiona during installation, you can use the pip command with the Tsinghua mirror source, which may improve download speeds. This applies to both Mac and Windows systems. Here's the command:
 
 ```bash
@@ -52,4 +54,5 @@ Gitee Link: https://gitee.com/zju-earth-data/geochemistrypi
 This approach is also suitable for developers who want to test the latest updates. For more information, refer to the "Local Deployment" section under "For Developers" in the online documentation.
 
 + Reference video:  [The Fastest Currently Feasible Installation Method in China—Installing from GitHub Using requirements.mp4](https://www.bilibili.com/video/BV1pM411V7iR/?spm_id_from=333.999.0.0&vd_source=350db2ec0e0c3ee7f424928a21e82674)
+
 <br />

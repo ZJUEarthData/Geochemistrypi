@@ -3,6 +3,30 @@
   When we are working on data-mining or machine learning projects, the quality of your results highly depends on the quality of input data. As a result, data cleaning and preprocessing becomes an important step to make sure your input data is neat and balanced. Normally, data scientists will spend a large portion of their working time on data cleaning. However, Geochemistrypi can conduct this process automatically for you, and you just need to follow some simple steps.
 
 Firstly you need to start the geochemistrypi programm via command line instrucitons. Please refer to **Quick Installation** and **Example** to know how to start geochemistrypi. And now we use a classification data file as a sample.
+#### Data Schema
+
+In order to utilize the functions provided by our software, your own data set should satisfy:
+
+- be with the suffix **.xlsx**, which is supported by Microsoft Excel.
+- be comprise of location information **LATITUDE** and **LONGITUDE**, two columns respectively.
+
+If you want to run **classification** algorithm, only supporting binary classification currently, you data set should satisfy:
+
+- Tag column **LABEL** to differentiate the data.
+
+The following are four built-in data set in our software stored on Google Drive, have a look on them. For the algorithm you intend to run, you can refer to the data format of the corresponding dataset.
+
++ [Data_Regression.xlsx (International - Google drive)](https://docs.google.com/spreadsheets/d/13MB4t_2PiZ90tTMJKw7HcBUi2sb3tXej/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true)
++ [Data_Regression.xlsx (China - Tencent Docs)](https://docs.qq.com/document/DQ3VmdWZCTGV3bmpM?&u=6868f96d4a384b309036e04e637e367a)
+
++ [Data_Classification.xlsx (International - Google drive)](https://docs.google.com/spreadsheets/d/1xFBCYVmtZfuEAbeBljUlzqBjxVuLAt8x/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true)
++ [Data_Classification.xlsx (China - Tencent Docs)](https://docs.qq.com/document/DQ0JUaUFsZnRaZkNG?&u=6868f96d4a384b309036e04e637e367a)
+
++ [Data_Clustering.xlsx (International - Google drive)](https://docs.google.com/spreadsheets/d/1sbuJdOzGNQ2Pk-bVURfPYg1rltyBbn5J/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true)
++ [Data_Clustering.xlsx (China - Tencent Docs)](https://docs.qq.com/document/DQ3dKdGtlWkhZS2xR?&u=6868f96d4a384b309036e04e637e367a)
+
++ [Data_Decomposition.xlsx (International - Google drive)](https://docs.google.com/spreadsheets/d/1kix82qj5--vhnm8-KhuUBH9dqYH6zcY8/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true)
++ [Data_Decomposition.xlsx (China - Tencent Docs)](https://docs.qq.com/document/DQ29oZ0lhUGtZUmdN?&u=6868f96d4a384b309036e04e637e367a)
 #### Loading Data
 
 By running the start command, there will be a prompt if your dataset is successfully loaded:
@@ -140,7 +164,28 @@ Geochemistrypi will generate null value report for the selected dataset:
         dtype: float64
         Note: you don't need to deal with the missing values, we'll just pass this step!
         (Press Enter key to move forward.)
-Note that if there is missing value in the dataset, you have to choose a strategy to deal with missing values.
+At this point, you can choose whether to deal with the missing values.
+
+```
+-*-*- Missing Values Process -*-*-
+Do you want to deal with the missing values?
+1 - Yes
+2 - No
+(Data) ➜ @Number:
+```
+
+When you choose to deal with the missing values, Geochemistrypi will provide two methods for processing.
+
+```
+-*-*- Strategy for Missing Values -*-*-
+1 - Drop Rows with Missing Values
+2 - Impute Missing Values
+Notice: Drop the rows with missing values may lead to a significant loss of data if too many features are chosen.
+Which strategy do you want to apply?
+(Data) ➜ @Number:
+```
+
+If you choose Impute Missing Values, you have to select a strategy to deal with the missing values.
 
 
 ```
@@ -155,7 +200,7 @@ Successfully fill the missing values with the mean value of each feature column 
 (Press Enter key to move forward.)
 ```
 
-####Feature Engineering
+#### Feature Engineering
 
 You can also genereate new features from the selected dataset. In order to do this, you should state the name of generated column. Here we name our new column "new feature", and then you have to identify some operations to generate the new feature. we simply use `b * c + d` (each column corresponds to an alphbetical letter for convinience) the output is as follows:
 
