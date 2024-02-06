@@ -45,6 +45,7 @@ REGRESSION_MODELS = [
     "Elastic Net",
     "SGD Regression",
     "BayesianRidge Regression",
+    "Ridge Regression",
     # "Bagging Regression",
     # "Decision Tree",
     # Histogram-based Gradient Boosting,
