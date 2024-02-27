@@ -30,8 +30,7 @@ Welcome to Geochemistry π
 
    Developer Guide <For Developer/Developer Guide/Developer Manual.md>
    Contributing <contributing.rst>
-   Local Deployment <For Developer/Local Deployment.md>
-   Docker Deployment <For Developer/Docker Deployment.md>
+   Deployment <deployment.rst>
    Complete Pull Request <For Developer/A Completed Pull Request.md>
    Add New Model To Framework <For Developer/Add New Model To Framework.md>
    Docs Link <For Developer/Developer Docs link.md>

@@ -4,7 +4,7 @@ from typing import Optional
 
 import pandas as pd
 
-from ..model.clustering import Agglomerative, ClusteringWorkflowBase, DBSCANClustering, KMeansClustering
+from ..model.clustering import AffinityPropagationClustering, Agglomerative, ClusteringWorkflowBase, DBSCANClustering, KMeansClustering
 from ._base import ModelSelectionBase
 
 
@@ -53,6 +53,14 @@ class ClusteringModelSelection(ModelSelectionBase):
             self.clt_workflow = Agglomerative(
                 n_clusters=hyper_parameters["n_clusters"],
                 linkage=hyper_parameters["linkage"],
+            )
+        elif self.model_name == "AffinityPropagation":
+            hyper_parameters = AffinityPropagationClustering.manual_hyper_parameters()
+            self.clt_workflow = AffinityPropagationClustering(
+                damping=hyper_parameters["damping"],
+                max_iter=hyper_parameters["max_iter"],
+                convergence_iter=hyper_parameters["convergence_iter"],
+                affinity=hyper_parameters["affinity"],
             )
         elif self.model_name == "":
             pass

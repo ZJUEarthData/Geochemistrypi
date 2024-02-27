@@ -19,6 +19,15 @@
 ## 1. Installation <a name="installation"> </a>
 
 Requirements: Python 3.9
+
+The normal ways to install Python Python 3.9:
+
+(1) If you are a Windows user, you can use Microsoft Store App to download directly by searching Python.
+
+(2) Refer to the download section in [Python official documentation](https://www.python.org).
+
+(3) If you are Chinese users, you can refer to this blog [Python Download - RUNOOB](https://www.runoob.com/python/python-install.html) to download too.
+
 **Note**:You must have Python 3.9 installed on your computer to use the software.
 
 ### 1.1 Check Environment
