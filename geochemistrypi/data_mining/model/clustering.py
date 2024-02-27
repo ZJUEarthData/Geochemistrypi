@@ -13,6 +13,7 @@ from sklearn.cluster import DBSCAN, AffinityPropagation, AgglomerativeClustering
 from ..constants import MLFLOW_ARTIFACT_DATA_PATH, MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH
 from ..utils.base import clear_output, save_data, save_fig, save_text
 from ._base import WorkflowBase
+from .func.algo_clustering._affinitypropagation import affinitypropagation_manual_hyper_parameters
 from .func.algo_clustering._agglomerative import agglomerative_manual_hyper_parameters
 from .func.algo_clustering._common import plot_silhouette_diagram, plot_silhouette_value_diagram, scatter2d, scatter3d, score
 from .func.algo_clustering._dbscan import dbscan_manual_hyper_parameters
@@ -557,15 +558,63 @@ class AffinityPropagationClustering(ClusteringWorkflowBase):
     def __init__(
         self,
         *,
-        damping=0.5,
-        max_iter=200,
-        convergence_iter=15,
-        copy=True,
-        preference=None,
-        affinity="euclidean",
-        verbose=False,
-        random_state=None,
-    ):
+        damping: float = 0.5,
+        max_iter: int = 200,
+        convergence_iter: int = 15,
+        copy: bool = True,
+        preference: Optional[Dict] = None,
+        affinity: str = "euclidean",
+        verbose: bool = False,
+        random_state: Optional[Dict] = None,
+    ) -> None:
+        """
+        Parameters
+        ----------
+        damping : float, default=0.5
+            Damping factor in the range `[0.5, 1.0)` is the extent to
+            which the current value is maintained relative to
+            incoming values (weighted 1 - damping). This in order
+            to avoid numerical oscillations when updating these
+            values (messages).
+
+        max_iter : int, default=200
+            Maximum number of iterations.
+
+        convergence_iter : int, default=15
+            Number of iterations with no change in the number
+            of estimated clusters that stops the convergence.
+
+        copy : bool, default=True
+            Make a copy of input data.
+
+        preference : array-like of shape (n_samples,) or float, default=None
+            Preferences for each point - points with larger values of
+            preferences are more likely to be chosen as exemplars. The number
+            of exemplars, ie of clusters, is influenced by the input
+            preferences value. If the preferences are not passed as arguments,
+            they will be set to the median of the input similarities.
+
+        affinity : {'euclidean', 'precomputed'}, default='euclidean'
+            Which affinity to use. At the moment 'precomputed' and
+            ``euclidean`` are supported. 'euclidean' uses the
+            negative squared euclidean distance between points.
+
+        verbose : bool, default=False
+            Whether to be verbose.
+
+        random_state : int, RandomState instance or None, default=None
+            Pseudo-random number generator to control the starting state.
+            Use an int for reproducible results across function calls.
+            See the :term:`Glossary <random_state>`.
+
+            .. versionadded:: 0.23
+                this parameter was previously hardcoded as 0.
+
+        References
+        ----------------------------------------
+        Scikit-learn API: sklearn.cluster.AffinityPropagation
+        https://scikit-learn.org/stable/modules/generated/sklearn.cluster.AffinityPropagation
+        """
 
         super().__init__()
         self.damping = damping
@@ -592,7 +641,16 @@ class AffinityPropagationClustering(ClusteringWorkflowBase):
         )
         self.naming = AffinityPropagationClustering.name
 
-    pass
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
+        """Manual hyper-parameters specification."""
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = affinitypropagation_manual_hyper_parameters()
+        clear_output()
+        return hyper_parameters
+
+    def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
 
 
 class MeanShiftClustering(ClusteringWorkflowBase):
