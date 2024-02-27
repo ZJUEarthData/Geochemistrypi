@@ -46,12 +46,18 @@ The following figure is the frontend-backend separation architecture of Geochemi
 </p>
 
 
-**Cite the work as:**
+**If the software contributes to your research, cite the work as :**
 
 ZhangZhou J\*, He Can\*, Sun Jianhao, Zhao Jianming, Lyu Yang, Wang Shengxin, Zhao Wenyu, Li Anzhou, Ji Xiaohui. Geochemistry π: Automated machine learning python framework for tabular data (2024). Geochemistry, Geophysics,
 Geosystems, 25, e2023GC011324
 
 Download link: https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2023GC011324
+
+**Related report:**
+
+Geochemistry π was selected for featuring as an Editor’s Highlight in EOS magazine by American Geophysical Union (fewer than 2 percent of paper are selected) and quoted in Geochemical NEWS by Geochemical Society.
+
+Eos Website: https://eos.org/editor-highlights/machine-learning-for-geochemists-who-dont-want-to-code.
 
 ## Quick Installation
 
@@ -222,6 +228,12 @@ The following figure is the storage mechanism: <br>
 </p>
 
 The whole package is under construction and the documentation is progressively evolving.
+
+## Geochemistry π Mind Map
+
+[→ Click here for more details](https://docs.qq.com/mind/DZkJTYmVHcmFneUli?u=40ac0718eb494b008b2f072197ea95db)
+
+![Geochemistry π.png](https://github.com/ZJUEarthData/geochemistrypi/assets/97781484/3de6ea2b-7ab1-4145-bf4e-225eeabc7987)
 
 ## Team Info
 

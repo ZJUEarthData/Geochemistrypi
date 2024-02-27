@@ -179,7 +179,11 @@ def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: np.ndar
     if regression_classification == "Regression":
         if len(y_train.columns) == 1:  # Single target
             coef = np.around(coef, decimals=3)[0]
-            intercept = np.around(intercept, decimals=3)[0]
+            # Check if intercept is a scalar
+            if isinstance(intercept, np.ndarray):
+                intercept = np.around(intercept, decimals=3)[0]
+            else:
+                intercept = np.around(intercept, decimals=3)
 
             terms = [("-" if c < 0 else "+") + " " + str(abs(c)) + f if c != 0 else "" for c, f in zip(coef, features_name)]
             terms_first = (terms[0][2:] if coef[0] > 0 else terms[0]).replace(" ", "")
@@ -199,7 +203,11 @@ def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: np.ndar
     elif regression_classification == "Classification":
         if coef.shape[0] == 1:  # Binary classification
             coef = np.around(coef, decimals=3)[0]
-            intercept = np.around(intercept, decimals=3)[0]
+            # Check if intercept is a scalar
+            if isinstance(intercept, np.ndarray):
+                intercept = np.around(intercept, decimals=3)[0]
+            else:
+                intercept = np.around(intercept, decimals=3)
 
             terms = [("-" if c < 0 else "+") + " " + str(abs(c)) + f if c != 0 else "" for c, f in zip(coef, features_name)]
             terms_first = (terms[0][2:] if coef[0] > 0 else terms[0]).replace(" ", "")
