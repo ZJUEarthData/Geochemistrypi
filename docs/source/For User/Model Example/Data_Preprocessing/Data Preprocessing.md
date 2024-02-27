@@ -12,7 +12,7 @@ In order to utilize the functions provided by our software, your own data set sh
 - be with the suffix **.xlsx**, which is supported by Microsoft Excel.
 - be comprise of location information **LATITUDE** and **LONGITUDE**, two columns respectively.
 
-If you want to run **classification** algorithm, only supporting binary classification currently, you data set should satisfy:
+If you want to run **classification** algorithm, you data set should satisfy:
 
 - Tag column **LABEL** to differentiate the data.
 
