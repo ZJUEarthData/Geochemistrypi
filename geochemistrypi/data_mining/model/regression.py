@@ -4115,7 +4115,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
 
     @property
     def settings(self) -> Dict:
-        """The configuration of Lasso to implement AutoML by FLAML framework."""
+        """The configuration of Ridge to implement AutoML by FLAML framework."""
         configuration = {
             "time_budget": 10,  # total running time in seconds
             "metric": "r2",
@@ -4128,7 +4128,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
 
     @property
     def customization(self) -> object:
-        """The customized Lasso of FLAML framework."""
+        """The customized Ridge of FLAML framework."""
         from flaml import tune
         from flaml.data import REGRESSION
         from flaml.model import SKLearnEstimator
