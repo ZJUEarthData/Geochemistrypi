@@ -61,6 +61,9 @@ class DecompositionModelSelection(ModelSelectionBase):
         # Save the model hyper-parameters
         self.dcp_workflow.save_hyper_parameters(hyper_parameters, self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
 
+        # Common components for every decomposition algorithm
+        self.dcp_workflow.common_components()
+
         # special components of different algorithms
         self.dcp_workflow.special_components(components_num=hyper_parameters["n_components"], reduced_data=X_reduced)
 
