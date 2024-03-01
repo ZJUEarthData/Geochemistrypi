@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 import os
 from typing import Dict, Optional, Union
 
@@ -11,6 +12,7 @@ from sklearn.manifold import MDS, TSNE
 from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH
 from ..utils.base import clear_output, save_data, save_fig
 from ._base import WorkflowBase
+from .func.algo_decomposition._common import plot_2d_scatter_diagram, plot_contour, plot_heatmap
 from .func.algo_decomposition._mds import mds_manual_hyper_parameters
 from .func.algo_decomposition._pca import biplot, pca_manual_hyper_parameters, triplot
 from .func.algo_decomposition._tsne import tsne_manual_hyper_parameters
@@ -62,6 +64,53 @@ class DecompositionWorkflowBase(WorkflowBase):
             pa_name.append(f"Principal Axis {i+1}")
         self.X_reduced = pd.DataFrame(reduced_data)
         self.X_reduced.columns = pa_name
+
+    @staticmethod
+    def _plot_2d_scatter_diagram(data: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+        """Plot the two-dimensional diagram of the decomposition result."""
+        print("-----* Decomposition Two-Dimensional Diagram *-----")
+        plot_2d_scatter_diagram(data, algorithm_name)
+        save_fig(f"Decomposition Two-Dimensional Diagram - {algorithm_name}", local_path, mlflow_path)
+        save_data(data, f"Decomposition Two-Dimensional Data - {algorithm_name}", local_path, mlflow_path)
+
+    @staticmethod
+    def _plot_heatmap(data: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+        """Plot a heatmap for the decomposition result."""
+        print("-----* Decomposition Heatmap *-----")
+        plot_heatmap(data, algorithm_name)
+        save_fig(f"Decomposition Heatmap - {algorithm_name}", local_path, mlflow_path)
+        save_data(data, f"Decomposition Heatmap Data - {algorithm_name}", local_path, mlflow_path)
+
+    @staticmethod
+    def _plot_contour(data: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+        """Plot a contour plot for dimensionality reduction results."""
+        print("-----* Dimensionality Reduction Contour Plot *-----")
+        plot_contour(data, algorithm_name)
+        save_fig(f"Dimensionality Reduction Contour Plot - {algorithm_name}", local_path, mlflow_path)
+        save_data(data, f"Dimensionality Reduction Contour Plot Data - {algorithm_name}", local_path, mlflow_path)
+
+    def common_components(self) -> None:
+        """Invoke all common application functions for decomposition algorithms by Scikit-learn framework."""
+
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_2d_scatter_diagram(
+            data=self.X,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._plot_heatmap(
+            data=self.X,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._plot_contour(
+            data=self.X,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
 
 
 class PCADecomposition(DecompositionWorkflowBase):
