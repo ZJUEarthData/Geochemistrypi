@@ -137,8 +137,8 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     # Create a new experiment or use the previous experiment
     is_used_previous_experiment = Confirm.ask("✨ Use Previous Experiment", default=False)
     # Set the tracking uri to the local directory, in the future, we can set it to the remote server.
-    artifact_localtion = f"file:{WORKING_PATH}/geopi_tracking"
-    mlflow.set_tracking_uri(artifact_localtion)
+    experiments_localtion = f"file:{WORKING_PATH}/geopi_tracking"
+    mlflow.set_tracking_uri(experiments_localtion)
     # Print the tracking uri for debugging.
     # print("tracking uri:", mlflow.get_tracking_uri())
     if is_used_previous_experiment:
@@ -159,7 +159,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         # new_experiment_tag = Prompt.ask("✨ Experiment Tag Version", default="E - v1.0.0")
         try:
             # new_experiment_id = mlflow.create_experiment(name=new_experiment_name, artifact_location=artifact_localtion, tags={"version": new_experiment_tag})
-            new_experiment_id = mlflow.create_experiment(name=new_experiment_name, artifact_location=artifact_localtion)
+            new_experiment_id = mlflow.create_experiment(name=new_experiment_name)
         except mlflow.exceptions.MlflowException as e:
             if "already exists" in str(e):
                 console.print("   The experiment name already exists.", style="bold red")
