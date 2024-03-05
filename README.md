@@ -179,6 +179,7 @@ For more details: Please refer to:
 + [Manual v1.1.0 for Geochemistry π - Beta (China - Tencent Docs)](https://docs.qq.com/pdf/DQ0l5d2xVd2VwcnVW?&u=6868f96d4a384b309036e04e637e367a)
 + [Geochemistry π - Download and Run the Beta Version (International - Youtube)](https://www.youtube.com/watch?v=EeVaJ3H7_AU&list=PLy8hNsI55lvh1UHjhVhqNUj3xPdV9sEiM&index=9)
 + [Geochemistry π - Download and Run the Beta Version (China - Bilibili)](https://www.bilibili.com/video/BV1UM4y1Q7Ju/?spm_id_from=333.999.0.0&vd_source=27944ab3b73a78970c1a52a5dcbb9140)
++ [MLflow UI user guide - Geochemistry π v0.5.0 -  (International - Youtube)](https://www.youtube.com/watch?v=Yu1nzNeLfRY)
 
 ## Roadmap
 
