@@ -232,9 +232,9 @@ The whole package is under construction and the documentation is progressively e
 
 ## Geochemistry π Mind Map
 
-[→ Click here for more details](https://docs.qq.com/mind/DZkJTYmVHcmFneUli?u=40ac0718eb494b008b2f072197ea95db)
+[→ Click here for more details](https://docs.qq.com/mind/DZnhoa2NPamFYZHR6?u=40ac0718eb494b008b2f072197ea95db)
 
-![Geochemistry π.png](https://github.com/ZJUEarthData/geochemistrypi/assets/97781484/3de6ea2b-7ab1-4145-bf4e-225eeabc7987)
+![Geochemistry π.png](https://github.com/ZJUEarthData/geochemistrypi/assets/97781484/e77b1f11-41ab-4354-9064-6d62cc1bf1e4)
 
 ## Team Info
 
