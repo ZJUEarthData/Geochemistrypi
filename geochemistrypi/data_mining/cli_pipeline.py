@@ -9,6 +9,7 @@ from rich.console import Console
 from rich.prompt import Confirm, Prompt
 
 from .constants import (
+    ABNORMALDETECTION_MODELS,
     CLASSIFICATION_MODELS,
     CLASSIFICATION_MODELS_WITH_MISSING_VALUES,
     CLUSTERING_MODELS,
@@ -40,6 +41,7 @@ from .plot.statistic_plot import basic_statistic, check_missing_value, correlati
 from .process.classify import ClassificationModelSelection
 from .process.cluster import ClusteringModelSelection
 from .process.decompose import DecompositionModelSelection
+from .process.detect import AbnormalDetectionModelSelection
 from .process.regress import RegressionModelSelection
 from .utils.base import check_package, clear_output, create_geopi_output_dir, get_os, install_package, log, save_data, show_warning
 from .utils.mlflow_utils import retrieve_previous_experiment_id
@@ -193,6 +195,8 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
             training_data_path = "Data_Clustering.xlsx"
         elif built_in_training_data_num == 4:
             training_data_path = "Data_Decomposition.xlsx"
+        elif built_in_training_data_num == 5:
+            training_data_path = "Data_AbnormalDetection.xlsx"
         data = read_data(file_path=training_data_path)
         print(f"Successfully loading the built-in training data set '{training_data_path}'.")
         show_data_columns(data.columns)
@@ -216,6 +220,8 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     elif is_built_in_inference_data and built_in_training_data_num == 3:
         inference_data = None
     elif is_built_in_inference_data and built_in_training_data_num == 4:
+        inference_data = None
+    elif is_built_in_inference_data and built_in_training_data_num == 5:
         inference_data = None
 
     # <--- World Map Projection --->
@@ -367,6 +373,8 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     if missing_value_flag and not process_missing_value_flag:
         # Delete the decomposition mode because it doesn't support missing values.
         MODE_OPTION.remove("Dimensional Reduction")
+        # Delete the abnormal detection mode because it doesn't support missing values.
+        MODE_OPTION.remove("Abnormal Detection")
         num2option(MODE_OPTION)
         mode_num = limit_num_input(MODE_OPTION, SECTION[2], num_input)
     else:
@@ -508,12 +516,13 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         Modes2Models = {1: REGRESSION_MODELS_WITH_MISSING_VALUES, 2: CLASSIFICATION_MODELS_WITH_MISSING_VALUES, 3: CLUSTERING_MODELS_WITH_MISSING_VALUES}
         Modes2Initiators = {1: RegressionModelSelection, 2: ClassificationModelSelection, 3: ClusteringModelSelection}
     else:
-        Modes2Models = {1: REGRESSION_MODELS, 2: CLASSIFICATION_MODELS, 3: CLUSTERING_MODELS, 4: DECOMPOSITION_MODELS}
+        Modes2Models = {1: REGRESSION_MODELS, 2: CLASSIFICATION_MODELS, 3: CLUSTERING_MODELS, 4: DECOMPOSITION_MODELS, 5: ABNORMALDETECTION_MODELS}
         Modes2Initiators = {
             1: RegressionModelSelection,
             2: ClassificationModelSelection,
             3: ClusteringModelSelection,
             4: DecompositionModelSelection,
+            5: AbnormalDetectionModelSelection,
         }
     MODELS = Modes2Models[mode_num]
     num2option(MODELS)
