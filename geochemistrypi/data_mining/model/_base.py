@@ -202,6 +202,7 @@ class WorkflowBase(metaclass=ABCMeta):
         X_test: Optional[pd.DataFrame] = None,
         y_train: Optional[pd.DataFrame] = None,
         y_test: Optional[pd.DataFrame] = None,
+        y_train_predict: Optional[pd.DataFrame] = None,
         y_test_predict: Optional[pd.DataFrame] = None,
     ) -> None:
         """This method loads the required data into the base class's attributes."""
@@ -219,6 +220,8 @@ class WorkflowBase(metaclass=ABCMeta):
             WorkflowBase.y_test = y_test
         if y_test_predict is not None:
             WorkflowBase.y_test_predict = y_test_predict
+        if y_train_predict is not None:
+            WorkflowBase.y_train_predict = y_train_predict
 
     @staticmethod
     def data_save(df: pd.DataFrame, df_name: str, local_path: str, mlflow_path: str, slogan: str) -> None:
