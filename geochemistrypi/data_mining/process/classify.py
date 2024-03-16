@@ -167,6 +167,9 @@ class ClassificationModelSelection(ModelSelectionBase):
 
         # Use Scikit-learn style API to process input data
         self.clf_workflow.fit(X_train, y_train)
+        y_train_predict = self.clf_workflow.predict(X_train)
+        y_train_predict = self.clf_workflow.np2pd(y_train_predict, y_train.columns)
+        self.clf_workflow.data_upload(y_train_predict=y_train_predict)
         y_test_predict = self.clf_workflow.predict(X_test)
         y_test_predict = self.clf_workflow.np2pd(y_test_predict, y_test.columns)
         self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test, y_test_predict=y_test_predict)
@@ -181,7 +184,8 @@ class ClassificationModelSelection(ModelSelectionBase):
         self.clf_workflow.special_components()
 
         # Save the prediction result
-        self.clf_workflow.data_save(y_test_predict, "Y Test Predict", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Model Prediction")
+        self.clf_workflow.data_save(y_train_predict, "Y Train Predict", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Model Train Prediction")
+        self.clf_workflow.data_save(y_test_predict, "Y Test Predict", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Model Test Prediction")
 
         # Save the trained model
         self.clf_workflow.model_save()
@@ -233,6 +237,9 @@ class ClassificationModelSelection(ModelSelectionBase):
 
         # Use Scikit-learn style API to process input data
         self.clf_workflow.fit(X_train, y_train, is_automl)
+        y_train_predict = self.clf_workflow.predict(X_train, is_automl)
+        y_train_predict = self.clf_workflow.np2pd(y_train_predict, y_train.columns)
+        self.clf_workflow.data_upload(y_train_predict=y_train_predict)
         y_test_predict = self.clf_workflow.predict(X_test, is_automl)
         y_test_predict = self.clf_workflow.np2pd(y_test_predict, y_test.columns)
         self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test, y_test_predict=y_test_predict)
@@ -250,7 +257,8 @@ class ClassificationModelSelection(ModelSelectionBase):
         self.clf_workflow.special_components(is_automl)
 
         # Save the prediction result
-        self.clf_workflow.data_save(y_test_predict, "Y Test Predict", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Model Prediction")
+        self.clf_workflow.data_save(y_train_predict, "Y Train Predict", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Model Train Prediction")
+        self.clf_workflow.data_save(y_test_predict, "Y Test Predict", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Model Test Prediction")
 
         # Save the trained model
         self.clf_workflow.model_save(is_automl)
