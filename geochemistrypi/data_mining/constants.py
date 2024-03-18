@@ -105,3 +105,5 @@ CUSTOMIZE_LABEL_STRATEGY = ["Automatic Coding", "Custom Numeric Labels", "Custom
 FEATURE_SELECTION_STRATEGY = ["Generic Univariate Select", "Select K Best"]
 
 CALCULATION_METHOD_OPTION = ["Micro", "Macro", "Weighted"]
+
+Drop_MISSING_VALUE_STRATEGY = ["Drop All Rows with Missing Values", "Drop Rows with Missing Values in Column A"]
