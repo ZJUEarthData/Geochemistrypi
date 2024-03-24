@@ -154,6 +154,9 @@ def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
             "@input: "
         )
     )
+
+    allow_empty_columns = input("Do you want to include empty columns? (yes/no): ").strip().lower() == "yes"
+
     while True:
         if ("【" in sub_data_set_columns_range) or ("】" in sub_data_set_columns_range):
             print("There is a problem with the format of the parentheses entered !")
@@ -242,9 +245,10 @@ def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
                 df_test = pd.DataFrame(data_checking[i])
                 test_columns = df_test.columns
                 v_value = int(df_test.isnull().sum())
-                if v_value == len(df_test):
+                if not allow_empty_columns and v_value == len(df_test):
                     print(f"Warning: The selected column {df_test.columns.values} is an empty column!")
-                    judge = True
+                    sub_data_set_columns_range = str(input("Please re-enter the data range you want to process:\n@input: "))
+                    break
                 elif df_test[test_columns[0]].dtype in ["int64", "float64"]:
                     continue
                 else:
@@ -257,6 +261,8 @@ def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
 
     # select designated column
     sub_data_set = data.iloc[:, sub_data_set_columns_selected]
+    if not allow_empty_columns:
+        sub_data_set = sub_data_set.dropna(axis=1, how="all")
     show_data_columns(sub_data_set.columns, sub_data_set_columns_selected)
     return sub_data_set
 
