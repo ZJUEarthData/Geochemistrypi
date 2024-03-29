@@ -61,10 +61,17 @@ Eos Website: https://eos.org/editor-highlights/machine-learning-for-geochemists
 
 ## Quick Installation
 
+Our software is well tested on **macOS** and **Windows** system with **Python 3.9**. Other systems and Python version are not guranteed.
+
 One instruction to download on **command line**, such as Terminal on macOS, Power Shell on Windows.
 
 ```
 pip install geochemistrypi
+```
+
+Download the latest version to avoid some old version issues, such as dependency downloading.
+```
+pip install "geochemistrypi==0.5.0"
 ```
 
 One instruction to download on **Jupyter Notebook** or **Google Colab**.
@@ -72,8 +79,11 @@ One instruction to download on **Jupyter Notebook** or **Google Colab**.
 ```
 !pip install geochemistrypi
 ```
-
-Check the latest version of our software:
+Download the latest version to avoid some old version issues, such as dependency downloading.
+```
+!pip install "geochemistrypi==0.5.0"
+```
+Check the downloaded version of our software:
 
 ```
 geochemistrypi --version
@@ -95,13 +105,52 @@ One instruction to download on **Jupyter Notebook** or **Google Colab**.
 !pip install --upgrade geochemistrypi
 ```
 
-Check the latest version of our software:
+Check the updated version of our software:
 
 ```
 geochemistrypi --version
 ```
 
-## Example
+## Data Preparation
+
+In order to utilize the functions provided by our software, your own data set should satisfy:
+
+- be with the suffix **.xlsx** or **.csv**, which is supported by Microsoft Excel.
+- be comprise of location information **LATITUDE** and **LONGITUDE**, two columns respectively. It is optional.
+
+If you want to run **classification** algorithm, you data set should satisfy:
+
+- a label column. You can name it as you wish, such as **Label**.
+
+Column name specification:
+
+- No restriction on the column names.  You can name them as you want except for two special and optional column **LATITUDE** and **LONGITUDE**.
+
+- every column can only one column name. Multi level column names are not allowed.
+
+- Between two columns with values, a completed void column can exists.
+
+The following are seven built-in data sets in our software stored on Google Drive and Tecent Docs, have a look on them. For the algorithm you intend to run, you can refer to the data format of the corresponding dataset.
+
++ Data_Regression.xlsx [[Google Drive]](https://docs.google.com/spreadsheets/d/13MB4t_2PiZ90tTMJKw7HcBUi2sb3tXej/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true) | [[Tencent Docs]](https://docs.qq.com/document/DQ3VmdWZCTGV3bmpM?&u=6868f96d4a384b309036e04e637e367a)
+
++ ApplicationData_Regression.xlsx [[Google Drive]](https://docs.google.com/spreadsheets/d/1FCek2OOYQD887jfQz21g0ovqVuUJIjVoNI77D-Ufr9Y/edit?usp=sharing) | [[Tencent Docs]](
+https://docs.qq.com/document/DQ3BDeHhxRGNzSXZN)
+
++ Data_Classification.xlsx [[Google Drive]](https://docs.google.com/spreadsheets/d/1xFBCYVmtZfuEAbeBljUlzqBjxVuLAt8x/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true) | [[Tencent Docs]](https://docs.qq.com/document/DQ0JUaUFsZnRaZkNG?&u=6868f96d4a384b309036e04e637e367a)
+
++ ApplicationData_Classification.xlsx [[Google Drive]](https://docs.google.com/spreadsheets/d/1J7QvdvbbHJMlKtiumBgKDW7ALghfQQZyKGEoOqhKQjw/edit?usp=sharing) | [[Tencent Docs]](https://docs.qq.com/document/DQ2dnQWtubHRBTGtB)
+
++ Data_Clustering.xlsx [[Google Drive]](https://docs.google.com/spreadsheets/d/1sbuJdOzGNQ2Pk-bVURfPYg1rltyBbn5J/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true) | [[Tencent Docs]](https://docs.qq.com/document/DQ3dKdGtlWkhZS2xR?&u=6868f96d4a384b309036e04e637e367a)
+
++ Data_Decomposition.xlsx [[Google Drive]](https://docs.google.com/spreadsheets/d/1kix82qj5--vhnm8-KhuUBH9dqYH6zcY8/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true) | [[Tencent Docs]](https://docs.qq.com/document/DQ29oZ0lhUGtZUmdN?&u=6868f96d4a384b309036e04e637e367a)
+
++  Data_AbnormalDetectioon.xlsx [[Google Drive]](https://docs.google.com/spreadsheets/d/1NqTQZCkv74Sn_iOJOKRc-QnJzpaWmnzC_lET_0ZreiQ/edit?usp=sharing) | [[Tencent Docs]](
+https://docs.qq.com/document/DQ2hqQ2N2ZGlOUWlT)
+
+**Note**: For more detail on data preparation, please refer to our online documentation in **Model Example** under the section of **FOR USER**. 
+
+## Running Example
 
 **How to run:** After successfully downloading, run this instruction on **command line / Jupyter Notebook / Google Colab** whatever directory it is.
 
@@ -181,6 +230,12 @@ For more details: Please refer to:
 
 - MLflow UI user guide - Geochemistry π v0.5.0 [[Bilibili]](https://b23.tv/CW5Rjmo) | [[YouTube]](https://www.youtube.com/watch?v=Yu1nzNeLfRY)
 
+The following screenshot shows the downloads and launching of our software on macOS:
+
+<p align="center">
+  <img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/70728795-59b7-4741-ab5b-9e63d284ad37" alt="Downloads and Launching on macOS" width="450" />
+</p>
+
 ## Roadmap
 
 ### First Phase
@@ -247,7 +302,6 @@ The whole package is under construction and the documentation is progressively e
 
 + Jianming Zhao (Jamie, Zhejiang University, China)
 + Jianhao Sun (Jin, China University of Geosciences, Wuhan, China)
-+ Kaixin Zheng (Hayne, Sun Yat-sen University, China)
 + Yongkang Chan (Kill-virus, Lanzhou University, China)
 + Mengying Ye (Mary, Jilin University, China)
 + Mengqi Gao (China University of Geosciences, Beijing, China)
@@ -261,6 +315,9 @@ The whole package is under construction and the documentation is progressively e
 + Yucheng Yan (Andy, University of Sydney, Australia)
 + Ruitao Chang (China University of Geosciences Beijing, China)
 + Junchi Liao(Roceda, University of Electronic Science and Technology of China, China)
++ Panyan Weng (The University of Sydney, Australia)
++ Siqi Yao (Clara, Dongguan University of Technology, China)
++ Zhelan Lin（Lan, Fuzhou University, China）
 
 ## Join Us :)
 
@@ -327,6 +384,7 @@ More Videos will be recorded soon.
 + Shengxin Wang (Samson, Lanzhou University, China)
 + Wenyu Zhao (Molly, Zhejiang University, China)
 + Qiuhao Zhao (Brad, Zhejiang University, China)
++ Kaixin Zheng (Hayne, Sun Yat-sen University, China)
 + Anzhou Li (Andrian, Zhejiang University, China)
 + Dan Hu (Notre Dame University, United States)
 + Xunxin Liu (Tante, China University of Geosciences, Wuhan, China)
