@@ -9,26 +9,40 @@ Firstly you need to start the geochemistrypi programm via command line instrucit
 
 In order to utilize the functions provided by our software, your own data set should satisfy:
 
-- be with the suffix **.xlsx**, which is supported by Microsoft Excel.
-- be comprise of location information **LATITUDE** and **LONGITUDE**, two columns respectively.
+- be with the suffix **.xlsx** or **.csv**, which is supported by Microsoft Excel.
+- be comprise of location information **LATITUDE** and **LONGITUDE**, two columns respectively. It is optional.
 
 If you want to run **classification** algorithm, you data set should satisfy:
 
-- Tag column **LABEL** to differentiate the data.
+- a label column. You can name it as you wish, such as **Label**.
 
-The following are four built-in data set in our software stored on Google Drive, have a look on them. For the algorithm you intend to run, you can refer to the data format of the corresponding dataset.
+Column name specification:
 
-+ [Data_Regression.xlsx (International - Google drive)](https://docs.google.com/spreadsheets/d/13MB4t_2PiZ90tTMJKw7HcBUi2sb3tXej/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true)
-+ [Data_Regression.xlsx (China - Tencent Docs)](https://docs.qq.com/document/DQ3VmdWZCTGV3bmpM?&u=6868f96d4a384b309036e04e637e367a)
+- No restriction on the column names.  You can name them as you want except for two special and optional column **LATITUDE** and **LONGITUDE**.
 
-+ [Data_Classification.xlsx (International - Google drive)](https://docs.google.com/spreadsheets/d/1xFBCYVmtZfuEAbeBljUlzqBjxVuLAt8x/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true)
-+ [Data_Classification.xlsx (China - Tencent Docs)](https://docs.qq.com/document/DQ0JUaUFsZnRaZkNG?&u=6868f96d4a384b309036e04e637e367a)
+- every column can only one column name. Multi level column names are not allowed.
 
-+ [Data_Clustering.xlsx (International - Google drive)](https://docs.google.com/spreadsheets/d/1sbuJdOzGNQ2Pk-bVURfPYg1rltyBbn5J/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true)
-+ [Data_Clustering.xlsx (China - Tencent Docs)](https://docs.qq.com/document/DQ3dKdGtlWkhZS2xR?&u=6868f96d4a384b309036e04e637e367a)
+- Between two columns with values, a completed void column can exists.
 
-+ [Data_Decomposition.xlsx (International - Google drive)](https://docs.google.com/spreadsheets/d/1kix82qj5--vhnm8-KhuUBH9dqYH6zcY8/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true)
-+ [Data_Decomposition.xlsx (China - Tencent Docs)](https://docs.qq.com/document/DQ29oZ0lhUGtZUmdN?&u=6868f96d4a384b309036e04e637e367a)
+The following are seven built-in data sets in our software stored on Google Drive and Tecent Docs, have a look on them. For the algorithm you intend to run, you can refer to the data format of the corresponding dataset.
+
++ Data_Regression.xlsx [[Google Drive]](https://docs.google.com/spreadsheets/d/13MB4t_2PiZ90tTMJKw7HcBUi2sb3tXej/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true) | [[Tencent Docs]](https://docs.qq.com/document/DQ3VmdWZCTGV3bmpM?&u=6868f96d4a384b309036e04e637e367a)
+
++ ApplicationData_Regression.xlsx [[Google Drive]](https://docs.google.com/spreadsheets/d/1FCek2OOYQD887jfQz21g0ovqVuUJIjVoNI77D-Ufr9Y/edit?usp=sharing) | [[Tencent Docs]](
+https://docs.qq.com/document/DQ3BDeHhxRGNzSXZN)
+
++ Data_Classification.xlsx [[Google Drive]](https://docs.google.com/spreadsheets/d/1xFBCYVmtZfuEAbeBljUlzqBjxVuLAt8x/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true) | [[Tencent Docs]](https://docs.qq.com/document/DQ0JUaUFsZnRaZkNG?&u=6868f96d4a384b309036e04e637e367a)
+
++ ApplicationData_Classification.xlsx [[Google Drive]](https://docs.google.com/spreadsheets/d/1J7QvdvbbHJMlKtiumBgKDW7ALghfQQZyKGEoOqhKQjw/edit?usp=sharing) | [[Tencent Docs]](https://docs.qq.com/document/DQ2dnQWtubHRBTGtB)
+
++ Data_Clustering.xlsx [[Google Drive]](https://docs.google.com/spreadsheets/d/1sbuJdOzGNQ2Pk-bVURfPYg1rltyBbn5J/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true) | [[Tencent Docs]](https://docs.qq.com/document/DQ3dKdGtlWkhZS2xR?&u=6868f96d4a384b309036e04e637e367a)
+
++ Data_Decomposition.xlsx [[Google Drive]](https://docs.google.com/spreadsheets/d/1kix82qj5--vhnm8-KhuUBH9dqYH6zcY8/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true) | [[Tencent Docs]](https://docs.qq.com/document/DQ29oZ0lhUGtZUmdN?&u=6868f96d4a384b309036e04e637e367a)
+
++  Data_AbnormalDetectioon.xlsx [[Google Drive]](https://docs.google.com/spreadsheets/d/1NqTQZCkv74Sn_iOJOKRc-QnJzpaWmnzC_lET_0ZreiQ/edit?usp=sharing) | [[Tencent Docs]](
+https://docs.qq.com/document/DQ2hqQ2N2ZGlOUWlT)
+
+
 #### Loading Data
 
 By running the start command, there will be a prompt if your dataset is successfully loaded:
@@ -43,6 +57,7 @@ By running the start command, there will be a prompt if your dataset is successf
     47 - U(PPM)
     --------------------
     (Press Enter key to move forward.)
+
 #### World Map Projection
 
 After successfully loading your data, you will be asked if you would like to plot a world map projection for a specific element:
