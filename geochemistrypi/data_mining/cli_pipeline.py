@@ -15,6 +15,7 @@ from .constants import (
     CLUSTERING_MODELS,
     CLUSTERING_MODELS_WITH_MISSING_VALUES,
     DECOMPOSITION_MODELS,
+    DROP_MISSING_VALUE_STRATEGY,
     FEATURE_SCALING_STRATEGY,
     FEATURE_SELECTION_STRATEGY,
     IMPUTING_STRATEGY,
@@ -29,7 +30,6 @@ from .constants import (
     SECTION,
     TEST_DATA_OPTION,
     WORKING_PATH,
-    Drop_MISSING_VALUE_STRATEGY,
 )
 from .data.data_readiness import basic_info, create_sub_data_set, data_split, float_input, limit_num_input, np2pd, num2option, num_input, read_data, show_data_columns
 from .data.feature_engineering import FeatureConstructor
@@ -291,10 +291,10 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
             clear_output()
             if missing_value_strategy_num == 1:
                 print("-*-*-  Drop the rows with Missing Values -*-*-")
-                num2option(Drop_MISSING_VALUE_STRATEGY)
+                num2option(DROP_MISSING_VALUE_STRATEGY)
                 print("Notice: Drop the rows with missing values may lead to a significant loss of data if too many features are chosen.")
                 print("Which strategy do you want to apply?")
-                drop_missing_value_strategy_num = limit_num_input(Drop_MISSING_VALUE_STRATEGY, SECTION[1], num_input)
+                drop_missing_value_strategy_num = limit_num_input(DROP_MISSING_VALUE_STRATEGY, SECTION[1], num_input)
                 if drop_missing_value_strategy_num == 1:
                     # Drop the rows with missing values
                     data_selected_dropped = data_selected.dropna()
@@ -322,6 +322,9 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
                     save_data(data_selected_dropped, "Data Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
                     drop_rows_with_missing_value_flag = True
                     imputed_flag = False
+                    missing_value_flag = check_missing_value(data_selected_dropped)
+                    if missing_value_flag:
+                        process_missing_value_flag = False
             elif missing_value_strategy_num == 2:
                 # Don't drop the rows with missing values but use imputation techniques to deal with the missing values later.
                 # No need to save the data set here because it will be saved after imputation.
