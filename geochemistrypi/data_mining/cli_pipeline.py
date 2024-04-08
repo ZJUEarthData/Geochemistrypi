@@ -15,6 +15,7 @@ from .constants import (
     CLUSTERING_MODELS,
     CLUSTERING_MODELS_WITH_MISSING_VALUES,
     DECOMPOSITION_MODELS,
+    DROP_MISSING_VALUE_STRATEGY,
     FEATURE_SCALING_STRATEGY,
     FEATURE_SELECTION_STRATEGY,
     IMPUTING_STRATEGY,
@@ -281,23 +282,49 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         if is_process_missing_value == 1:
             process_missing_value_flag = True
             # If the user wants to deal with the missing values, then ask the user which strategy to use.
+            clear_output()
             print("-*-*- Strategy for Missing Values -*-*-")
             num2option(MISSING_VALUE_STRATEGY)
             print("Notice: Drop the rows with missing values may lead to a significant loss of data if too many features are chosen.")
             print("Which strategy do you want to apply?")
             missing_value_strategy_num = limit_num_input(MISSING_VALUE_STRATEGY, SECTION[1], num_input)
+            clear_output()
             if missing_value_strategy_num == 1:
-                # Drop the rows with missing values
-                data_selected_dropped = data_selected.dropna()
-                # Reset the index of the data set after dropping the rows with missing values.
-                data_selected_dropped = data_selected_dropped.reset_index(drop=True)
-                print("Successfully drop the rows with missing values.")
-                print("The Selected Data Set After Dropping:")
-                print(data_selected_dropped)
-                print("Basic Statistical Information:")
-                save_data(data_selected_dropped, "Data Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
-                drop_rows_with_missing_value_flag = True
-                imputed_flag = False
+                print("-*-*-  Drop the rows with Missing Values -*-*-")
+                num2option(DROP_MISSING_VALUE_STRATEGY)
+                print("Notice: Drop the rows with missing values may lead to a significant loss of data if too many features are chosen.")
+                print("Which strategy do you want to apply?")
+                drop_missing_value_strategy_num = limit_num_input(DROP_MISSING_VALUE_STRATEGY, SECTION[1], num_input)
+                if drop_missing_value_strategy_num == 1:
+                    # Drop the rows with missing values
+                    data_selected_dropped = data_selected.dropna()
+                    # Reset the index of the data set after dropping the rows with missing values.
+                    data_selected_dropped = data_selected_dropped.reset_index(drop=True)
+                    print("Successfully drop the rows with missing values.")
+                    print("The Selected Data Set After Dropping:")
+                    print(data_selected_dropped)
+                    print("Basic Statistical Information:")
+                    save_data(data_selected_dropped, "Data Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                    drop_rows_with_missing_value_flag = True
+                    imputed_flag = False
+                elif drop_missing_value_strategy_num == 2:
+                    show_data_columns(data_selected.columns)
+                    drop_data_selected = create_sub_data_set(data_selected)
+                    for column_name in drop_data_selected.columns:
+                        # Drop the rows with missing values
+                        data_selected_dropped = data_selected.dropna(subset=[column_name])
+                        # Reset the index of the data set after dropping the rows with missing values.
+                        data_selected_dropped = data_selected_dropped.reset_index(drop=True)
+                    print("Successfully drop the rows with missing values.")
+                    print("The Selected Data Set After Dropping:")
+                    print(data_selected_dropped)
+                    print("Basic Statistical Information:")
+                    save_data(data_selected_dropped, "Data Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                    drop_rows_with_missing_value_flag = True
+                    imputed_flag = False
+                    missing_value_flag = check_missing_value(data_selected_dropped)
+                    if missing_value_flag:
+                        process_missing_value_flag = False
             elif missing_value_strategy_num == 2:
                 # Don't drop the rows with missing values but use imputation techniques to deal with the missing values later.
                 # No need to save the data set here because it will be saved after imputation.
