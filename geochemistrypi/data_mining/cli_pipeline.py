@@ -44,7 +44,7 @@ from .process.cluster import ClusteringModelSelection
 from .process.decompose import DecompositionModelSelection
 from .process.detect import AbnormalDetectionModelSelection
 from .process.regress import RegressionModelSelection
-from .utils.base import check_package, clear_output, create_geopi_output_dir, get_os, install_package, log, save_data, show_warning
+from .utils.base import check_package, clear_output, copy_files, create_geopi_output_dir, get_os, install_package, log, save_data, show_warning
 from .utils.mlflow_utils import retrieve_previous_experiment_id
 
 
@@ -681,4 +681,10 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
                     else:
                         model_inference(inference_data_fe_selected, is_inference, run, transformer_config, transform_pipeline)
                     clear_output()
+
+    # <--- Data Dumping --->
+    # In this section, convert the data in the output to the summary.
+    GEOPI_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_PATH")
+    GEOPI_SUMMARY_PATH = os.getenv("GEOPI_SUMMARY_PATH")
+    copy_files(GEOPI_OUTPUT_PATH, GEOPI_SUMMARY_PATH)
     mlflow.end_run()
