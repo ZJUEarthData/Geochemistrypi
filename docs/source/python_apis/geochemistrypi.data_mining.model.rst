@@ -36,6 +36,14 @@ geochemistrypi.data\_mining.model.decomposition module
    :undoc-members:
    :show-inheritance:
 
+geochemistrypi.data\_mining.model.detection module
+--------------------------------------------------
+
+.. automodule:: geochemistrypi.data_mining.model.detection
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 geochemistrypi.data\_mining.model.regression module
 ---------------------------------------------------
 

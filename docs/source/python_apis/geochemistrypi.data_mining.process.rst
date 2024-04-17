@@ -28,6 +28,14 @@ geochemistrypi.data\_mining.process.decompose module
    :undoc-members:
    :show-inheritance:
 
+geochemistrypi.data\_mining.process.detect module
+-------------------------------------------------
+
+.. automodule:: geochemistrypi.data_mining.process.detect
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 geochemistrypi.data\_mining.process.regress module
 --------------------------------------------------
 
