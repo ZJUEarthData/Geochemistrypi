@@ -7,26 +7,42 @@
 ## Table of Contents
 
 - [1. Understand the model](#1-understand-the-model)
+
 - [2. Add Model](#2-add-model)
   - [2.1 Add The Model Class](#21-add-the-model-class)
     - [2.1.1 Find Add File](#211-find-add-file)
     - [2.1.2 Define class properties and constructors, etc.](#212-define-class-properties-and-constructors-etc)
     - [2.1.3 Define manual\_hyper\_parameters](#213-define-manual_hyper_parameters)
     - [2.1.4 Define special\_components](#214-define-special_components)
+
   - [2.2 Add AutoML](#22-add-automl)
     - [2.2.1 Add AutoML code to class](#221-add-automl-code-to-class)
+
   - [2.3 Get the hyperparameter value through interactive methods](#23-get-the-hyperparameter-value-through-interactive-methods)
     - [2.3.1 Find file](#231-find-file)
     - [2.3.2 Create the .py file and add content](#232-create-the-py-file-and-add-content)
     - [2.3.3 Import in the file that defines the model class](#233-import-in-the-file-that-defines-the-model-class)
+
   - [2.4 Call Model](#24-call-model)
     - [2.4.1 Find file](#241-find-file)
     - [2.4.2 Import module](#242-import-module)
     - [2.4.3 Call model](#243-call-model)
+
   - [2.5 Add the algorithm list and set NON\_AUTOML\_MODELS](#25-add-the-algorithm-list-and-set-non_automl_models)
     - [2.5.1 Find file](#251-find-file)
+
+  -  [2.6 Add Functionality](#26-add-functionality)
+
+      - [2.6.1 Model Research](#261-model-research)
+
+     - [2.6.2 Add Common_component](#262-add-common_component)
+
+      - [2.6.3 Add Special_component](#263-add-special_component)
+
 - [3. Test model](#3-test-model)
+
 - [4. Completed Pull Request](#4-completed-pull-request)
+
 - [5. Precautions](#5-precautions)
 
 
@@ -364,6 +380,290 @@ Add model name to the algorithm list corresponding to the model in the constants
 Because this is a tutorial without automatic parameters, you need to add the model name in the NON_AUTOML_MODELS.
 **eg:**
 ![image13](https://github.com/ZJUEarthData/geochemistrypi/assets/97781484/d6b03566-a833-4868-8738-be09d7356c9c)
+
+
+
+
+
+### 2.6 Add Functionality
+
+#### 2.6.1 Model Research
+
+Conduct research on the corresponding model and confirm the functions that need to be added.
+
+\+ You can confirm the functions that need to be added on the official website of the model (such as scikit learn), search engines (such as Google), chatGPT, etc.
+
+(1) Common_component is a public function in a class, and all functions in each class can be used, so they need to be added in the parent class，Each of the parent classes can call Common_component.
+
+(2) Special_component is unique to the model, so they need to be added in a specific model，Only they can use it.
+
+![Image1](https://github.com/ZJUEarthData/geochemistrypi/assets/113361635/3f983a7a-3b0d-4c7b-b7b7-31b317f4d9d0)
+
+
+
+#### 2.6.2 Add Common_component
+
+Common_component refer to functions that can be used by all internal submodels, so it is necessary to consider the situation of each submodel when adding them.
+
+***\*1. Add corresponding functionality to the parent class\****
+
+Once you've identified the features you want to add, you can define the corresponding functions in the parent class.
+
+The code format is:
+
+(1) Define the function name and add the required parameters.
+
+(2) Use annotations to describe function functionsUse annotations to describe function functions.
+
+(3) Referencing specific functions to implement functionality.
+
+(4) Change the format of data acquisition and save data or images.
+
+
+
+***\*2. Define Common_component\****
+
+(1) Define the common_components in the parent class, its role is to set where the output is saved.
+
+(2) Set the parameter source for the added function.
+
+
+
+***\*3. Implement function functions\****
+
+Some functions may use large code due to their complexity. To ensure the style and readability of the code, you need to put the specific function implementation into the corresponding `_common` files and call it.
+
+It includes:
+
+(1) Explain the significance of each parameter.
+
+(2) Implement functionality.
+
+(3) Returns the required parameters.
+
+
+
+***\*eg:\**** You want to add model evaluation to your clustering.
+
+First, you need to find the parent class to clustering.
+
+![Image2](https://github.com/ZJUEarthData/geochemistrypi/assets/113361635/b41a5af8-6cf3-4747-8c83-e613a3fee04b)
+
+![Image3](https://github.com/ZJUEarthData/geochemistrypi/assets/113361635/e81f3c96-f90d-49c8-b2e9-e8675d41cf90)
+
+***\*1. Add the clustering score function in class ClusteringWorkflowBase (WorkflowBase).\****
+
+
+```python
+
+@staticmethod
+def _score(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
+
+    """Calculate the score of the model."""
+
+    print("-----* Model Score *-----")
+
+    scores = score(data, labels)
+
+    scores_str = json.dumps(scores, indent=4)
+
+    save_text(scores_str, f"Model Score - {algorithm_name}", store_path)
+
+    mlflow.log_metrics(scores)
+
+```
+
+
+(1) Define the function name and add the required parameters.
+
+(2) Use annotations to describe function functionsUse annotations to describe function functions.
+
+(3) Referencing specific functions to implement functionality (Reference 3.2.3).
+
+(4) Change the format of data acquisition and save data or images.
+
+***\*Note:\**** Make sure that the code style of the added function is consistent.
+
+***\*2. Define common_components below the added function to define the output position and parameter source for the added function.\****
+
+```python
+
+def common_components(self) -> None:
+
+    """Invoke all common application functions for clustering algorithms."""
+
+    GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
+
+    GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+
+    self._score(
+
+      data=self.X,
+
+      labels=self.clustering_result["clustering result"],
+
+      algorithm_name=self.naming,
+
+      store_path=GEOPI_OUTPUT_METRICS_PATH,
+
+    )
+
+```
+
+The positional relationship is shown in Figure 4.
+
+![Image4](https://github.com/ZJUEarthData/geochemistrypi/assets/113361635/5e3eac82-19f8-4ef3-87a6-701ce6f9ac1b)
+
+***\*3. You need to add the specific function implementation to the corresponding `_commom` file.\****
+
+![Image5](https://github.com/ZJUEarthData/geochemistrypi/assets/113361635/ee6bb43e-f30e-47b6-8d78-13f017994a44)
+
+```python
+
+def score(data: pd.DataFrame, labels: pd.DataFrame) -> Dict:
+
+    """Calculate the scores of the clustering model.
+
+      Parameters
+
+      ----------
+
+      data : pd.DataFrame (n_samples, n_components)
+
+        The true values.
+
+      labels : pd.DataFrame (n_samples, n_components)
+
+        Labels of each point.
+
+      Returns
+
+      -------
+
+      scores : dict
+
+        The scores of the clustering model.
+
+    """
+
+    silhouette = silhouette_score(data, labels)
+
+    calinski_harabaz = calinski_harabasz_score(data, labels)
+
+    print("silhouette_score: ", silhouette)
+
+    print("calinski_harabasz_score:", calinski_harabaz)
+
+    scores = {
+
+        "silhouette_score": silhouette,
+
+        "calinski_harabasz_score": calinski_harabaz,
+
+    }
+
+    return scores
+
+```
+
+(1) Explain the significance of each parameter.
+
+(2) Implement functionality.
+
+(3) Returns the required parameters.
+
+
+
+#### 2.6.3 Add Special_component
+
+Special_components is a feature that is unique to each specific model.
+
+The process of adding a Special_components is similar to that of a Common_component.
+
+
+
+The process is as follows:
+
+(1) Find the location that needs to be added.
+
+(2) Defined function.
+
+(3) Define Special_components and add a parametric function to it.
+
+(4) Add the corresponding specific function implementation function to the `corresponding manual parameter tuning` file.
+
+
+
+***\*eg:\**** An example is to add a score evaluation function to k-means clustering.
+
+***\*1. Find the location that needs to be added.\****
+
+We add his own unique score to the k-means.
+
+![Image2](https://github.com/ZJUEarthData/geochemistrypi/assets/113361635/b41a5af8-6cf3-4747-8c83-e613a3fee04b)
+
+![Image6](https://github.com/ZJUEarthData/geochemistrypi/assets/113361635/34f1b0f8-9809-4ba6-86d5-aa28a565abc9)
+
+***\*2. Defined function.\****
+
+```python
+
+def _get_inertia_scores(self, algorithm_name: str, store_path: str) -> None:
+
+    """Get the scores of the clustering result."""
+
+    print("-----* KMeans Inertia Scores *-----")
+
+    print("Inertia Score: ", self.model.inertia_)
+
+    inertia_scores = {"Inertia Score": self.model.inertia_}
+
+    mlflow.log_metrics(inertia_scores)
+
+    inertia_scores_str = json.dumps(inertia_scores, indent=4)
+
+    save_text(inertia_scores_str, f"KMeans Inertia Scores - {algorithm_name}", store_path)
+
+```
+
+(1) Define the function name and add the required parameters.
+
+(2) Use annotations to describe function functionsUse annotations to describe function functions.
+
+(3) Referencing specific functions to implement functionality.
+
+(4) Change the format of data acquisition and save data or images.
+
+***\*3. Define Special_components and add a parametric function to it.\****
+
+
+```python
+
+def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
+
+	  """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+
+	   GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
+
+	   self._get_inertia_scores(
+
+	   algorithm_name=self.naming,
+
+	   store_path=GEOPI_OUTPUT_METRICS_PATH,
+
+	 )
+
+```
+
+The positional relationship is shown in Figure 7.
+
+![Image7](https://github.com/ZJUEarthData/geochemistrypi/assets/113361635/18dec84b-44ae-4883-a5b8-db2c6e0ef5c8)
+
+***\*4. Add the corresponding specific function implementation function to the `corresponding manual parameter tuning` file.\****
+
+If the defined function has complex functions, it is necessary to further improve its function content in the manual parameter file, and the code format should refer to Common_component.
+
+![Image](https://github.com/ZJUEarthData/geochemistrypi/assets/113361635/a3ea82c2-9c20-49f4-bf3e-354b012aff7c)
 
 ## 3. Test model
 After the model is added, it can be tested. If the test reports an error, it needs to be checked. If there is no error, it can be submitted.
