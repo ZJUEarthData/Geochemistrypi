@@ -149,7 +149,7 @@ https://docs.qq.com/document/DQ3BDeHhxRGNzSXZN)
 +  Data_AbnormalDetectioon.xlsx [[Google Drive]](https://docs.google.com/spreadsheets/d/1NqTQZCkv74Sn_iOJOKRc-QnJzpaWmnzC_lET_0ZreiQ/edit?usp=sharing) | [[Tencent Docs]](
 https://docs.qq.com/document/DQ2hqQ2N2ZGlOUWlT)
 
-**Note**: For more detail on data preparation, please refer to our online documentation in **Model Example** under the section of **FOR USER**. 
+**Note**: For more detail on data preparation, please refer to our online documentation in **Model Example** under the section of **FOR USER**.
 
 ## Running Example
 
