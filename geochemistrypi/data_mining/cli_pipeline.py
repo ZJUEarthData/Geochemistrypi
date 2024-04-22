@@ -683,7 +683,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
                     else:
                         model_inference(inference_data_fe_selected, is_inference, run, transformer_config, transform_pipeline)
                     clear_output()
-    
+
     # <--- Data Dumping --->
     # In this section, convert the data in the output to the summary.
     GEOPI_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_PATH")

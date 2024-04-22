@@ -317,17 +317,17 @@ def show_warning(is_show: bool = True) -> None:
 
 
 def copy_files(GEOPI_OUTPUT_PATH: str, GEOPI_SUMMARY_PATH: str) -> None:
-     """Copy all files from the source folder to the destination folder.
+    """Copy all files from the source folder to the destination folder.
 
-     Parameters
-     ----------
-     GEOPI_OUTPUT_PATH: str
-         Source folder path.
+    Parameters
+    ----------
+    GEOPI_OUTPUT_PATH: str
+        Source folder path.
 
-     GEOPI_SUMMARY_PATH: str
-         Destination folder path
-     """
-     for root, dirs, files in os.walk(GEOPI_OUTPUT_PATH):
-         for file in files:
-             source_file_path = os.path.join(root, file)
-             shutil.copy2(source_file_path, GEOPI_SUMMARY_PATH)
+    GEOPI_SUMMARY_PATH: str
+        Destination folder path
+    """
+    for root, dirs, files in os.walk(GEOPI_OUTPUT_PATH):
+        for file in files:
+            source_file_path = os.path.join(root, file)
+            shutil.copy2(source_file_path, GEOPI_SUMMARY_PATH)
