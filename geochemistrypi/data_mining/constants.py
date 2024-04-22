@@ -15,6 +15,9 @@ WORKING_PATH = os.getcwd()
 # the root directory where all the output stays
 OUTPUT_PATH = os.path.join(WORKING_PATH, "geopi_output")
 
+# the summary root directory where all the output stays
+SUMMARY_PATH = os.path.join(OUTPUT_PATH, "summary")
+
 # the directory where the artifact is saved within the MLflow run's artifact directory
 MLFLOW_ARTIFACT_DATA_PATH = "data"
 MLFLOW_ARTIFACT_IMAGE_STATISTIC_PATH = os.path.join("image", "statistic")
@@ -105,3 +108,5 @@ CUSTOMIZE_LABEL_STRATEGY = ["Automatic Coding", "Custom Numeric Labels", "Custom
 FEATURE_SELECTION_STRATEGY = ["Generic Univariate Select", "Select K Best"]
 
 CALCULATION_METHOD_OPTION = ["Micro", "Macro", "Weighted"]
+
+DROP_MISSING_VALUE_STRATEGY = ["Drop All Rows with Missing Values", "Drop Rows with Missing Values by Specific Columns"]

@@ -150,7 +150,7 @@ def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
             "Input format:\n"
             'Format 1: "[**, **]; **; [**, **]", such as "[1, 3]; 7; [10, 13]" '
             "--> you want to deal with the columns 1, 2, 3, 7, 10, 11, 12, 13 \n"
-            'Format 2: "xx", such as "7" --> you want to deal with the columns 7 \n'
+            'Format 2: "**", such as "7" --> you want to deal with the columns 7 \n'
             "@input: "
         )
     )
