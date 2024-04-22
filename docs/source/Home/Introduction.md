@@ -319,6 +319,8 @@ The whole package is under construction and the documentation is progressively e
 + Panyan Weng (The University of Sydney, Australia)
 + Siqi Yao (Clara, Dongguan University of Technology, China)
 + Zhelan Lin（Lan, Fuzhou University, China）
++ ShuYi Li (Communication University Of China, Beijing, China)
++ Junbo Wang (China University Of Geosciences, Beijing, China)
 
 ## Join Us :)
 
