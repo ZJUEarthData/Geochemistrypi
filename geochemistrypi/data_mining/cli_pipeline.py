@@ -312,9 +312,10 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
                     show_data_columns(data_selected.columns)
                     print("Note: The data set schema will remain the same after dropping the rows with missing values by specific columns.")
                     drop_data_selected = create_sub_data_set(data_selected)
+                    data_selected_dropped = data_selected
                     for column_name in drop_data_selected.columns:
                         # Drop the rows with missing values
-                        data_selected_dropped = data_selected.dropna(subset=[column_name])
+                        data_selected_dropped = data_selected_dropped.dropna(subset=[column_name])
                         # Reset the index of the data set after dropping the rows with missing values.
                         data_selected_dropped = data_selected_dropped.reset_index(drop=True)
                     print("Successfully drop the rows with missing values.")
