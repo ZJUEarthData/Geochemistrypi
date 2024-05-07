@@ -101,11 +101,17 @@ def plot_contour(data: pd.DataFrame, algorithm_name: str) -> None:
     algorithm_name : str
         The name of the dimensionality reduction algorithm.
     """
+    quantile_threshold = 0.9
+    x_upper_threshold = data.iloc[:, 0].quantile(quantile_threshold)
+    y_upper_threshold = data.iloc[:, 1].quantile(quantile_threshold)
+    filtered_data = data[(data.iloc[:, 0] <= x_upper_threshold) & (data.iloc[:, 1] <= y_upper_threshold)]
+
     # Calculate the density
-    x = data.iloc[:, 0]
-    y = data.iloc[:, 1]
-    xmin, xmax = x.min(), x.max()
-    ymin, ymax = y.min(), y.max()
+    x = filtered_data.iloc[:, 0]
+    y = filtered_data.iloc[:, 1]
+    buffer = max(x.max() - x.min(), y.max() - y.min()) * 0.05
+    xmin, xmax = x.min() - buffer, x.max() + buffer
+    ymin, ymax = y.min() - buffer, y.max() + buffer
 
     xx, yy = np.mgrid[xmin:xmax:100j, ymin:ymax:100j]
     positions = np.vstack([xx.ravel(), yy.ravel()])
