@@ -32,7 +32,6 @@ def feature_scaler(X: pd.DataFrame, method: List[str], method_idx: int) -> tuple
     X_scaled : np.ndarray
         The dataset after imputing.
     """
-
     def MeanNormalization(X: pd.DataFrame) -> np.ndarray:
         """Apply Mean Normalization to the dataset.
 
@@ -45,7 +44,6 @@ def feature_scaler(X: pd.DataFrame, method: List[str], method_idx: int) -> tuple
         -------
         X_scaled : np.ndarray
             The dataset after applying Mean Normalization.
-            X_scaled = (X - X_mean) / (X_max- X_min)
         """
         X_scaled = (X - X.mean()) / (X.max() - X.min())
         return X_scaled
