@@ -131,13 +131,16 @@ def select_columns(columns_range: Optional[str] = None) -> List[int]:
     return columns_selected
 
 
-def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
+def create_sub_data_set(data: pd.DataFrame, allow_empty_columns: bool = False) -> pd.DataFrame:
     """Create a sub data set.
 
     Parameters
     ----------
     data : pd.DataFrame
         The data set to be processed.
+
+    allow_empty_columns : bool, optional
+        Whether to include empty columns in the sub data set. The default is Ture.
 
     Returns
     -------
@@ -242,9 +245,9 @@ def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
                 df_test = pd.DataFrame(data_checking[i])
                 test_columns = df_test.columns
                 v_value = int(df_test.isnull().sum())
-                if v_value == len(df_test):
-                    print(f"Warning: The selected column {df_test.columns.values} is an empty column!")
-                    judge = True
+                if not allow_empty_columns and v_value == len(df_test):
+                    print(f"Warning: The selected column {df_test.columns.values} is an empty column! It will be automatically removed.")
+                    judge = False
                 elif df_test[test_columns[0]].dtype in ["int64", "float64"]:
                     continue
                 else:
@@ -257,6 +260,8 @@ def create_sub_data_set(data: pd.DataFrame) -> pd.DataFrame:
 
     # select designated column
     sub_data_set = data.iloc[:, sub_data_set_columns_selected]
+    if not allow_empty_columns:
+        sub_data_set = sub_data_set.dropna(axis=1, how="all")
     show_data_columns(sub_data_set.columns, sub_data_set_columns_selected)
     return sub_data_set
 
