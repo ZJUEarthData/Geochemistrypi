@@ -140,7 +140,7 @@ def create_sub_data_set(data: pd.DataFrame, allow_empty_columns: bool = False) -
         The data set to be processed.
 
     allow_empty_columns : bool, optional
-        Whether to include empty columns in the sub data set. The default is Ture.
+        Whether to include empty columns in the sub data set. The default is False.
 
     Returns
     -------
@@ -247,8 +247,7 @@ def create_sub_data_set(data: pd.DataFrame, allow_empty_columns: bool = False) -
                 v_value = int(df_test.isnull().sum())
                 if not allow_empty_columns and v_value == len(df_test):
                     print(f"Warning: The selected column {df_test.columns.values} is an empty column! It will be automatically removed.")
-                    judge = False
-                elif df_test[test_columns[0]].dtype in ["int64", "float64"]:
+                if df_test[test_columns[0]].dtype in ["int64", "float64"]:
                     continue
                 else:
                     print(f"Warning: The data type of selected column {df_test.columns.values} is not numeric!" " Please make sure that the selected data type is numeric and re-enter.")

@@ -307,13 +307,12 @@ The whole package is under construction and the documentation is progressively e
 + Mengying Ye (Mary, Jilin University, China)
 + Mengqi Gao (China University of Geosciences, Beijing, China)
 + Chengtu Li（Trenki, Henan Polytechnic University, Beijing, China）
++ Yucheng Yan (Andy, University of Sydney, Australia)
 
 **Product Group**:
 
 + Yang Lyu (Daisy, Zhejiang University, China)
-+ Keran Li (Kirk, Chengdu University of Technology, China)
 + Bailun Jiang (EPSI / Lille University, France)
-+ Yucheng Yan (Andy, University of Sydney, Australia)
 + Ruitao Chang (China University of Geosciences Beijing, China)
 + Junchi Liao(Roceda, University of Electronic Science and Technology of China, China)
 + Panyan Weng (The University of Sydney, Australia)
@@ -389,6 +388,7 @@ More Videos will be recorded soon.
 + Qiuhao Zhao (Brad, Zhejiang University, China)
 + Kaixin Zheng (Hayne, Sun Yat-sen University, China)
 + Anzhou Li (Andrian, Zhejiang University, China)
++ Keran Li (Kirk, Chengdu University of Technology, China)
 + Dan Hu (Notre Dame University, United States)
 + Xunxin Liu (Tante, China University of Geosciences, Wuhan, China)
 + Fang Li (liv, Shenzhen University, China)
