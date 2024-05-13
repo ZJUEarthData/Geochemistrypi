@@ -12,7 +12,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from rich import print
 
-from ..constants import OUTPUT_PATH, SUMMARY_PATH
+from ..constants import OUTPUT_PATH
 
 
 def create_geopi_output_dir(experiment_name: str, run_name: str, sub_run_name: Optional[str] = None) -> None:
@@ -33,14 +33,10 @@ def create_geopi_output_dir(experiment_name: str, run_name: str, sub_run_name: O
     # timestamp = datetime.datetime.now().strftime("%m-%d-%H-%M")
     if sub_run_name:
         geopi_output_path = os.path.join(OUTPUT_PATH, experiment_name, f"{run_name}", sub_run_name)
-        geopi_summary_path = os.path.join(SUMMARY_PATH, experiment_name, f"{run_name}", sub_run_name)
     else:
         geopi_output_path = os.path.join(OUTPUT_PATH, experiment_name, f"{run_name}")
-        geopi_summary_path = os.path.join(SUMMARY_PATH, experiment_name, f"{run_name}")
     os.environ["GEOPI_OUTPUT_PATH"] = geopi_output_path
     os.makedirs(geopi_output_path, exist_ok=True)
-    os.environ["GEOPI_SUMMARY_PATH"] = geopi_summary_path
-    os.makedirs(geopi_summary_path, exist_ok=True)
 
     # Set the output artifacts path for the current run
     geopi_output_artifacts_path = os.path.join(geopi_output_path, "artifacts")
@@ -86,6 +82,11 @@ def create_geopi_output_dir(experiment_name: str, run_name: str, sub_run_name: O
     geopi_output_metrics_path = os.path.join(geopi_output_path, "metrics")
     os.environ["GEOPI_OUTPUT_METRICS_PATH"] = geopi_output_metrics_path
     os.makedirs(geopi_output_metrics_path, exist_ok=True)
+
+    # Set the summary outout path for the current run
+    geopi_output_summary_path = os.path.join(geopi_output_path, "summary")
+    os.environ["GEOPI_OUTPUT_SUMMARY_PATH"] = geopi_output_summary_path
+    os.makedirs(geopi_output_summary_path, exist_ok=True)
 
 
 def get_os() -> str:
@@ -316,18 +317,26 @@ def show_warning(is_show: bool = True) -> None:
             # os.environ["PYTHONWARNINGS"] = "default"
 
 
-def copy_files(GEOPI_OUTPUT_PATH: str, GEOPI_SUMMARY_PATH: str) -> None:
+def copy_files(GEOPI_OUTPUT_ARTIFACTS_PATH: str, GEOPI_OUTPUT_METRICS_PATH: str, GEOPI_OUTPUT_PARAMETERS_PATH: str, GEOPI_OUTPUT_SUMMARY_PATH: str) -> None:
     """Copy all files from the source folder to the destination folder.
 
     Parameters
     ----------
-    GEOPI_OUTPUT_PATH: str
+    GEOPI_OUTPUT_ARTIFACTS_PATH: str
         Source folder path.
 
-    GEOPI_SUMMARY_PATH: str
+    GEOPI_OUTPUT_METRICS_PATH: str
+        Source folder path.
+
+    GEOPI_OUTPUT_PARAMETERS_PATH: str
+        Source folder path.
+
+    GEOPI_OUTPUT_SUMMARY_PATH: str
         Destination folder path
     """
-    for root, dirs, files in os.walk(GEOPI_OUTPUT_PATH):
-        for file in files:
-            source_file_path = os.path.join(root, file)
-            shutil.copy2(source_file_path, GEOPI_SUMMARY_PATH)
+    source_paths = [GEOPI_OUTPUT_ARTIFACTS_PATH, GEOPI_OUTPUT_METRICS_PATH, GEOPI_OUTPUT_PARAMETERS_PATH]
+    for source_path in source_paths:
+        for root, dirs, files in os.walk(source_path):
+            for file in files:
+                source_file_path = os.path.join(root, file)
+                shutil.copy2(source_file_path, GEOPI_OUTPUT_SUMMARY_PATH)

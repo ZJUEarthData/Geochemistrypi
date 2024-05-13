@@ -687,7 +687,9 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
 
     # <--- Data Dumping --->
     # In this section, convert the data in the output to the summary.
-    GEOPI_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_PATH")
-    GEOPI_SUMMARY_PATH = os.getenv("GEOPI_SUMMARY_PATH")
-    copy_files(GEOPI_OUTPUT_PATH, GEOPI_SUMMARY_PATH)
+    GEOPI_OUTPUT_SUMMARY_PATH = os.getenv("GEOPI_OUTPUT_SUMMARY_PATH")
+    GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+    GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
+    GEOPI_OUTPUT_PARAMETERS_PATH = os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH")
+    copy_files(GEOPI_OUTPUT_ARTIFACTS_PATH, GEOPI_OUTPUT_METRICS_PATH, GEOPI_OUTPUT_PARAMETERS_PATH, GEOPI_OUTPUT_SUMMARY_PATH)
     mlflow.end_run()

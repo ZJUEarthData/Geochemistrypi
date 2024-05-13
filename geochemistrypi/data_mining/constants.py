@@ -15,9 +15,6 @@ WORKING_PATH = os.getcwd()
 # the root directory where all the output stays
 OUTPUT_PATH = os.path.join(WORKING_PATH, "geopi_output")
 
-# the summary root directory where all the output stays
-SUMMARY_PATH = os.path.join(OUTPUT_PATH, "summary")
-
 # the directory where the artifact is saved within the MLflow run's artifact directory
 MLFLOW_ARTIFACT_DATA_PATH = "data"
 MLFLOW_ARTIFACT_IMAGE_STATISTIC_PATH = os.path.join("image", "statistic")
