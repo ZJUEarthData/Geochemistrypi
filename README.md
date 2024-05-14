@@ -148,7 +148,7 @@ https://docs.qq.com/document/DQ3BDeHhxRGNzSXZN)
 +  Data_AbnormalDetectioon.xlsx [[Google Drive]](https://docs.google.com/spreadsheets/d/1NqTQZCkv74Sn_iOJOKRc-QnJzpaWmnzC_lET_0ZreiQ/edit?usp=sharing) | [[Tencent Docs]](
 https://docs.qq.com/document/DQ2hqQ2N2ZGlOUWlT)
 
-**Note**: For more detail on data preparation, please refer to our online documentation in **Model Example** under the section of **FOR USER**. 
+**Note**: For more detail on data preparation, please refer to our online documentation in **Model Example** under the section of **FOR USER**.
 
 ## Running Example
 
@@ -306,18 +306,19 @@ The whole package is under construction and the documentation is progressively e
 + Mengying Ye (Mary, Jilin University, China)
 + Mengqi Gao (China University of Geosciences, Beijing, China)
 + Chengtu Li（Trenki, Henan Polytechnic University, Beijing, China）
++ Yucheng Yan (Andy, University of Sydney, Australia)
 
 **Product Group**:
 
 + Yang Lyu (Daisy, Zhejiang University, China)
-+ Keran Li (Kirk, Chengdu University of Technology, China)
 + Bailun Jiang (EPSI / Lille University, France)
-+ Yucheng Yan (Andy, University of Sydney, Australia)
 + Ruitao Chang (China University of Geosciences Beijing, China)
 + Junchi Liao(Roceda, University of Electronic Science and Technology of China, China)
 + Panyan Weng (The University of Sydney, Australia)
 + Siqi Yao (Clara, Dongguan University of Technology, China)
 + Zhelan Lin（Lan, Fuzhou University, China）
++ ShuYi Li (Communication University Of China, Beijing, China)
++ Junbo Wang (China University Of Geosciences, Beijing, China)
 
 ## Join Us :)
 
@@ -386,6 +387,7 @@ More Videos will be recorded soon.
 + Qiuhao Zhao (Brad, Zhejiang University, China)
 + Kaixin Zheng (Hayne, Sun Yat-sen University, China)
 + Anzhou Li (Andrian, Zhejiang University, China)
++ Keran Li (Kirk, Chengdu University of Technology, China)
 + Dan Hu (Notre Dame University, United States)
 + Xunxin Liu (Tante, China University of Geosciences, Wuhan, China)
 + Fang Li (liv, Shenzhen University, China)

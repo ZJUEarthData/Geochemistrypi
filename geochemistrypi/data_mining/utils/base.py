@@ -3,6 +3,7 @@ import logging
 import os
 import pickle
 import platform
+import shutil
 from typing import Optional
 
 import joblib
@@ -81,6 +82,11 @@ def create_geopi_output_dir(experiment_name: str, run_name: str, sub_run_name: O
     geopi_output_metrics_path = os.path.join(geopi_output_path, "metrics")
     os.environ["GEOPI_OUTPUT_METRICS_PATH"] = geopi_output_metrics_path
     os.makedirs(geopi_output_metrics_path, exist_ok=True)
+
+    # Set the summary outout path for the current run
+    geopi_output_summary_path = os.path.join(geopi_output_path, "summary")
+    os.environ["GEOPI_OUTPUT_SUMMARY_PATH"] = geopi_output_summary_path
+    os.makedirs(geopi_output_summary_path, exist_ok=True)
 
 
 def get_os() -> str:
@@ -309,3 +315,28 @@ def show_warning(is_show: bool = True) -> None:
 
             os.environ["PYTHONWARNINGS"] = "ignore"
             # os.environ["PYTHONWARNINGS"] = "default"
+
+
+def copy_files(GEOPI_OUTPUT_ARTIFACTS_PATH: str, GEOPI_OUTPUT_METRICS_PATH: str, GEOPI_OUTPUT_PARAMETERS_PATH: str, GEOPI_OUTPUT_SUMMARY_PATH: str) -> None:
+    """Copy all files from the source folder to the destination folder.
+
+    Parameters
+    ----------
+    GEOPI_OUTPUT_ARTIFACTS_PATH: str
+        Source folder path.
+
+    GEOPI_OUTPUT_METRICS_PATH: str
+        Source folder path.
+
+    GEOPI_OUTPUT_PARAMETERS_PATH: str
+        Source folder path.
+
+    GEOPI_OUTPUT_SUMMARY_PATH: str
+        Destination folder path
+    """
+    source_paths = [GEOPI_OUTPUT_ARTIFACTS_PATH, GEOPI_OUTPUT_METRICS_PATH, GEOPI_OUTPUT_PARAMETERS_PATH]
+    for source_path in source_paths:
+        for root, dirs, files in os.walk(source_path):
+            for file in files:
+                source_file_path = os.path.join(root, file)
+                shutil.copy2(source_file_path, GEOPI_OUTPUT_SUMMARY_PATH)
