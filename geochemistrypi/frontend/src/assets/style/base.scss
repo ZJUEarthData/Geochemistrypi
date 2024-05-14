@@ -5,7 +5,13 @@
   margin: 0;
   font-weight: normal;
 }
-
+a {
+  text-decoration: none;
+}
+ul,
+ol {
+  list-style: none;
+}
 body {
   transition:
     color 0.5s,

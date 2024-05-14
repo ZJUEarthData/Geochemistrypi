@@ -1,5 +1,5 @@
 typer==0.7.0
-ray==2.2.0
+ray==2.6.0
 ray[tune]
 optuna
 pydantic<2.0.0

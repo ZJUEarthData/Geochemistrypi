@@ -4,11 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "start": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore",
-    "format": "prettier --write src/"
+    "format": "prettier --write src/",
+    "prepare": "husky install"
   },
   "dependencies": {
     "element-plus": "^2.7.2",
@@ -29,6 +30,7 @@
     "unplugin-auto-import": "^0.17.5",
     "unplugin-vue-components": "^0.27.0",
     "vite": "^5.2.8",
-    "vite-plugin-vue-devtools": "^7.0.25"
+    "vite-plugin-vue-devtools": "^7.0.25",
+    "husky": "^8.0.0"
   }
 }
