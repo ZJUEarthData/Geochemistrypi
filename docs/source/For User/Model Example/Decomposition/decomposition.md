@@ -1,13 +1,7 @@
 # Decomposition
 
+## Table of Contents
 
-## T-distributed Stochastic Neighbor Embedding （T-SNE）
-
-
-
-### Table of Contents
-
-- [Table of Contents](#table-of-contents)
 - [1. t-distributed Stochastic Neighbor Embedding (T-SNE)](#1-t-distributed-stochastic-neighbor-embedding-t-sne)
 - [2. Preparation](#2-preparation)
 - [3. NAN value process](#3-nan-value-process)
@@ -15,14 +9,14 @@
 - [5. Model Selection](#5-model-selection)
 - [6. T-SNE](#6-t-sne)
 
-### 1. T-distributed Stochastic Neighbor Embedding (T-SNE)
+## 1. T-distributed Stochastic Neighbor Embedding (T-SNE)
 
 **t-distributed Stochastic Neighbor Embedding** is usually known as T-SNE. T-SNE is an unsupervised learning method, in which the training data we feed to the algorithm does not need the desired labels. T-SNE is a machine learning algorithm used for dimensionality reduction and visualization of high-dimensional data.
 It represents the similarity between data points in the high-dimensional space using a Gaussian distribution, creating a probability distribution by measuring this similarity. In the low-dimensional space, T-SNE reconstructs this similarity distribution using the t-distribution. T-SNE aims to preserve the local relationships between data points, ensuring that similar points in the high-dimensional space remain similar in the low-dimensional space.
 
 **Note:**  This part would show the whole process of T-SNE, including data-processing and model-running.
 
-### 2. Preparation
+## 2. Preparation
 
 First, after ensuring the Geochemistry Pi framework has been installed successfully (if not, please see docs ), we run the python framework in command line interface to process our program: If you do not input own data, you can run:
 
@@ -176,7 +170,7 @@ Successfully store 'Data Original' in 'Data Original.xlsx' in  dir.
 Successfully store 'Data Selected' in 'Data Selected.xlsx' in  dir.
 ```
 
-### 3. NAN value process
+## 3. NAN value process
 
 Check the NAN values would be helpful for later analysis. In Geochemistry π frame, this option is finished automatically.
 
@@ -271,7 +265,7 @@ max      8.110000    3.869550    8.145000   25.362000   23.528382    0.400000
 Successfully store 'Data Selected Imputed' in 'Data Selected Imputed.xlsx' in dir.
 ```
 
-### 4. Feature engineering
+## 4. Feature engineering
 
 The next step is the feature engineering options.
 
@@ -411,7 +405,7 @@ Successfully store 'Data Selected Imputed Feature-Engineering' in 'Data Selected
 Exit Feature Engineering Mode.
 ```
 
-### 5. Model Selection
+## 5. Model Selection
 
 Select dimensionality reduction
 
@@ -472,7 +466,7 @@ Successfully store 'X With Scaling' in 'X With Scaling.xlsx' in dir.
 
 
 
-### 6. T-SNE
+## 6. T-SNE
 
 Select T-SNE.
 

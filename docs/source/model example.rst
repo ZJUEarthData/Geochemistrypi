@@ -9,4 +9,5 @@ Model Example
    Regression <For User/Model Example/Regression/Regression.md>
    Clustering <For User/Model Example/Clustering/Clustering.md>
    Decomposition <For User/Model Example/Decomposition/decomposition.md>
+   Abnormal Detection <For User/Model Example/Abnormal_Detection/abnormal_detection.md>
    Network Analysis <For User/Model Example/Network_Analysis/Network Analysis.md>
