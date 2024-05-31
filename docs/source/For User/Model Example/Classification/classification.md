@@ -14,12 +14,10 @@ Note：If your task is binary classification, the label must be set to either 0 
 
 
 
-- [1. Train-Test Data Preparation](#1. Train-Test Data Preparation)
-
-- [2. Missing Value Processing](#2. Missing Value Processing)
-- [3. Data Processing](#3. Data Processing)
-
-- [4. Model Selection](#4. Model Selection)
+- [1. Train-Test Data Preparation](#1.Train-Test-Data-Preparation)
+- [2. Missing Value Processing](#2.Missing-Value-Processing)
+- [3. Data Processing](#3.Data-Processing)
+- [4. Model Selection](#4.Model-Selection)
 
 
 
@@ -423,10 +421,6 @@ Index - Column Name
 
 (Press Enter key to move forward.)
 
-
-
-> Enter
-
 ```
 
 
@@ -464,10 +458,6 @@ The Selected Data Set:
 [2011 rows x 7 columns]
 
 (Press Enter key to move forward.)
-
-
-
-> Enter
 
 ```
 
@@ -631,10 +621,6 @@ missing values.
 
 (Press Enter key to move forward.)
 
-
-
-> Enter
-
 ```
 
 
@@ -657,10 +643,6 @@ Do you want to deal with the missing values?
 2 - No
 
 (Data) ➜ @Number: 1
-
-
-
-> Enter
 
 ```
 
@@ -686,10 +668,6 @@ Which strategy do you want to apply?
 
 (Data) ➜ @Number: 2
 
-
-
-> Enter
-
 ```
 
 
@@ -714,21 +692,11 @@ Which method do you want to apply?
 
 (Data) ➜ @Number: 1
 
-
-
-> Enter
-
-
-
 Successfully fill the missing values with the mean value of each
 
 feature column respectively.
 
 (Press Enter key to move forward.)
-
-
-
-> Enter
 
 ```
 
@@ -861,9 +829,6 @@ Classification/XGBoost Algorithm - Test 1/artifacts/data.
 (Press Enter key to move forward.)
 
 
-
-> Enter
-
 ```
 
 
@@ -906,12 +871,6 @@ Feature Engineering Option:
 
 (Data) ➜ @Number: 2
 
-
-
-> Enter
-
-
-
 Successfully store 'Data Selected Dropped-Imputed
 
 Feature-Engineering' in 'Data Selected Dropped-Imputed
@@ -921,10 +880,6 @@ Feature-Engineering.xlsx' in /Users/lcthw/geopi/geopi_output/GeoPi
 - Rock Classification/XGBoost Algorithm - Test 1/artifacts/data.
 
 (Press Enter key to move forward.)
-
-
-
-> Enter
 
 ```
 
@@ -952,16 +907,7 @@ We select **2 - Classification** as our model:
 
 (Model) ➜ @Number: 2
 
-
-> Enter
-
-
-
 (Press Enter key to move forward.)
-
-
-
-> Enter
 
 ```
 
@@ -1103,10 +1049,6 @@ Classification/XGBoost Algorithm - Test 1/artifacts/data.
 
 (Press Enter key to move forward.)
 
-
-
-> Enter
-
 ```
 
 
@@ -1160,10 +1102,6 @@ Format 1: "[**, **]; **; [**, **]", such as "[1, 3]; 7; [10, 13]" --> you want t
 Format 2: "xx", such as "7" --> you want to deal with the columns 7
 
 @input: 1
-
-
-
-> Enter
 
 ```
 
@@ -1240,11 +1178,6 @@ Successfully store 'Y' in 'Y.xlsx' in
 Classification/XGBoost Algorithm - Test 1/artifacts/data.
 
 (Press Enter key to move forward.)
-
-
-
-> Enter
-
 ```
 
 
@@ -1293,12 +1226,6 @@ Notice: Normally, set 20% of the dataset aside as test set, such
 as 0.2.
 
 (Data) ➜ @Test Ratio: 0.2
-
-
-
-> Enter
-
-
 
 -------------------------
 
@@ -1354,8 +1281,6 @@ min    0.218000   0.000000 ...   1.354000   0.097000
 
 max   56.294137   6.970000 ...  17.950000  26.090000
 
-
-
 [8 rows x 6 columns]
 
 Successfully store 'X Train' in 'X Train.xlsx' in
@@ -1392,8 +1317,6 @@ The Selected Data Set: X Test
 
 1624 49.600000  0.580000 ...  3.20000 21.10000
 
-
-
 [403 rows x 6 columns]
 
 Basic Statistical Information: X Test
@@ -1417,8 +1340,6 @@ min   40.730000  0.000000 ...  1.281000  0.174000
 75%   52.997000  0.535217 ...  3.333500  22.454500
 
 max   56.301066  5.520000 ...  18.270000  25.171000
-
-
 
 [8 rows x 6 columns]
 
@@ -1455,8 +1376,6 @@ The Selected Data Set: Y Train
 1459  1.0
 
 1126  1.0
-
-
 
 [1608 rows x 1 columns]
 
@@ -1516,8 +1435,6 @@ The Selected Data Set: Y Test
 
 1624  0.0
 
-
-
 [403 rows x 1 columns]
 
 Basic Statistical Information: Y Test
@@ -1549,10 +1466,6 @@ Successfully store 'Y Test' in 'Y Test.xlsx' in
 Classification/XGBoost Algorithm - Test 1/artifacts/data.
 
 (Press Enter key to move forward.)
-
-
-
-> Enter
 
 ```
 
@@ -1596,10 +1509,6 @@ Which model do you want to apply?(Enter the Corresponding Number)
 
 (Model) ➜ @Number: 6
 
-
-
-> Enter
-
 ```
 
 
@@ -1620,10 +1529,6 @@ this algorithm?(Enter the Corresponding Number):
 
 (Model) ➜ @Number: 1
 
-
-
-> Enter
-
 ```
 
 
@@ -1641,10 +1546,6 @@ If needed, you can also cutomize your label via the step below, here, we skip th
 2 - No
 
 (Data) ➜ @Number: 2
-
-
-
-> Enter
 
 ```
 
