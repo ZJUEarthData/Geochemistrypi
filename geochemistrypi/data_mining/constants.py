@@ -26,8 +26,8 @@ SECTION = ["User", "Data", "Model", "Plot"]
 
 OPTION = ["Yes", "No"]
 DATA_OPTION = ["Own Data", "Testing Data (Built-in)"]
-TEST_DATA_OPTION = ["Data For Regression", "Data For Classification", "Data For Clustering", "Data For Dimensional Reduction", "Data For Abnormal Detection"]
-MODE_OPTION = ["Regression", "Classification", "Clustering", "Dimensional Reduction", "Abnormal Detection"]
+TEST_DATA_OPTION = ["Data For Regression", "Data For Classification", "Data For Clustering", "Data For Dimensional Reduction", "Data For Abnormal Detection", "Data For Network Analysis"]
+MODE_OPTION = ["Regression", "Classification", "Clustering","Dimensional Reduction", "Abnormal Detection", "Network Analysis"]
 
 # The model provided to use
 REGRESSION_MODELS = [
@@ -68,6 +68,7 @@ CLASSIFICATION_MODELS = [
 CLUSTERING_MODELS = ["KMeans", "DBSCAN", "Agglomerative", "AffinityPropagation"]
 DECOMPOSITION_MODELS = ["PCA", "T-SNE", "MDS"]
 ABNORMALDETECTION_MODELS = ["Isolation Forest"]
+NETWORKANALYSIS_MODELS = ["Bron Kerbosch Community Detection", "Louvain Method Community Detection"]
 
 # The model can deal with missing values
 # Reference: https://scikit-learn.org/stable/modules/impute.html#estimators-that-handle-nan-values
@@ -89,7 +90,7 @@ CLUSTERING_MODELS_WITH_MISSING_VALUES = [
 
 
 # Special AutoML models
-NON_AUTOML_MODELS = ["Linear Regression", "Polynomial Regression"]
+NON_AUTOML_MODELS = ["Linear Regression", "Polynomial Regression", "bron_kerbosch, louvain_method"]
 RAY_FLAML = ["Multi-layer Perceptron"]
 
 MISSING_VALUE_STRATEGY = ["Drop Rows with Missing Values ", "Impute Missing Values"]

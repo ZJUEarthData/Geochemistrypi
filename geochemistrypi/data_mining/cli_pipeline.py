@@ -29,6 +29,7 @@ from .constants import (
     SECTION,
     TEST_DATA_OPTION,
     WORKING_PATH,
+    NETWORKANALYSIS_MODELS
 )
 from .data.data_readiness import basic_info, create_sub_data_set, data_split, float_input, limit_num_input, np2pd, num2option, num_input, read_data, show_data_columns
 from .data.feature_engineering import FeatureConstructor
@@ -45,7 +46,7 @@ from .process.detect import AbnormalDetectionModelSelection
 from .process.regress import RegressionModelSelection
 from .utils.base import check_package, clear_output, create_geopi_output_dir, get_os, install_package, log, save_data, show_warning
 from .utils.mlflow_utils import retrieve_previous_experiment_id
-
+from .process.network import NetworkAnalysisModelSelection
 
 def cli_pipeline(training_data_path: str, application_data_path: Optional[str] = None) -> None:
     """The command line interface software for Geochemistry π.
@@ -197,6 +198,8 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
             training_data_path = "Data_Decomposition.xlsx"
         elif built_in_training_data_num == 5:
             training_data_path = "Data_AbnormalDetection.xlsx"
+        elif built_in_training_data_num == 6:
+            training_data_path = "Data_network.xlsx"
         data = read_data(file_path=training_data_path)
         print(f"Successfully loading the built-in training data set '{training_data_path}'.")
         show_data_columns(data.columns)
@@ -375,6 +378,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         MODE_OPTION.remove("Dimensional Reduction")
         # Delete the abnormal detection mode because it doesn't support missing values.
         MODE_OPTION.remove("Abnormal Detection")
+        MODE_OPTION.remove("Network Analysis")
         num2option(MODE_OPTION)
         mode_num = limit_num_input(MODE_OPTION, SECTION[2], num_input)
     else:
@@ -470,6 +474,40 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         y_train, y_test = train_test_data["Y Train"], train_test_data["Y Test"]
         del data_selected_imputed_fe
         clear_output()
+    elif mode_num == 6:
+        # un machine learning
+        print("-*-*- Data Segmentation - X Set and Y Set -*-*-")
+        print("Divide the processing data set into X (mineral_type should be included) and Y (group_id) respectively.")
+        # create X data set
+        print("Selected sub data set to create X data set:")
+        show_data_columns(data_selected_imputed_fe.columns)
+        print("The selected X data set:")
+        X = create_sub_data_set(data_selected_imputed_fe)
+        print("Successfully create X data set.")
+        print("The Selected Data Set:")
+        print(X)
+        print("Basic Statistical Information: ")
+        basic_statistic(X)
+        save_data(X, "X Without Scaling", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+        clear_output()
+
+        # Create Y data set
+        print("-*-*- Data Segmentation - X Set and Y Set-*-*-")
+        print("Selected sub data set to create Y data set:")
+        show_data_columns(data_selected_imputed_fe.columns)
+        print("The selected Y data set:")
+        print("Notice: Normally, please choose only one column to be tag column Y, not multiple columns.")
+        print("Notice: For classification model training, please choose the label column which has distinctive integers.")
+        y = create_sub_data_set(data_selected_imputed_fe)
+        print("Successfully create Y data set.")
+        print("The Selected Data Set:")
+        print(y)
+        print("Basic Statistical Information: ")
+        basic_statistic(y)
+        save_data(y, "Y", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+        clear_output()
+
+
     else:
         # Unsupervised learning
         # Create X data set without data split because it is unsupervised learning
@@ -516,142 +554,180 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         Modes2Models = {1: REGRESSION_MODELS_WITH_MISSING_VALUES, 2: CLASSIFICATION_MODELS_WITH_MISSING_VALUES, 3: CLUSTERING_MODELS_WITH_MISSING_VALUES}
         Modes2Initiators = {1: RegressionModelSelection, 2: ClassificationModelSelection, 3: ClusteringModelSelection}
     else:
-        Modes2Models = {1: REGRESSION_MODELS, 2: CLASSIFICATION_MODELS, 3: CLUSTERING_MODELS, 4: DECOMPOSITION_MODELS, 5: ABNORMALDETECTION_MODELS}
+        Modes2Models = {1: REGRESSION_MODELS, 2: CLASSIFICATION_MODELS, 3: CLUSTERING_MODELS, 4: DECOMPOSITION_MODELS, 5: ABNORMALDETECTION_MODELS,6: NETWORKANALYSIS_MODELS}
         Modes2Initiators = {
             1: RegressionModelSelection,
             2: ClassificationModelSelection,
             3: ClusteringModelSelection,
             4: DecompositionModelSelection,
             5: AbnormalDetectionModelSelection,
+            6: NetworkAnalysisModelSelection,
         }
     MODELS = Modes2Models[mode_num]
-    num2option(MODELS)
-    # Add the option of all models
-    all_models_num = len(MODELS) + 1
-    print(str(all_models_num) + " - All models above to be trained")
-    print("Which model do you want to apply?(Enter the Corresponding Number)")
-    MODELS.append("all_models")
-    model_num = limit_num_input(MODELS, SECTION[2], num_input)
-    clear_output()
 
-    # AutoML hyper parameter tuning control
-    is_automl = False
-    model_name = MODELS[model_num - 1]
-    # If the model is supervised learning, then allow the user to use AutoML.
-    if mode_num == 1 or mode_num == 2:
-        # If the model is not in the NON_AUTOML_MODELS, then ask the user whether to use AutoML.
-        if model_name not in NON_AUTOML_MODELS:
-            print("Do you want to employ automated machine learning with respect to this algorithm?" "(Enter the Corresponding Number):")
-            num2option(OPTION)
-            automl_num = limit_num_input(OPTION, SECTION[2], num_input)
-            if automl_num == 1:
-                is_automl = True
-            clear_output()
-
-    # Model inference control
-    is_inference = False
-    # If the model is supervised learning, then allow the user to use model inference.
-    if mode_num == 1 or mode_num == 2:
-        print("-*-*- Feature Engineering on Application Data -*-*-")
-        is_inference = True
-        selected_columns = X_train.columns
-        if inference_data is not None:
-            if feature_engineering_config:
-                # If inference_data is not None and feature_engineering_config is not {}, then apply feature engineering with the same operation to the input data.
-                print("The same feature engineering operation will be applied to the inference data.")
-                new_feature_builder = FeatureConstructor(inference_data)
-                inference_data_fe = new_feature_builder.batch_build(feature_engineering_config)
-                inference_data_fe_selected = inference_data_fe[selected_columns]
-                save_data(inference_data, "Application Data Original", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
-                save_data(inference_data_fe, "Application Data Feature-Engineering", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
-                save_data(inference_data_fe_selected, "Application Data Feature-Engineering Selected", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
-            else:
-                print("You have not applied feature engineering to the training data.")
-                print("Hence, no feature engineering operation will be applied to the inference data.")
-                inference_data_fe_selected = inference_data[selected_columns]
-                save_data(inference_data, "Application Data Original", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
-                save_data(inference_data_fe_selected, "Application Data Selected", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
-        else:
-            # If the user doesn't provide the inference data path, it means that the user doesn't want to run the model inference.
-            print("You did not enter inference data.")
-            inference_data_fe_selected = None
+    if mode_num == 6:
+        num2option(MODELS)
+        # Add the option of all models
+        all_models_num = len(MODELS) + 1
+        print(str(all_models_num) + " - All models above to be trained")
+        print("Which model do you want to apply?(Enter the Corresponding Number)")
+        MODELS.append("all_models")
+        model_num = limit_num_input(MODELS, SECTION[2], num_input)
         clear_output()
-    else:
-        # If the model is unsupervised learning, then don't allow the user to use model inference.
-        inference_data_fe_selected = None
 
-    # <--- Model Training --->
-    # In this section, there are two scenarios which are either choosing one model to run or choosing all models.
-    # In both scenarios, after the model training is finished, the transform pipeline will be created.
-    # Subsequently, the model inference will be executed if the user provides the inference data.
-    # Technically, the transform pipeline contains the operations on the training data and it will be applied to the inference data in the same order.
-    logger.debug("Model Training")
-    # If the user doesn't choose all models, then run the designated model.
-    if model_num != all_models_num:
-        # run the designated model
+        model_name = MODELS[model_num - 1]
         run = Modes2Initiators[mode_num](model_name)
-        # If is_automl is False, then run the model without AutoML.
-        if not is_automl:
-            run.activate(X, y, X_train, X_test, y_train, y_test)
-        else:
-            run.activate(X, y, X_train, X_test, y_train, y_test, is_automl)
-        clear_output()
-
-        # <--- Transform Pipeline --->
-        # Construct the transform pipeline using sklearn.pipeline.make_pipeline method.
-        logger.debug("Transform Pipeline")
-        print("-*-*- Transform Pipeline Construction -*-*-")
-        transformer_config, transform_pipeline = build_transform_pipeline(imputation_config, feature_scaling_config, feature_selection_config, run, X_train, y_train)
-        clear_output()
-
-        # <--- Model Inference --->
-        # If the user provides the inference data, then run the model inference.
-        # If the user chooses to drop the rows with missing values, then before running the model inference, need to drop the rows with missing values in inference data either.
-        logger.debug("Model Inference")
-        if inference_data_fe_selected is not None:
-            print("-*-*- Model Inference -*-*-")
-            if drop_rows_with_missing_value_flag:
-                inference_data_fe_selected_dropped = inference_data_fe_selected.dropna()
-                model_inference(inference_data_fe_selected_dropped, is_inference, run, transformer_config, transform_pipeline)
-                save_data(inference_data_fe_selected_dropped, "Application Data Feature-Engineering Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
-            else:
-                model_inference(inference_data_fe_selected, is_inference, run, transformer_config, transform_pipeline)
+        if model_num != all_models_num:
+            # run the designated model
+            run = Modes2Initiators[mode_num](model_name)
+            run.activate(X, y)
             clear_output()
+            print("[green]End")
+        else:
+            # Run all models
+            for i in range(len(MODELS) - 1):
+                # Start a nested MLflow run within the current MLflow run
+                with mlflow.start_run(run_name=MODELS[i], experiment_id=experiment.experiment_id, nested=True):
+                    create_geopi_output_dir(experiment.name, run_name, MODELS[i])
+                    run = Modes2Initiators[mode_num](MODELS[i])
+                    run.activate(X, y)
+
     else:
-        # Run all models
-        for i in range(len(MODELS) - 1):
-            # Start a nested MLflow run within the current MLflow run
-            with mlflow.start_run(run_name=MODELS[i], experiment_id=experiment.experiment_id, nested=True):
-                create_geopi_output_dir(experiment.name, run_name, MODELS[i])
-                run = Modes2Initiators[mode_num](MODELS[i])
-                # If is_automl is False, then run all models without AutoML.
-                if not is_automl:
-                    run.activate(X, y, X_train, X_test, y_train, y_test)
+        num2option(MODELS)
+        # Add the option of all models
+        all_models_num = len(MODELS) + 1
+        print(str(all_models_num) + " - All models above to be trained")
+        print("Which model do you want to apply?(Enter the Corresponding Number)")
+        MODELS.append("all_models")
+        model_num = limit_num_input(MODELS, SECTION[2], num_input)
+        clear_output()
+
+
+        # AutoML hyper parameter tuning control
+        is_automl = False
+        model_name = MODELS[model_num - 1]
+        # If the model is supervised learning, then allow the user to use AutoML.
+        if mode_num == 1 or mode_num == 2:
+            # If the model is not in the NON_AUTOML_MODELS, then ask the user whether to use AutoML.
+            if model_name not in NON_AUTOML_MODELS:
+                print("Do you want to employ automated machine learning with respect to this algorithm?" "(Enter the Corresponding Number):")
+                num2option(OPTION)
+                automl_num = limit_num_input(OPTION, SECTION[2], num_input)
+                if automl_num == 1:
+                    is_automl = True
+                clear_output()
+
+        # Model inference control
+        is_inference = False
+        # If the model is supervised learning, then allow the user to use model inference.
+        if mode_num == 1 or mode_num == 2:
+            print("-*-*- Feature Engineering on Application Data -*-*-")
+            is_inference = True
+            selected_columns = X_train.columns
+            if inference_data is not None:
+                if feature_engineering_config:
+                    # If inference_data is not None and feature_engineering_config is not {}, then apply feature engineering with the same operation to the input data.
+                    print("The same feature engineering operation will be applied to the inference data.")
+                    new_feature_builder = FeatureConstructor(inference_data)
+                    inference_data_fe = new_feature_builder.batch_build(feature_engineering_config)
+                    inference_data_fe_selected = inference_data_fe[selected_columns]
+                    save_data(inference_data, "Application Data Original", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                    save_data(inference_data_fe, "Application Data Feature-Engineering", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                    save_data(inference_data_fe_selected, "Application Data Feature-Engineering Selected", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
                 else:
-                    # If is_automl is True, but MODELS[i] is in the NON_AUTOML_MODELS, then run the model without AutoML.
-                    if MODELS[i] in NON_AUTOML_MODELS:
+                    print("You have not applied feature engineering to the training data.")
+                    print("Hence, no feature engineering operation will be applied to the inference data.")
+                    inference_data_fe_selected = inference_data[selected_columns]
+                    save_data(inference_data, "Application Data Original", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                    save_data(inference_data_fe_selected, "Application Data Selected", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+            else:
+                # If the user doesn't provide the inference data path, it means that the user doesn't want to run the model inference.
+                print("You did not enter inference data.")
+                inference_data_fe_selected = None
+            clear_output()
+        else:
+            # If the model is unsupervised learning, then don't allow the user to use model inference.
+            inference_data_fe_selected = None
+
+        # <--- Model Training --->
+        # In this section, there are two scenarios which are either choosing one model to run or choosing all models.
+        # In both scenarios, after the model training is finished, the transform pipeline will be created.
+        # Subsequently, the model inference will be executed if the user provides the inference data.
+        # Technically, the transform pipeline contains the operations on the training data and it will be applied to the inference data in the same order.
+        logger.debug("Model Training")
+        # If the user doesn't choose all models, then run the designated model.
+        if model_num != all_models_num:
+            # run the designated model
+            run = Modes2Initiators[mode_num](model_name)
+            # If is_automl is False, then run the model without AutoML.
+            if not is_automl:
+                run.activate(X, y, X_train, X_test, y_train, y_test)
+            else:
+                run.activate(X, y, X_train, X_test, y_train, y_test, is_automl)
+            clear_output()
+
+            # <--- Transform Pipeline --->
+            # Construct the transform pipeline using sklearn.pipeline.make_pipeline method.
+            logger.debug("Transform Pipeline")
+            print("-*-*- Transform Pipeline Construction -*-*-")
+            transformer_config, transform_pipeline = build_transform_pipeline(imputation_config, feature_scaling_config, feature_selection_config, run, X_train, y_train)
+            clear_output()
+
+            # <--- Model Inference --->
+            # If the user provides the inference data, then run the model inference.
+            # If the user chooses to drop the rows with missing values, then before running the model inference, need to drop the rows with missing values in inference data either.
+            logger.debug("Model Inference")
+            if inference_data_fe_selected is not None:
+                print("-*-*- Model Inference -*-*-")
+                if drop_rows_with_missing_value_flag:
+                    inference_data_fe_selected_dropped = inference_data_fe_selected.dropna()
+                    model_inference(inference_data_fe_selected_dropped, is_inference, run, transformer_config, transform_pipeline)
+                    save_data(inference_data_fe_selected_dropped, "Application Data Feature-Engineering Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                else:
+                    model_inference(inference_data_fe_selected, is_inference, run, transformer_config, transform_pipeline)
+                clear_output()
+        else:
+            # Run all models
+            for i in range(len(MODELS) - 1):
+                # Start a nested MLflow run within the current MLflow run
+                with mlflow.start_run(run_name=MODELS[i], experiment_id=experiment.experiment_id, nested=True):
+                    create_geopi_output_dir(experiment.name, run_name, MODELS[i])
+                    run = Modes2Initiators[mode_num](MODELS[i])
+                    # If is_automl is False, then run all models without AutoML.
+                    if not is_automl:
                         run.activate(X, y, X_train, X_test, y_train, y_test)
                     else:
-                        # If is_automl is True, and MODELS[i] is not in the NON_AUTOML_MODELS, then run the model with AutoML.
-                        run.activate(X, y, X_train, X_test, y_train, y_test, is_automl)
+                        # If is_automl is True, but MODELS[i] is in the NON_AUTOML_MODELS, then run the model without AutoML.
+                        if MODELS[i] in NON_AUTOML_MODELS:
+                            run.activate(X, y, X_train, X_test, y_train, y_test)
+                        else:
+                            # If is_automl is True, and MODELS[i] is not in the NON_AUTOML_MODELS, then run the model with AutoML.
+                            run.activate(X, y, X_train, X_test, y_train, y_test, is_automl)
 
-                # <--- Transform Pipeline --->
-                # Construct the transform pipeline using sklearn.pipeline.make_pipeline method.
-                logger.debug("Transform Pipeline")
-                print("-*-*- Transform Pipeline Construction -*-*-")
-                transformer_config, transform_pipeline = build_transform_pipeline(imputation_config, feature_scaling_config, feature_selection_config, run, X_train, y_train)
+                    # <--- Transform Pipeline --->
+                    # Construct the transform pipeline using sklearn.pipeline.make_pipeline method.
+                    logger.debug("Transform Pipeline")
+                    print("-*-*- Transform Pipeline Construction -*-*-")
+                    transformer_config, transform_pipeline = build_transform_pipeline(imputation_config, feature_scaling_config, feature_selection_config, run, X_train, y_train)
 
-                # <--- Model Inference --->
-                # If the user provides the inference data, then run the model inference.
-                # If the user chooses to drop the rows with missing values, then before running the model inference, need to drop the rows with missing values in inference data either.
-                logger.debug("Model Inference")
-                if inference_data_fe_selected is not None:
-                    print("-*-*- Model Inference -*-*-")
-                    if drop_rows_with_missing_value_flag:
-                        inference_data_fe_selected_dropped = inference_data_fe_selected.dropna()
-                        model_inference(inference_data_fe_selected_dropped, is_inference, run, transformer_config, transform_pipeline)
-                        save_data(inference_data_fe_selected_dropped, "Application Data Feature-Engineering Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
-                    else:
-                        model_inference(inference_data_fe_selected, is_inference, run, transformer_config, transform_pipeline)
-                    clear_output()
+                    # <--- Model Inference --->
+                    # If the user provides the inference data, then run the model inference.
+                    # If the user chooses to drop the rows with missing values, then before running the model inference, need to drop the rows with missing values in inference data either.
+                    logger.debug("Model Inference")
+                    if inference_data_fe_selected is not None:
+                        print("-*-*- Model Inference -*-*-")
+                        if drop_rows_with_missing_value_flag:
+                            inference_data_fe_selected_dropped = inference_data_fe_selected.dropna()
+                            model_inference(inference_data_fe_selected_dropped, is_inference, run, transformer_config, transform_pipeline)
+                            save_data(inference_data_fe_selected_dropped, "Application Data Feature-Engineering Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                        else:
+                            model_inference(inference_data_fe_selected, is_inference, run, transformer_config, transform_pipeline)
+                        clear_output()
+    # <--- Data Dumping --->
+    # In this section, convert the data in the output to the summary.
+    GEOPI_OUTPUT_SUMMARY_PATH = os.getenv("GEOPI_OUTPUT_SUMMARY_PATH")
+    GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+    GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
+    GEOPI_OUTPUT_PARAMETERS_PATH = os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH")
+    copy_files(GEOPI_OUTPUT_ARTIFACTS_PATH, GEOPI_OUTPUT_METRICS_PATH, GEOPI_OUTPUT_PARAMETERS_PATH, GEOPI_OUTPUT_SUMMARY_PATH)
     mlflow.end_run()
