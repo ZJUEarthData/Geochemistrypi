@@ -45,6 +45,7 @@ from .process.cluster import ClusteringModelSelection
 from .process.decompose import DecompositionModelSelection
 from .process.detect import AbnormalDetectionModelSelection
 from .process.regress import RegressionModelSelection
+from .process.network import NetworkAnalysisModelSelection
 from .utils.base import check_package, clear_output, copy_files, create_geopi_output_dir, get_os, install_package, log, save_data, show_warning
 from .utils.mlflow_utils import retrieve_previous_experiment_id
 
