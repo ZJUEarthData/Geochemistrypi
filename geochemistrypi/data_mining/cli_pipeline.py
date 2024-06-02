@@ -30,7 +30,6 @@ from .constants import (
     SECTION,
     TEST_DATA_OPTION,
     WORKING_PATH,
-    NETWORKANALYSIS_MODELS
 )
 from .data.data_readiness import basic_info, create_sub_data_set, data_split, float_input, limit_num_input, np2pd, num2option, num_input, read_data, show_data_columns
 from .data.feature_engineering import FeatureConstructor
@@ -47,7 +46,6 @@ from .process.detect import AbnormalDetectionModelSelection
 from .process.regress import RegressionModelSelection
 from .utils.base import check_package, clear_output, copy_files, create_geopi_output_dir, get_os, install_package, log, save_data, show_warning
 from .utils.mlflow_utils import retrieve_previous_experiment_id
-from .process.network import NetworkAnalysisModelSelection
 
 def cli_pipeline(training_data_path: str, application_data_path: Optional[str] = None) -> None:
     """The command line interface software for Geochemistry π.
@@ -404,13 +402,9 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     # If the selected data set is with missing values and is not been imputed, then only allow the user to choose regression, classification and clustering models.
     # Otherwise, allow the user to choose decomposition models.
     if missing_value_flag and not process_missing_value_flag:
-        # Delete the decomposition mode because it doesn't support missing values.
-        MODE_OPTION.remove("Dimensional Reduction")
-        # Delete the abnormal detection mode because it doesn't support missing values.
-        MODE_OPTION.remove("Abnormal Detection")
-        MODE_OPTION.remove("Network Analysis")
-        num2option(MODE_OPTION)
-        mode_num = limit_num_input(MODE_OPTION, SECTION[2], num_input)
+        # The abnormal detection mode and decomposition mode don't support missing values.
+        num2option(MODE_OPTION_WITH_MISSING_VALUES)
+        mode_num = limit_num_input(MODE_OPTION_WITH_MISSING_VALUES, SECTION[2], num_input)
     else:
         num2option(MODE_OPTION)
         mode_num = limit_num_input(MODE_OPTION, SECTION[2], num_input)
