@@ -5,10 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-
 ## [Unreleased]
 
 + MLOps core of continuous training in web interface
+
+## [0.6.0] - 2024-06-02
+
+### Added
+
++ Plotting contour function, plotting heatmap function and plot 2d scatter diagram function for decomposition
++ Prediction for the training set
++ Dropping the rows with missing values by specific columns
++ Summary folder to include all produced artifacts in run's output
++ New Models:
+  + Regression Models
+    + Ridge Regression
+  + Clustering Models
+    + Affinity Propagation Clustering
++ New Mode:
+  + Abnormal Detection
+    +  Isolation Forest
+
+### Changed
+
++ Showing formula function for linear models in both regression and classifiction in terms of the number of the target values' type
++ Built-in inferenc data only for regression and classification
+
+### Fixed
+
++ Invalid YAML file when launching MLflow interface
+
 
 ## [0.5.0] - 2024-01-14
 
@@ -128,6 +154,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 
 [ unreleased ]: https://github.com/ZJUEarthData/geochemistrypi
+[ 0.6.0 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.5.0...v0.6.0
 [ 0.5.0 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.4.0...v0.5.0
 [ 0.4.0 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.3.0...v0.4.0
 [ 0.3.0 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.2.1...v0.3.0
