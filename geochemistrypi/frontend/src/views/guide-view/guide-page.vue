@@ -14,7 +14,7 @@
     </div>
   </div>
 </template>
-<script setup>
+<script lang="ts" setup>
 import { memberInfo } from './config'
 import { ElCard, ElSpace } from 'element-plus'
 </script>
