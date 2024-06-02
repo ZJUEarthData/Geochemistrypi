@@ -22,6 +22,7 @@ from .constants import (
     MISSING_VALUE_STRATEGY,
     MLFLOW_ARTIFACT_DATA_PATH,
     MODE_OPTION,
+    MODE_OPTION_WITH_MISSING_VALUES,
     NON_AUTOML_MODELS,
     OPTION,
     OUTPUT_PATH,
@@ -276,6 +277,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         clear_output()
         # Ask the user whether to use imputation techniques to deal with the missing values.
         print("-*-*- Missing Values Process -*-*-")
+        print("[bold red]Caution: Only some algorithms can process the data with missing value, such as XGBoost for regression and classification![/bold red]")
         print("Do you want to deal with the missing values?")
         num2option(OPTION)
         is_process_missing_value = limit_num_input(OPTION, SECTION[1], num_input)
@@ -401,12 +403,9 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     # If the selected data set is with missing values and is not been imputed, then only allow the user to choose regression, classification and clustering models.
     # Otherwise, allow the user to choose decomposition models.
     if missing_value_flag and not process_missing_value_flag:
-        # Delete the decomposition mode because it doesn't support missing values.
-        MODE_OPTION.remove("Dimensional Reduction")
-        # Delete the abnormal detection mode because it doesn't support missing values.
-        MODE_OPTION.remove("Abnormal Detection")
-        num2option(MODE_OPTION)
-        mode_num = limit_num_input(MODE_OPTION, SECTION[2], num_input)
+        # The abnormal detection mode and decomposition mode don't support missing values.
+        num2option(MODE_OPTION_WITH_MISSING_VALUES)
+        mode_num = limit_num_input(MODE_OPTION_WITH_MISSING_VALUES, SECTION[2], num_input)
     else:
         num2option(MODE_OPTION)
         mode_num = limit_num_input(MODE_OPTION, SECTION[2], num_input)

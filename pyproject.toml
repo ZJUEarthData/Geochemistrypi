@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "geochemistrypi"
-version = "0.5.0"
+version = "0.6.0"
 authors = [
   { name="Can He", email="sanyhew1097618435@163.com" },
 ]
@@ -52,25 +52,14 @@ dependencies = [
     "imblearn",
 ]
 
-[tool.black]
-line-length = "200"
-
-[tool.isort]
-line_length = "200"
-profile = "black"
-
-[tool.flake8]
-max-line-length = "200"
-max-complexity = "20"
-ignore = "F811,W605"
-
 [project.optional-dependencies]
 test = [
     "pytest"
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/ZJUEarthData/geochemistrypi"
+"Homepage" = "https://geochemistrypi.deep-time.org"
+"GitHub" = "https://github.com/ZJUEarthData/geochemistrypi"
 "Bug Tracker" = "https://github.com/ZJUEarthData/geochemistrypi/issues"
 "Online Documentation" = "https://geochemistrypi.readthedocs.io/en/latest/"
 

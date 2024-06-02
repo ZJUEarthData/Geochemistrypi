@@ -224,8 +224,6 @@ Copy the URL shown on the console into any browser to open the MLflow web interf
 
 For more details: Please refer to:
 
-- Manual v1.1.0 for Geochemistry π - Beta [[Tencent Docs]](https://docs.qq.com/pdf/DQ0l5d2xVd2VwcnVW?&u=6868f96d4a384b309036e04e637e367a) | [[Google drive]](https://drive.google.com/file/d/1yryykCyWKM-Sj88fOYbOba6QkB_fu2ws/view?usp=sharing)
-
 - Geochemistry π - Download and Run the Beta Version [[Bilibili]](https://www.bilibili.com/video/BV1UM4y1Q7Ju/?spm_id_from=333.999.0.0&vd_source=27944ab3b73a78970c1a52a5dcbb9140) | [[YouTube]](https://www.youtube.com/watch?v=EeVaJ3H7_AU&list=PLy8hNsI55lvh1UHjhVhqNUj3xPdV9sEiM&index=9)
 
 - MLflow UI user guide - Geochemistry π v0.5.0 [[Bilibili]](https://b23.tv/CW5Rjmo) | [[YouTube]](https://www.youtube.com/watch?v=Yu1nzNeLfRY)
@@ -313,7 +311,6 @@ The whole package is under construction and the documentation is progressively e
 + Yang Lyu (Daisy, Zhejiang University, China)
 + Bailun Jiang (EPSI / Lille University, France)
 + Ruitao Chang (China University of Geosciences Beijing, China)
-+ Junchi Liao(Roceda, University of Electronic Science and Technology of China, China)
 + Panyan Weng (The University of Sydney, Australia)
 + Siqi Yao (Clara, Dongguan University of Technology, China)
 + Zhelan Lin（Lan, Fuzhou University, China）
@@ -397,3 +394,4 @@ More Videos will be recorded soon.
 + Aixiwake·Janganuer (Ayshuak, Sun Yat-sen University, China)
 + Zhenglin Xu (Garry, Jilin University, China)
 + Jianing Wang (National University of Singapore, Singapore)
++ Junchi Liao(Roceda, University of Electronic Science and Technology of China, China)
