@@ -31,6 +31,7 @@ from .constants import (
     SECTION,
     TEST_DATA_OPTION,
     WORKING_PATH,
+    NETWORKANALYSIS_MODELS
 )
 from .data.data_readiness import basic_info, create_sub_data_set, data_split, float_input, limit_num_input, np2pd, num2option, num_input, read_data, show_data_columns
 from .data.feature_engineering import FeatureConstructor
