@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from ._base import WorkflowBase
 from ..constants import MLFLOW_ARTIFACT_DATA_PATH, MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH
-from ..utils.base import save_data
+from ..utils.base import clear_output, save_data, save_fig, save_text
 from .func.algo_network._distance import mahalanobis_distance_calculator
 from .func.algo_network._distance import euclidean_distance_calcular
 from .func.algo_network._common import  pair_dataframes
