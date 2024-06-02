@@ -7,6 +7,7 @@ import VueDevTools from 'vite-plugin-vue-devtools'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+import eslint from 'vite-plugin-eslint'
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -27,7 +28,18 @@ export default defineConfig({
     }),
     Components({
       resolvers: [ElementPlusResolver()]
-    })
+    }),
+    {
+      // do not fail on serve (i.e. local development)
+      ...eslint({
+        lintOnStart: true,
+        include: ['./src'],
+        failOnWarning: false,
+        failOnError: false
+      }),
+      apply: 'serve',
+      enforce: 'post'
+    }
   ],
   resolve: {
     alias: {

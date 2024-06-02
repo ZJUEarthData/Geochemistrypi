@@ -2,7 +2,7 @@
   <div class="guide-page">
     <div class="text-wrapper">
       <h1>Meet Our Team Member</h1>
-      <p>Data Organization: ZJU Earth Data Team</p>
+      <p>Data Organization: ZJU Earth Data Team111</p>
     </div>
     <div class="member-group">
       <el-card body-class="member-box" v-for="item in memberInfo" :key="item.id">
@@ -16,7 +16,7 @@
 </template>
 <script lang="ts" setup>
 import { memberInfo } from './config'
-import { ElCard, ElSpace } from 'element-plus'
+import { ElCard } from 'element-plus'
 </script>
 <style lang="scss" scoped>
 .guide-page {

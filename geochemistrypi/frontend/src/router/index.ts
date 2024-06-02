@@ -12,7 +12,7 @@ const router = createRouter({
     {
       path: '/guide',
       name: 'about',
-      component: () => import('../views/guide/guide-page.vue')
+      component: () => import('../views/guide-view/guide-page.vue')
     }
   ]
 })
