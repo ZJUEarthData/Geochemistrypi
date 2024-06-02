@@ -27,7 +27,7 @@ SECTION = ["User", "Data", "Model", "Plot"]
 OPTION = ["Yes", "No"]
 DATA_OPTION = ["Own Data", "Testing Data (Built-in)"]
 TEST_DATA_OPTION = ["Data For Regression", "Data For Classification", "Data For Clustering", "Data For Dimensional Reduction", "Data For Abnormal Detection", "Data For Network Analysis"]
-MODE_OPTION = ["Regression", "Classification", "Clustering","Dimensional Reduction", "Abnormal Detection", "Network Analysis"]
+MODE_OPTION = ["Regression", "Classification", "Clustering", "Dimensional Reduction", "Abnormal Detection", "Network Analysis"]
 MODE_OPTION_WITH_MISSING_VALUES = ["Regression", "Classification", "Clustering"]
 
 # The model provided to use

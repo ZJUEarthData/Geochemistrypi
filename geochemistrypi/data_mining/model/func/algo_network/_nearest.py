@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def top_k_nearest_neighbors(distance, k=5):
 
     nearest_neighbors_indices = np.argsort(distance, axis=1)[:, :k]

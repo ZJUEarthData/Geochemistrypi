@@ -1,8 +1,7 @@
 from itertools import combinations
+
 import numpy as np
 import pandas as pd
-
-
 
 
 def pair_dataframes(dataframes):
@@ -12,6 +11,7 @@ def pair_dataframes(dataframes):
         idx2, df2 = pair[1]
         pairs.append((df1, df2, idx1, idx2))
     return pairs
+
 
 def convert_to_triplets(indices, distances, mineral_a_ids, mineral_b_ids):
 
@@ -26,25 +26,25 @@ def convert_to_triplets(indices, distances, mineral_a_ids, mineral_b_ids):
 
 
 def triplets_df_clean(triplets_df):
-    triplets_df[['Node1', 'Node2']] = np.sort(triplets_df[['Node1', 'Node2']], axis=1)
-    triplets_df = triplets_df.drop_duplicates(subset=['Node1', 'Node2'])
-    triplets_df['Distance'] = triplets_df['Distance'].apply(lambda x: 0.001 if pd.isnull(x) or x == 0 else x)
-    triplets_df = triplets_df.dropna(subset=['Distance'])
-    triplets_df = triplets_df.sort_values(by='Node1')
+    triplets_df[["Node1", "Node2"]] = np.sort(triplets_df[["Node1", "Node2"]], axis=1)
+    triplets_df = triplets_df.drop_duplicates(subset=["Node1", "Node2"])
+    triplets_df["Distance"] = triplets_df["Distance"].apply(lambda x: 0.001 if pd.isnull(x) or x == 0 else x)
+    triplets_df = triplets_df.dropna(subset=["Distance"])
+    triplets_df = triplets_df.sort_values(by="Node1")
     return triplets_df
 
 
 def construct_adj_matrix(graph_data):
-    nodes = np.unique(graph_data[['Node1', 'Node2']].values)
+    nodes = np.unique(graph_data[["Node1", "Node2"]].values)
     num_nodes = len(nodes)
     adj_matrix = np.zeros((num_nodes, num_nodes))
     node_index_mapping = {node: idx for idx, node in enumerate(nodes)}
     for index, row in graph_data.iterrows():
-        node1, node2, distance = int(row['Node1']), int(row['Node2']), row['Distance']
+        node1, node2, distance = int(row["Node1"]), int(row["Node2"]), row["Distance"]
         adj_matrix[node_index_mapping[node1], node_index_mapping[node2]] = distance
         adj_matrix[node_index_mapping[node2], node_index_mapping[node1]] = distance
-    mapping_df = pd.DataFrame(list(node_index_mapping.items()), columns=['Original_Node', 'Mapped_Node'])
-    return adj_matrix,mapping_df
+    mapping_df = pd.DataFrame(list(node_index_mapping.items()), columns=["Original_Node", "Mapped_Node"])
+    return adj_matrix, mapping_df
 
 
 def accurate_statistic_algo(communities, ids, group_ids):
@@ -76,8 +76,7 @@ def accurate_statistic_algo(communities, ids, group_ids):
         repeated_counts.append(repeated_count)
         unique_counts.append(unique_count)
 
-    result_df['Repeated_Counts'] = repeated_counts
-    result_df['Unique_Counts'] = unique_counts
+    result_df["Repeated_Counts"] = repeated_counts
+    result_df["Unique_Counts"] = unique_counts
 
     return result_df
-

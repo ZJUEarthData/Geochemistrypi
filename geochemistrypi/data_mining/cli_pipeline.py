@@ -23,6 +23,7 @@ from .constants import (
     MLFLOW_ARTIFACT_DATA_PATH,
     MODE_OPTION,
     MODE_OPTION_WITH_MISSING_VALUES,
+    NETWORKANALYSIS_MODELS,
     NON_AUTOML_MODELS,
     OPTION,
     OUTPUT_PATH,
@@ -31,7 +32,6 @@ from .constants import (
     SECTION,
     TEST_DATA_OPTION,
     WORKING_PATH,
-    NETWORKANALYSIS_MODELS
 )
 from .data.data_readiness import basic_info, create_sub_data_set, data_split, float_input, limit_num_input, np2pd, num2option, num_input, read_data, show_data_columns
 from .data.feature_engineering import FeatureConstructor
@@ -45,10 +45,11 @@ from .process.classify import ClassificationModelSelection
 from .process.cluster import ClusteringModelSelection
 from .process.decompose import DecompositionModelSelection
 from .process.detect import AbnormalDetectionModelSelection
-from .process.regress import RegressionModelSelection
 from .process.network import NetworkAnalysisModelSelection
+from .process.regress import RegressionModelSelection
 from .utils.base import check_package, clear_output, copy_files, create_geopi_output_dir, get_os, install_package, log, save_data, show_warning
 from .utils.mlflow_utils import retrieve_previous_experiment_id
+
 
 def cli_pipeline(training_data_path: str, application_data_path: Optional[str] = None) -> None:
     """The command line interface software for Geochemistry π.
@@ -535,7 +536,6 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         save_data(y, "Y", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
         clear_output()
 
-
     else:
         # Unsupervised learning
         # Create X data set without data split because it is unsupervised learning
@@ -582,7 +582,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         Modes2Models = {1: REGRESSION_MODELS_WITH_MISSING_VALUES, 2: CLASSIFICATION_MODELS_WITH_MISSING_VALUES, 3: CLUSTERING_MODELS_WITH_MISSING_VALUES}
         Modes2Initiators = {1: RegressionModelSelection, 2: ClassificationModelSelection, 3: ClusteringModelSelection}
     else:
-        Modes2Models = {1: REGRESSION_MODELS, 2: CLASSIFICATION_MODELS, 3: CLUSTERING_MODELS, 4: DECOMPOSITION_MODELS, 5: ABNORMALDETECTION_MODELS,6: NETWORKANALYSIS_MODELS}
+        Modes2Models = {1: REGRESSION_MODELS, 2: CLASSIFICATION_MODELS, 3: CLUSTERING_MODELS, 4: DECOMPOSITION_MODELS, 5: ABNORMALDETECTION_MODELS, 6: NETWORKANALYSIS_MODELS}
         Modes2Initiators = {
             1: RegressionModelSelection,
             2: ClassificationModelSelection,
@@ -629,7 +629,6 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         MODELS.append("all_models")
         model_num = limit_num_input(MODELS, SECTION[2], num_input)
         clear_output()
-
 
         # AutoML hyper parameter tuning control
         is_automl = False
