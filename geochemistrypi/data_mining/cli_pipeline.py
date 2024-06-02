@@ -22,6 +22,7 @@ from .constants import (
     MISSING_VALUE_STRATEGY,
     MLFLOW_ARTIFACT_DATA_PATH,
     MODE_OPTION,
+    MODE_OPTION_WITH_MISSING_VALUES,
     NON_AUTOML_MODELS,
     OPTION,
     OUTPUT_PATH,
@@ -277,6 +278,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         clear_output()
         # Ask the user whether to use imputation techniques to deal with the missing values.
         print("-*-*- Missing Values Process -*-*-")
+        print("[bold red]Caution: Only some algorithms can process the data with missing value, such as XGBoost for regression and classification![/bold red]")
         print("Do you want to deal with the missing values?")
         num2option(OPTION)
         is_process_missing_value = limit_num_input(OPTION, SECTION[1], num_input)
