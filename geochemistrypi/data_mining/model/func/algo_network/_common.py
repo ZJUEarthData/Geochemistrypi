@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 
+# Pair each dataframe with every other dataframe in a list of dataframes
 def pair_dataframes(dataframes):
     pairs = []
     for pair in combinations(enumerate(dataframes), 2):
@@ -13,8 +14,8 @@ def pair_dataframes(dataframes):
     return pairs
 
 
+# Convert indices and distances into triplets of mineral IDs and their distance
 def convert_to_triplets(indices, distances, mineral_a_ids, mineral_b_ids):
-
     triplets = []
 
     for i, (neighbors, distances_row) in enumerate(zip(indices, distances)):
@@ -25,6 +26,7 @@ def convert_to_triplets(indices, distances, mineral_a_ids, mineral_b_ids):
     return triplets
 
 
+# Clean the dataframe of triplets by sorting, removing duplicates, and handling nulls or zeros in distance
 def triplets_df_clean(triplets_df):
     triplets_df[["Node1", "Node2"]] = np.sort(triplets_df[["Node1", "Node2"]], axis=1)
     triplets_df = triplets_df.drop_duplicates(subset=["Node1", "Node2"])
@@ -34,6 +36,7 @@ def triplets_df_clean(triplets_df):
     return triplets_df
 
 
+# Construct an adjacency matrix from graph data
 def construct_adj_matrix(graph_data):
     nodes = np.unique(graph_data[["Node1", "Node2"]].values)
     num_nodes = len(nodes)
@@ -47,6 +50,7 @@ def construct_adj_matrix(graph_data):
     return adj_matrix, mapping_df
 
 
+# Update community IDs based on a mapping and calculate unique and repeated counts
 def accurate_statistic_algo(communities, ids, group_ids):
     result_df = communities.copy()
     flat_ids = np.array(ids).flatten()
