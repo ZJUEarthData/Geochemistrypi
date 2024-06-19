@@ -3,6 +3,10 @@ from sqlalchemy.orm import Session
 from .schemas import UserCreate
 from .sql_models import User
 from .utils import get_password_hash, verify_password
+import httpx
+from .schemas import TokenResponse, ValidationResponse, UserInfoResponse
+from .config import loginURL
+
 
 
 def get_user_by_id(db: Session, user_id: str):
@@ -38,3 +42,47 @@ def authenticate_user(db, email: str, password: str):
     if not verify_password(password, user.hashed_password):
         return False
     return user
+
+async def get_token(code: str) -> str:
+    params = {
+        "appcode": loginURL["appCode"],
+        "code": code,
+        "secret": loginURL["secretCode"],
+    }
+    queryString = "&".join([f"{key}={value}" for key, value in params.items()])
+    urlWithParams = f"{loginURL['tokenChange']}?{queryString}"
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.get(urlWithParams)
+        response.raise_for_status()
+        response_data = response.json()
+        token_response = TokenResponse(**response_data)
+        return token_response.accessToken
+
+async def validate_token(token: str) -> bool:
+    params = {"token": token}
+    queryString = "&".join([f"{key}={value}" for key, value in params.items()])
+    urlWithParams = f"{loginURL['validate']}?{queryString}"
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.get(urlWithParams)
+        response.raise_for_status()
+        response_data = response.json()
+        validation_response = ValidationResponse(**response_data)
+        return validation_response.data
+
+async def get_user_info(token: str):
+    params = {
+        "appcode": loginURL["appCode"],
+        "token": token,
+        "secret": loginURL["secretCode"],
+    }
+    queryString = "&".join([f"{key}={value}" for key, value in params.items()])
+    urlWithParams = f"{loginURL['infoChange']}?{queryString}"
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.get(urlWithParams)
+        response.raise_for_status()
+        response_data = response.json()
+        user_info_response = UserInfoResponse(**response_data)
+        return user_info_response
