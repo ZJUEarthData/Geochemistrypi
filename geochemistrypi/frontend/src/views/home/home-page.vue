@@ -1,8 +1,11 @@
 <template>
 	<div class="home-page">
 		<div class="text-wrapper">
-			<h1>Geochemistry π</h1>
-			<p>A Python Framework For Geochemistry</p>
+			<div>
+				<h1><img class="logo" src="@/assets/imgs/onlyLogo.png" />Geochemistry π</h1>
+				<p>A Python Framework For Geochemistry</p>
+			</div>
+
 		</div>
 	</div>
 </template>
@@ -19,7 +22,16 @@
 		margin-top: 180px;
 		font-size: 30px;
 		color: #fff;
+		display: flex;
 
+		.logo {
+			width: 96px;
+			line-height: 144px;
+			margin-right: 20px
+		}
+		p{
+			margin-left: 116px;
+		}
 		h1 {
 			color: #F25B28;
 			font-size: 90px;
