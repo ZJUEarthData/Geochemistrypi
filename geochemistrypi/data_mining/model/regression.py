@@ -4323,4 +4323,3 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             )
         else:
             pass
-
