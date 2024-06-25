@@ -43,6 +43,7 @@ def authenticate_user(db, email: str, password: str):
         return False
     return user
 
+
 async def get_token(code: str) -> str:
     params = {
         "appcode": loginURL["appCode"],
@@ -54,7 +55,7 @@ async def get_token(code: str) -> str:
     
     async with httpx.AsyncClient() as client:
         response = await client.get(urlWithParams)
-        response.raise_for_status()
+        response.raise_for_status() 
         response_data = response.json()
         token_response = TokenResponse(**response_data)
         return token_response.accessToken
@@ -66,7 +67,7 @@ async def validate_token(token: str) -> bool:
     
     async with httpx.AsyncClient() as client:
         response = await client.get(urlWithParams)
-        response.raise_for_status()
+        response.raise_for_status()  # Raise an error for bad responses
         response_data = response.json()
         validation_response = ValidationResponse(**response_data)
         return validation_response.data
@@ -82,7 +83,7 @@ async def get_user_info(token: str):
     
     async with httpx.AsyncClient() as client:
         response = await client.get(urlWithParams)
-        response.raise_for_status()
+        response.raise_for_status()  # Raise an error for bad responses
         response_data = response.json()
         user_info_response = UserInfoResponse(**response_data)
         return user_info_response

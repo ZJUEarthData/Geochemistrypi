@@ -1,15 +1,10 @@
 from fastapi import FastAPI
-import uvicorn
-from auth.router import router
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
+from src.auth.router import router as auth_router
 
 app = FastAPI()
 
-# Register routers
-app.include_router(router)
+app.include_router(auth_router, prefix="/auth")
 
 if __name__ == "__main__":
+    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

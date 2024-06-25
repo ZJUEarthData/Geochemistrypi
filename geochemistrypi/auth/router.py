@@ -86,44 +86,29 @@
 
 
 # below is the code from yucheng in 2024/7/19
-from fastapi import APIRouter, Request, HTTPException, Response
+from fastapi import APIRouter, HTTPException, Response
 from fastapi.responses import RedirectResponse
-from fastapi.security import OAuth2PasswordBearer
 from .schemas import TokenResponse, ValidationResponse, UserInfoResponse
 from .service import get_token, validate_token, get_user_info
 from .config import loginURL
-import base64
 
 router = APIRouter()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
 @router.get("/login")
-async def login(context: str):
-    params = {
-        "appCode": loginURL["appCode"],
-        "context": base64.b64encode(context.encode()).decode(),
-    }
-    queryString = "&".join([f"{key}={value}" for key, value in params.items()])
-    urlWithParams = f"{loginURL['baseURL']}?{queryString}"
-    return RedirectResponse(urlWithParams)
-
-@router.get("/callback")
-async def callback(request: Request, response: Response):
-    code = request.query_params.get("code")
-    context = request.query_params.get("context")
-    if not code:
-        raise HTTPException(status_code=400, detail="Missing code parameter")
-
+async def login(code: str):
     try:
         token = await get_token(code)
+        return {"accessToken": token}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/getUserInfo")
+async def get_user_info_endpoint(token: str):
+    try:
         token_valid = await validate_token(token)
         if token_valid:
             user_info = await get_user_info(token)
-            # 设置 cookie
-            response.set_cookie(key="token", value=token, httponly=True)
-            redirect_url = f"{loginURL['redirectUrl']}?code={code}"
-            return RedirectResponse(redirect_url)
+            return user_info
         else:
             raise HTTPException(status_code=401, detail="Token validation failed")
     except Exception as e:
