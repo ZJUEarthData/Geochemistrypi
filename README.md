@@ -71,7 +71,7 @@ pip install geochemistrypi
 
 Download the latest version to avoid some old version issues, such as dependency downloading.
 ```
-pip install "geochemistrypi==0.5.0"
+pip install "geochemistrypi==0.6.0"
 ```
 
 One instruction to download on **Jupyter Notebook** or **Google Colab**.
@@ -81,7 +81,7 @@ One instruction to download on **Jupyter Notebook** or **Google Colab**.
 ```
 Download the latest version to avoid some old version issues, such as dependency downloading.
 ```
-!pip install "geochemistrypi==0.5.0"
+!pip install "geochemistrypi==0.6.0"
 ```
 Check the downloaded version of our software:
 
@@ -316,6 +316,7 @@ The whole package is under construction and the documentation is progressively e
 + Zhelan Lin（Lan, Fuzhou University, China）
 + ShuYi Li (Communication University Of China, Beijing, China)
 + Junbo Wang (China University Of Geosciences, Beijing, China)
++ Haibin Wang（Watson, University of Sydney, Australia）
 
 ## Join Us :)
 

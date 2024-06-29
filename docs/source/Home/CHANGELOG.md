@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 + MLOps core of continuous training in web interface
++ More new algorithms and new processing techniques
 
 ## [0.6.0] - 2024-06-02
 
@@ -25,15 +26,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 + New Mode:
   + Abnormal Detection
     +  Isolation Forest
++ Docs:
+  + Mind map of all options in README
+  + Citation info
+  + Abnormal detection algorithm example
 
 ### Changed
 
 + Showing formula function for linear models in both regression and classifiction in terms of the number of the target values' type
 + Built-in inferenc data only for regression and classification
++ Docs:
+  + Installation manual
+  + Clustering algorithm example
 
 ### Fixed
 
 + Invalid YAML file when launching MLflow interface
++ Online docs layout mismatch
 
 
 ## [0.5.0] - 2024-01-14
