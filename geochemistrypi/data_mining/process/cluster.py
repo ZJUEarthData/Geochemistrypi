@@ -69,6 +69,7 @@ class ClusteringModelSelection(ModelSelectionBase):
 
         # Use Scikit-learn style API to process input data
         self.clt_workflow.fit(X)
+        # TODO: Move this into common_components()
         self.clt_workflow.get_cluster_centers()
         self.clt_workflow.get_labels()
 
