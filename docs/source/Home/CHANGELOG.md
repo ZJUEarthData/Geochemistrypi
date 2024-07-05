@@ -10,6 +10,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 + MLOps core of continuous training in web interface
 + More new algorithms and new processing techniques
 
+
+## [0.6.1] - 2024-07-05
+
+### Added
+
++ Precision-recall curve
+
+### Changed
+
++ Silence of dependency downloading when first launching
+
+### Fixed
+
++ Precision-recall vs. threshold diagram
+
+
 ## [0.6.0] - 2024-06-02
 
 ### Added
@@ -163,6 +179,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 
 [ unreleased ]: https://github.com/ZJUEarthData/geochemistrypi
+[ 0.6.1 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.6.0...v0.6.1
 [ 0.6.0 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.5.0...v0.6.0
 [ 0.5.0 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.4.0...v0.5.0
 [ 0.4.0 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.3.0...v0.4.0
