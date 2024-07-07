@@ -17,13 +17,14 @@ from .func.algo_clustering._affinitypropagation import affinitypropagation_manua
 from .func.algo_clustering._agglomerative import agglomerative_manual_hyper_parameters
 from .func.algo_clustering._common import plot_silhouette_diagram, plot_silhouette_value_diagram, scatter2d, scatter3d, score
 from .func.algo_clustering._dbscan import dbscan_manual_hyper_parameters
+from .func.algo_clustering._enum import ClusteringCommonFunction, KMeansSpecialFunction
 from .func.algo_clustering._kmeans import kmeans_manual_hyper_parameters
 
 
 class ClusteringWorkflowBase(WorkflowBase):
     """The base workflow class of clustering algorithms."""
 
-    common_function = ["Cluster Centers", "Cluster Labels", "Model Persistence"]
+    common_function = [func.value for func in ClusteringCommonFunction]
 
     def __init__(self):
         super().__init__()
@@ -58,12 +59,12 @@ class ClusteringWorkflowBase(WorkflowBase):
         save_data(self.clustering_result, f"{self.naming} Result", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
 
     @staticmethod
-    def _score(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
+    def _score(data: pd.DataFrame, labels: pd.DataFrame, func_name: str, algorithm_name: str, store_path: str) -> None:
         """Calculate the score of the model."""
-        print("-----* Model Score *-----")
+        print(f"-----* {func_name} *-----")
         scores = score(data, labels)
         scores_str = json.dumps(scores, indent=4)
-        save_text(scores_str, f"Model Score - {algorithm_name}", store_path)
+        save_text(scores_str, f"{func_name}- {algorithm_name}", store_path)
         mlflow.log_metrics(scores)
 
     @staticmethod
@@ -112,6 +113,7 @@ class ClusteringWorkflowBase(WorkflowBase):
         self._score(
             data=self.X,
             labels=self.clustering_result["clustering result"],
+            func_name=ClusteringCommonFunction.MODEL_SCORE.value,
             algorithm_name=self.naming,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
@@ -190,7 +192,7 @@ class KMeansClustering(ClusteringWorkflowBase):
     """The automation workflow of using KMeans algorithm to make insightful products."""
 
     name = "KMeans"
-    special_function = ["KMeans Score"]
+    special_function = [func.value for func in KMeansSpecialFunction]
 
     def __init__(
         self,
@@ -304,14 +306,15 @@ class KMeansClustering(ClusteringWorkflowBase):
 
         self.naming = KMeansClustering.name
 
-    def _get_inertia_scores(self, algorithm_name: str, store_path: str) -> None:
+    @staticmethod
+    def _get_inertia_scores(func_name: str, algorithm_name: str, trained_model: object, store_path: str) -> None:
         """Get the scores of the clustering result."""
-        print("-----* KMeans Inertia Scores *-----")
-        print("Inertia Score: ", self.model.inertia_)
-        inertia_scores = {"Inertia Score": self.model.inertia_}
+        print(f"-----* {func_name} *-----")
+        print(f"{func_name}: ", trained_model.inertia_)
+        inertia_scores = {f"{func_name}": trained_model.inertia_}
         mlflow.log_metrics(inertia_scores)
         inertia_scores_str = json.dumps(inertia_scores, indent=4)
-        save_text(inertia_scores_str, f"KMeans Inertia Scores - {algorithm_name}", store_path)
+        save_text(inertia_scores_str, f"{func_name} - {algorithm_name}", store_path)
 
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
@@ -325,7 +328,9 @@ class KMeansClustering(ClusteringWorkflowBase):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
         self._get_inertia_scores(
+            func_name=KMeansSpecialFunction.INERTIA_SCORE.value,
             algorithm_name=self.naming,
+            trained_model=self.model,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
 
