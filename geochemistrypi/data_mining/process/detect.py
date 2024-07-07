@@ -16,7 +16,6 @@ class AbnormalDetectionModelSelection(ModelSelectionBase):
         self.ad_workflow = AbnormalDetectionWorkflowBase()
         self.transformer_config = {}
 
-    # @dispatch(object, object, object, object, object, object)
     def activate(
         self,
         X: pd.DataFrame,

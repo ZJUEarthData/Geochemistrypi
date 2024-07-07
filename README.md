@@ -59,6 +59,8 @@ Geochemistry π was selected for featuring as an Editor’s Highlight in EOS 
 
 Eos Website: https://eos.org/editor-highlights/machine-learning-for-geochemists-who-dont-want-to-code.
 
+![Geochemistry pi news](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/bdd33a31-824a-492e-adcf-e660da4eaf1d)
+
 ## Quick Installation
 
 Our software is well tested on **macOS** and **Windows** system with **Python 3.9**. Other systems and Python version are not guranteed.
