@@ -40,7 +40,7 @@ class AbnormalDetectionModelSelection(ModelSelectionBase):
                 bootstrap=hyper_parameters["bootstrap"],
                 max_samples=hyper_parameters["max_samples"],
             )
-            
+
         if self.model_name == "Local Outlier Factor":
             hyper_parameters = LocalOutlierFactorAbnormalDetection.manual_hyper_parameters()
             self.ad_workflow = LocalOutlierFactorAbnormalDetection(
@@ -50,7 +50,7 @@ class AbnormalDetectionModelSelection(ModelSelectionBase):
                 n_jobs=hyper_parameters["n_jobs"],
                 p=hyper_parameters["p"],
             )
-            
+
         self.ad_workflow.show_info()
 
         # Use Scikit-learn style API to process input data

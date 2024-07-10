@@ -10,8 +10,7 @@ from sklearn.neighbors import LocalOutlierFactor
 
 from ..utils.base import clear_output
 from ._base import WorkflowBase
-from .func.algo_abnormaldetection._iforest import isolation_forest_manual_hyper_parameters
-from .func.algo_abnormaldetection._iforest import local_outlier_factor_manual_hyper_parameters
+from .func.algo_abnormaldetection._iforest import isolation_forest_manual_hyper_parameters, local_outlier_factor_manual_hyper_parameters
 
 
 class AbnormalDetectionWorkflowBase(WorkflowBase):
@@ -229,20 +228,20 @@ class IsolationForestAbnormalDetection(AbnormalDetectionWorkflowBase):
 
 class LocalOutlierFactorAbnormalDetection(AbnormalDetectionWorkflowBase):
     """The automation workflow of using Local Outlier Factor algorithm to make insightful products."""
-    
+
     name = "Local Outlier Factor"
     # special_function = []
-    
+
     def __init__(
         self,
         n_neighbors: int = 20,
-        algorithm: str = 'auto',
+        algorithm: str = "auto",
         leaf_size: int = 30,
-        metric: Union[str, callable] = 'minkowski',
+        metric: Union[str, callable] = "minkowski",
         p: float = 2.0,
         metric_params: dict = None,
         contamination: Union[str, float] = "auto",
-        novelty: bool = True, #Change this variable from False to True inorder to make this function work
+        novelty: bool = True,  # Change this variable from False to True inorder to make this function work
         n_jobs: int = None,
     ) -> None:
         """
@@ -347,7 +346,7 @@ class LocalOutlierFactorAbnormalDetection(AbnormalDetectionWorkflowBase):
         Scikit-learn API: sklearn.neighbors.LocalOutlierFactor
         https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.LocalOutlierFactor.html#
         """
-        
+
         super().__init__()
         self.n_neighbors = n_neighbors
         self.algorithm = algorithm
@@ -358,7 +357,7 @@ class LocalOutlierFactorAbnormalDetection(AbnormalDetectionWorkflowBase):
         self.contamination = contamination
         self.novelty = novelty
         self.n_jobs = n_jobs
-        
+
         self.model = LocalOutlierFactor(
             n_neighbors=self.n_neighbors,
             algorithm=self.algorithm,
@@ -370,10 +369,9 @@ class LocalOutlierFactorAbnormalDetection(AbnormalDetectionWorkflowBase):
             novelty=self.novelty,
             n_jobs=self.n_jobs,
         )
-        
+
         self.naming = LocalOutlierFactorAbnormalDetection.name
-        
-        
+
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
@@ -385,5 +383,3 @@ class LocalOutlierFactorAbnormalDetection(AbnormalDetectionWorkflowBase):
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         pass
-    
-    
