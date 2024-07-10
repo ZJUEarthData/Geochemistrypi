@@ -4,7 +4,7 @@ import os
 import pandas as pd
 
 from ..constants import MLFLOW_ARTIFACT_DATA_PATH
-from ..model.detection import AbnormalDetectionWorkflowBase, IsolationForestAbnormalDetection
+from ..model.detection import AbnormalDetectionWorkflowBase, IsolationForestAbnormalDetection, LocalOutlierFactorAbnormalDetection
 from ._base import ModelSelectionBase
 
 
@@ -40,7 +40,17 @@ class AbnormalDetectionModelSelection(ModelSelectionBase):
                 bootstrap=hyper_parameters["bootstrap"],
                 max_samples=hyper_parameters["max_samples"],
             )
-
+            
+        if self.model_name == "Local Outlier Factor":
+            hyper_parameters = LocalOutlierFactorAbnormalDetection.manual_hyper_parameters()
+            self.ad_workflow = LocalOutlierFactorAbnormalDetection(
+                n_neighbors=hyper_parameters["n_neighbors"],
+                contamination=hyper_parameters["contamination"],
+                leaf_size=hyper_parameters["leaf_size"],
+                n_jobs=hyper_parameters["n_jobs"],
+                p=hyper_parameters["p"],
+            )
+            
         self.ad_workflow.show_info()
 
         # Use Scikit-learn style API to process input data
