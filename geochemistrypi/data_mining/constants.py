@@ -68,7 +68,7 @@ CLASSIFICATION_MODELS = [
 ]
 CLUSTERING_MODELS = ["KMeans", "DBSCAN", "Agglomerative", "AffinityPropagation"]
 DECOMPOSITION_MODELS = ["PCA", "T-SNE", "MDS"]
-ABNORMALDETECTION_MODELS = ["Isolation Forest"]
+ABNORMALDETECTION_MODELS = ["Isolation Forest", "Local Outlier Factor"]
 
 # The model can deal with missing values
 # Reference: https://scikit-learn.org/stable/modules/impute.html#estimators-that-handle-nan-values
