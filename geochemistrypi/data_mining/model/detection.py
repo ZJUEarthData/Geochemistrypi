@@ -6,10 +6,11 @@ import numpy as np
 import pandas as pd
 from rich import print
 from sklearn.ensemble import IsolationForest
+from sklearn.neighbors import LocalOutlierFactor
 
 from ..utils.base import clear_output
 from ._base import WorkflowBase
-from .func.algo_abnormaldetection._iforest import isolation_forest_manual_hyper_parameters
+from .func.algo_abnormaldetection._iforest import isolation_forest_manual_hyper_parameters, local_outlier_factor_manual_hyper_parameters
 
 
 class AbnormalDetectionWorkflowBase(WorkflowBase):
@@ -217,6 +218,165 @@ class IsolationForestAbnormalDetection(AbnormalDetectionWorkflowBase):
         """Manual hyper-parameters specification."""
         print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
         hyper_parameters = isolation_forest_manual_hyper_parameters()
+        clear_output()
+        return hyper_parameters
+
+    def special_components(self, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        pass
+
+
+class LocalOutlierFactorAbnormalDetection(AbnormalDetectionWorkflowBase):
+    """The automation workflow of using Local Outlier Factor algorithm to make insightful products."""
+
+    name = "Local Outlier Factor"
+    # special_function = []
+
+    def __init__(
+        self,
+        n_neighbors: int = 20,
+        algorithm: str = "auto",
+        leaf_size: int = 30,
+        metric: Union[str, callable] = "minkowski",
+        p: float = 2.0,
+        metric_params: dict = None,
+        contamination: Union[str, float] = "auto",
+        novelty: bool = True,  # Change this variable from False to True inorder to make this function work
+        n_jobs: int = None,
+    ) -> None:
+        """
+        Unsupervised Outlier Detection using the Local Outlier Factor (LOF).
+
+        The anomaly score of each sample is called the Local Outlier Factor.
+        It measures the local deviation of the density of a given sample with respect
+        to its neighbors.
+        It is local in that the anomaly score depends on how isolated the object
+        is with respect to the surrounding neighborhood.
+        More precisely, locality is given by k-nearest neighbors, whose distance
+        is used to estimate the local density.
+        By comparing the local density of a sample to the local densities of its
+        neighbors, one can identify samples that have a substantially lower density
+        than their neighbors. These are considered outliers.
+
+        .. versionadded:: 0.19
+
+        Parameters
+        ----------
+        n_neighbors : int, default=20
+            Number of neighbors to use by default for :meth:`kneighbors` queries.
+            If n_neighbors is larger than the number of samples provided,
+            all samples will be used.
+
+        algorithm : {'auto', 'ball_tree', 'kd_tree', 'brute'}, default='auto'
+            Algorithm used to compute the nearest neighbors:
+
+            - 'ball_tree' will use :class:`BallTree`
+            - 'kd_tree' will use :class:`KDTree`
+            - 'brute' will use a brute-force search.
+            - 'auto' will attempt to decide the most appropriate algorithm
+            based on the values passed to :meth:`fit` method.
+
+            Note: fitting on sparse input will override the setting of
+            this parameter, using brute force.
+
+        leaf_size : int, default=30
+            Leaf is size passed to :class:`BallTree` or :class:`KDTree`. This can
+            affect the speed of the construction and query, as well as the memory
+            required to store the tree. The optimal value depends on the
+            nature of the problem.
+
+        metric : str or callable, default='minkowski'
+            Metric to use for distance computation. Default is "minkowski", which
+            results in the standard Euclidean distance when p = 2. See the
+            documentation of `scipy.spatial.distance
+            <https://docs.scipy.org/doc/scipy/reference/spatial.distance.html>`_ and
+            the metrics listed in
+            :class:`~sklearn.metrics.pairwise.distance_metrics` for valid metric
+            values.
+
+            If metric is "precomputed", X is assumed to be a distance matrix and
+            must be square during fit. X may be a :term:`sparse graph`, in which
+            case only "nonzero" elements may be considered neighbors.
+
+            If metric is a callable function, it takes two arrays representing 1D
+            vectors as inputs and must return one value indicating the distance
+            between those vectors. This works for Scipy's metrics, but is less
+            efficient than passing the metric name as a string.
+
+        p : float, default=2
+            Parameter for the Minkowski metric from
+            :func:`sklearn.metrics.pairwise_distances`. When p = 1, this
+            is equivalent to using manhattan_distance (l1), and euclidean_distance
+            (l2) for p = 2. For arbitrary p, minkowski_distance (l_p) is used.
+
+        metric_params : dict, default=None
+            Additional keyword arguments for the metric function.
+
+        contamination : 'auto' or float, default='auto'
+            The amount of contamination of the data set, i.e. the proportion
+            of outliers in the data set. When fitting this is used to define the
+            threshold on the scores of the samples.
+
+            - if 'auto', the threshold is determined as in the
+            original paper,
+            - if a float, the contamination should be in the range (0, 0.5].
+
+            .. versionchanged:: 0.22
+            The default value of ``contamination`` changed from 0.1
+            to ``'auto'``.
+
+        novelty : bool, default=False
+            By default, LocalOutlierFactor is only meant to be used for outlier
+            detection (novelty=False). Set novelty to True if you want to use
+            LocalOutlierFactor for novelty detection. In this case be aware that
+            you should only use predict, decision_function and score_samples
+            on new unseen data and not on the training set; and note that the
+            results obtained this way may differ from the standard LOF results.
+
+            .. versionadded:: 0.20
+
+        n_jobs : int, default=None
+            The number of parallel jobs to run for neighbors search.
+            ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
+            ``-1`` means using all processors. See :term:`Glossary <n_jobs>`
+            for more details.
+
+        References
+        ----------
+        Scikit-learn API: sklearn.neighbors.LocalOutlierFactor
+        https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.LocalOutlierFactor.html#
+        """
+
+        super().__init__()
+        self.n_neighbors = n_neighbors
+        self.algorithm = algorithm
+        self.leaf_size = leaf_size
+        self.metric = metric
+        self.p = p
+        self.metric_params = metric_params
+        self.contamination = contamination
+        self.novelty = novelty
+        self.n_jobs = n_jobs
+
+        self.model = LocalOutlierFactor(
+            n_neighbors=self.n_neighbors,
+            algorithm=self.algorithm,
+            leaf_size=self.leaf_size,
+            metric=self.metric,
+            p=self.p,
+            metric_params=self.metric_params,
+            contamination=self.contamination,
+            novelty=self.novelty,
+            n_jobs=self.n_jobs,
+        )
+
+        self.naming = LocalOutlierFactorAbnormalDetection.name
+
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
+        """Manual hyper-parameters specification."""
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = local_outlier_factor_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
 
