@@ -41,6 +41,14 @@ geochemistrypi.data\_mining.dash\_pipeline module
    :undoc-members:
    :show-inheritance:
 
+geochemistrypi.data\_mining.enum module
+---------------------------------------
+
+.. automodule:: geochemistrypi.data_mining.enum
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 geochemistrypi.data\_mining.router module
 -----------------------------------------
 
