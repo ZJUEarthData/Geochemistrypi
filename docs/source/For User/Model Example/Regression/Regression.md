@@ -12,7 +12,7 @@ There are several types of regression models, including linear regression, polyn
 Overall, regression is a powerful tool for predicting numerical values, and is used in a wide range of applications, from finance and economics to healthcare and social sciences.
 
 
-## 2. Introduction to Regression function of `Geochemistry π`
+## 2. Introduction to Regression function of Geochemistry π
 
 ### 2.1 Enter the sub-menu of Regression
 
@@ -259,7 +259,6 @@ The function calculates the pairwise correlation coefficients among these elemen
 ![Correlation Plot](https://github.com/ZJUEarthData/geochemistrypi/assets/162782014/5774e386-c1ab-4347-8be0-592e00ab004f)
 <font color=gray size=1><center>Correlation Plot</center></font>
 
-
 ![Distribution Histogram](https://github.com/ZJUEarthData/geochemistrypi/assets/162782014/cfdd5c8b-2428-493d-98be-712885a1cde8)
 <font color=gray size=1><center>Distribution Histogram</center></font>
 
@@ -313,8 +312,6 @@ Which strategy do you want to apply?
 (Data) ➜ @Number:1
 ```
 We'll just skip the lines with missing info to keep things simple.
-
-
 
 ### 2.5 Feature Engineering
 
@@ -438,7 +435,7 @@ After building the feature, we can choose the mode to process data, in this doc,
 (Model) ➜ @Number: 1
 ```
 
-## 3. Regression Model-Running
+## 3. Model Selection
 
 After entering the Regression menu, we are going to input X Set and Y Set separately, note that the new feature we just created is also in the list:
 
@@ -582,13 +579,6 @@ Note: Normally, set 20% of the dataset aside as test set, such as 0.2
 (Data) ➜ @Test Ratio: 0.2
 ```
 
-
-
-
-//
-
-
-
 After checking the output, you should be able to see a menu to choose a machine learning model for your data, in this example, we are going to use “7 - Extra-Trees”.
 
 ```python
@@ -668,12 +658,16 @@ Successfully store 'Application Data Feature-Engineering Selected Dropped-Impute
 
 
 ![Feature Importance - Extra-Trees](https://github.com/user-attachments/assets/1d3f6177-8495-445f-ae6b-7bee8ab002a7)
-<front color=gray size=1><center>Feature Importance - Extra-Trees</center></font>
+<div style="color: gray; font-size: 1em; text-align: center;">Feature Importance - Extra-Trees</div>
+
 ![Permutation Importance - Extra-Trees](https://github.com/user-attachments/assets/22d825b4-c58d-4ead-ad6a-35cf7179a426)
-<front color=gray size=1><center>Permutation Importance - Extra-Trees</center></font>
+<div style="color: gray; font-size: 1em; text-align: center;">Permutation Importance - Extra-Trees</div>
+
 ![Predicted vs  Actual Diagram - Extra-Trees](https://github.com/user-attachments/assets/a1adc20d-cfc0-459d-8a05-83c8b877af93)
-<front color=gray size=1><center>Predicted vs  Actual Diagram - Extra-Trees</center></font>
+<div style="color: gray; font-size: 1em; text-align: center;">Predicted vs  Actual Diagram - Extra-Trees</div>
+
 ![Residuals Diagram - Extra-Trees](https://github.com/user-attachments/assets/08cf261b-a60f-4bf5-94b1-c7f03e9c3358)
-<front color=gray size=1><center>Residuals Diagram - Extra-Trees</center></font>
+<div style="color: gray; font-size: 1em; text-align: center;">Residuals Diagram - Extra-Trees</div>
+
 ![Tree Diagram - Extra-Trees](https://github.com/user-attachments/assets/619d9a3d-9b60-4560-bdfd-3623ba293bff)
-<front color=gray size=1><center>Tree Diagram - Extra-Trees</center></font>
+<div style="color: gray; font-size: 1em; text-align: center;">Tree Diagram - Extra-Trees</div>
