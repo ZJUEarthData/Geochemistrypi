@@ -1,4 +1,4 @@
-#  Abnomal Detection - Isolation Forest
+#  Anomaly Detection - Isolation Forest
 
 Anomaly detection is a broad problem-solving strategy that encompasses various algorithms, each with its own approach to identifying unusual data points. One such algorithm is the Isolation Forest, which distinguishes itself by constructing an ensemble of decision trees to isolate anomalies. The algorithm's core principle is that anomalies are more easily isolated, requiring fewer splits in the trees compared to normal data points.
 
@@ -75,19 +75,19 @@ After pressing the Enter key, the program propts the following options to let yo
 
 4 - Data For Dimensional Reduction
 
-5 - Data For Abnormal Detection
+5 - Data For Anomaly Detection
 
 (User) ➜ @Number: 5
 ```
 
-Here, we choose *_5 - Data For Abnormal Detection_* and press the Enter key to move forward.
+Here, we choose *_5 - Data For Anomaly Detection_* and press the Enter key to move forward.
 
 Now, you should see the output below on your screen:
 
 ```bash
 Successfully loading the built-in training data set
 
-'Data_AbnormalDetection.xlsx'.
+'Data_AnomalyDetection.xlsx'.
 
 --------------------
 
@@ -778,7 +778,7 @@ Successfully store 'Data Selected Dropped-Imputed Feature-Engineering' in 'Data 
 
 
 
-We select **5 - Abnormal Detection** as our model:
+We select **5 - Anomaly Detection** as our model:
 
 
 
@@ -794,7 +794,7 @@ We select **5 - Abnormal Detection** as our model:
 
 4 - Dimensional Reduction
 
-5 - Abnormal Detection
+5 - Anomaly Detection
 
 (Model) ➜ @Number: 5
 (Press Enter key to move forward.)
@@ -904,9 +904,9 @@ Expected Functionality:
 Successfully store 'Hyper Parameters - Isolation Forest' in 'Hyper Parameters - Isolation Forest.txt' in Users/geopi/geopi_output/GeoPi-Rock Isolation Forest/Algorithm - Test 1/parameters.
 
 
------* Abnormal Detection Data *-----
+-----* Anomaly Detection Data *-----
 
-    SIO2(WT%)  TIO2(WT%) ... MNO(WT%)  NA2O(WT%)  is_abnormal
+    SIO2(WT%)  TIO2(WT%) ... MNO(WT%)  NA2O(WT%)  is_anomaly
 
 0   53.536000   0.291000 ... 0.083000   0.861000      -1
 
@@ -932,11 +932,11 @@ Successfully store 'Hyper Parameters - Isolation Forest' in 'Hyper Parameters - 
 
 [109 rows x 10 columns]
 
-Successfully store 'X Abnormal Detection' in 'X Abnormal Detection.xlsx' in Users/geopi/geopi_output/GeoPi-Rock Isolation Forest/Algorithm - Test 1/data.
+Successfully store 'X Anomaly Detection' in 'X Anomaly Detection.xlsx' in Users/geopi/geopi_output/GeoPi-Rock Isolation Forest/Algorithm - Test 1/data.
 
 -----* Normal Data *-----
 
-    SIO2(WT%)  TIO2(WT%) ... MNO(WT%)  NA2O(WT%)  is_abnormal
+    SIO2(WT%)  TIO2(WT%) ... MNO(WT%)  NA2O(WT%)  is_anomaly
 
 2   50.873065   0.720622 ... 0.102185   1.920395       1
 
@@ -965,9 +965,9 @@ Successfully store 'X Abnormal Detection' in 'X Abnormal Detection.xlsx' in User
 
 Successfully store 'X Normal' in 'X Normal.xlsx' in Users/geopi/geopi_output/GeoPi-Rock Isolation Forest/Algorithm - Test 1/data.
 
------* Abnormal Data *-----
+-----* Anomaly Data *-----
 
-    SIO2(WT%)  TIO2(WT%)  ... MNO(WT%)  NA2O(WT%)      is_abnormal
+    SIO2(WT%)  TIO2(WT%)  ... MNO(WT%)  NA2O(WT%)      is_anomaly
 
 0    53.536000   0.291000 ... 0.083000   0.861000           -1
 
@@ -1035,7 +1035,7 @@ Successfully store 'X Normal' in 'X Normal.xlsx' in Users/geopi/geopi_output/Geo
 
 106  54.200000   0.100000 ... 0.130000   1.430000           -1
 ```
-Successfully store 'X Abnormal' in 'X Abnormal.xlsx' in Users/geopi/geopi_output/GeoPi-Rock Isolation Forest/Algorithm - Test 1/data.
+Successfully store 'X Anomaly' in 'X Anomaly.xlsx' in Users/geopi/geopi_output/GeoPi-Rock Isolation Forest/Algorithm - Test 1/data.
 
     -----* Model Persistence *-----
     Successfully store 'Isolation Forest' in 'Isolation Forest.pkl' in Users/geopi/geopi_output/GeoPi-Rock Isolation Forest/Algorithm - Test 1/artifacts/model.

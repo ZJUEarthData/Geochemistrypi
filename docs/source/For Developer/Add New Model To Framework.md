@@ -749,7 +749,7 @@ def activate(
     """Train by Scikit-learn framework."""
 ```
 
-For unsupervised learning (clustering, decomposition and abnormaly detection), the signature of `activate` method is:
+For unsupervised learning (clustering, decomposition and anomaly detection), the signature of `activate` method is:
 ```
 def activate(
     self,
@@ -800,7 +800,7 @@ The differences above include the signature of @dispatch and the signature of `a
 
 There are two `activate` methods defined in the Regression and Classification mode, the first method uses the Scikit-learn framework, and the second method uses the FLAML and RAY frameworks. Decomposition and Clustering algorithms only use the Scikit-learn framework.  The instantiation of model workflow class inside `activate` method builds the connnectioni between Layer 3 and Layer 2.
 
-(1) The invocatioin of model workflow class in the first activate method (Used in classification, regression,decomposition, clustering, abnormaly detection) needs to pass the hyperparameters for manual ML:
+(1) The invocatioin of model workflow class in the first activate method (Used in classification, regression,decomposition, clustering, anomaly detection) needs to pass the hyperparameters for manual ML:
 ```
 elif self.model_name == "ModelName":
     hyper_parameters = ModelWorkflowClass.manual_hyper_parameters()
