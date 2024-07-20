@@ -330,11 +330,11 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
                     missing_value_flag = check_missing_value(data_selected_dropped)
                     if missing_value_flag:
                         process_missing_value_flag = False
+                clear_output()
             elif missing_value_strategy_num == 2:
                 # Don't drop the rows with missing values but use imputation techniques to deal with the missing values later.
                 # No need to save the data set here because it will be saved after imputation.
                 imputed_flag = True
-            clear_output()
         else:
             # Don't deal with the missing values, which means neither drop the rows with missing values nor use imputation techniques.
             imputed_flag = False
