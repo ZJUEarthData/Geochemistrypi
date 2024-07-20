@@ -39,7 +39,7 @@ https://docs.qq.com/document/DQ3BDeHhxRGNzSXZN)
 
 + Data_Decomposition.xlsx [[Google Drive]](https://docs.google.com/spreadsheets/d/1kix82qj5--vhnm8-KhuUBH9dqYH6zcY8/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true) | [[Tencent Docs]](https://docs.qq.com/document/DQ29oZ0lhUGtZUmdN?&u=6868f96d4a384b309036e04e637e367a)
 
-+  Data_AbnormalDetectioon.xlsx [[Google Drive]](https://docs.google.com/spreadsheets/d/1NqTQZCkv74Sn_iOJOKRc-QnJzpaWmnzC_lET_0ZreiQ/edit?usp=sharing) | [[Tencent Docs]](
++  Data_AnomalyDetection.xlsx [[Google Drive]](https://docs.google.com/spreadsheets/d/1NqTQZCkv74Sn_iOJOKRc-QnJzpaWmnzC_lET_0ZreiQ/edit?usp=sharing) | [[Tencent Docs]](
 https://docs.qq.com/document/DQ2hqQ2N2ZGlOUWlT)
 
 

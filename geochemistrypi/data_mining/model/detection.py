@@ -10,18 +10,17 @@ from sklearn.neighbors import LocalOutlierFactor
 
 from ..utils.base import clear_output
 from ._base import WorkflowBase
-from .func.algo_abnormaldetection._iforest import isolation_forest_manual_hyper_parameters
-from .func.algo_abnormaldetection._local_outlier_factor import local_outlier_factor_manual_hyper_parameters
+from .func.algo_anomalydetection._iforest import isolation_forest_manual_hyper_parameters, local_outlier_factor_manual_hyper_parameters
 
 
-class AbnormalDetectionWorkflowBase(WorkflowBase):
-    """The base workflow class of abnormal detection algorithms."""
+class AnomalyDetectionWorkflowBase(WorkflowBase):
+    """The base workflow class of anomaly detection algorithms."""
 
     # common_function = []
 
     def __init__(self) -> None:
         super().__init__()
-        self.mode = "Abnormal Detection"
+        self.mode = "Anomaly Detection"
 
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
         """Fit the model by Scikit-learn framework."""
@@ -29,7 +28,7 @@ class AbnormalDetectionWorkflowBase(WorkflowBase):
         self.model.fit(X)
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
-        """Perform Abnormal Detection on samples in X by Scikit-learn framework."""
+        """Perform Anomaly Detection on samples in X by Scikit-learn framework."""
         y_predict = self.model.predict(X)
         return y_predict
 
@@ -52,29 +51,29 @@ class AbnormalDetectionWorkflowBase(WorkflowBase):
 
         Returns
         -------
-        X_abnormal_detection : pd.DataFrame
+        X_anomaly_detection : pd.DataFrame
             DataFrame containing the original data with detection results.
 
         X_normal : pd.DataFrame
             DataFrame containing the normal data points.
 
-        X_abnormal : pd.DataFrame
-            DataFrame containing the abnormal data points.
+        X_anomaly : pd.DataFrame
+            DataFrame containing the anomaly data points.
         """
-        X_abnormal_detection = X.copy()
+        X_anomaly_detection = X.copy()
         # Merge detection results into the source data
-        X_abnormal_detection["is_abnormal"] = detect_label
-        X_normal = X_abnormal_detection[X_abnormal_detection["is_abnormal"] == 1]
-        X_abnormal = X_abnormal_detection[X_abnormal_detection["is_abnormal"] == -1]
+        X_anomaly_detection["is_anomaly"] = detect_label
+        X_normal = X_anomaly_detection[X_anomaly_detection["is_anomaly"] == 1]
+        X_anomaly = X_anomaly_detection[X_anomaly_detection["is_anomaly"] == -1]
 
-        return X_abnormal_detection, X_normal, X_abnormal
+        return X_anomaly_detection, X_normal, X_anomaly
 
     def common_components(self) -> None:
-        """Invoke all common application functions for abnormal detection algorithms by Scikit-learn framework."""
+        """Invoke all common application functions for anomaly detection algorithms by Scikit-learn framework."""
         pass
 
 
-class IsolationForestAbnormalDetection(AbnormalDetectionWorkflowBase):
+class IsolationForestAnomalyDetection(AnomalyDetectionWorkflowBase):
     """The automation workflow of using Isolation Forest algorithm to make insightful products."""
 
     name = "Isolation Forest"
@@ -212,7 +211,7 @@ class IsolationForestAbnormalDetection(AbnormalDetectionWorkflowBase):
             warm_start=self.warm_start,
         )
 
-        self.naming = IsolationForestAbnormalDetection.name
+        self.naming = IsolationForestAnomalyDetection.name
 
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
@@ -227,7 +226,7 @@ class IsolationForestAbnormalDetection(AbnormalDetectionWorkflowBase):
         pass
 
 
-class LocalOutlierFactorAbnormalDetection(AbnormalDetectionWorkflowBase):
+class LocalOutlierFactorAnomalyDetection(AnomalyDetectionWorkflowBase):
     """The automation workflow of using Local Outlier Factor algorithm to make insightful products."""
 
     name = "Local Outlier Factor"
@@ -371,7 +370,7 @@ class LocalOutlierFactorAbnormalDetection(AbnormalDetectionWorkflowBase):
             n_jobs=self.n_jobs,
         )
 
-        self.naming = LocalOutlierFactorAbnormalDetection.name
+        self.naming = LocalOutlierFactorAnomalyDetection.name
 
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:

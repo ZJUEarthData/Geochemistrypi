@@ -40,12 +40,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   + Clustering Models
     + Affinity Propagation Clustering
 + New Mode:
-  + Abnormal Detection
+  + Anomaly Detection
     +  Isolation Forest
 + Docs:
   + Mind map of all options in README
   + Citation info
-  + Abnormal detection algorithm example
+  + Anomaly detection algorithm example
 
 ### Changed
 
