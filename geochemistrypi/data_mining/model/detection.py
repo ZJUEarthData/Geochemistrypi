@@ -10,7 +10,8 @@ from sklearn.neighbors import LocalOutlierFactor
 
 from ..utils.base import clear_output
 from ._base import WorkflowBase
-from .func.algo_anomalydetection._iforest import isolation_forest_manual_hyper_parameters, local_outlier_factor_manual_hyper_parameters
+from .func.algo_anomalydetection._iforest import isolation_forest_manual_hyper_parameters
+from .func.algo_anomalydetection._local_outlier_factor import local_outlier_factor_manual_hyper_parameters
 
 
 class AnomalyDetectionWorkflowBase(WorkflowBase):
