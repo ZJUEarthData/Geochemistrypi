@@ -15,8 +15,8 @@ export default [
       'no-unused-vars': 2,
       'space-before-function-paren': 0,
       'generator-star-spacing': 'off',
-      'object-curly-spacing': 0, // 强制在大括号中使用一致的空格
-      'array-bracket-spacing': 0 // 方括号
+      'object-curly-spacing': 0, // Enforce consistent spacing within curly braces
+      'array-bracket-spacing': 0 // square brackets
     }
   }
 ]
