@@ -200,7 +200,7 @@ class RegressionWorkflowBase(WorkflowBase):
         )
 
     @dispatch(bool)
-    def common_components(self, is_automl: bool) -> None:
+    def common_components(self, is_automl: bool = False) -> None:
         """Invoke all common application functions for regression algorithms by FLAML framework."""
         GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
@@ -904,7 +904,7 @@ class DecisionTreeRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         return hyper_parameters
 
     @dispatch()
-    def special_components(self):
+    def special_components(self, **kwargs):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(

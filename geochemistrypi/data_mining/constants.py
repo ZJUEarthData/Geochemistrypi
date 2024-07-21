@@ -26,8 +26,8 @@ SECTION = ["User", "Data", "Model", "Plot"]
 
 OPTION = ["Yes", "No"]
 DATA_OPTION = ["Own Data", "Testing Data (Built-in)"]
-TEST_DATA_OPTION = ["Data For Regression", "Data For Classification", "Data For Clustering", "Data For Dimensional Reduction", "Data For Abnormal Detection"]
-MODE_OPTION = ["Regression", "Classification", "Clustering", "Dimensional Reduction", "Abnormal Detection"]
+TEST_DATA_OPTION = ["Data For Regression", "Data For Classification", "Data For Clustering", "Data For Dimensional Reduction", "Data For Anomaly Detection"]
+MODE_OPTION = ["Regression", "Classification", "Clustering", "Dimensional Reduction", "Anomaly Detection"]
 MODE_OPTION_WITH_MISSING_VALUES = ["Regression", "Classification", "Clustering"]
 
 # The model provided to use
@@ -68,7 +68,7 @@ CLASSIFICATION_MODELS = [
 ]
 CLUSTERING_MODELS = ["KMeans", "DBSCAN", "Agglomerative", "AffinityPropagation"]
 DECOMPOSITION_MODELS = ["PCA", "T-SNE", "MDS"]
-ABNORMALDETECTION_MODELS = ["Isolation Forest"]
+ANOMALYDETECTION_MODELS = ["Isolation Forest", "Local Outlier Factor"]
 
 # The model can deal with missing values
 # Reference: https://scikit-learn.org/stable/modules/impute.html#estimators-that-handle-nan-values

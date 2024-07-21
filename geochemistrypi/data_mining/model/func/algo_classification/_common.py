@@ -196,8 +196,8 @@ def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.D
     return scores_result
 
 
-def plot_precision_recall(X_test, y_test, trained_model: object, algorithm_name: str) -> tuple:
-    """Plot the precision-recall curve.
+def plot_precision_recall(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, graph_name: str, algorithm_name: str) -> tuple:
+    """Plot the precision vs. recall diagram.
 
     Parameters
     ----------
@@ -209,6 +209,54 @@ def plot_precision_recall(X_test, y_test, trained_model: object, algorithm_name:
 
     trained_model : object
         The model trained.
+
+    graph_name : str
+        The name of the graph.
+
+    algorithm_name : str
+        The name of the algorithm.
+
+    Returns
+    -------
+    y_probs : np.ndarray
+        The probabilities of the model.
+
+    precisions : np.ndarray
+        The precision of the model.
+
+    recalls : np.ndarray
+        The recall of the model.
+
+    thresholds : np.ndarray
+        The thresholds of the model.
+    """
+    #  Predict probabilities for the positive class
+    y_probs = trained_model.predict_proba(X_test)[:, 1]
+    precisions, recalls, thresholds = precision_recall_curve(y_test, y_probs)
+    plt.figure()
+    plt.plot(recalls, precisions, "b-")
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
+    plt.title(f"{graph_name} - {algorithm_name}")
+    return y_probs, precisions, recalls, thresholds
+
+
+def plot_precision_recall_threshold(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, graph_name: str, algorithm_name: str) -> tuple:
+    """Plot the precision-recall vs. threshold diagram.
+
+    Parameters
+    ----------
+    X_test : pd.DataFrame (n_samples, n_components)
+        The testing feature data.
+
+    y_test : pd.DataFrame (n_samples, n_components)
+        The testing target values.
+
+    trained_model : object
+        The model trained.
+
+    graph_name : str
+        The name of the graph.
 
     algorithm_name : str
         The name of the algorithm.
@@ -234,7 +282,7 @@ def plot_precision_recall(X_test, y_test, trained_model: object, algorithm_name:
     plt.plot(thresholds, precisions[:-1], "b--", label="Precision")
     plt.plot(thresholds, recalls[:-1], "g-", label="Recall")
     plt.legend(labels=["Precision", "Recall"], loc="best")
-    plt.title(f"Precision Recall Curve - {algorithm_name}")
+    plt.title(f"{graph_name} - {algorithm_name}")
     return y_probs, precisions, recalls, thresholds
 
 

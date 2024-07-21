@@ -41,6 +41,7 @@ class ClassificationModelSelection(ModelSelectionBase):
     ) -> None:
         """Train by Scikit-learn framework."""
 
+        # Load the required data into the base class's attributes
         self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
 
         # Customize label
@@ -163,6 +164,7 @@ class ClassificationModelSelection(ModelSelectionBase):
                 validation_fraction=hyper_parameters["validation_fraction"],
                 n_iter_no_change=hyper_parameters["n_iter_no_change"],
             )
+        # Display what application functions the algorithm will provide
         self.clf_workflow.show_info()
 
         # Use Scikit-learn style API to process input data

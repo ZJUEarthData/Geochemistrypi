@@ -23,8 +23,19 @@ from ..data.data_readiness import limit_num_input, num2option, num_input
 from ..plot.statistic_plot import basic_statistic
 from ..utils.base import clear_output, save_data, save_fig, save_text
 from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
-from .func.algo_classification._common import cross_validation, plot_2d_decision_boundary, plot_confusion_matrix, plot_precision_recall, plot_ROC, resampler, reset_label, score
+from .func.algo_classification._common import (
+    cross_validation,
+    plot_2d_decision_boundary,
+    plot_confusion_matrix,
+    plot_precision_recall,
+    plot_precision_recall_threshold,
+    plot_ROC,
+    resampler,
+    reset_label,
+    score,
+)
 from .func.algo_classification._decision_tree import decision_tree_manual_hyper_parameters
+from .func.algo_classification._enum import ClassificationCommonFunction
 from .func.algo_classification._extra_trees import extra_trees_manual_hyper_parameters
 from .func.algo_classification._gradient_boosting import gradient_boosting_manual_hyper_parameters
 from .func.algo_classification._knn import knn_manual_hyper_parameters
@@ -39,17 +50,7 @@ from .func.algo_classification._xgboost import xgboost_manual_hyper_parameters
 class ClassificationWorkflowBase(WorkflowBase):
     """The base workflow class of classification algorithms."""
 
-    common_function = [
-        "Model Score",
-        "Confusion Matrix",
-        "Cross Validation",
-        "Model Prediction",
-        "Model Persistence",
-        "Precision Recall Curve",
-        "ROC Curve",
-        "Two-dimensional Decision Boundary Diagram",
-        "Permutation Importance Diagram",
-    ]
+    common_function = [func.value for func in ClassificationCommonFunction]
 
     def __init__(self) -> None:
         super().__init__()
@@ -163,18 +164,30 @@ class ClassificationWorkflowBase(WorkflowBase):
         save_data(data, f"Confusion Matrix - {algorithm_name}", local_path, mlflow_path, True)
 
     @staticmethod
-    def _plot_precision_recall(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
-        print("-----* Precision Recall Curve *-----")
-        y_probs, precisions, recalls, thresholds = plot_precision_recall(X_test, y_test, trained_model, algorithm_name)
-        save_fig(f"Precision Recall Curve - {algorithm_name}", local_path, mlflow_path)
+    def _plot_precision_recall(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+        print(f"-----* {graph_name} *-----")
+        y_probs, precisions, recalls, thresholds = plot_precision_recall(X_test, y_test, trained_model, graph_name, algorithm_name)
+        save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
         y_probs = pd.DataFrame(y_probs, columns=["Probabilities"])
         precisions = pd.DataFrame(precisions, columns=["Precisions"])
         recalls = pd.DataFrame(recalls, columns=["Recalls"])
         thresholds = pd.DataFrame(thresholds, columns=["Thresholds"])
-        save_data(y_probs, "Precision Recall Curve - Probabilities", local_path, mlflow_path)
-        save_data(precisions, "Precision Recall Curve - Precisions", local_path, mlflow_path)
-        save_data(recalls, "Precision Recall Curve - Recalls", local_path, mlflow_path)
-        save_data(thresholds, "Precision Recall Curve - Thresholds", local_path, mlflow_path)
+        save_data(precisions, f"{graph_name} - Precisions", local_path, mlflow_path)
+        save_data(recalls, f"{graph_name} - Recalls", local_path, mlflow_path)
+
+    @staticmethod
+    def _plot_precision_recall_threshold(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+        print(f"-----* {graph_name} *-----")
+        y_probs, precisions, recalls, thresholds = plot_precision_recall_threshold(X_test, y_test, trained_model, graph_name, algorithm_name)
+        save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+        y_probs = pd.DataFrame(y_probs, columns=["Probabilities"])
+        precisions = pd.DataFrame(precisions, columns=["Precisions"])
+        recalls = pd.DataFrame(recalls, columns=["Recalls"])
+        thresholds = pd.DataFrame(thresholds, columns=["Thresholds"])
+        save_data(y_probs, f"{graph_name} - Probabilities", local_path, mlflow_path)
+        save_data(precisions, f"{graph_name} - Precisions", local_path, mlflow_path)
+        save_data(recalls, f"{graph_name} - Recalls", local_path, mlflow_path)
+        save_data(thresholds, f"{graph_name} - Thresholds", local_path, mlflow_path)
 
     @staticmethod
     def _plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
@@ -285,6 +298,16 @@ class ClassificationWorkflowBase(WorkflowBase):
                 X_test=ClassificationWorkflowBase.X_test,
                 y_test=ClassificationWorkflowBase.y_test,
                 trained_model=self.model,
+                graph_name=ClassificationCommonFunction.PRECISION_RECALL_CURVE.value,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            self._plot_precision_recall_threshold(
+                X_test=ClassificationWorkflowBase.X_test,
+                y_test=ClassificationWorkflowBase.y_test,
+                trained_model=self.model,
+                graph_name=ClassificationCommonFunction.PRECISION_RECALL_THRESHOLD_DIAGRAM.value,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -356,6 +379,16 @@ class ClassificationWorkflowBase(WorkflowBase):
                 X_test=ClassificationWorkflowBase.X_test,
                 y_test=ClassificationWorkflowBase.y_test,
                 trained_model=self.auto_model,
+                graph_name=ClassificationCommonFunction.PRECISION_RECALL_CURVE.value,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+            self._plot_precision_recall_threshold(
+                X_test=ClassificationWorkflowBase.X_test,
+                y_test=ClassificationWorkflowBase.y_test,
+                trained_model=self.auto_model,
+                graph_name=ClassificationCommonFunction.PRECISION_RECALL_THRESHOLD_DIAGRAM.value,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,

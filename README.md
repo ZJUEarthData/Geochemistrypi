@@ -59,6 +59,8 @@ Geochemistry π was selected for featuring as an Editor’s Highlight in EOS 
 
 Eos Website: https://eos.org/editor-highlights/machine-learning-for-geochemists-who-dont-want-to-code.
 
+![Geochemistry pi news](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/bdd33a31-824a-492e-adcf-e660da4eaf1d)
+
 ## Quick Installation
 
 Our software is well tested on **macOS** and **Windows** system with **Python 3.9**. Other systems and Python version are not guranteed.
@@ -71,7 +73,7 @@ pip install geochemistrypi
 
 Download the latest version to avoid some old version issues, such as dependency downloading.
 ```
-pip install "geochemistrypi==0.5.0"
+pip install "geochemistrypi==0.6.1"
 ```
 
 One instruction to download on **Jupyter Notebook** or **Google Colab**.
@@ -81,7 +83,7 @@ One instruction to download on **Jupyter Notebook** or **Google Colab**.
 ```
 Download the latest version to avoid some old version issues, such as dependency downloading.
 ```
-!pip install "geochemistrypi==0.5.0"
+!pip install "geochemistrypi==0.6.1"
 ```
 Check the downloaded version of our software:
 
@@ -145,7 +147,7 @@ https://docs.qq.com/document/DQ3BDeHhxRGNzSXZN)
 
 + Data_Decomposition.xlsx [[Google Drive]](https://docs.google.com/spreadsheets/d/1kix82qj5--vhnm8-KhuUBH9dqYH6zcY8/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true) | [[Tencent Docs]](https://docs.qq.com/document/DQ29oZ0lhUGtZUmdN?&u=6868f96d4a384b309036e04e637e367a)
 
-+  Data_AbnormalDetectioon.xlsx [[Google Drive]](https://docs.google.com/spreadsheets/d/1NqTQZCkv74Sn_iOJOKRc-QnJzpaWmnzC_lET_0ZreiQ/edit?usp=sharing) | [[Tencent Docs]](
++  Data_AnomalyDetection.xlsx [[Google Drive]](https://docs.google.com/spreadsheets/d/1NqTQZCkv74Sn_iOJOKRc-QnJzpaWmnzC_lET_0ZreiQ/edit?usp=sharing) | [[Tencent Docs]](
 https://docs.qq.com/document/DQ2hqQ2N2ZGlOUWlT)
 
 **Note**: For more detail on data preparation, please refer to our online documentation in **Model Example** under the section of **FOR USER**.
@@ -316,6 +318,7 @@ The whole package is under construction and the documentation is progressively e
 + Zhelan Lin（Lan, Fuzhou University, China）
 + ShuYi Li (Communication University Of China, Beijing, China)
 + Junbo Wang (China University Of Geosciences, Beijing, China)
++ Haibin Wang（Watson, University of Sydney, Australia）
 
 ## Join Us :)
 

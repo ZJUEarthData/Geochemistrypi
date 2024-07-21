@@ -6,7 +6,7 @@ class ModeOption(Enum):
     CLASSIFICATION = "Classification"
     CLUSTERING = "Clustering"
     DIMENSIONAL_REDUCTION = "Dimensional Reduction"
-    ABNORMAL_DETECTION = "Abnormal Detection"
+    ANOMALY_DETECTION = "Anomaly Detection"
 
 
 class ModeOptionWithMissingValues(Enum):

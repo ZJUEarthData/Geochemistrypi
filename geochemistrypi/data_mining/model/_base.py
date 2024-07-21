@@ -30,7 +30,7 @@ class WorkflowBase(metaclass=ABCMeta):
 
     @classmethod
     def show_info(cls) -> None:
-        """Display how many functions the algorithm will provide."""
+        """Display what application functions the algorithm will provide."""
         print("*-*" * 2, cls.name, "is running ...", "*-*" * 2)
         print("Expected Functionality:")
         function = cls.common_function + cls.special_function

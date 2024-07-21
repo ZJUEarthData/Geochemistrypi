@@ -8,6 +8,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 + MLOps core of continuous training in web interface
++ More new algorithms and new processing techniques
+
+
+## [0.6.1] - 2024-07-05
+
+### Added
+
++ Precision-recall curve
+
+### Changed
+
++ Silence of dependency downloading when first launching
+
+### Fixed
+
++ Precision-recall vs. threshold diagram
+
 
 ## [0.6.0] - 2024-06-02
 
@@ -23,17 +40,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   + Clustering Models
     + Affinity Propagation Clustering
 + New Mode:
-  + Abnormal Detection
+  + Anomaly Detection
     +  Isolation Forest
++ Docs:
+  + Mind map of all options in README
+  + Citation info
+  + Anomaly detection algorithm example
 
 ### Changed
 
 + Showing formula function for linear models in both regression and classifiction in terms of the number of the target values' type
 + Built-in inferenc data only for regression and classification
++ Docs:
+  + Installation manual
+  + Clustering algorithm example
 
 ### Fixed
 
 + Invalid YAML file when launching MLflow interface
++ Online docs layout mismatch
 
 
 ## [0.5.0] - 2024-01-14
@@ -154,6 +179,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 
 [ unreleased ]: https://github.com/ZJUEarthData/geochemistrypi
+[ 0.6.1 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.6.0...v0.6.1
 [ 0.6.0 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.5.0...v0.6.0
 [ 0.5.0 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.4.0...v0.5.0
 [ 0.4.0 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.3.0...v0.4.0

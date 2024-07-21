@@ -9,7 +9,7 @@ from rich.console import Console
 from rich.prompt import Confirm, Prompt
 
 from .constants import (
-    ABNORMALDETECTION_MODELS,
+    ANOMALYDETECTION_MODELS,
     CLASSIFICATION_MODELS,
     CLASSIFICATION_MODELS_WITH_MISSING_VALUES,
     CLUSTERING_MODELS,
@@ -43,7 +43,7 @@ from .plot.statistic_plot import basic_statistic, check_missing_value, correlati
 from .process.classify import ClassificationModelSelection
 from .process.cluster import ClusteringModelSelection
 from .process.decompose import DecompositionModelSelection
-from .process.detect import AbnormalDetectionModelSelection
+from .process.detect import AnomalyDetectionModelSelection
 from .process.regress import RegressionModelSelection
 from .utils.base import check_package, clear_output, copy_files, create_geopi_output_dir, get_os, install_package, log, save_data, show_warning
 from .utils.mlflow_utils import retrieve_previous_experiment_id
@@ -198,7 +198,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         elif built_in_training_data_num == 4:
             training_data_path = "Data_Decomposition.xlsx"
         elif built_in_training_data_num == 5:
-            training_data_path = "Data_AbnormalDetection.xlsx"
+            training_data_path = "Data_AnomalyDetection.xlsx"
         data = read_data(file_path=training_data_path)
         print(f"Successfully loading the built-in training data set '{training_data_path}'.")
         show_data_columns(data.columns)
@@ -330,11 +330,11 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
                     missing_value_flag = check_missing_value(data_selected_dropped)
                     if missing_value_flag:
                         process_missing_value_flag = False
+                clear_output()
             elif missing_value_strategy_num == 2:
                 # Don't drop the rows with missing values but use imputation techniques to deal with the missing values later.
                 # No need to save the data set here because it will be saved after imputation.
                 imputed_flag = True
-            clear_output()
         else:
             # Don't deal with the missing values, which means neither drop the rows with missing values nor use imputation techniques.
             imputed_flag = False
@@ -403,7 +403,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     # If the selected data set is with missing values and is not been imputed, then only allow the user to choose regression, classification and clustering models.
     # Otherwise, allow the user to choose decomposition models.
     if missing_value_flag and not process_missing_value_flag:
-        # The abnormal detection mode and decomposition mode don't support missing values.
+        # The anomaly detection mode and decomposition mode don't support missing values.
         num2option(MODE_OPTION_WITH_MISSING_VALUES)
         mode_num = limit_num_input(MODE_OPTION_WITH_MISSING_VALUES, SECTION[2], num_input)
     else:
@@ -545,13 +545,13 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         Modes2Models = {1: REGRESSION_MODELS_WITH_MISSING_VALUES, 2: CLASSIFICATION_MODELS_WITH_MISSING_VALUES, 3: CLUSTERING_MODELS_WITH_MISSING_VALUES}
         Modes2Initiators = {1: RegressionModelSelection, 2: ClassificationModelSelection, 3: ClusteringModelSelection}
     else:
-        Modes2Models = {1: REGRESSION_MODELS, 2: CLASSIFICATION_MODELS, 3: CLUSTERING_MODELS, 4: DECOMPOSITION_MODELS, 5: ABNORMALDETECTION_MODELS}
+        Modes2Models = {1: REGRESSION_MODELS, 2: CLASSIFICATION_MODELS, 3: CLUSTERING_MODELS, 4: DECOMPOSITION_MODELS, 5: ANOMALYDETECTION_MODELS}
         Modes2Initiators = {
             1: RegressionModelSelection,
             2: ClassificationModelSelection,
             3: ClusteringModelSelection,
             4: DecompositionModelSelection,
-            5: AbnormalDetectionModelSelection,
+            5: AnomalyDetectionModelSelection,
         }
     MODELS = Modes2Models[mode_num]
     num2option(MODELS)
