@@ -4,10 +4,66 @@ from typing import List
 import numpy as np
 import pandas as pd
 from rich import print
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.feature_selection import GenericUnivariateSelect, SelectKBest, f_classif, f_regression
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 from .data_readiness import show_data_columns
+
+
+class MeanNormalScaler(BaseEstimator, TransformerMixin):
+    """Custom Scikit-learn transformer for mean normalization.
+
+    MeanNormalization involves subtracting the mean of each feature from the feature values
+    and then dividing by the range (maximum value minus minimum value) of that feature.
+
+    The transformation is given by:
+
+        X_scaled = (X - X.mean()) / (X.max() - X.min())
+
+    """
+
+    def __init__(self, copy=True):
+        self.copy = copy
+        self.mean_ = None
+        self.scale_ = None
+
+    def fit(self, X: pd.DataFrame, y=None):
+        """
+        Compute the mean and range (max - min) for each feature.
+
+        Parameters:
+        ----------
+        X (pd.DataFrame): The input dataframe where each column represents a feature.
+        y : (ignored).
+
+        Returns:
+        self: Fitted transformer.
+        """
+        self.mean_ = np.mean(X, axis=0)
+        self.scale_ = np.std(X, axis=0)
+        return self
+
+    def transform(self, X, y=None, copy=None):
+        """
+        Apply mean normalization to the data.
+
+        Parameters:
+        ----------
+        X (pd.DataFrame): The input dataframe where each column represents a feature.
+        copy : bool, optional (default: None)
+            Copy the input X or not.
+
+        Returns:
+        np.ndarray: The normalized data.
+        """
+        copy = copy if copy is not None else self.copy
+        X = X if not self.copy else X.copy()
+        return (X - self.mean_) / self.scale_
+
+    def inverse_transform(self, X):
+        X = X if not self.copy else X.copy()
+        return X * self.scale_ + self.mean_
 
 
 def feature_scaler(X: pd.DataFrame, method: List[str], method_idx: int) -> tuple[dict, np.ndarray]:
@@ -36,6 +92,8 @@ def feature_scaler(X: pd.DataFrame, method: List[str], method_idx: int) -> tuple
         scaler = MinMaxScaler()
     elif method[method_idx] == "Standardization":
         scaler = StandardScaler()
+    elif method[method_idx] == "MeanNormalization":
+        scaler = MeanNormalScaler()
     try:
         X_scaled = scaler.fit_transform(X)
     except ValueError:
