@@ -15,6 +15,7 @@ from sklearn.preprocessing import MinMaxScaler, PolynomialFeatures, StandardScal
 from ..constants import MLFLOW_ARTIFACT_DATA_PATH
 from ..utils.base import save_data, save_model, save_text
 from .data_readiness import np2pd
+from .preprocessing import MeanNormalScaler
 
 
 class PipelineConstrutor:
@@ -27,6 +28,7 @@ class PipelineConstrutor:
             "SimpleImputer": SimpleImputer,
             "MinMaxScaler": MinMaxScaler,
             "StandardScaler": StandardScaler,
+            "MeanNormalScaler": MeanNormalScaler,
             "PolynomialFeatures": PolynomialFeatures,
             "RandomOverSampler": RandomOverSampler,
             "RandomUnderSampler": RandomUnderSampler,
