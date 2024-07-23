@@ -97,7 +97,7 @@ MISSING_VALUE_STRATEGY = ["Drop Rows with Missing Values ", "Impute Missing Valu
 
 IMPUTING_STRATEGY = ["Mean Value", "Median Value", "Most Frequent Value", "Constant(Specified Value)"]
 
-FEATURE_SCALING_STRATEGY = ["Min-max Scaling", "Standardization", "MeanNormalization"]
+FEATURE_SCALING_STRATEGY = ["Min-max Scaling", "Standardization", "Mean Normalization"]
 
 SAMPLE_BALANCE_STRATEGY = ["Over Sampling", "Under Sampling", "Oversampling and Undersampling"]
 
