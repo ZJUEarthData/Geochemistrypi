@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 import pandas as pd
@@ -23,45 +23,70 @@ class MeanNormalScaler(BaseEstimator, TransformerMixin):
 
     """
 
-    def __init__(self, copy=True):
+    def __init__(self: object, copy: bool = True):
         self.copy = copy
         self.mean_ = None
         self.scale_ = None
 
-    def fit(self, X: pd.DataFrame, y=None):
+    def fit(self: object, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> object:
         """
         Compute the mean and range (max - min) for each feature.
 
-        Parameters:
+        Parameters
         ----------
-        X (pd.DataFrame): The input dataframe where each column represents a feature.
-        y : (ignored).
+        X : pd.DataFrame
+            The input dataframe where each column represents a feature.
 
-        Returns:
-        self: Fitted transformer.
+        y : pd.DataFrame, optional (default: None)
+            Ignored.
+
+        Returns
+        -------
+        self : object
+            Fitted transformer.
         """
         self.mean_ = np.mean(X, axis=0)
         self.scale_ = np.std(X, axis=0)
         return self
 
-    def transform(self, X, y=None, copy=None):
+    def transform(self: object, X: pd.DataFrame, y: Optional[pd.DataFrame] = None, copy: bool = None) -> np.ndarray:
         """
         Apply mean normalization to the data.
 
-        Parameters:
+        Parameters
         ----------
-        X (pd.DataFrame): The input dataframe where each column represents a feature.
+        X : pd.DataFrame
+            The input dataframe where each column represents a feature.
+
+        y : pd.DataFrame, optional (default: None)
+            Ignored.
+
         copy : bool, optional (default: None)
             Copy the input X or not.
 
-        Returns:
-        np.ndarray: The normalized data.
+        Returns
+        -------
+        X_tr : np.ndarray
+            The normalized data.
         """
         copy = copy if copy is not None else self.copy
         X = X if not self.copy else X.copy()
         return (X - self.mean_) / self.scale_
 
-    def inverse_transform(self, X):
+    def inverse_transform(self: object, X: pd.DataFrame) -> np.ndarray:
+        """
+        Reverse the mean normalization transformation.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            The input dataframe where each column represents a feature.
+
+        Returns
+        -------
+        X_tr : np.ndarray
+            The original data.
+        """
         X = X if not self.copy else X.copy()
         return X * self.scale_ + self.mean_
 
@@ -92,7 +117,7 @@ def feature_scaler(X: pd.DataFrame, method: List[str], method_idx: int) -> tuple
         scaler = MinMaxScaler()
     elif method[method_idx] == "Standardization":
         scaler = StandardScaler()
-    elif method[method_idx] == "MeanNormalization":
+    elif method[method_idx] == "Mean Normalization":
         scaler = MeanNormalScaler()
     try:
         X_scaled = scaler.fit_transform(X)
