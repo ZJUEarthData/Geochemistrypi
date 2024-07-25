@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 from typing import Dict
 
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from rich import print
 
 from ....constants import SECTION
@@ -37,3 +40,65 @@ def local_outlier_factor_manual_hyper_parameters() -> Dict:
         "n_jobs": n_jobs,
     }
     return hyper_parameters
+
+
+def plot_lof_scores(columns_name: pd.Index, lof_scores: np.ndarray, image_config: dict) -> pd.DataFrame:
+    """Draw the LOF scores bar diagram.
+
+    Parametersplot_lof_scores
+    ----------
+    columns_name : pd.Index
+        The name of the columns.
+
+    lof_scores : np.ndarray
+        The LOF scores values.
+
+    image_config : dict
+        The configuration of the image.
+
+    Returns
+    -------
+    lof_scores_df : pd.DataFrame
+        The LOF scores values.
+    """
+    # create drawing canvas
+    fig, ax = plt.subplots(figsize=(image_config["width"], image_config["height"]), dpi=image_config["dpi"])
+
+    # # print the LOF scores value orderly
+    # for feature_name, score in zip(list(columns_name), lof_scores):
+    #     print(feature_name, ":", score)
+
+    # draw the main content
+    lof_scores_df = pd.DataFrame({"Feature": columns_name, "LOF Score": lof_scores})
+    lof_scores_df = lof_scores_df.sort_values(["LOF Score"], ascending=True)
+    lof_scores_df["LOF Score"] = lof_scores_df["LOF Score"].astype(float)
+    lof_scores_df = lof_scores_df.sort_values(["LOF Score"])
+    lof_scores_df.set_index("Feature", inplace=True)
+    lof_scores_df.plot.barh(alpha=image_config["alpha2"], rot=0)
+
+    # automatically optimize picture layout structure
+    fig.tight_layout()
+    xmin, xmax = ax.get_xlim()
+    ymin, ymax = ax.get_ylim()
+    x_adjustment = (xmax - xmin) * 0.01
+    y_adjustment = (ymax - ymin) * 0.01
+    ax.axis([xmin - x_adjustment, xmax + x_adjustment, ymin - y_adjustment, ymax + y_adjustment])
+
+    # convert the font of the axes
+    x1_label = ax.get_xticklabels()  # adjust the axis label font
+    [x1_label_temp.set_fontname(image_config["axislabelfont"]) for x1_label_temp in x1_label]
+    y1_label = ax.get_yticklabels()
+    [y1_label_temp.set_fontname(image_config["axislabelfont"]) for y1_label_temp in y1_label]
+
+    ax.set_title(
+        label=image_config["title_label"],
+        fontdict={
+            "size": image_config["title_size"],
+            "color": image_config["title_color"],
+            "family": image_config["title_font"],
+        },
+        loc=image_config["title_location"],
+        pad=image_config["title_pad"],
+    )
+
+    return lof_scores_df
