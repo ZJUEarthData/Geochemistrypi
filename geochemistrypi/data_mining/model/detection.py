@@ -40,15 +40,7 @@ class AnomalyDetectionWorkflowBase(WorkflowBase):
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
         return dict()
-
-    def get_anomaly_labels(self) -> None:
-        """Get the anomaly detection labels."""
-        print("-----* Anomaly Detection Labels *-----")
-        self.anomaly_detection = pd.DataFrame(self.model.predict(self.X), columns=["is_anomaly"])
-        print(self.anomaly_detection)
-        GEOPI_OUTPUT_ARTIFACTS_DATA_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH")
-        save_data(self.anomaly_detection, f"{self.naming} Result", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
-
+    
     @staticmethod
     def _detect_data(X: pd.DataFrame, detect_label: np.ndarray) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """Merge the detection results into the source data.
@@ -110,7 +102,8 @@ class AnomalyDetectionWorkflowBase(WorkflowBase):
     def common_components(self) -> None:
         """Invoke all common application functions for anomaly detection algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        self.get_anomaly_labels()
+        self.anomaly_detection = pd.DataFrame(self.model.predict(self.X), columns=["is_anomaly"])
+        
         if self.X.shape[1] >= 3:
             two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(self.X, 2)
             self._scatter2d(
@@ -129,6 +122,7 @@ class AnomalyDetectionWorkflowBase(WorkflowBase):
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
+            
         self._density_estimation(
             data=self.X,
             labels=self.anomaly_detection["is_anomaly"],
