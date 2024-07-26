@@ -8,7 +8,7 @@ from rich import print
 from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
 
-from ..constants import MLFLOW_ARTIFACT_DATA_PATH, MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH
+from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH
 from ..utils.base import clear_output, save_data, save_fig
 from ._base import WorkflowBase
 from .func.algo_anomalydetection._common import density_estimation, scatter2d, scatter3d
@@ -40,7 +40,7 @@ class AnomalyDetectionWorkflowBase(WorkflowBase):
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
         return dict()
-    
+
     @staticmethod
     def _detect_data(X: pd.DataFrame, detect_label: np.ndarray) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """Merge the detection results into the source data.
@@ -103,7 +103,7 @@ class AnomalyDetectionWorkflowBase(WorkflowBase):
         """Invoke all common application functions for anomaly detection algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self.anomaly_detection = pd.DataFrame(self.model.predict(self.X), columns=["is_anomaly"])
-        
+
         if self.X.shape[1] >= 3:
             two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(self.X, 2)
             self._scatter2d(
@@ -122,7 +122,7 @@ class AnomalyDetectionWorkflowBase(WorkflowBase):
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
-            
+
         self._density_estimation(
             data=self.X,
             labels=self.anomaly_detection["is_anomaly"],
