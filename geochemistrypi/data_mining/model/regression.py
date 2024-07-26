@@ -121,22 +121,22 @@ class RegressionWorkflowBase(WorkflowBase):
         return dict()
 
     @staticmethod
-    def _plot_predicted_vs_actual(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_predicted_vs_actual(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, name_column: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the predicted vs. actual diagram."""
         print("-----* Predicted vs. Actual Diagram *-----")
         plot_predicted_vs_actual(y_test_predict, y_test, algorithm_name)
         save_fig(f"Predicted vs. Actual Diagram - {algorithm_name}", local_path, mlflow_path)
         data = pd.concat([y_test, y_test_predict], axis=1)
-        save_data(data, f"Predicted vs. Actual Diagram - {algorithm_name}", local_path, mlflow_path)
+        save_data(data, name_column, f"Predicted vs. Actual Diagram - {algorithm_name}", local_path, mlflow_path)
 
     @staticmethod
-    def _plot_residuals(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_residuals(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, name_column: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the residuals diagram."""
         print("-----* Residuals Diagram *-----")
         residuals = plot_residuals(y_test_predict, y_test, algorithm_name)
         save_fig(f"Residuals Diagram - {algorithm_name}", local_path, mlflow_path)
         data = pd.concat([y_test, residuals], axis=1)
-        save_data(data, f"Residuals Diagram - {algorithm_name}", local_path, mlflow_path)
+        save_data(data, name_column, f"Residuals Diagram - {algorithm_name}", local_path, mlflow_path)
 
     @staticmethod
     def _score(y_true: pd.DataFrame, y_predict: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
@@ -178,6 +178,7 @@ class RegressionWorkflowBase(WorkflowBase):
         self._plot_predicted_vs_actual(
             y_test_predict=RegressionWorkflowBase.y_test_predict,
             y_test=RegressionWorkflowBase.y_test,
+            name_column=RegressionWorkflowBase.name_test,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -185,6 +186,7 @@ class RegressionWorkflowBase(WorkflowBase):
         self._plot_residuals(
             y_test_predict=RegressionWorkflowBase.y_test_predict,
             y_test=RegressionWorkflowBase.y_test,
+            name_column=RegressionWorkflowBase.name_test,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -192,6 +194,7 @@ class RegressionWorkflowBase(WorkflowBase):
         self._plot_permutation_importance(
             X_test=RegressionWorkflowBase.X_test,
             y_test=RegressionWorkflowBase.y_test,
+            name_column=RegressionWorkflowBase.name_test,
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -221,6 +224,7 @@ class RegressionWorkflowBase(WorkflowBase):
         self._plot_predicted_vs_actual(
             y_test_predict=RegressionWorkflowBase.y_test_predict,
             y_test=RegressionWorkflowBase.y_test,
+            name_column=RegressionWorkflowBase.name_test,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -228,6 +232,7 @@ class RegressionWorkflowBase(WorkflowBase):
         self._plot_residuals(
             y_test_predict=RegressionWorkflowBase.y_test_predict,
             y_test=RegressionWorkflowBase.y_test,
+            name_column=RegressionWorkflowBase.name_test,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -235,6 +240,7 @@ class RegressionWorkflowBase(WorkflowBase):
         self._plot_permutation_importance(
             X_test=RegressionWorkflowBase.X_test,
             y_test=RegressionWorkflowBase.y_test,
+            name_column=RegressionWorkflowBase.name_test,
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -634,6 +640,7 @@ class XGBoostRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=XGBoostRegression.X_train,
+            name_column=RegressionWorkflowBase.name_train,
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -655,6 +662,7 @@ class XGBoostRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=XGBoostRegression.X_train,
+            name_column=RegressionWorkflowBase.name_train,
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -909,6 +917,7 @@ class DecisionTreeRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=DecisionTreeRegression.X_train,
+            name_column=RegressionWorkflowBase.name_train,
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -929,6 +938,7 @@ class DecisionTreeRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=DecisionTreeRegression.X_train,
+            name_column=RegressionWorkflowBase.name_train,
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -1205,6 +1215,7 @@ class ExtraTreesRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=ExtraTreesRegression.X_train,
+            name_column=RegressionWorkflowBase.name_train,
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -1225,6 +1236,7 @@ class ExtraTreesRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=ExtraTreesRegression.X_train,
+            name_column=RegressionWorkflowBase.name_train,
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -1503,6 +1515,7 @@ class RandomForestRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=RandomForestRegression.X_train,
+            name_column=RegressionWorkflowBase.name_train,
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -1523,6 +1536,7 @@ class RandomForestRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=RandomForestRegression.X_train,
+            name_column=RegressionWorkflowBase.name_train,
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -2123,6 +2137,7 @@ class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=two_dimen_data,
                 target_data=ClassicalLinearRegression.y_test,
+                data_name=ClassicalLinearRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -2132,6 +2147,7 @@ class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_3d_scatter_diagram(
                 feature_data=three_dimen_data,
                 target_data=ClassicalLinearRegression.y_test,
+                data_name=ClassicalLinearRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -2142,6 +2158,7 @@ class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=two_dimen_data,
                 target_data=ClassicalLinearRegression.y_test,
+                data_name=ClassicalLinearRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -2150,6 +2167,7 @@ class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_3d_scatter_diagram(
                 feature_data=ClassicalLinearRegression.X_test,
                 target_data=ClassicalLinearRegression.y_test,
+                data_name=ClassicalLinearRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -2157,6 +2175,7 @@ class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_3d_surface_diagram(
                 feature_data=ClassicalLinearRegression.X_test,
                 target_data=ClassicalLinearRegression.y_test,
+                data_name=ClassicalLinearRegression.name_test,
                 y_test_predict=ClassicalLinearRegression.y_test_predict,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -2167,6 +2186,7 @@ class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=ClassicalLinearRegression.X_test,
                 target_data=ClassicalLinearRegression.y_test,
+                data_name=ClassicalLinearRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -2174,6 +2194,7 @@ class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_line_diagram(
                 feature_data=ClassicalLinearRegression.X_test,
                 target_data=ClassicalLinearRegression.y_test,
+                data_name=ClassicalLinearRegression.name_test,
                 y_test_predict=ClassicalLinearRegression.y_test_predict,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -2667,6 +2688,7 @@ class GradientBoostingRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=GradientBoostingRegression.X_train,
+            name_column=RegressionWorkflowBase.name_train,
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -2687,6 +2709,7 @@ class GradientBoostingRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=GradientBoostingRegression.X_train,
+            name_column=RegressionWorkflowBase.name_train,
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -2884,6 +2907,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=two_dimen_data,
                 target_data=LassoRegression.y_test,
+                data_name=LassoRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -2893,6 +2917,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_3d_scatter_diagram(
                 feature_data=three_dimen_data,
                 target_data=LassoRegression.y_test,
+                data_name=LassoRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -2903,6 +2928,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=two_dimen_data,
                 target_data=LassoRegression.y_test,
+                data_name=LassoRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -2911,6 +2937,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_3d_scatter_diagram(
                 feature_data=LassoRegression.X_test,
                 target_data=LassoRegression.y_test,
+                data_name=LassoRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -2918,6 +2945,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_3d_surface_diagram(
                 feature_data=LassoRegression.X_test,
                 target_data=LassoRegression.y_test,
+                data_name=LassoRegression.name_test,
                 y_test_predict=LassoRegression.y_test_predict,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -2928,6 +2956,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=LassoRegression.X_test,
                 target_data=LassoRegression.y_test,
+                data_name=LassoRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -2935,6 +2964,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_line_diagram(
                 feature_data=LassoRegression.X_test,
                 target_data=LassoRegression.y_test,
+                data_name=LassoRegression.name_test,
                 y_test_predict=LassoRegression.y_test_predict,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -2965,6 +2995,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=two_dimen_data,
                 target_data=LassoRegression.y_test,
+                data_name=LassoRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -2974,6 +3005,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_3d_scatter_diagram(
                 feature_data=three_dimen_data,
                 target_data=LassoRegression.y_test,
+                data_name=LassoRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -2984,6 +3016,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=two_dimen_data,
                 target_data=LassoRegression.y_test,
+                data_name=LassoRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -2992,6 +3025,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_3d_scatter_diagram(
                 feature_data=LassoRegression.X_test,
                 target_data=LassoRegression.y_test,
+                data_name=LassoRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -2999,6 +3033,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_3d_surface_diagram(
                 feature_data=LassoRegression.X_test,
                 target_data=LassoRegression.y_test,
+                data_name=LassoRegression.name_test,
                 y_test_predict=LassoRegression.y_test_predict,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -3009,6 +3044,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=LassoRegression.X_test,
                 target_data=LassoRegression.y_test,
+                data_name=LassoRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -3016,6 +3052,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_line_diagram(
                 feature_data=LassoRegression.X_test,
                 target_data=LassoRegression.y_test,
+                data_name=LassoRegression.name_test,
                 y_test_predict=LassoRegression.y_test_predict,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -3214,6 +3251,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=two_dimen_data,
                 target_data=ElasticNetRegression.y_test,
+                data_name=ElasticNetRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -3223,6 +3261,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_3d_scatter_diagram(
                 feature_data=three_dimen_data,
                 target_data=ElasticNetRegression.y_test,
+                data_name=ElasticNetRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -3233,6 +3272,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=two_dimen_data,
                 target_data=ElasticNetRegression.y_test,
+                data_name=ElasticNetRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -3241,6 +3281,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_3d_scatter_diagram(
                 feature_data=ElasticNetRegression.X_test,
                 target_data=ElasticNetRegression.y_test,
+                data_name=ElasticNetRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -3248,6 +3289,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_3d_surface_diagram(
                 feature_data=ElasticNetRegression.X_test,
                 target_data=ElasticNetRegression.y_test,
+                data_name=ElasticNetRegression.name_test,
                 y_test_predict=ElasticNetRegression.y_test_predict,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -3258,6 +3300,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=ElasticNetRegression.X_test,
                 target_data=ElasticNetRegression.y_test,
+                data_name=ElasticNetRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -3265,6 +3308,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_line_diagram(
                 feature_data=ElasticNetRegression.X_test,
                 target_data=ElasticNetRegression.y_test,
+                data_name=ElasticNetRegression.name_test,
                 y_test_predict=ElasticNetRegression.y_test_predict,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -3295,6 +3339,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=two_dimen_data,
                 target_data=ElasticNetRegression.y_test,
+                data_name=ElasticNetRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -3304,6 +3349,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_3d_scatter_diagram(
                 feature_data=three_dimen_data,
                 target_data=ElasticNetRegression.y_test,
+                data_name=ElasticNetRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -3314,6 +3360,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=two_dimen_data,
                 target_data=ElasticNetRegression.y_test,
+                data_name=ElasticNetRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -3322,6 +3369,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_3d_scatter_diagram(
                 feature_data=ElasticNetRegression.X_test,
                 target_data=ElasticNetRegression.y_test,
+                data_name=ElasticNetRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -3329,6 +3377,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_3d_surface_diagram(
                 feature_data=ElasticNetRegression.X_test,
                 target_data=ElasticNetRegression.y_test,
+                data_name=ElasticNetRegression.name_test,
                 y_test_predict=ElasticNetRegression.y_test_predict,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -3339,6 +3388,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=ElasticNetRegression.X_test,
                 target_data=ElasticNetRegression.y_test,
+                data_name=ElasticNetRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -3346,6 +3396,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_line_diagram(
                 feature_data=ElasticNetRegression.X_test,
                 target_data=ElasticNetRegression.y_test,
+                data_name=ElasticNetRegression.name_test,
                 y_test_predict=ElasticNetRegression.y_test_predict,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -3648,6 +3699,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=two_dimen_data,
                 target_data=SGDRegression.y_test,
+                data_name=SGDRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -3657,6 +3709,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_3d_scatter_diagram(
                 feature_data=three_dimen_data,
                 target_data=SGDRegression.y_test,
+                data_name=SGDRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -3667,6 +3720,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=two_dimen_data,
                 target_data=SGDRegression.y_test,
+                data_name=SGDRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -3675,6 +3729,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_3d_scatter_diagram(
                 feature_data=SGDRegression.X_test,
                 target_data=SGDRegression.y_test,
+                data_name=SGDRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -3683,6 +3738,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 feature_data=SGDRegression.X_test,
                 target_data=SGDRegression.y_test,
                 y_test_predict=SGDRegression.y_test_predict,
+                data_name=SGDRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -3692,6 +3748,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=SGDRegression.X_test,
                 target_data=SGDRegression.y_test,
+                data_name=SGDRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -3700,6 +3757,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 feature_data=SGDRegression.X_test,
                 target_data=SGDRegression.y_test,
                 y_test_predict=SGDRegression.y_test_predict,
+                data_name=SGDRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -3729,6 +3787,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=two_dimen_data,
                 target_data=SGDRegression.y_test,
+                data_name=SGDRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -3738,6 +3797,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_3d_scatter_diagram(
                 feature_data=three_dimen_data,
                 target_data=SGDRegression.y_test,
+                data_name=SGDRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -3748,6 +3808,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=two_dimen_data,
                 target_data=SGDRegression.y_test,
+                data_name=SGDRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -3756,6 +3817,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_3d_scatter_diagram(
                 feature_data=SGDRegression.X_test,
                 target_data=SGDRegression.y_test,
+                data_name=SGDRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -3764,6 +3826,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 feature_data=SGDRegression.X_test,
                 target_data=SGDRegression.y_test,
                 y_test_predict=SGDRegression.y_test_predict,
+                data_name=SGDRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -3773,6 +3836,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=SGDRegression.X_test,
                 target_data=SGDRegression.y_test,
+                data_name=SGDRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -3781,6 +3845,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 feature_data=SGDRegression.X_test,
                 target_data=SGDRegression.y_test,
                 y_test_predict=SGDRegression.y_test_predict,
+                data_name=SGDRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -4184,6 +4249,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=two_dimen_data,
                 target_data=RidgeRegression.y_test,
+                data_name=RidgeRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -4193,6 +4259,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_3d_scatter_diagram(
                 feature_data=three_dimen_data,
                 target_data=RidgeRegression.y_test,
+                data_name=RidgeRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -4203,6 +4270,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=two_dimen_data,
                 target_data=RidgeRegression.y_test,
+                data_name=RidgeRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -4211,6 +4279,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_3d_scatter_diagram(
                 feature_data=RidgeRegression.X_test,
                 target_data=RidgeRegression.y_test,
+                data_name=RidgeRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -4218,6 +4287,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_3d_surface_diagram(
                 feature_data=RidgeRegression.X_test,
                 target_data=RidgeRegression.y_test,
+                data_name=RidgeRegression.name_test,
                 y_test_predict=RidgeRegression.y_test_predict,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -4228,6 +4298,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=RidgeRegression.X_test,
                 target_data=RidgeRegression.y_test,
+                data_name=RidgeRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -4235,6 +4306,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_line_diagram(
                 feature_data=RidgeRegression.X_test,
                 target_data=RidgeRegression.y_test,
+                data_name=RidgeRegression.name_test,
                 y_test_predict=RidgeRegression.y_test_predict,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -4265,6 +4337,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=two_dimen_data,
                 target_data=RidgeRegression.y_test,
+                data_name=RidgeRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -4274,6 +4347,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_3d_scatter_diagram(
                 feature_data=three_dimen_data,
                 target_data=RidgeRegression.y_test,
+                data_name=RidgeRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -4284,6 +4358,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=two_dimen_data,
                 target_data=RidgeRegression.y_test,
+                data_name=RidgeRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -4292,6 +4367,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_3d_scatter_diagram(
                 feature_data=RidgeRegression.X_test,
                 target_data=RidgeRegression.y_test,
+                data_name=RidgeRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -4299,6 +4375,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_3d_surface_diagram(
                 feature_data=RidgeRegression.X_test,
                 target_data=RidgeRegression.y_test,
+                data_name=RidgeRegression.name_test,
                 y_test_predict=RidgeRegression.y_test_predict,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -4309,6 +4386,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_scatter_diagram(
                 feature_data=RidgeRegression.X_test,
                 target_data=RidgeRegression.y_test,
+                data_name=RidgeRegression.name_test,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -4316,6 +4394,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             self._plot_2d_line_diagram(
                 feature_data=RidgeRegression.X_test,
                 target_data=RidgeRegression.y_test,
+                data_name=RidgeRegression.name_test,
                 y_test_predict=RidgeRegression.y_test_predict,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,

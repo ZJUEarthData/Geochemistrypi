@@ -109,13 +109,16 @@ def build_transform_pipeline(imputation_config: Dict, feature_scaling_config: Di
     return transformer_config, transform_pipeline
 
 
-def model_inference(inference_data: pd.DataFrame, is_inference: bool, run: object, transformer_config: Dict, transform_pipeline: Optional[object] = None):
+def model_inference(inference_data: pd.DataFrame, inference_name_column: str, is_inference: bool, run: object, transformer_config: Dict, transform_pipeline: Optional[object] = None):
     """Run the model inference.
 
     Parameters
     ----------
     inference_data : pd.DataFrame
         The inference data.
+
+    inference_name_column: str
+        The name of inference_data
 
     is_inference : bool
         Whether to run the model inference.
@@ -141,4 +144,4 @@ def model_inference(inference_data: pd.DataFrame, is_inference: bool, run: objec
         inference_data_predicted_np = loaded_model.predict(inference_data_transformed)
         inference_data_predicted = np2pd(inference_data_predicted_np, ["Predicted Value"])
         GEOPI_OUTPUT_ARTIFACTS_DATA_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH")
-        save_data(inference_data_predicted, "Application Data Predicted", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+        save_data(inference_data_predicted, inference_name_column, "Application Data Predicted", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)

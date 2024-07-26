@@ -72,7 +72,7 @@ def ratio_null_vs_filled(data: pd.DataFrame) -> None:
     print("--" * 10)
 
 
-def correlation_plot(col: pd.Index, df: pd.DataFrame) -> None:
+def correlation_plot(col: pd.Index, df: pd.DataFrame, name_column: str) -> None:
     """A heatmap describing the correlation between the required columns.
 
     Parameters
@@ -89,10 +89,10 @@ def correlation_plot(col: pd.Index, df: pd.DataFrame) -> None:
     sns.heatmap(plot_df_cor, cmap="coolwarm", annot=True, linewidths=0.5)
     print("Successfully calculate the pair-wise correlation coefficient among the selected columns.")
     save_fig("Correlation Plot", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_STATISTIC_PATH"), MLFLOW_ARTIFACT_IMAGE_STATISTIC_PATH)
-    save_data(df, "Correlation Plot", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_STATISTIC_PATH"), MLFLOW_ARTIFACT_IMAGE_STATISTIC_PATH)
+    save_data(df, name_column, "Correlation Plot", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_STATISTIC_PATH"), MLFLOW_ARTIFACT_IMAGE_STATISTIC_PATH)
 
 
-def distribution_plot(col: pd.Index, df: pd.DataFrame) -> None:
+def distribution_plot(col: pd.Index, df: pd.DataFrame, name_column: str) -> None:
     """The histogram containing the respective distribution subplots of the required columns.
 
     Parameters
@@ -111,10 +111,10 @@ def distribution_plot(col: pd.Index, df: pd.DataFrame) -> None:
         plt.title(col[i])
     print("Successfully draw the distribution plot of the selected columns.")
     save_fig("Distribution Histogram", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_STATISTIC_PATH"), MLFLOW_ARTIFACT_IMAGE_STATISTIC_PATH)
-    save_data(df, "Distribution Histogram", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_STATISTIC_PATH"), MLFLOW_ARTIFACT_IMAGE_STATISTIC_PATH)
+    save_data(df, name_column, "Distribution Histogram", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_STATISTIC_PATH"), MLFLOW_ARTIFACT_IMAGE_STATISTIC_PATH)
 
 
-def log_distribution_plot(col: pd.Index, df: pd.DataFrame) -> None:
+def log_distribution_plot(col: pd.Index, df: pd.DataFrame, name_column: str) -> None:
     """The histogram containing the respective distribution subplots after log transformation of the required columns.
 
     Parameters
@@ -137,7 +137,7 @@ def log_distribution_plot(col: pd.Index, df: pd.DataFrame) -> None:
 
     print("Successfully draw the distribution plot after log transformation of the selected columns.")
     save_fig("Distribution Histogram After Log Transformation", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_STATISTIC_PATH"), MLFLOW_ARTIFACT_IMAGE_STATISTIC_PATH)
-    save_data(df_log_transformed, "Distribution Histogram After Log Transformation", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_STATISTIC_PATH"), MLFLOW_ARTIFACT_IMAGE_STATISTIC_PATH)
+    save_data(df_log_transformed, name_column, "Distribution Histogram After Log Transformation", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_STATISTIC_PATH"), MLFLOW_ARTIFACT_IMAGE_STATISTIC_PATH)
 
 
 def probability_plot(col: pd.Index, df_origin: pd.DataFrame, df_impute: pd.DataFrame) -> None:

@@ -131,6 +131,20 @@ def select_columns(columns_range: Optional[str] = None) -> List[int]:
     return columns_selected
 
 
+def select_column_name(data: pd.DataFrame) -> str:
+    """Select a single column from the dataframe and return its name."""
+    while True:
+        try:
+            column_index = int(input("Enter the number of the column you want to select as the data name: "))
+            if column_index < 1 or column_index > data.shape[1]:
+                print(f"The entered number is out of range! Please enter a number between 1 and {data.shape[1]}.")
+                continue
+            column_name = data.columns[column_index - 1]
+            return column_name
+        except ValueError:
+            print("Invalid input, please enter an integer.")
+
+
 def create_sub_data_set(data: pd.DataFrame, allow_empty_columns: bool = False) -> pd.DataFrame:
     """Create a sub data set.
 
@@ -265,7 +279,7 @@ def create_sub_data_set(data: pd.DataFrame, allow_empty_columns: bool = False) -
     return sub_data_set
 
 
-def data_split(X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], test_size: float = 0.2) -> Dict:
+def data_split(X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], names: pd.DataFrame, test_size: float = 0.2) -> Dict:
     """Split arrays or matrices into random train and test subsets.
 
     Parameters
@@ -276,6 +290,9 @@ def data_split(X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], test_size: fl
     y : pd.DataFrame or pd.Series
         The target variable to be split.
 
+    name : pd.DataFrame
+        The name of data.
+
     test_size : float, default=0.2
         Represents the proportion of the dataset to include in the test split.
 
@@ -285,7 +302,8 @@ def data_split(X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], test_size: fl
         A dictionary containing the split data.
     """
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
-    return {"X Train": X_train, "X Test": X_test, "Y Train": y_train, "Y Test": y_test}
+    name_train, name_test = train_test_split(names, test_size=0.2, random_state=42)
+    return {"X Train": X_train, "X Test": X_test, "Y Train": y_train, "Y Test": y_test, "Name Train": name_train, "Name Test": name_test}
 
 
 def num2option(items: List[str]) -> None:

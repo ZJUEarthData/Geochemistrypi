@@ -153,7 +153,7 @@ class ClassificationWorkflowBase(WorkflowBase):
         save_text(scores_str, f"Cross Validation - {algorithm_name}", store_path)
 
     @staticmethod
-    def _plot_confusion_matrix(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_confusion_matrix(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, name_column: str, trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the confusion matrix of the model."""
         print("-----* Confusion Matrix *-----")
         data = plot_confusion_matrix(y_test, y_test_predict, trained_model)
@@ -161,10 +161,10 @@ class ClassificationWorkflowBase(WorkflowBase):
         index = [f"true_{i}" for i in range(int(y_test.nunique().values))]
         columns = [f"pred_{i}" for i in range(int(y_test.nunique().values))]
         data = pd.DataFrame(data, columns=columns, index=index)
-        save_data(data, f"Confusion Matrix - {algorithm_name}", local_path, mlflow_path, True)
+        save_data(data, name_column, f"Confusion Matrix - {algorithm_name}", local_path, mlflow_path, True)
 
     @staticmethod
-    def _plot_precision_recall(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_precision_recall(X_test: pd.DataFrame, y_test: pd.DataFrame, name_column: str, trained_model: object, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         print(f"-----* {graph_name} *-----")
         y_probs, precisions, recalls, thresholds = plot_precision_recall(X_test, y_test, trained_model, graph_name, algorithm_name)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
@@ -172,11 +172,13 @@ class ClassificationWorkflowBase(WorkflowBase):
         precisions = pd.DataFrame(precisions, columns=["Precisions"])
         recalls = pd.DataFrame(recalls, columns=["Recalls"])
         thresholds = pd.DataFrame(thresholds, columns=["Thresholds"])
-        save_data(precisions, f"{graph_name} - Precisions", local_path, mlflow_path)
-        save_data(recalls, f"{graph_name} - Recalls", local_path, mlflow_path)
+        save_data(precisions, name_column, f"{graph_name} - Precisions", local_path, mlflow_path)
+        save_data(recalls, name_column, f"{graph_name} - Recalls", local_path, mlflow_path)
 
     @staticmethod
-    def _plot_precision_recall_threshold(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_precision_recall_threshold(
+        X_test: pd.DataFrame, y_test: pd.DataFrame, name_column: str, trained_model: object, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str
+    ) -> None:
         print(f"-----* {graph_name} *-----")
         y_probs, precisions, recalls, thresholds = plot_precision_recall_threshold(X_test, y_test, trained_model, graph_name, algorithm_name)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
@@ -184,13 +186,13 @@ class ClassificationWorkflowBase(WorkflowBase):
         precisions = pd.DataFrame(precisions, columns=["Precisions"])
         recalls = pd.DataFrame(recalls, columns=["Recalls"])
         thresholds = pd.DataFrame(thresholds, columns=["Thresholds"])
-        save_data(y_probs, f"{graph_name} - Probabilities", local_path, mlflow_path)
-        save_data(precisions, f"{graph_name} - Precisions", local_path, mlflow_path)
-        save_data(recalls, f"{graph_name} - Recalls", local_path, mlflow_path)
-        save_data(thresholds, f"{graph_name} - Thresholds", local_path, mlflow_path)
+        save_data(y_probs, name_column, f"{graph_name} - Probabilities", local_path, mlflow_path)
+        save_data(precisions, name_column, f"{graph_name} - Precisions", local_path, mlflow_path)
+        save_data(recalls, name_column, f"{graph_name} - Recalls", local_path, mlflow_path)
+        save_data(thresholds, name_column, f"{graph_name} - Thresholds", local_path, mlflow_path)
 
     @staticmethod
-    def _plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, name_column: str, trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         print("-----* ROC Curve *-----")
         y_probs, fpr, tpr, thresholds = plot_ROC(X_test, y_test, trained_model, algorithm_name)
         save_fig(f"ROC Curve - {algorithm_name}", local_path, mlflow_path)
@@ -198,22 +200,24 @@ class ClassificationWorkflowBase(WorkflowBase):
         fpr = pd.DataFrame(fpr, columns=["False Positive Rate"])
         tpr = pd.DataFrame(tpr, columns=["True Positive Rate"])
         thresholds = pd.DataFrame(thresholds, columns=["Thresholds"])
-        save_data(y_probs, "ROC Curve - Probabilities", local_path, mlflow_path)
-        save_data(fpr, "ROC Curve - False Positive Rate", local_path, mlflow_path)
-        save_data(tpr, "ROC Curve - True Positive Rate", local_path, mlflow_path)
-        save_data(thresholds, "ROC Curve - Thresholds", local_path, mlflow_path)
+        save_data(y_probs, name_column, "ROC Curve - Probabilities", local_path, mlflow_path)
+        save_data(fpr, name_column, "ROC Curve - False Positive Rate", local_path, mlflow_path)
+        save_data(tpr, name_column, "ROC Curve - True Positive Rate", local_path, mlflow_path)
+        save_data(thresholds, name_column, "ROC Curve - Thresholds", local_path, mlflow_path)
 
     @staticmethod
-    def _plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_2d_decision_boundary(
+        X: pd.DataFrame, X_test: pd.DataFrame, name_column1: str, name_column2: str, trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str
+    ) -> None:
         """Plot the decision boundary of the trained model with the testing data set below."""
         print("-----* Two-dimensional Decision Boundary Diagram *-----")
         plot_2d_decision_boundary(X, X_test, trained_model, image_config)
         save_fig(f"Decision Boundary - {algorithm_name}", local_path, mlflow_path)
-        save_data(X, "Decision Boundary - X", local_path, mlflow_path)
-        save_data(X_test, "Decision Boundary - X Test", local_path, mlflow_path)
+        save_data(X, name_column1, "Decision Boundary - X", local_path, mlflow_path)
+        save_data(X_test, name_column2, "Decision Boundary - X Test", local_path, mlflow_path)
 
     @staticmethod
-    def sample_balance(X_train: pd.DataFrame, y_train: pd.DataFrame, local_path: str, mlflow_path: str) -> tuple:
+    def sample_balance(X_train: pd.DataFrame, y_train: pd.DataFrame, name_column: str, local_path: str, mlflow_path: str) -> tuple:
         """Use this method when the sample size is unbalanced."""
         print("-*-*- Sample Balance on Train Set -*-*-")
         num2option(OPTION)
@@ -228,15 +232,17 @@ class ClassificationWorkflowBase(WorkflowBase):
             print(train_set_resampled)
             print("Basic Statistical Information: ")
             basic_statistic(train_set_resampled)
-            save_data(X_train, "X Train After Sample Balance", local_path, mlflow_path)
-            save_data(y_train, "Y Train After Sample Balance", local_path, mlflow_path)
+            save_data(X_train, name_column, "X Train After Sample Balance", local_path, mlflow_path)
+            save_data(y_train, name_column, "Y Train After Sample Balance", local_path, mlflow_path)
         else:
             sample_balance_config = None
         clear_output()
         return sample_balance_config, X_train, y_train
 
     @staticmethod
-    def customize_label(y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, local_path: str, mlflow_path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    def customize_label(
+        y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, name_column1: str, name_column2: str, name_column3: str, local_path: str, mlflow_path: str
+    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """Using this function to customize the label to which samples of each category belong."""
         print("-*-*- Customize Label on Label Set -*-*-")
         num2option(OPTION)
@@ -253,9 +259,9 @@ class ClassificationWorkflowBase(WorkflowBase):
             print("------------------------------------")
             print("Originla label VS Customizing label:")
             print(y_show)
-            save_data(y, "Y Set After Customizing label", local_path, mlflow_path)
-            save_data(y_train, "Y Train After Customizing label", local_path, mlflow_path)
-            save_data(y_test, "Y Test After Customizing label", local_path, mlflow_path)
+            save_data(y, name_column1, "Y Set After Customizing label", local_path, mlflow_path)
+            save_data(y_train, name_column2, "Y Train After Customizing label", local_path, mlflow_path)
+            save_data(y_test, name_column3, "Y Test After Customizing label", local_path, mlflow_path)
         clear_output()
         return y, y_train, y_test
 
@@ -288,6 +294,7 @@ class ClassificationWorkflowBase(WorkflowBase):
         self._plot_confusion_matrix(
             y_test=ClassificationWorkflowBase.y_test,
             y_test_predict=ClassificationWorkflowBase.y_test_predict,
+            name_column=ClassificationWorkflowBase.name_test,
             trained_model=self.model,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -297,6 +304,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             self._plot_precision_recall(
                 X_test=ClassificationWorkflowBase.X_test,
                 y_test=ClassificationWorkflowBase.y_test,
+                name_column=ClassificationWorkflowBase.name_test,
                 trained_model=self.model,
                 graph_name=ClassificationCommonFunction.PRECISION_RECALL_CURVE.value,
                 algorithm_name=self.naming,
@@ -306,6 +314,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             self._plot_precision_recall_threshold(
                 X_test=ClassificationWorkflowBase.X_test,
                 y_test=ClassificationWorkflowBase.y_test,
+                name_column=ClassificationWorkflowBase.name_test,
                 trained_model=self.model,
                 graph_name=ClassificationCommonFunction.PRECISION_RECALL_THRESHOLD_DIAGRAM.value,
                 algorithm_name=self.naming,
@@ -315,6 +324,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             self._plot_ROC(
                 X_test=ClassificationWorkflowBase.X_test,
                 y_test=ClassificationWorkflowBase.y_test,
+                name_column=ClassificationWorkflowBase.name_test,
                 trained_model=self.model,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -323,6 +333,7 @@ class ClassificationWorkflowBase(WorkflowBase):
         self._plot_permutation_importance(
             X_test=ClassificationWorkflowBase.X_test,
             y_test=ClassificationWorkflowBase.y_test,
+            name_column=ClassificationWorkflowBase.name_test,
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -333,6 +344,8 @@ class ClassificationWorkflowBase(WorkflowBase):
             self._plot_2d_decision_boundary(
                 X=ClassificationWorkflowBase.X,
                 X_test=ClassificationWorkflowBase.X_test,
+                name_column1=ClassificationWorkflowBase.name_all,
+                name_column2=ClassificationWorkflowBase.name_test,
                 trained_model=self.model,
                 image_config=self.image_config,
                 algorithm_name=self.naming,
@@ -369,6 +382,7 @@ class ClassificationWorkflowBase(WorkflowBase):
         self._plot_confusion_matrix(
             y_test=ClassificationWorkflowBase.y_test,
             y_test_predict=ClassificationWorkflowBase.y_test_predict,
+            name_column=ClassificationWorkflowBase.name_test,
             trained_model=self.auto_model,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -378,6 +392,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             self._plot_precision_recall(
                 X_test=ClassificationWorkflowBase.X_test,
                 y_test=ClassificationWorkflowBase.y_test,
+                name_column=ClassificationWorkflowBase.name_test,
                 trained_model=self.auto_model,
                 graph_name=ClassificationCommonFunction.PRECISION_RECALL_CURVE.value,
                 algorithm_name=self.naming,
@@ -387,6 +402,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             self._plot_precision_recall_threshold(
                 X_test=ClassificationWorkflowBase.X_test,
                 y_test=ClassificationWorkflowBase.y_test,
+                name_column=ClassificationWorkflowBase.name_test,
                 trained_model=self.auto_model,
                 graph_name=ClassificationCommonFunction.PRECISION_RECALL_THRESHOLD_DIAGRAM.value,
                 algorithm_name=self.naming,
@@ -396,6 +412,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             self._plot_ROC(
                 X_test=ClassificationWorkflowBase.X_test,
                 y_test=ClassificationWorkflowBase.y_test,
+                name_column=ClassificationWorkflowBase.name_test,
                 trained_model=self.auto_model,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -404,6 +421,7 @@ class ClassificationWorkflowBase(WorkflowBase):
         self._plot_permutation_importance(
             X_test=ClassificationWorkflowBase.X_test,
             y_test=ClassificationWorkflowBase.y_test,
+            name_column=ClassificationWorkflowBase.name_test,
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -414,6 +432,8 @@ class ClassificationWorkflowBase(WorkflowBase):
             self._plot_2d_decision_boundary(
                 X=ClassificationWorkflowBase.X,
                 X_test=ClassificationWorkflowBase.X_test,
+                name_column1=ClassificationWorkflowBase.name_all,
+                name_column2=ClassificationWorkflowBase.name_test,
                 trained_model=self.auto_model,
                 image_config=self.image_config,
                 algorithm_name=self.naming,
@@ -902,6 +922,7 @@ class DecisionTreeClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=DecisionTreeClassification.X_train,
+            name_column=DecisionTreeClassification.name_train,
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -922,6 +943,7 @@ class DecisionTreeClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=DecisionTreeClassification.X_train,
+            name_column=DecisionTreeClassification.name_train,
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -1219,6 +1241,7 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=RandomForestClassification.X_train,
+            name_column=DecisionTreeClassification.name_train,
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -1239,6 +1262,7 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=RandomForestClassification.X_train,
+            name_column=DecisionTreeClassification.name_train,
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -1596,6 +1620,7 @@ class XGBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         # )
         self._plot_feature_importance(
             X_train=XGBoostClassification.X_train,
+            name_column=DecisionTreeClassification.name_train,
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -1609,6 +1634,7 @@ class XGBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=XGBoostClassification.X_train,
+            name_column=DecisionTreeClassification.name_train,
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -1853,12 +1879,12 @@ class LogisticRegressionClassification(LinearWorkflowMixin, ClassificationWorkfl
         return hyper_parameters
 
     @staticmethod
-    def _plot_feature_importance(columns_name: np.ndarray, trained_model: any, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_feature_importance(columns_name: np.ndarray, name_column: str, trained_model: any, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Print the feature coefficient value orderly."""
         print("-----* Feature Importance *-----")
         data = plot_logistic_importance(columns_name, trained_model)
         save_fig(f"Feature Importance - {algorithm_name}", local_path, mlflow_path)
-        save_data(data, f"Feature Importance - {algorithm_name}", local_path, mlflow_path)
+        save_data(data, name_column, f"Feature Importance - {algorithm_name}", local_path, mlflow_path)
 
     @dispatch()
     def special_components(self, **kwargs) -> None:
@@ -1877,6 +1903,7 @@ class LogisticRegressionClassification(LinearWorkflowMixin, ClassificationWorkfl
         )
         self._plot_feature_importance(
             columns_name=LogisticRegressionClassification.X.columns,
+            name_column=LogisticRegressionClassification.name_all,
             trained_model=self.model,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -1900,6 +1927,7 @@ class LogisticRegressionClassification(LinearWorkflowMixin, ClassificationWorkfl
         )
         self._plot_feature_importance(
             columns_name=LogisticRegressionClassification.X.columns,
+            name_column=LogisticRegressionClassification.name_all,
             trained_model=self.auto_model,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -2513,6 +2541,7 @@ class ExtraTreesClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=ExtraTreesClassification.X_train,
+            name_column=LogisticRegressionClassification.name_train,
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -2533,6 +2562,7 @@ class ExtraTreesClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=ExtraTreesClassification.X_train,
+            name_column=LogisticRegressionClassification.name_train,
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -2876,6 +2906,7 @@ class GradientBoostingClassification(TreeWorkflowMixin, ClassificationWorkflowBa
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=GradientBoostingClassification.X_train,
+            name_column=LogisticRegressionClassification.name_train,
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -2896,6 +2927,7 @@ class GradientBoostingClassification(TreeWorkflowMixin, ClassificationWorkflowBa
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=GradientBoostingClassification.X_train,
+            name_column=LogisticRegressionClassification.name_train,
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,

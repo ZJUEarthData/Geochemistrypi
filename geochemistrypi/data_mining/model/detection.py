@@ -39,7 +39,7 @@ class AnomalyDetectionWorkflowBase(WorkflowBase):
         return dict()
 
     @staticmethod
-    def _detect_data(X: pd.DataFrame, detect_label: np.ndarray) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    def _detect_data(X: pd.DataFrame, name_column: str, detect_label: np.ndarray) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """Merge the detection results into the source data.
 
         Parameters
@@ -63,11 +63,13 @@ class AnomalyDetectionWorkflowBase(WorkflowBase):
         """
         X_anomaly_detection = X.copy()
         # Merge detection results into the source data
-        X_anomaly_detection["is_anomaly"] = detect_label
-        X_normal = X_anomaly_detection[X_anomaly_detection["is_anomaly"] == 1]
-        X_anomaly = X_anomaly_detection[X_anomaly_detection["is_anomaly"] == -1]
+        X_anomaly_detection["is_abnormal"] = detect_label
+        X_normal = X_anomaly_detection[X_anomaly_detection["is_abnormal"] == 1]
+        name_normal = name_column[X_anomaly_detection["is_abnormal"] == 1]
+        X_abnormal = X_anomaly_detection[X_anomaly_detection["is_abnormal"] == -1]
+        name_abnormal = name_column[X_anomaly_detection["is_abnormal"] == -1]
 
-        return X_anomaly_detection, X_normal, X_anomaly
+        return X_anomaly_detection, X_normal, X_abnormal, name_normal, name_abnormal
 
     def common_components(self) -> None:
         """Invoke all common application functions for anomaly detection algorithms by Scikit-learn framework."""

@@ -192,7 +192,51 @@ def save_fig(fig_name: str, local_image_path: str, mlflow_artifact_image_path: s
         mlflow.log_artifact(full_path)
 
 
-def save_data(df: pd.DataFrame, df_name: str, local_data_path: str, mlflow_artifact_data_path: str = None, index: bool = False) -> None:
+def save_data(df: pd.DataFrame, name_column: str, df_name: str, local_data_path: str, mlflow_artifact_data_path: str = None, index: bool = False) -> None:
+    """Save the dataset in the local directory and in mlflow specialized directory.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The dataset to store.
+
+    name_column:
+        The name of the data.
+
+    df_name : str
+        The name of the data sheet.
+
+    local_data_path : str
+        The path to store the data sheet
+
+    mlflow_artifact_data_path : str, default=None
+        The path to store the data sheet in mlflow.
+
+    index : bool, default=False
+        Whether to write the index.
+    """
+    if name_column is not None and len(df) == len(name_column):
+        name_column.reset_index(drop=True, inplace=True)
+        df.reset_index(drop=True, inplace=True)
+        df = pd.concat([name_column, df], axis=1)
+    try:
+        # drop the index in case that the dimensions change
+        full_path = os.path.join(local_data_path, "{}.xlsx".format(df_name))
+        df.to_excel(full_path, index=index)
+        if mlflow_artifact_data_path:
+            mlflow.log_artifact(full_path, artifact_path=mlflow_artifact_data_path)
+        else:
+            mlflow.log_artifact(full_path)
+        print(f"Successfully store '{df_name}' in '{df_name}.xlsx' in {local_data_path}.")
+    except ModuleNotFoundError:
+        print("** Please download openpyxl by pip3 **")
+        print("** The data will be stored in .csv file **")
+        full_path = os.path.join(local_data_path, "{}.csv".format(df_name))
+        df.to_csv(full_path, index=index)
+        print(f"Successfully store '{df_name}' in '{df_name}.csv' in {local_data_path}.")
+
+
+def save_data_special(df: pd.DataFrame, df_name: str, local_data_path: str, mlflow_artifact_data_path: str = None, index: bool = False) -> None:
     """Save the dataset in the local directory and in mlflow specialized directory.
 
     Parameters
