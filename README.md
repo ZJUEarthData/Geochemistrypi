@@ -233,7 +233,7 @@ For more details: Please refer to:
 The following screenshot shows the downloads and launching of our software on macOS:
 
 <p align="center">
-  <img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/70728795-59b7-4741-ab5b-9e63d284ad37" alt="Downloads and Launching on macOS" width="450" />
+  <img src="https://github.com/user-attachments/assets/4fa0e2e7-20ad-4548-ab6c-ca5f26ba0106" alt="Downloads and Launching on macOS" width="450" />
 </p>
 
 ## Roadmap
