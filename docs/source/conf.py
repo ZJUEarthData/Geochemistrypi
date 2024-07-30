@@ -12,7 +12,7 @@ import sys
 import sphinx_rtd_theme
 
 project = "Geochemistry π"
-copyright = "2023, ZJUEarthData"
+copyright = "2024, ZJUEarthData"
 author = "ZJUEarthData"
 # release = 'v0.1.0'
 

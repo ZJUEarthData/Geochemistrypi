@@ -125,6 +125,9 @@ def log_distribution_plot(col: pd.Index, df: pd.DataFrame) -> None:
     df : pd.DataFrame
         The data set.
     """
+    # Replace -1 with -1.0001
+    df[col] = df[col].replace(-1, -1.0001)
+
     # Log transform the required columns
     df_log_transformed = df[col].applymap(lambda x: np.log(x + 1))
 
