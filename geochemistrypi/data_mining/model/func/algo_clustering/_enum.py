@@ -10,3 +10,7 @@ class ClusteringCommonFunction(Enum):
 
 class KMeansSpecialFunction(Enum):
     INERTIA_SCORE = "Inertia Score"
+
+
+class MeanShiftSpecialFunction(Enum):
+    NUM_CLUSTERS = "Num Clusters"

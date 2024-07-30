@@ -4,7 +4,7 @@ from typing import Optional
 
 import pandas as pd
 
-from ..model.clustering import AffinityPropagationClustering, Agglomerative, ClusteringWorkflowBase, DBSCANClustering, KMeansClustering
+from ..model.clustering import AffinityPropagationClustering, Agglomerative, ClusteringWorkflowBase, DBSCANClustering, KMeansClustering, MeanShiftClustering
 from ._base import ModelSelectionBase
 
 
@@ -61,6 +61,16 @@ class ClusteringModelSelection(ModelSelectionBase):
                 max_iter=hyper_parameters["max_iter"],
                 convergence_iter=hyper_parameters["convergence_iter"],
                 affinity=hyper_parameters["affinity"],
+            )
+        elif self.model_name == "MeanShift":
+            hyper_parameters = MeanShiftClustering.manual_hyper_parameters()
+            self.clt_workflow = MeanShiftClustering(
+                bandwidth=hyper_parameters["bandwidth"],
+                cluster_all=hyper_parameters["cluster_all"],
+                bin_seeding=hyper_parameters["bin_seeding"],
+                min_bin_freq=hyper_parameters["min_bin_freq"],
+                n_jobs=hyper_parameters["n_jobs"],
+                max_iter=hyper_parameters["max_iter"],
             )
         elif self.model_name == "":
             pass
