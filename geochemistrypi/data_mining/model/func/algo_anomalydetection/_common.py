@@ -22,7 +22,6 @@ def density_estimation(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name:
     plt.xlabel("Feature Space")
     plt.ylabel("Density")
     plt.legend()
-    plt.show()
 
 
 def scatter2d(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str) -> None:
@@ -57,7 +56,6 @@ def scatter2d(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str) -> 
     plt.ylabel(f"{data.columns[1]}")
     plt.title(f"Anomaly Detection 2D Scatter Plot - {algorithm_name}")
     plt.legend()
-    plt.show()
 
 
 def scatter3d(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str) -> None:
@@ -104,4 +102,3 @@ def scatter3d(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str) -> 
     ax.set_title(f"Base Data 3D Plot - {algorithm_name}")
     ax2.set_title(f"Anomaly Detection 3D Plot - {algorithm_name}")
     plt.legend()
-    plt.show()
