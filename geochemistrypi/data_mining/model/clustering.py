@@ -12,7 +12,7 @@ from sklearn.cluster import DBSCAN, AffinityPropagation, AgglomerativeClustering
 
 from ..constants import MLFLOW_ARTIFACT_DATA_PATH, MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH
 from ..utils.base import clear_output, save_data, save_fig, save_text
-from ._base import WorkflowBase
+from ._base import ClusteringMetricsMixin, WorkflowBase
 from .func.algo_clustering._affinitypropagation import affinitypropagation_manual_hyper_parameters
 from .func.algo_clustering._agglomerative import agglomerative_manual_hyper_parameters
 from .func.algo_clustering._common import plot_silhouette_diagram, plot_silhouette_value_diagram, scatter2d, scatter3d, score
@@ -274,7 +274,7 @@ class KMeansClustering(ClusteringWorkflowBase):
             might change in the future for a better heuristic.
 
         References
-        ----------------------------------------
+        ----------
         Scikit-learn API: sklearn.cluster.KMeans
         https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html
         """
@@ -336,11 +336,11 @@ class KMeansClustering(ClusteringWorkflowBase):
         )
 
 
-class DBSCANClustering(ClusteringWorkflowBase):
+class DBSCANClustering(ClusteringMetricsMixin, ClusteringWorkflowBase):
     """The automation workflow of using DBSCAN algorithm to make insightful products."""
 
     name = "DBSCAN"
-    special_function = ["Virtualization of Result in 2D Graph"]
+    special_function = ["Num of Clusters"]
 
     def __init__(
         self,
@@ -389,7 +389,7 @@ class DBSCANClustering(ClusteringWorkflowBase):
             The number of parallel jobs to run. None means 1 unless in a joblib.parallel_backend context. -1 means using all processors. See Glossary for more details.
 
         References
-        ----------------------------------------
+        ----------
         Scikit-learn API: sklearn.cluster.DBSCAN
         https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html
         """
@@ -426,7 +426,14 @@ class DBSCANClustering(ClusteringWorkflowBase):
         return hyper_parameters
 
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
-        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        """Invoke all special application functions for this algorithm by Scikit-learn framework."""
+        GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
+        self._get_num_clusters(
+            func_name=MeanShiftSpecialFunction.NUM_CLUSTERS.value,
+            algorithm_name=self.naming,
+            trained_model=self.model,
+            store_path=GEOPI_OUTPUT_METRICS_PATH,
+        )
 
 
 class Agglomerative(ClusteringWorkflowBase):
@@ -617,7 +624,7 @@ class AffinityPropagationClustering(ClusteringWorkflowBase):
                 this parameter was previously hardcoded as 0.
 
         References
-        ----------------------------------------
+        ----------
         Scikit-learn API: sklearn.cluster.AffinityPropagation
         https://scikit-learn.org/stable/modules/generated/sklearn.cluster.AffinityPropagation
         """
@@ -659,10 +666,10 @@ class AffinityPropagationClustering(ClusteringWorkflowBase):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
 
 
-class MeanShiftClustering(ClusteringWorkflowBase):
+class MeanShiftClustering(ClusteringMetricsMixin, ClusteringWorkflowBase):
     name = "MeanShift"
 
-    special_function = [func.value for func in MeanShiftSpecialFunction]
+    special_function = ["Num of Clusters"]
 
     def __init__(
         self,
@@ -730,7 +737,7 @@ class MeanShiftClustering(ClusteringWorkflowBase):
             .. versionadded:: 0.22
 
         References
-        ----------------------------------------
+        ----------
         Scikit-learn API: sklearn.cluster.MeanShift
         https://scikit-learn.org/stable/modules/generated/sklearn.cluster.MeanShift
         """
@@ -760,7 +767,7 @@ class MeanShiftClustering(ClusteringWorkflowBase):
         """Invoke all special application functions for this algorithm by Scikit-learn framework."""
         GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
         self._get_num_clusters(
-            func_name=MeanShiftSpecialFunction.NUM_CLUSTERS,
+            func_name=MeanShiftSpecialFunction.NUM_CLUSTERS.value,
             algorithm_name=self.naming,
             trained_model=self.model,
             store_path=GEOPI_OUTPUT_METRICS_PATH,

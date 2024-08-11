@@ -13,4 +13,4 @@ class KMeansSpecialFunction(Enum):
 
 
 class MeanShiftSpecialFunction(Enum):
-    NUM_CLUSTERS = "Num Clusters"
+    NUM_CLUSTERS = "Num of Clusters"
