@@ -25,7 +25,7 @@ class AnomalyDetectionWorkflowBase(WorkflowBase):
     def __init__(self) -> None:
         super().__init__()
         self.mode = "Anomaly Detection"
-        self.anomaly_detection = None
+        self.anomaly_detection_result = None
 
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
         """Fit the model by Scikit-learn framework."""
@@ -107,7 +107,7 @@ class AnomalyDetectionWorkflowBase(WorkflowBase):
             two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(self.X, 2)
             self._scatter2d(
                 data=two_dimen_data,
-                labels=self.anomaly_detection,
+                labels=self.anomaly_detection_result,
                 algorithm_name=self.naming,
                 graph_name=AnormalyDetectionCommonFunction.PLOT_SCATTER_2D.value,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -117,7 +117,7 @@ class AnomalyDetectionWorkflowBase(WorkflowBase):
             three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(self.X, 3)
             self._scatter3d(
                 data=three_dimen_data,
-                labels=self.anomaly_detection,
+                labels=self.anomaly_detection_result,
                 algorithm_name=self.naming,
                 graph_name=AnormalyDetectionCommonFunction.PLOT_SCATTER_3D.value,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -126,7 +126,7 @@ class AnomalyDetectionWorkflowBase(WorkflowBase):
 
         self._density_estimation(
             data=self.X,
-            labels=self.anomaly_detection,
+            labels=self.anomaly_detection_result,
             algorithm_name=self.naming,
             graph_name=AnormalyDetectionCommonFunction.DENSITY_ESTIMATION.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
