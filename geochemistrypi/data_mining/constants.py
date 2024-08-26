@@ -66,7 +66,7 @@ CLASSIFICATION_MODELS = [
     # "Decision Tree",
     # Histogram-based Gradient Boosting,
 ]
-CLUSTERING_MODELS = ["KMeans", "DBSCAN", "Agglomerative", "AffinityPropagation"]
+CLUSTERING_MODELS = ["KMeans", "DBSCAN", "Agglomerative", "AffinityPropagation", "MeanShift"]
 DECOMPOSITION_MODELS = ["PCA", "T-SNE", "MDS"]
 ANOMALYDETECTION_MODELS = ["Isolation Forest", "Local Outlier Factor"]
 

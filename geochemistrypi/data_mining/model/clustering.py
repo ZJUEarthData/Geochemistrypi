@@ -8,17 +8,18 @@ import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
 from rich import print
-from sklearn.cluster import DBSCAN, AffinityPropagation, AgglomerativeClustering, KMeans
+from sklearn.cluster import DBSCAN, AffinityPropagation, AgglomerativeClustering, KMeans, MeanShift
 
 from ..constants import MLFLOW_ARTIFACT_DATA_PATH, MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH
 from ..utils.base import clear_output, save_data, save_fig, save_text
-from ._base import WorkflowBase
+from ._base import ClusteringMetricsMixin, WorkflowBase
 from .func.algo_clustering._affinitypropagation import affinitypropagation_manual_hyper_parameters
 from .func.algo_clustering._agglomerative import agglomerative_manual_hyper_parameters
 from .func.algo_clustering._common import plot_silhouette_diagram, plot_silhouette_value_diagram, scatter2d, scatter3d, score
 from .func.algo_clustering._dbscan import dbscan_manual_hyper_parameters
-from .func.algo_clustering._enum import ClusteringCommonFunction, KMeansSpecialFunction
+from .func.algo_clustering._enum import ClusteringCommonFunction, KMeansSpecialFunction, MeanShiftSpecialFunction
 from .func.algo_clustering._kmeans import kmeans_manual_hyper_parameters
+from .func.algo_clustering._meanshift import meanshift_manual_hyper_parameters
 
 
 class ClusteringWorkflowBase(WorkflowBase):
@@ -273,7 +274,7 @@ class KMeansClustering(ClusteringWorkflowBase):
             might change in the future for a better heuristic.
 
         References
-        ----------------------------------------
+        ----------
         Scikit-learn API: sklearn.cluster.KMeans
         https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html
         """
@@ -335,11 +336,11 @@ class KMeansClustering(ClusteringWorkflowBase):
         )
 
 
-class DBSCANClustering(ClusteringWorkflowBase):
+class DBSCANClustering(ClusteringMetricsMixin, ClusteringWorkflowBase):
     """The automation workflow of using DBSCAN algorithm to make insightful products."""
 
     name = "DBSCAN"
-    special_function = ["Virtualization of Result in 2D Graph"]
+    special_function = ["Num of Clusters"]
 
     def __init__(
         self,
@@ -388,7 +389,7 @@ class DBSCANClustering(ClusteringWorkflowBase):
             The number of parallel jobs to run. None means 1 unless in a joblib.parallel_backend context. -1 means using all processors. See Glossary for more details.
 
         References
-        ----------------------------------------
+        ----------
         Scikit-learn API: sklearn.cluster.DBSCAN
         https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html
         """
@@ -425,7 +426,14 @@ class DBSCANClustering(ClusteringWorkflowBase):
         return hyper_parameters
 
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
-        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        """Invoke all special application functions for this algorithm by Scikit-learn framework."""
+        GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
+        self._get_num_clusters(
+            func_name=MeanShiftSpecialFunction.NUM_CLUSTERS.value,
+            algorithm_name=self.naming,
+            trained_model=self.model,
+            store_path=GEOPI_OUTPUT_METRICS_PATH,
+        )
 
 
 class Agglomerative(ClusteringWorkflowBase):
@@ -616,7 +624,7 @@ class AffinityPropagationClustering(ClusteringWorkflowBase):
                 this parameter was previously hardcoded as 0.
 
         References
-        ----------------------------------------
+        ----------
         Scikit-learn API: sklearn.cluster.AffinityPropagation
         https://scikit-learn.org/stable/modules/generated/sklearn.cluster.AffinityPropagation
         """
@@ -658,9 +666,124 @@ class AffinityPropagationClustering(ClusteringWorkflowBase):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
 
 
-class MeanShiftClustering(ClusteringWorkflowBase):
+class MeanShiftClustering(ClusteringMetricsMixin, ClusteringWorkflowBase):
     name = "MeanShift"
-    pass
+
+    special_function = ["Num of Clusters"]
+
+    def __init__(
+        self,
+        *,
+        bandwidth: Optional[float] = None,
+        seeds: Optional[Union[np.ndarray, list]] = None,
+        bin_seeding: bool = False,
+        min_bin_freq: int = 1,
+        cluster_all: bool = True,
+        n_jobs: Optional[int] = None,
+        max_iter: int = 300,
+    ) -> None:
+        """
+        Parameters
+        ----------
+        bandwidth : float, default=None
+            Bandwidth used in the flat kernel.
+            If not given, the bandwidth is estimated using
+            sklearn.cluster.estimate_bandwidth; see the documentation for that
+            function for hints on scalability (see also the Notes, below).
+
+        seeds : array-like of shape (n_samples, n_features), default=None
+            Seeds used to initialize kernels. If not set,
+            the seeds are calculated by clustering.get_bin_seeds
+            with bandwidth as the grid size and default values for
+            other parameters.
+
+        bin_seeding : bool, default=False
+            If true, initial kernel locations are not locations of all
+            points, but rather the location of the discretized version of
+            points, where points are binned onto a grid whose coarseness
+            corresponds to the bandwidth. Setting this option to True will speed
+            up the algorithm because fewer seeds will be initialized.
+            The default value is False.
+            Ignored if seeds argument is not None.
+
+        min_bin_freq : int, default=1
+        To speed up the algorithm, accept only those bins with at least
+        min_bin_freq points as seeds.
+
+        cluster_all : bool, default=True
+            If true, then all points are clustered, even those orphans that are
+            not within any kernel. Orphans are assigned to the nearest kernel.
+            If false, then orphans are given cluster label -1.
+
+        n_jobs : int, default=None
+            The number of jobs to use for the computation. The following tasks benefit
+            from the parallelization:
+
+            - The search of nearest neighbors for bandwidth estimation and label
+            assignments. See the details in the docstring of the
+            ``NearestNeighbors`` class.
+            - Hill-climbing optimization for all seeds.
+
+            See :term:`Glossary <n_jobs>` for more details.
+
+            ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
+            ``-1`` means using all processors. See :term:`Glossary <n_jobs>`
+            for more details.
+
+        max_iter : int, default=300
+            Maximum number of iterations, per seed point before the clustering
+            operation terminates (for that seed point), if has not converged yet.
+
+            .. versionadded:: 0.22
+
+        References
+        ----------
+        Scikit-learn API: sklearn.cluster.MeanShift
+        https://scikit-learn.org/stable/modules/generated/sklearn.cluster.MeanShift
+        """
+        super().__init__()
+        self.bandwidth = bandwidth
+        self.seeds = seeds
+        self.bin_seeding = bin_seeding
+        self.min_bin_freq = min_bin_freq
+        self.cluster_all = cluster_all
+        self.n_jobs = n_jobs
+        self.max_iter = max_iter
+
+        self.model = MeanShift(
+            bandwidth=self.bandwidth, seeds=self.seeds, bin_seeding=self.bin_seeding, min_bin_freq=self.min_bin_freq, cluster_all=self.cluster_all, n_jobs=self.n_jobs, max_iter=self.max_iter
+        )
+        self.naming = MeanShiftClustering.name
+
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
+        """Manual hyper-parameters specification."""
+        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        hyper_parameters = meanshift_manual_hyper_parameters()
+        clear_output()
+        return hyper_parameters
+
+    def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
+        """Invoke all special application functions for this algorithm by Scikit-learn framework."""
+        GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
+        self._get_num_clusters(
+            func_name=MeanShiftSpecialFunction.NUM_CLUSTERS.value,
+            algorithm_name=self.naming,
+            trained_model=self.model,
+            store_path=GEOPI_OUTPUT_METRICS_PATH,
+        )
+
+    @staticmethod
+    def _get_num_clusters(func_name: str, algorithm_name: str, trained_model: object, store_path: str) -> None:
+        """Get and log the number of clusters."""
+        labels = trained_model.labels_
+        num_clusters = len(np.unique(labels))
+        print(f"-----* {func_name} *-----")
+        print(f"{func_name}: {num_clusters}")
+        num_clusters_dict = {f"{func_name}": num_clusters}
+        mlflow.log_metrics(num_clusters_dict)
+        num_clusters_str = json.dumps(num_clusters_dict, indent=4)
+        save_text(num_clusters_str, f"{func_name} - {algorithm_name}", store_path)
 
 
 class SpectralClustering(ClusteringWorkflowBase):

@@ -371,3 +371,19 @@ class LinearWorkflowMixin:
         save_fig(f"3D Surface Diagram - {algorithm_name}", local_path, mlflow_path)
         data = pd.concat([feature_data, target_data, y_test_predict], axis=1)
         save_data(data, f"3D Surface Diagram - {algorithm_name}", local_path, mlflow_path)
+
+
+class ClusteringMetricsMixin:
+    """Mixin class for clustering metrics."""
+
+    @staticmethod
+    def _get_num_clusters(func_name: str, algorithm_name: str, trained_model: object, store_path: str) -> None:
+        """Get and log the number of clusters."""
+        labels = trained_model.labels_
+        num_clusters = len(np.unique(labels))
+        print(f"-----* {func_name} *-----")
+        print(f"{func_name}: {num_clusters}")
+        num_clusters_dict = {f"{func_name}": num_clusters}
+        mlflow.log_metrics(num_clusters_dict)
+        num_clusters_str = json.dumps(num_clusters_dict, indent=4)
+        save_text(num_clusters_str, f"{func_name} - {algorithm_name}", store_path)
