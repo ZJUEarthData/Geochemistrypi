@@ -308,18 +308,20 @@ The whole package is under construction and the documentation is progressively e
 + Mengqi Gao (China University of Geosciences, Beijing, China)
 + Chengtu Li（Trenki, Henan Polytechnic University, Beijing, China）
 + Yucheng Yan (Andy, University of Sydney, Australia)
++ Ruitao Chang (China University of Geosciences Beijing, China)
++ Panyan Weng (The University of Sydney, Australia)
 
 **Product Group**:
 
 + Yang Lyu (Daisy, Zhejiang University, China)
-+ Bailun Jiang (EPSI / Lille University, France)
-+ Ruitao Chang (China University of Geosciences Beijing, China)
-+ Junchi Liao(Roceda, University of Electronic Science and Technology of China, China)
-+ Panyan Weng (The University of Sydney, Australia)
 + Siqi Yao (Clara, Dongguan University of Technology, China)
 + Zhelan Lin（Lan, Fuzhou University, China）
 + ShuYi Li (Communication University Of China, Beijing, China)
 + Junbo Wang (China University Of Geosciences, Beijing, China)
++ Haibin Wang（Watson, University of Sydney, Australia）
++ Guoqiang Qiu（Elsen, Fuzhou University, China）
++ Yating Dong (Yetta，Dongguan University of Technology，China)
++ Haibin Lai (Michael, Southern University of Science and Technology, China)
 
 ## Join Us :)
 

@@ -865,8 +865,46 @@ Only for those algorithms, they belong to either regression or classification an
 
 ## 5. Test Model Workflow Class
 
-After the model workflow class is added, you can test it through running the command `python start_cli_pipeline.py` on the terminal. If the test reports an error, you need to debug and fix it. If there is no error, it can be submitted.
 
+After the model workflow class is added, you can test it through running the command `python start_cli_pipeline.py` on the terminal.
+
+If you can successfully run the pipeline, there are three aspects to verify the correctness of your modification:
+
+(1) Check whether the output info in the console is what you expect.
+
+<img width="1347" alt="image" src="https://github.com/user-attachments/assets/6530bd18-d196-4829-997d-08222194a34f">
+
+(2) Check whether the artifacts (e.g., dataset, images) produced saved properly in `geopi_output` folder and whether the content of the artifacts is what you expect. You can know where the `geopi_output` folder via the path in the console.
+
+<img width="1400" alt="image" src="https://github.com/user-attachments/assets/773e5b61-c45e-4c18-8747-cd2753831f6b">
+
+(3) Check whether the same artifacts (e.g., dataset, images) produced saved properly in MLflow. You can use this command `mlflow ui --backend-store-uri file:/path/to/geopi_tracking --port PORT_NUMBER` to launch the web interface supported by MLflow. Copy the link `http://127.0.0.1:PORT_NUMBER` to the brower. Click the corresponding experiment and run you created and check the artifacts accordingly.
+
+<img width="1353" alt="image" src="https://github.com/user-attachments/assets/3ddda308-00e1-4a40-a392-91e0440a5d26">
+
+<img width="1394" alt="image" src="https://github.com/user-attachments/assets/56c4d1b6-2458-4a93-9956-0993d3ffa058">
+
+<img width="1288" alt="image" src="https://github.com/user-attachments/assets/e3ebebdb-2910-4826-a4dd-19a079be0b0d">
+
+For more details on how to use MLflow, you can watch the video as below:
+
+MLflow UI user guide - Geochemistry π v0.5.0 [[Bilibili]](https://b23.tv/CW5Rjmo) | [[YouTube]](https://www.youtube.com/watch?v=Yu1nzNeLfRY)
+
+If you fail to run the pipeline, you need to debug and fix it. Here is a recommended way - **breakpoint debugging**. In VSCode, you need to open the file `start_cli_pipeline.py` and click the button VSCode provides.
+
+<img width="1396" alt="image" src="https://github.com/user-attachments/assets/3eb2082b-1dca-48cd-9897-089355ff566a">
+
+You can search the benefits of using **breakpoint debugging** to debug. There are two major benefits:
+
+(1) Lookup the value of the variable in the stack frame in memory directly.
+
+<img width="1396" alt="image" src="https://github.com/user-attachments/assets/91b45e99-1123-40bc-8190-0f982be695a8">
+
+(2) Create temporary watch (code to debug) to evaluate in the current stack frame.
+
+<img width="1397" alt="image" src="https://github.com/user-attachments/assets/232f59bd-e48d-40e9-9174-7ebe4e8d2fb2">
+
+After fixing the problem, don't forget to verify the produced artifacts in three aspects.
 
 ## 6. Completed Pull Request
 
