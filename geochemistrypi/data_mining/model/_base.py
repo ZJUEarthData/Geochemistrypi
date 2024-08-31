@@ -377,11 +377,10 @@ class ClusteringMetricsMixin:
     """Mixin class for clustering metrics."""
 
     @staticmethod
-    def _get_num_clusters(func_name: str, algorithm_name: str, trained_model: object, store_path: str) -> None:
-        """Get and log the number of clusters."""
-        labels = trained_model.labels_
-        num_clusters = len(np.unique(labels))
+    def _get_num_clusters(labels: pd.Series, func_name: str, algorithm_name: str, store_path: str) -> None:
+        """Get and log the number of clusters. It is only used in those algorithms which don't allow to set the number of cluster in advance."""
         print(f"-----* {func_name} *-----")
+        num_clusters = len(np.unique(labels.to_numpy()))
         print(f"{func_name}: {num_clusters}")
         num_clusters_dict = {f"{func_name}": num_clusters}
         mlflow.log_metrics(num_clusters_dict)

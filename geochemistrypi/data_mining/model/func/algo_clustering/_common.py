@@ -11,7 +11,7 @@ from rich import print
 from sklearn.metrics import calinski_harabasz_score, silhouette_samples, silhouette_score
 
 
-def score(data: pd.DataFrame, labels: pd.DataFrame) -> Dict:
+def score(data: pd.DataFrame, labels: pd.Series) -> Dict:
     """Calculate the scores of the clustering model.
 
     Parameters
@@ -19,7 +19,7 @@ def score(data: pd.DataFrame, labels: pd.DataFrame) -> Dict:
     data : pd.DataFrame (n_samples, n_components)
         The true values.
 
-    labels : pd.DataFrame (n_samples, n_components)
+    labels : pd.Series (n_samples, )
         Labels of each point.
 
     Returns
@@ -38,7 +38,7 @@ def score(data: pd.DataFrame, labels: pd.DataFrame) -> Dict:
     return scores
 
 
-def scatter2d(data: pd.DataFrame, labels: pd.DataFrame, cluster_centers_: np.ndarray, algorithm_name: str) -> None:
+def scatter2d(data: pd.DataFrame, labels: pd.Series, cluster_centers_: pd.DataFrame, algorithm_name: str) -> None:
     """
     Draw the result-2D diagram for analysis.
 
@@ -47,10 +47,10 @@ def scatter2d(data: pd.DataFrame, labels: pd.DataFrame, cluster_centers_: np.nda
     data : pd.DataFrame (n_samples, n_components)
        The features of the data.
 
-    labels : pd.DataFrame (n_samples,)
+    labels : pd.Series (n_samples,)
         Labels of each point.
 
-    cluster_centers_: np.ndarray (n_samples,)
+    cluster_centers_: pd.DataFrame (n_samples,)
         Coordinates of cluster centers. If the algorithm stops before fully converging (see tol and max_iter), these will not be consistent with labels_.
 
     algorithm_name : str
@@ -94,12 +94,12 @@ def scatter2d(data: pd.DataFrame, labels: pd.DataFrame, cluster_centers_: np.nda
         plt.scatter(cluster_data.iloc[:, 0], cluster_data.iloc[:, 1], c=color, marker=marker)
 
     # Plot the cluster centers
-    if not isinstance(cluster_centers_, str):
+    if cluster_centers_ is not None:
         # Draw white circles at cluster centers
-        plt.scatter(cluster_centers_[:, 0], cluster_centers_[:, 1], c="white", marker="o", alpha=1, s=200, edgecolor="k")
+        plt.scatter(cluster_centers_.iloc[:, 0], cluster_centers_.iloc[:, 1], c="white", marker="o", alpha=1, s=200, edgecolor="k")
 
         # Label the cluster centers
-        for i, c in enumerate(cluster_centers_):
+        for i, c in enumerate(cluster_centers_.to_numpy()):
             plt.scatter(c[0], c[1], marker="$%d$" % i, alpha=1, s=50, edgecolor="k")
 
     plt.xlabel(f"{data.columns[0]}")
@@ -107,7 +107,7 @@ def scatter2d(data: pd.DataFrame, labels: pd.DataFrame, cluster_centers_: np.nda
     plt.title(f"Cluster Data Bi-plot - {algorithm_name}")
 
 
-def scatter3d(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str) -> None:
+def scatter3d(data: pd.DataFrame, labels: pd.Series, algorithm_name: str) -> None:
     """
     Draw the result-3D diagram for analysis.
 
@@ -116,7 +116,7 @@ def scatter3d(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str) -> 
     data : pd.DataFrame (n_samples, n_components)
        The features of the data.
 
-    labels : pd.DataFrame (n_samples,)
+    labels : pd.Series (n_samples,)
         Labels of each point.
 
     algorithm_name : str
@@ -177,7 +177,7 @@ def scatter3d(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str) -> 
     ax2.set_title(f"Cluster Data Tri-plot - {algorithm_name}")
 
 
-def plot_silhouette_diagram(data: pd.DataFrame, labels: pd.DataFrame, cluster_centers_: np.ndarray, model: object, algorithm_name: str) -> None:
+def plot_silhouette_diagram(data: pd.DataFrame, labels: pd.Series, cluster_centers_: pd.DataFrame, model: object, algorithm_name: str) -> None:
     """
     Draw the silhouette diagram for analysis.
 
@@ -186,10 +186,10 @@ def plot_silhouette_diagram(data: pd.DataFrame, labels: pd.DataFrame, cluster_ce
     data : pd.DataFrame (n_samples, n_components)
        The true values.
 
-    labels : pd.DataFrame (n_samples,)
+    labels : pd.Series (n_samples,)
         Labels of each point.
 
-    cluster_centers_: np.ndarray (n_samples,)
+    cluster_centers_: pd.DataFrame (n_samples,)
         Coordinates of cluster centers. If the algorithm stops before fully converging (see tol and max_iter), these will not be consistent with labels_.
 
     model : sklearn algorithm model
@@ -286,11 +286,11 @@ def plot_silhouette_diagram(data: pd.DataFrame, labels: pd.DataFrame, cluster_ce
     colors = cm.nipy_spectral(labels.astype(float) / n_clusters)
     ax2.scatter(data.iloc[:, 0], data.iloc[:, 1], marker=".", s=30, lw=0, alpha=0.7, c=colors, edgecolor="k")
 
-    if not isinstance(cluster_centers_, str):
+    if cluster_centers_ is not None:
         # Draw white circles at cluster centers
         ax2.scatter(
-            cluster_centers_[:, 0],
-            cluster_centers_[:, 1],
+            cluster_centers_.iloc[:, 0],
+            cluster_centers_.iloc[:, 1],
             marker="o",
             c="white",
             alpha=1,
@@ -299,7 +299,7 @@ def plot_silhouette_diagram(data: pd.DataFrame, labels: pd.DataFrame, cluster_ce
         )
 
         # Label the cluster centers
-        for i, c in enumerate(cluster_centers_):
+        for i, c in enumerate(cluster_centers_.to_numpy()):
             ax2.scatter(c[0], c[1], marker="$%d$" % i, alpha=1, s=50, edgecolor="k")
 
     ax2.set_title("The visualization of the clustered data.")
@@ -312,7 +312,7 @@ def plot_silhouette_diagram(data: pd.DataFrame, labels: pd.DataFrame, cluster_ce
     )
 
 
-def plot_silhouette_value_diagram(data, labels, algorithm_name: str):
+def plot_silhouette_value_diagram(data: pd.DataFrame, labels: pd.Series, algorithm_name: str) -> None:
     """Calculate the scores of the clustering model.
 
     Parameters
@@ -320,7 +320,7 @@ def plot_silhouette_value_diagram(data, labels, algorithm_name: str):
     data : pd.DataFrame (n_samples, n_components)
         The true values.
 
-    labels : pd.DataFrame (n_samples, n_components)
+    labels : pd.Series (n_samples, )
         Labels of each point.
 
     algorithm_name : str

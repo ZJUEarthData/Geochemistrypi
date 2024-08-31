@@ -79,9 +79,6 @@ class ClusteringModelSelection(ModelSelectionBase):
 
         # Use Scikit-learn style API to process input data
         self.clt_workflow.fit(X)
-        # TODO: Move this into common_components()
-        self.clt_workflow.get_cluster_centers()
-        self.clt_workflow.get_labels()
 
         # Save the model hyper-parameters
         self.clt_workflow.save_hyper_parameters(hyper_parameters, self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))

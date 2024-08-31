@@ -29,7 +29,8 @@ class ClusteringWorkflowBase(WorkflowBase):
 
     def __init__(self):
         super().__init__()
-        self.clustering_result = None
+        self.cluster_labels = None
+        self.cluster_centers = None
         self.mode = "Clustering"
 
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
@@ -43,33 +44,43 @@ class ClusteringWorkflowBase(WorkflowBase):
         """Manual hyper-parameters specification."""
         return dict()
 
-    # TODO(Samson 1057266013@qq.com): This function might need to be rethought.
-    def get_cluster_centers(self) -> np.ndarray:
+    @staticmethod
+    def _get_cluster_centers(func_name: str, trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> Optional[pd.DataFrame]:
         """Get the cluster centers."""
-        print("-----* Clustering Centers *-----")
-        print(getattr(self.model, "cluster_centers_", "This class don not have cluster_centers_"))
-        return getattr(self.model, "cluster_centers_", "This class don not have cluster_centers_")
+        print(f"-----* {func_name} *-----")
+        cluster_centers = getattr(trained_model, "cluster_centers_", None)
+        if cluster_centers is None:
+            print("This algorithm does not provide cluster centers")
+        else:
+            column_name = []
+            for i in range(cluster_centers.shape[1]):
+                column_name.append(f"Dimension {i+1}")
+            print(cluster_centers)
 
-    def get_labels(self):
-        """Get the cluster labels."""
-        print("-----* Clustering Labels *-----")
-        # self.X['clustering result'] = self.model.labels_
-        self.clustering_result = pd.DataFrame(self.model.labels_, columns=["clustering result"])
-        print(self.clustering_result)
-        GEOPI_OUTPUT_ARTIFACTS_DATA_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH")
-        save_data(self.clustering_result, f"{self.naming} Result", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+            cluster_centers = pd.DataFrame(cluster_centers, columns=column_name)
+            save_data(cluster_centers, f"{func_name} - {algorithm_name}", local_path, mlflow_path)
+        return cluster_centers
 
     @staticmethod
-    def _score(data: pd.DataFrame, labels: pd.DataFrame, func_name: str, algorithm_name: str, store_path: str) -> None:
+    def _get_cluster_labels(func_name: str, trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> pd.DataFrame:
+        """Get the cluster labels."""
+        print(f"-----* {func_name} *-----")
+        cluster_label = pd.DataFrame(trained_model.labels_, columns=[func_name])
+        print(cluster_label)
+        save_data(cluster_label, f"{func_name} - {algorithm_name}", local_path, mlflow_path)
+        return cluster_label
+
+    @staticmethod
+    def _score(data: pd.DataFrame, labels: pd.Series, func_name: str, algorithm_name: str, store_path: str) -> None:
         """Calculate the score of the model."""
         print(f"-----* {func_name} *-----")
         scores = score(data, labels)
         scores_str = json.dumps(scores, indent=4)
-        save_text(scores_str, f"{func_name}- {algorithm_name}", store_path)
+        save_text(scores_str, f"{func_name} - {algorithm_name}", store_path)
         mlflow.log_metrics(scores)
 
     @staticmethod
-    def _scatter2d(data: pd.DataFrame, labels: pd.DataFrame, cluster_centers_: np.ndarray, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _scatter2d(data: pd.DataFrame, labels: pd.Series, cluster_centers_: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the two-dimensional diagram of the clustering result."""
         print("-----* Cluster Two-Dimensional Diagram *-----")
         scatter2d(data, labels, cluster_centers_, algorithm_name)
@@ -78,7 +89,7 @@ class ClusteringWorkflowBase(WorkflowBase):
         save_data(data_with_labels, f"Cluster Two-Dimensional Diagram - {algorithm_name}", local_path, mlflow_path)
 
     @staticmethod
-    def _scatter3d(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _scatter3d(data: pd.DataFrame, labels: pd.Series, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the three-dimensional diagram of the clustering result."""
         print("-----* Cluster Three-Dimensional Diagram *-----")
         scatter3d(data, labels, algorithm_name)
@@ -87,7 +98,7 @@ class ClusteringWorkflowBase(WorkflowBase):
         save_data(data_with_labels, f"Cluster Two-Dimensional Diagram - {algorithm_name}", local_path, mlflow_path)
 
     @staticmethod
-    def _plot_silhouette_diagram(data: pd.DataFrame, labels: pd.DataFrame, model: object, cluster_centers_: np.ndarray, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_silhouette_diagram(data: pd.DataFrame, labels: pd.Series, model: object, cluster_centers_: np.ndarray, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the silhouette diagram of the clustering result."""
         print("-----* Silhouette Diagram *-----")
         plot_silhouette_diagram(data, labels, cluster_centers_, model, algorithm_name)
@@ -99,7 +110,7 @@ class ClusteringWorkflowBase(WorkflowBase):
             save_data(cluster_center_data, "Silhouette Diagram - Cluster Centers", local_path, mlflow_path)
 
     @staticmethod
-    def _plot_silhouette_value_diagram(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_silhouette_value_diagram(data: pd.DataFrame, labels: pd.Series, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the silhouette value diagram of the clustering result."""
         print("-----* Silhouette value Diagram *-----")
         plot_silhouette_value_diagram(data, labels, algorithm_name)
@@ -111,9 +122,24 @@ class ClusteringWorkflowBase(WorkflowBase):
         """Invoke all common application functions for clustering algorithms."""
         GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        GEOPI_OUTPUT_ARTIFACTS_DATA_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH")
+        self.cluster_centers = self._get_cluster_centers(
+            func_name=ClusteringCommonFunction.CLUSTER_CENTERS.value,
+            trained_model=self.model,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_DATA_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_DATA_PATH,
+        )
+        self.cluster_labels = self._get_cluster_labels(
+            func_name=ClusteringCommonFunction.CLUSTER_LABELS.value,
+            trained_model=self.model,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_DATA_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_DATA_PATH,
+        )
         self._score(
             data=self.X,
-            labels=self.clustering_result["clustering result"],
+            labels=self.cluster_labels[ClusteringCommonFunction.CLUSTER_LABELS.value],
             func_name=ClusteringCommonFunction.MODEL_SCORE.value,
             algorithm_name=self.naming,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
@@ -123,8 +149,8 @@ class ClusteringWorkflowBase(WorkflowBase):
             two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(self.X, 2)
             self._scatter2d(
                 data=two_dimen_data,
-                labels=self.clustering_result["clustering result"],
-                cluster_centers_=self.get_cluster_centers(),
+                labels=self.cluster_labels[ClusteringCommonFunction.CLUSTER_LABELS.value],
+                cluster_centers_=self.cluster_centers,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -134,7 +160,7 @@ class ClusteringWorkflowBase(WorkflowBase):
             three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(self.X, 3)
             self._scatter3d(
                 data=three_dimen_data,
-                labels=self.clustering_result["clustering result"],
+                labels=self.cluster_labels[ClusteringCommonFunction.CLUSTER_LABELS.value],
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -144,8 +170,8 @@ class ClusteringWorkflowBase(WorkflowBase):
             two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(self.X, 2)
             self._scatter2d(
                 data=two_dimen_data,
-                labels=self.clustering_result["clustering result"],
-                cluster_centers_=self.get_cluster_centers(),
+                labels=self.cluster_labels[ClusteringCommonFunction.CLUSTER_LABELS.value],
+                cluster_centers_=self.cluster_centers,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -154,7 +180,7 @@ class ClusteringWorkflowBase(WorkflowBase):
             # no need to choose
             self._scatter3d(
                 data=self.X,
-                labels=self.clustering_result["clustering result"],
+                labels=self.cluster_labels[ClusteringCommonFunction.CLUSTER_LABELS.value],
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -162,8 +188,8 @@ class ClusteringWorkflowBase(WorkflowBase):
         elif self.X.shape[1] == 2:
             self._scatter2d(
                 data=self.X,
-                labels=self.clustering_result["clustering result"],
-                cluster_centers_=self.get_cluster_centers(),
+                labels=self.cluster_labels[ClusteringCommonFunction.CLUSTER_LABELS.value],
+                cluster_centers_=self.cluster_centers,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -173,8 +199,8 @@ class ClusteringWorkflowBase(WorkflowBase):
 
         self._plot_silhouette_diagram(
             data=self.X,
-            labels=self.clustering_result["clustering result"],
-            cluster_centers_=self.get_cluster_centers(),
+            labels=self.cluster_labels[ClusteringCommonFunction.CLUSTER_LABELS.value],
+            cluster_centers_=self.cluster_centers,
             model=self.model,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -182,7 +208,7 @@ class ClusteringWorkflowBase(WorkflowBase):
         )
         self._plot_silhouette_value_diagram(
             data=self.X,
-            labels=self.clustering_result["clustering result"],
+            labels=self.cluster_labels[ClusteringCommonFunction.CLUSTER_LABELS.value],
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -429,9 +455,9 @@ class DBSCANClustering(ClusteringMetricsMixin, ClusteringWorkflowBase):
         """Invoke all special application functions for this algorithm by Scikit-learn framework."""
         GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
         self._get_num_clusters(
+            labels=self.cluster_labels[ClusteringCommonFunction.CLUSTER_LABELS.value],
             func_name=MeanShiftSpecialFunction.NUM_CLUSTERS.value,
             algorithm_name=self.naming,
-            trained_model=self.model,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
 
@@ -767,23 +793,11 @@ class MeanShiftClustering(ClusteringMetricsMixin, ClusteringWorkflowBase):
         """Invoke all special application functions for this algorithm by Scikit-learn framework."""
         GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
         self._get_num_clusters(
+            labels=self.cluster_labels[ClusteringCommonFunction.CLUSTER_LABELS.value],
             func_name=MeanShiftSpecialFunction.NUM_CLUSTERS.value,
             algorithm_name=self.naming,
-            trained_model=self.model,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
-
-    @staticmethod
-    def _get_num_clusters(func_name: str, algorithm_name: str, trained_model: object, store_path: str) -> None:
-        """Get and log the number of clusters."""
-        labels = trained_model.labels_
-        num_clusters = len(np.unique(labels))
-        print(f"-----* {func_name} *-----")
-        print(f"{func_name}: {num_clusters}")
-        num_clusters_dict = {f"{func_name}": num_clusters}
-        mlflow.log_metrics(num_clusters_dict)
-        num_clusters_str = json.dumps(num_clusters_dict, indent=4)
-        save_text(num_clusters_str, f"{func_name} - {algorithm_name}", store_path)
 
 
 class SpectralClustering(ClusteringWorkflowBase):

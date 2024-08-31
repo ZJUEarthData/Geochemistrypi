@@ -17,7 +17,7 @@ def meanshift_manual_hyper_parameters() -> Dict:
     print("Bandwidth: The bandwidth of the kernel used in the algorithm. This parameter can greatly influence the results.")
     print("If you do not have a specific value in mind, you can leave this as 0, and the algorithm will estimate it automatically.")
     print("A good starting point could be around 0.5 to 1.5, depending on your data's scale.")
-    bandwidth_input = num_input(SECTION[2], "Enter Bandwidth (or 0 for automatic estimation): ")
+    bandwidth_input = num_input(SECTION[2], "Bandwidth: ")
     bandwidth = None if bandwidth_input == 0 else bandwidth_input
 
     print("Cluster All: By default, only points at least as close to a cluster center as the given bandwidth are assigned to that cluster.")
@@ -31,16 +31,16 @@ def meanshift_manual_hyper_parameters() -> Dict:
 
     print("Min Bin Frequency: To speed up the algorithm, accept only those bins with at least min_bin_freq points as seeds.")
     print("A typical value is 1, but you might increase this for very large datasets to reduce the number of seeds.")
-    min_bin_freq = num_input(SECTION[2], "Enter Min Bin Frequency (default is 1): ")
+    min_bin_freq = num_input(SECTION[2], "Min Bin Frequency: ")
 
     print("Number of Jobs: The number of jobs to use for the computation. 1 means using all processors.")
     print("If you are unsure, use 1 to utilize all available processors.")
-    n_jobs = num_input(SECTION[2], "Enter Number of Jobs (or None): ")
+    n_jobs = num_input(SECTION[2], "Number of Jobs: ")
     n_jobs = -1 if n_jobs == 1 else int(n_jobs)
 
     print("Max Iterations: Maximum number of iterations, per seed point before the clustering operation terminates (for that seed point), if has not converged yet.")
     print("The default value is 300, which is sufficient for most use cases. You might increase this for very complex data.")
-    max_iter = num_input(SECTION[2], "Enter Max Iterations (default is 300): ")
+    max_iter = num_input(SECTION[2], "Max Iterations: ")
 
     hyper_parameters = {
         "bandwidth": bandwidth,
