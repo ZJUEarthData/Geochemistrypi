@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import os
 from typing import Dict, Optional, Union
 
 import numpy as np
@@ -8,10 +8,13 @@ from rich import print
 from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
 
-from ..utils.base import clear_output
+from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH
+from ..utils.base import clear_output, save_data, save_fig
 from ._base import WorkflowBase
+from .func.algo_anomalydetection._common import density_estimation, scatter2d, scatter3d
+from .func.algo_anomalydetection._enum import AnormalyDetectionCommonFunction, LocalOutlierFactorSpecialFunction
 from .func.algo_anomalydetection._iforest import isolation_forest_manual_hyper_parameters
-from .func.algo_anomalydetection._local_outlier_factor import local_outlier_factor_manual_hyper_parameters
+from .func.algo_anomalydetection._local_outlier_factor import local_outlier_factor_manual_hyper_parameters, plot_lof_scores
 
 
 class AnomalyDetectionWorkflowBase(WorkflowBase):
@@ -22,6 +25,7 @@ class AnomalyDetectionWorkflowBase(WorkflowBase):
     def __init__(self) -> None:
         super().__init__()
         self.mode = "Anomaly Detection"
+        self.anomaly_detection_result = None
 
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
         """Fit the model by Scikit-learn framework."""
@@ -69,9 +73,65 @@ class AnomalyDetectionWorkflowBase(WorkflowBase):
 
         return X_anomaly_detection, X_normal, X_anomaly
 
+    @staticmethod
+    def _density_estimation(data: pd.DataFrame, labels: pd.DataFrame, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+        """Plot the density estimation diagram of the anomaly detection result."""
+        print(f"-----* {graph_name} *-----")
+        density_estimation(data, labels, algorithm_name=algorithm_name)
+        save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+        data_with_labels = pd.concat([data, labels], axis=1)
+        save_data(data_with_labels, f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+
+    @staticmethod
+    def _scatter2d(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str, graph_name: str, local_path: str, mlflow_path: str) -> None:
+        """Plot the two-dimensional diagram of the anomaly detection result."""
+        print(f"-----* {graph_name} *-----")
+        scatter2d(data, labels, algorithm_name=algorithm_name)
+        save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+        data_with_labels = pd.concat([data, labels], axis=1)
+        save_data(data_with_labels, f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+
+    @staticmethod
+    def _scatter3d(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str, graph_name: str, local_path: str, mlflow_path: str) -> None:
+        """Plot the three-dimensional diagram of the anomaly detection result."""
+        print(f"-----* {graph_name} *-----")
+        scatter3d(data, labels, algorithm_name=algorithm_name)
+        save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+        data_with_labels = pd.concat([data, labels], axis=1)
+        save_data(data_with_labels, f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+
     def common_components(self) -> None:
         """Invoke all common application functions for anomaly detection algorithms by Scikit-learn framework."""
-        pass
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        if self.X.shape[1] >= 3:
+            two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(self.X, 2)
+            self._scatter2d(
+                data=two_dimen_data,
+                labels=self.anomaly_detection_result,
+                algorithm_name=self.naming,
+                graph_name=AnormalyDetectionCommonFunction.PLOT_SCATTER_2D.value,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+
+            three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(self.X, 3)
+            self._scatter3d(
+                data=three_dimen_data,
+                labels=self.anomaly_detection_result,
+                algorithm_name=self.naming,
+                graph_name=AnormalyDetectionCommonFunction.PLOT_SCATTER_3D.value,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            )
+
+        self._density_estimation(
+            data=self.X,
+            labels=self.anomaly_detection_result,
+            algorithm_name=self.naming,
+            graph_name=AnormalyDetectionCommonFunction.DENSITY_ESTIMATION.value,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
 
 
 class IsolationForestAnomalyDetection(AnomalyDetectionWorkflowBase):
@@ -381,6 +441,25 @@ class LocalOutlierFactorAnomalyDetection(AnomalyDetectionWorkflowBase):
         clear_output()
         return hyper_parameters
 
+    @staticmethod
+    def _plot_lof_scores(X_train: pd.DataFrame, lof_scores: np.ndarray, graph_name: str, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+        """Draw the LOF scores bar diagram."""
+        print(f"-----* {graph_name} *-----")
+        columns_name = X_train.index
+        data = plot_lof_scores(columns_name, lof_scores, image_config)
+        save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+        save_data(data, f"{graph_name} - {algorithm_name}", local_path, mlflow_path, True)
+
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        pass
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        lof_scores = self.model.negative_outlier_factor_
+        self._plot_lof_scores(
+            X_train=self.X_train,
+            lof_scores=lof_scores,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            graph_name=LocalOutlierFactorSpecialFunction.PLOT_LOF_SCORE.value,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )

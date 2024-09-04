@@ -56,7 +56,7 @@ class AnomalyDetectionModelSelection(ModelSelectionBase):
         self.ad_workflow.fit(X)
         y_predict = self.ad_workflow.predict(X)
         X_anomaly_detection, X_normal, X_anomaly = self.ad_workflow._detect_data(X, y_predict)
-
+        self.ad_workflow.anomaly_detection_result = X_anomaly_detection
         self.ad_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
 
         # Save the model hyper-parameters
