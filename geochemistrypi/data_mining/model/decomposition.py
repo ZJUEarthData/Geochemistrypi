@@ -12,16 +12,21 @@ from sklearn.manifold import MDS, TSNE
 from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH
 from ..utils.base import clear_output, save_data, save_fig
 from ._base import WorkflowBase
-from .func.algo_decomposition._common import plot_2d_scatter_diagram, plot_contour, plot_heatmap
+from .func.algo_decomposition._common import (
+    plot_2d_scatter_diagram,
+    plot_contour,
+    plot_heatmap
+)
 from .func.algo_decomposition._mds import mds_manual_hyper_parameters
 from .func.algo_decomposition._pca import biplot, pca_manual_hyper_parameters, triplot
 from .func.algo_decomposition._tsne import tsne_manual_hyper_parameters
+from .func.algo_decomposition._enum import DecompositionCommonFunction, PCASpecialFunction
 
 
 class DecompositionWorkflowBase(WorkflowBase):
     """The base workflow class of decomposition algorithms."""
 
-    common_function = ["Model Persistence"]  # 'Decomposition Result',
+    common_function = [func.value for func in DecompositionCommonFunction]  # 'Decomposition Result',
 
     def __init__(self) -> None:
         super().__init__()
@@ -117,7 +122,7 @@ class PCADecomposition(DecompositionWorkflowBase):
     """The automation workflow of using PCA algorithm to make insightful products."""
 
     name = "PCA"
-    special_function = ["Principal Components", "Explained Variance Ratio", "Compositional Bi-plot", "Compositional Tri-plot"]
+    special_function = [func.value for func in PCASpecialFunction]
 
     def __init__(
         self,
@@ -268,48 +273,57 @@ class PCADecomposition(DecompositionWorkflowBase):
         clear_output()
         return hyper_parameters
 
-    def _get_principal_components(self) -> None:
+    @staticmethod
+    def _get_principal_components(func_name: str, n_components: Optional[int], trained_model: object) -> None:
         """Get principal components."""
-        print("-----* Principal Components *-----")
+        print(f"-----* {func_name} *-----")
         print("Every column represents one principal component respectively.")
         print("Every row represents how much that row feature contributes to each principal component respectively.")
         print("The tabular data looks like in format: 'rows x columns = 'features x principal components'.")
         pc_name = []
-        for i in range(self.n_components):
+        for i in range(n_components):
             pc_name.append(f"PC{i+1}")
-        self.pc_data = pd.DataFrame(self.model.components_.T)
-        self.pc_data.columns = pc_name
-        self.pc_data.set_index(DecompositionWorkflowBase.X.columns, inplace=True)
-        print(self.pc_data)
+        pc_data = pd.DataFrame(trained_model.components_.T)
+        pc_data.columns = pc_name
+        pc_data.set_index(DecompositionWorkflowBase.X.columns, inplace=True)
+        print(pc_data)
 
-    def _get_explained_variance_ratio(self) -> None:
+    @staticmethod
+    def _get_explained_variance_ratio(func_name: str, trained_model: object) -> None:
         """Get explained variance ratio."""
-        print("-----* Explained Variance Ratio *-----")
-        print(self.model.explained_variance_ratio_)
+        print(f"-----* {func_name} *-----")
+        print(trained_model.explained_variance_ratio_)
 
     @staticmethod
-    def _biplot(reduced_data: pd.DataFrame, pc_data: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _biplot(reduced_data: pd.DataFrame, pc_data: pd.DataFrame, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Draw bi-plot."""
-        print("-----* Compositional Bi-plot *-----")
+        print(f"-----* {graph_name} *-----")
         biplot(reduced_data, pc_data, algorithm_name)
-        save_fig(f"Compositional Bi-plot - {algorithm_name}", local_path, mlflow_path)
-        save_data(reduced_data, "Compositional Bi-plot - Reduced Data", local_path, mlflow_path)
-        save_data(pc_data, "Compositional Bi-plot - PC Data", local_path, mlflow_path)
+        save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+        save_data(reduced_data, f"{graph_name} - Reduced Data", local_path, mlflow_path)
+        save_data(pc_data, f"{graph_name} - PC Data", local_path, mlflow_path)
 
     @staticmethod
-    def _triplot(reduced_data: pd.DataFrame, pc_data: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _triplot(reduced_data: pd.DataFrame, pc_data: pd.DataFrame, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Draw tri-plot."""
-        print("-----* Compositional Tri-plot *-----")
+        print(f"-----* {graph_name} *-----")
         triplot(reduced_data, pc_data, algorithm_name)
-        save_fig(f"Compositional Tri-plot - {algorithm_name}", local_path, mlflow_path)
-        save_data(reduced_data, "Compositional Tri-plot - Reduced Data", local_path, mlflow_path)
-        save_data(pc_data, "Compositional Tri-plot - PC Data", local_path, mlflow_path)
+        save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+        save_data(reduced_data, f"{graph_name} - Reduced Data", local_path, mlflow_path)
+        save_data(pc_data, f"{graph_name} - PC Data", local_path, mlflow_path)
 
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         self._reduced_data2pd(kwargs["reduced_data"], kwargs["components_num"])
-        self._get_principal_components()
-        self._get_explained_variance_ratio()
+        self._get_principal_components(
+            func_name=PCADecomposition.func.PRINCIPAL_COMPONENTS.value,
+            trained_model=self.model,
+            n_components=self.n_components,
+        )
+        self._get_explained_variance_ratio(
+            func_name=PCADecomposition.func.EXPLAINED_VARIANCE_RATIO.value,
+            trained_model=self.model,
+        )
 
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         # Draw graphs when the number of principal components > 3
@@ -320,6 +334,7 @@ class PCADecomposition(DecompositionWorkflowBase):
             self._biplot(
                 reduced_data=two_dimen_reduced_data,
                 pc_data=two_dimen_pc_data,
+                graph_name=PCASpecialFunction.COMPOSITIONAL_BI_PLOT.value,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -331,6 +346,7 @@ class PCADecomposition(DecompositionWorkflowBase):
             self._triplot(
                 reduced_data=three_dimen_reduced_data,
                 pc_data=three_dimen_pc_data,
+                graph_name=PCASpecialFunction.COMPOSITIONAL_TRI_PLOT.value,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -342,6 +358,7 @@ class PCADecomposition(DecompositionWorkflowBase):
             self._biplot(
                 reduced_data=two_dimen_reduced_data,
                 pc_data=two_dimen_pc_data,
+                graph_name=PCASpecialFunction.COMPOSITIONAL_BI_PLOT.value,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -350,6 +367,7 @@ class PCADecomposition(DecompositionWorkflowBase):
             self._triplot(
                 reduced_data=self.X_reduced,
                 pc_data=self.pc_data,
+                graph_name=PCASpecialFunction.COMPOSITIONAL_TRI_PLOT.value,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -358,6 +376,7 @@ class PCADecomposition(DecompositionWorkflowBase):
             self._biplot(
                 reduced_data=self.X_reduced,
                 pc_data=self.pc_data,
+                graph_name=PCASpecialFunction.COMPOSITIONAL_BI_PLOT.value,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
