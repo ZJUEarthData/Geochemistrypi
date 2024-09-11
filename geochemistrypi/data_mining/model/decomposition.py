@@ -274,9 +274,9 @@ class PCADecomposition(DecompositionWorkflowBase):
         return hyper_parameters
 
     @staticmethod
-    def _get_principal_components(func_name: str, n_components: Optional[int], trained_model: object) -> None:
+    def _get_principal_components(graph_name: str, n_components: Optional[int], trained_model: object) -> None:
         """Get principal components."""
-        print(f"-----* {func_name} *-----")
+        print(f"-----* {graph_name} *-----")
         print("Every column represents one principal component respectively.")
         print("Every row represents how much that row feature contributes to each principal component respectively.")
         print("The tabular data looks like in format: 'rows x columns = 'features x principal components'.")
@@ -289,9 +289,9 @@ class PCADecomposition(DecompositionWorkflowBase):
         print(pc_data)
 
     @staticmethod
-    def _get_explained_variance_ratio(func_name: str, trained_model: object) -> None:
+    def _get_explained_variance_ratio(graph_name: str, trained_model: object) -> None:
         """Get explained variance ratio."""
-        print(f"-----* {func_name} *-----")
+        print(f"-----* {graph_name} *-----")
         print(trained_model.explained_variance_ratio_)
 
     @staticmethod
@@ -316,12 +316,12 @@ class PCADecomposition(DecompositionWorkflowBase):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         self._reduced_data2pd(kwargs["reduced_data"], kwargs["components_num"])
         self._get_principal_components(
-            func_name=PCADecomposition.func.PRINCIPAL_COMPONENTS.value,
+            graph_name=PCADecomposition.func.PRINCIPAL_COMPONENTS.value,
             trained_model=self.model,
             n_components=self.n_components,
         )
         self._get_explained_variance_ratio(
-            func_name=PCADecomposition.func.EXPLAINED_VARIANCE_RATIO.value,
+            graph_name=PCADecomposition.func.EXPLAINED_VARIANCE_RATIO.value,
             trained_model=self.model,
         )
 
