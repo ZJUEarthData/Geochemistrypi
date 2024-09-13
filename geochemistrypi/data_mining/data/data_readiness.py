@@ -74,6 +74,26 @@ def basic_info(data: pd.DataFrame) -> None:
     print(data.info())
 
 
+def show_excel_columns(excel_list: Optional[List] = None) -> None:
+    """Displays the index and name of each column in the provided Excel list.
+
+    Args:
+    excel_list (Optional[List]): A list containing the names of Excel columns. Defaults to None.
+
+    Returns:
+    None
+    """
+    # Print a separator line for visual clarity
+    print("-" * 20)
+
+    # Print the header showing the column index and Excel name
+    print("Index - Excel Name")
+
+    # Iterate over the length of the excel_list to print each index and corresponding Excel name
+    for i in range(len(excel_list)):
+        print(i + 1, "-", excel_list[i])
+
+
 def show_data_columns(columns_name: pd.Index, columns_index: Optional[List] = None) -> None:
     """Show the column names of the data set.
 
