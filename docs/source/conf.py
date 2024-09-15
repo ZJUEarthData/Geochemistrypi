@@ -35,8 +35,11 @@ html_theme = "furo"
 # html_theme = 'classic'
 # html_theme = "sphinx_rtd_theme"
 html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
-html_static_path = ["_static"]
-
+html_static_path = ["static"]
+html_js_files = [
+    'dify.js',
+    ('https://udify.app/embed.min.js', {'defer': 'true',"id":'fQEsdVSPPy5MKVgo'}),
+]
 html_theme_options = {
     "top_of_page_button": "edit",
     "sidebar_hide_name": True,
@@ -54,7 +57,6 @@ html_theme_options = {
 html_logo = "https://user-images.githubusercontent.com/66779478/239791119-3b1fe8c9-5f99-49f5-aa31-edf5a683372b.png"
 
 source_suffix = [".rst", ".md"]
-
 
 project_path = "../../geochemistrypi"
 # autodoc_mock_imports = ["geochemistrypi"]
