@@ -30,9 +30,10 @@ from .constants import (
     REGRESSION_MODELS_WITH_MISSING_VALUES,
     SECTION,
     TEST_DATA_OPTION,
+    TOGGLE_ADDRESS_STATUS,
     WORKING_PATH,
 )
-from .data.data_readiness import basic_info, create_sub_data_set, data_split, float_input, limit_num_input, np2pd, num2option, num_input, read_data, show_data_columns
+from .data.data_readiness import basic_info, create_sub_data_set, data_split, float_input, limit_num_input, np2pd, num2option, num_input, read_data, show_data_columns, show_excel_columns
 from .data.feature_engineering import FeatureConstructor
 from .data.imputation import imputer
 from .data.inference import build_transform_pipeline, model_inference
@@ -47,6 +48,7 @@ from .process.detect import AnomalyDetectionModelSelection
 from .process.regress import RegressionModelSelection
 from .utils.base import check_package, clear_output, copy_files, create_geopi_output_dir, get_os, install_package, log, save_data, show_warning
 from .utils.mlflow_utils import retrieve_previous_experiment_id
+from .utils.toggle_address_status import toggle_address_status
 
 
 def cli_pipeline(training_data_path: str, application_data_path: Optional[str] = None) -> None:
@@ -85,6 +87,18 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     # <-- User Training Data Loading -->
     with console.status("[bold green]Training Data Loading...[/bold green]", spinner="dots"):
         sleep(0.75)
+
+    # Call toggle_address_status and pass status and training_data_path as parameters to obtain the address of the training data
+    training_data_path = toggle_address_status(status=TOGGLE_ADDRESS_STATUS, training_data_path=training_data_path)[0]
+
+    # Check if the length of training_data_path is greater than 1
+    if len(training_data_path) > 1:
+        # Display the columns of the Excel file located at training_data_path
+        show_excel_columns(training_data_path)
+        print("Please select only one file that you want to process:")
+        # Limit the user input to a number within the range of available files and assign the result to training_data_path
+        training_data_path = training_data_path[limit_num_input(range(1, len(training_data_path) + 1), SECTION[0], num_input) - 1]
+
     if training_data_path:
         # If the user provides file name, then load the training data from the file.
         data = read_data(file_path=training_data_path, is_own_data=1)
