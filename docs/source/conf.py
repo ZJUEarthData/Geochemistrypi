@@ -37,8 +37,8 @@ html_theme = "furo"
 html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 html_static_path = ["static"]
 html_js_files = [
-    'dify.js',
-    ('https://udify.app/embed.min.js', {'defer': 'true',"id":'fQEsdVSPPy5MKVgo'}),
+    "dify.js",
+    ("https://udify.app/embed.min.js", {"defer": "true", "id": "T76i6OWatem8lTEs"}),
 ]
 html_theme_options = {
     "top_of_page_button": "edit",
