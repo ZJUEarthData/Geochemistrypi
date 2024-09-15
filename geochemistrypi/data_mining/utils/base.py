@@ -237,7 +237,7 @@ def save_data(df: pd.DataFrame, name_column: str, df_name: str, local_data_path:
         print(f"Successfully store '{df_name}' in '{df_name}.csv' in {local_data_path}.")
 
 
-def save_data_special(df: pd.DataFrame, df_name: str, local_data_path: str, mlflow_artifact_data_path: str = None, index: bool = False) -> None:
+def save_data_without_data_identifier(df: pd.DataFrame, df_name: str, local_data_path: str, mlflow_artifact_data_path: str = None, index: bool = False) -> None:
     """Save the dataset in the local directory and in mlflow specialized directory.
 
     Parameters

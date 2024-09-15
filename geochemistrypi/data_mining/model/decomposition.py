@@ -10,7 +10,7 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import MDS, TSNE
 
 from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH
-from ..utils.base import clear_output, save_data, save_data_special, save_fig
+from ..utils.base import clear_output, save_data, save_data_without_data_identifier, save_fig
 from ._base import WorkflowBase
 from .func.algo_decomposition._common import plot_2d_scatter_diagram, plot_contour, plot_heatmap
 from .func.algo_decomposition._enum import DecompositionCommonFunction, PCASpecialFunction
@@ -298,18 +298,18 @@ class PCADecomposition(DecompositionWorkflowBase):
         """Draw bi-plot."""
         print(f"-----* {graph_name} *-----")
         biplot(reduced_data, pc_data, algorithm_name)
-        save_fig(f"Compositional Bi-plot - {algorithm_name}", local_path, mlflow_path)
-        save_data_special(reduced_data, "Compositional Bi-plot - Reduced Data", local_path, mlflow_path)
-        save_data_special(pc_data, "Compositional Bi-plot - PC Data", local_path, mlflow_path)
+        save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+        save_data_without_data_identifier(reduced_data, f"{graph_name} - Reduced Data", local_path, mlflow_path)
+        save_data_without_data_identifier(pc_data, f"{graph_name} - PC Data", local_path, mlflow_path)
 
     @staticmethod
     def _triplot(reduced_data: pd.DataFrame, pc_data: pd.DataFrame, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Draw tri-plot."""
         print(f"-----* {graph_name} *-----")
         triplot(reduced_data, pc_data, algorithm_name)
-        save_fig(f"Compositional Tri-plot - {algorithm_name}", local_path, mlflow_path)
-        save_data_special(reduced_data, "Compositional Tri-plot - Reduced Data", local_path, mlflow_path)
-        save_data_special(pc_data, "Compositional Tri-plot - PC Data", local_path, mlflow_path)
+        save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+        save_data_without_data_identifier(reduced_data, f"{graph_name} - Reduced Data", local_path, mlflow_path)
+        save_data_without_data_identifier(pc_data, f"{graph_name} - PC Data", local_path, mlflow_path)
 
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
