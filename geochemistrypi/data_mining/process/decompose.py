@@ -25,10 +25,13 @@ class DecompositionModelSelection(ModelSelectionBase):
         X_test: Optional[pd.DataFrame] = None,
         y_train: Optional[pd.DataFrame] = None,
         y_test: Optional[pd.DataFrame] = None,
+        name_train: Optional[pd.Series] = None,
+        name_test: Optional[pd.Series] = None,
+        name_all: Optional[pd.Series] = None,
     ) -> None:
         """Train by Scikit-learn framework."""
 
-        self.dcp_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
+        self.dcp_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test, name_all=name_all)
 
         if self.model_name == "PCA":
             hyper_parameters = PCADecomposition.manual_hyper_parameters()
@@ -68,7 +71,7 @@ class DecompositionModelSelection(ModelSelectionBase):
         self.dcp_workflow.special_components(components_num=hyper_parameters["n_components"], reduced_data=X_reduced)
 
         # Save decomposition result
-        self.dcp_workflow.data_save(X_reduced, "X Reduced", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Reduced Data")
+        self.dcp_workflow.data_save(X_reduced, name_all, "X Reduced", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Reduced Data")
 
         # Save the trained model
         self.dcp_workflow.model_save()

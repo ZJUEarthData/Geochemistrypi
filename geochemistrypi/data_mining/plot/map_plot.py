@@ -14,7 +14,7 @@ from ..utils.base import clear_output, get_os, save_data, save_fig
 logging.captureWarnings(True)
 
 
-def map_projected_by_cartopy(col: pd.Series, longitude: pd.DataFrame, latitude: pd.DataFrame) -> None:
+def map_projected_by_cartopy(col: pd.Series, name_column: str, longitude: pd.DataFrame, latitude: pd.DataFrame) -> None:
     """Project an element data into world map using cartopy.
 
     Parameters
@@ -78,10 +78,10 @@ def map_projected_by_cartopy(col: pd.Series, longitude: pd.DataFrame, latitude: 
     # save figure and data
     data = pd.concat([col, longitude, latitude], axis=1)
     save_fig(f"Map Projection - {col.name}", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MAP_PATH"), MLFLOW_ARTIFACT_IMAGE_MAP_PATH)
-    save_data(data, f"Map Projection - {col.name}", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MAP_PATH"), MLFLOW_ARTIFACT_IMAGE_MAP_PATH)
+    save_data(data, name_column, f"Map Projection - {col.name}", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MAP_PATH"), MLFLOW_ARTIFACT_IMAGE_MAP_PATH)
 
 
-def map_projected_by_basemap(col: pd.Series, longitude: pd.DataFrame, latitude: pd.DataFrame) -> None:
+def map_projected_by_basemap(col: pd.Series, name_column: str, longitude: pd.DataFrame, latitude: pd.DataFrame) -> None:
     """Project an element data into world map using basemap.
 
     Parameters
@@ -125,10 +125,10 @@ def map_projected_by_basemap(col: pd.Series, longitude: pd.DataFrame, latitude: 
 
     data = pd.concat([col, longitude, latitude], axis=1)
     save_fig(f"Map Projection - {col.name}", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MAP_PATH"), MLFLOW_ARTIFACT_IMAGE_MAP_PATH)
-    save_data(data, f"Map Projection - {col.name}", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MAP_PATH"), MLFLOW_ARTIFACT_IMAGE_MAP_PATH)
+    save_data(data, name_column, f"Map Projection - {col.name}", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MAP_PATH"), MLFLOW_ARTIFACT_IMAGE_MAP_PATH)
 
 
-def process_world_map(data: pd.DataFrame) -> None:
+def process_world_map(data: pd.DataFrame, name_column: str) -> None:
     """The process of projecting the data on the world map."""
     map_flag = 0
     is_map_projection = 0
@@ -172,9 +172,9 @@ def process_world_map(data: pd.DataFrame) -> None:
             # If OS is macOS, then use cartopy to project the data on the world map.
             my_os = get_os()
             if my_os == "Windows" or my_os == "Linux":
-                map_projected_by_basemap(data.iloc[:, elm_num - 1], longitude, latitude)
+                map_projected_by_basemap(data.iloc[:, elm_num - 1], name_column, longitude, latitude)
             elif my_os == "macOS":
-                map_projected_by_cartopy(data.iloc[:, elm_num - 1], longitude, latitude)
+                map_projected_by_cartopy(data.iloc[:, elm_num - 1], name_column, longitude, latitude)
             clear_output()
             print("Do you want to continue to project a new element in the World Map?")
             num2option(OPTION)

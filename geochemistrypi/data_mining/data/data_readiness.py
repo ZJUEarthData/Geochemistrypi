@@ -9,7 +9,7 @@ import pandas as pd
 from rich import print
 from sklearn.model_selection import train_test_split
 
-from ..constants import BUILT_IN_DATASET_PATH
+from ..constants import BUILT_IN_DATASET_PATH, SECTION
 
 # from utils.exceptions import InvalidFileError
 
@@ -153,6 +153,33 @@ def select_columns(columns_range: Optional[str] = None) -> List[int]:
     return columns_selected
 
 
+def select_column_name(data: pd.DataFrame) -> str:
+    """Select a single column from the dataframe and return its name.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The data set to be selected name.
+    """
+    print(
+        "You need to choose the number of the column above as the output data identifier column.\n"
+        "The data identifier column helps identify uniquely each row of data point in the output data.\n"
+        "** For example, when using built-in dataset, you can choose the column ‘SAMPLE NAME’.**\n"
+        "Once finishing the whole run, in the output data file, all data point will have the value in the column ‘SAMPLE NAME’ as its unique identifier.\n"
+        "Enter the number of the output data identifier column."
+    )
+    while True:
+        try:
+            column_index = int_input(column=2, prefix=SECTION[1], slogan="@Number: ")
+            if column_index < 1 or column_index > data.shape[1]:
+                print(f"The entered number is out of range! Please enter a number between 1 and {data.shape[1]}.")
+                continue
+            column_name = data.columns[column_index - 1]
+            return column_name
+        except ValueError:
+            print("Invalid input, please enter an integer.")
+
+
 def create_sub_data_set(data: pd.DataFrame, allow_empty_columns: bool = False) -> pd.DataFrame:
     """Create a sub data set.
 
@@ -287,7 +314,7 @@ def create_sub_data_set(data: pd.DataFrame, allow_empty_columns: bool = False) -
     return sub_data_set
 
 
-def data_split(X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], test_size: float = 0.2) -> Dict:
+def data_split(X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], names: pd.DataFrame, test_size: float = 0.2) -> Dict:
     """Split arrays or matrices into random train and test subsets.
 
     Parameters
@@ -298,6 +325,9 @@ def data_split(X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], test_size: fl
     y : pd.DataFrame or pd.Series
         The target variable to be split.
 
+    name : pd.DataFrame
+        The name of data.
+
     test_size : float, default=0.2
         Represents the proportion of the dataset to include in the test split.
 
@@ -307,7 +337,8 @@ def data_split(X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], test_size: fl
         A dictionary containing the split data.
     """
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
-    return {"X Train": X_train, "X Test": X_test, "Y Train": y_train, "Y Test": y_test}
+    name_train, name_test = train_test_split(names, test_size=test_size, random_state=42)
+    return {"X Train": X_train, "X Test": X_test, "Y Train": y_train, "Y Test": y_test, "Name Train": name_train, "Name Test": name_test}
 
 
 def num2option(items: List[str]) -> None:
@@ -427,6 +458,39 @@ def float_input(default: float, prefix: Optional[str] = None, slogan: Optional[s
             break
         else:
             print("Caution: The input is not a positive number. Please input the right number again!")
+    return option
+
+
+def int_input(column: int, prefix: Optional[str] = None, slogan: Optional[str] = "@Number: ") -> int:
+    """Get the number of the desired option.
+
+    Parameters
+    ----------
+    default: int
+         If the user does not enter anything, it is assigned to option.
+
+    prefix : str, default=None
+        It indicates which section the user currently is in on the UML, which is shown on the command-line console.
+
+    slogan : str, default="@Number: "
+        It acts like the first parameter of input function in Python, which output the hint.
+
+    Returns
+    -------
+    option: int
+        An option number.
+    """
+    while True:
+        option = input(f"({prefix}) ➜ {slogan}").strip()
+        if option.isdigit():
+            option = int(option)
+            break
+        elif len(option) == 0:
+            option = column
+
+            break
+        else:
+            print("Caution: The input is not a positive integer number. Please input the right number again!")
     return option
 
 

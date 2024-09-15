@@ -24,10 +24,13 @@ class ClusteringModelSelection(ModelSelectionBase):
         X_test: Optional[pd.DataFrame] = None,
         y_train: Optional[pd.DataFrame] = None,
         y_test: Optional[pd.DataFrame] = None,
+        name_train: Optional[pd.Series] = None,
+        name_test: Optional[pd.Series] = None,
+        name_all: Optional[pd.Series] = None,
     ) -> None:
         """Train by Scikit-learn framework."""
 
-        self.clt_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
+        self.clt_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test, name_all=name_all)
 
         if self.model_name == "KMeans":
             hyper_parameters = KMeansClustering.manual_hyper_parameters()

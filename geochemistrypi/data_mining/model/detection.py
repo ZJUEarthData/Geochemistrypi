@@ -43,13 +43,16 @@ class AnomalyDetectionWorkflowBase(WorkflowBase):
         return dict()
 
     @staticmethod
-    def _detect_data(X: pd.DataFrame, detect_label: np.ndarray) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    def _detect_data(X: pd.DataFrame, name_column: str, detect_label: np.ndarray) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """Merge the detection results into the source data.
 
         Parameters
         ----------
         X : pd.DataFrame
             The original data.
+
+        name_column: str
+            Name of data.
 
         detect_label : np.ndarray
             The detection labels for each data point.
@@ -64,41 +67,50 @@ class AnomalyDetectionWorkflowBase(WorkflowBase):
 
         X_anomaly : pd.DataFrame
             DataFrame containing the anomaly data points.
+
+        name_normal : str
+            Name of normal data.
+
+        name_abnormal
+            Name of anomaly data.
+
         """
         X_anomaly_detection = X.copy()
         # Merge detection results into the source data
-        X_anomaly_detection["is_anomaly"] = detect_label
-        X_normal = X_anomaly_detection[X_anomaly_detection["is_anomaly"] == 1]
-        X_anomaly = X_anomaly_detection[X_anomaly_detection["is_anomaly"] == -1]
+        X_anomaly_detection["is_abnormal"] = detect_label
+        X_normal = X_anomaly_detection[X_anomaly_detection["is_abnormal"] == 1]
+        name_normal = name_column[X_anomaly_detection["is_abnormal"] == 1]
+        X_abnormal = X_anomaly_detection[X_anomaly_detection["is_abnormal"] == -1]
+        name_abnormal = name_column[X_anomaly_detection["is_abnormal"] == -1]
 
-        return X_anomaly_detection, X_normal, X_anomaly
+        return X_anomaly_detection, X_normal, X_abnormal, name_normal, name_abnormal
 
     @staticmethod
-    def _density_estimation(data: pd.DataFrame, labels: pd.DataFrame, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _density_estimation(data: pd.DataFrame, name_column: str, labels: pd.DataFrame, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the density estimation diagram of the anomaly detection result."""
         print(f"-----* {graph_name} *-----")
         density_estimation(data, labels, algorithm_name=algorithm_name)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
         data_with_labels = pd.concat([data, labels], axis=1)
-        save_data(data_with_labels, f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+        save_data(data_with_labels, name_column, f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
 
     @staticmethod
-    def _scatter2d(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str, graph_name: str, local_path: str, mlflow_path: str) -> None:
+    def _scatter2d(data: pd.DataFrame, name_column: str, labels: pd.DataFrame, algorithm_name: str, graph_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the two-dimensional diagram of the anomaly detection result."""
         print(f"-----* {graph_name} *-----")
         scatter2d(data, labels, algorithm_name=algorithm_name)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
         data_with_labels = pd.concat([data, labels], axis=1)
-        save_data(data_with_labels, f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+        save_data(data_with_labels, name_column, f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
 
     @staticmethod
-    def _scatter3d(data: pd.DataFrame, labels: pd.DataFrame, algorithm_name: str, graph_name: str, local_path: str, mlflow_path: str) -> None:
+    def _scatter3d(data: pd.DataFrame, name_column: str, labels: pd.DataFrame, algorithm_name: str, graph_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the three-dimensional diagram of the anomaly detection result."""
         print(f"-----* {graph_name} *-----")
         scatter3d(data, labels, algorithm_name=algorithm_name)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
         data_with_labels = pd.concat([data, labels], axis=1)
-        save_data(data_with_labels, f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+        save_data(data_with_labels, name_column, f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
 
     def common_components(self) -> None:
         """Invoke all common application functions for anomaly detection algorithms by Scikit-learn framework."""
@@ -107,6 +119,7 @@ class AnomalyDetectionWorkflowBase(WorkflowBase):
             two_dimen_axis_index, two_dimen_data = self.choose_dimension_data(self.X, 2)
             self._scatter2d(
                 data=two_dimen_data,
+                name_column=self.name_all,
                 labels=self.anomaly_detection_result,
                 algorithm_name=self.naming,
                 graph_name=AnormalyDetectionCommonFunction.PLOT_SCATTER_2D.value,
@@ -117,6 +130,7 @@ class AnomalyDetectionWorkflowBase(WorkflowBase):
             three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(self.X, 3)
             self._scatter3d(
                 data=three_dimen_data,
+                name_column=self.name_all,
                 labels=self.anomaly_detection_result,
                 algorithm_name=self.naming,
                 graph_name=AnormalyDetectionCommonFunction.PLOT_SCATTER_3D.value,
@@ -126,6 +140,7 @@ class AnomalyDetectionWorkflowBase(WorkflowBase):
 
         self._density_estimation(
             data=self.X,
+            name_column=self.name_all,
             labels=self.anomaly_detection_result,
             algorithm_name=self.naming,
             graph_name=AnormalyDetectionCommonFunction.DENSITY_ESTIMATION.value,
@@ -442,13 +457,13 @@ class LocalOutlierFactorAnomalyDetection(AnomalyDetectionWorkflowBase):
         return hyper_parameters
 
     @staticmethod
-    def _plot_lof_scores(X_train: pd.DataFrame, lof_scores: np.ndarray, graph_name: str, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_lof_scores(X_train: pd.DataFrame, name_column_train: str, lof_scores: np.ndarray, graph_name: str, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Draw the LOF scores bar diagram."""
         print(f"-----* {graph_name} *-----")
         columns_name = X_train.index
         data = plot_lof_scores(columns_name, lof_scores, image_config)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
-        save_data(data, f"{graph_name} - {algorithm_name}", local_path, mlflow_path, True)
+        save_data(data, name_column_train, f"{graph_name} - {algorithm_name}", local_path, mlflow_path, True)
 
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
@@ -456,6 +471,7 @@ class LocalOutlierFactorAnomalyDetection(AnomalyDetectionWorkflowBase):
         lof_scores = self.model.negative_outlier_factor_
         self._plot_lof_scores(
             X_train=self.X_train,
+            name_column_train=self.name_all,
             lof_scores=lof_scores,
             image_config=self.image_config,
             algorithm_name=self.naming,
