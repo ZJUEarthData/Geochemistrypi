@@ -148,7 +148,7 @@ class ClassificationWorkflowBase(WorkflowBase):
         """Perform cross validation on the model."""
         print(f"-----* {graph_name} *-----")
         print(f"K-Folds: {cv_num}")
-        scores = cross_validation(trained_model, X_train, y_train, average=average, cv_num=cv_num)
+        scores = cross_validation(trained_model, X_train, y_train, graph_name, average=average, cv_num=cv_num)
         scores_str = json.dumps(scores, indent=4)
         save_text(scores_str, f"{graph_name} - {algorithm_name}", store_path)
 
@@ -156,7 +156,7 @@ class ClassificationWorkflowBase(WorkflowBase):
     def _plot_confusion_matrix(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, graph_name: str, trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the confusion matrix of the model."""
         print(f"-----* {graph_name} *-----")
-        data = plot_confusion_matrix(y_test, y_test_predict, trained_model)
+        data = plot_confusion_matrix(y_test, y_test_predict, trained_model, graph_name)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
         index = [f"true_{i}" for i in range(int(y_test.nunique().values))]
         columns = [f"pred_{i}" for i in range(int(y_test.nunique().values))]
@@ -194,7 +194,7 @@ class ClassificationWorkflowBase(WorkflowBase):
     @staticmethod
     def _plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         print(f"-----* {graph_name} *-----")
-        y_probs, fpr, tpr, thresholds = plot_ROC(X_test, y_test, trained_model, algorithm_name)
+        y_probs, fpr, tpr, thresholds = plot_ROC(X_test, y_test, trained_model, graph_name, algorithm_name)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
         y_probs = pd.DataFrame(y_probs, columns=["Probabilities"])
         fpr = pd.DataFrame(fpr, columns=["False Positive Rate"])
@@ -284,6 +284,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             trained_model=self.model,
             X_train=ClassificationWorkflowBase.X_train,
             y_train=ClassificationWorkflowBase.y_train,
+            graph_name=ClassificationCommonFunction.CROSS_VALIDATION.value,
             average=average,
             cv_num=10,
             algorithm_name=self.naming,
@@ -294,6 +295,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             y_test_predict=ClassificationWorkflowBase.y_test_predict,
             name_column=ClassificationWorkflowBase.name_test,
             trained_model=self.model,
+            graph_name=ClassificationCommonFunction.CONFUSION_MATRIX.value,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -324,6 +326,7 @@ class ClassificationWorkflowBase(WorkflowBase):
                 y_test=ClassificationWorkflowBase.y_test,
                 name_column=ClassificationWorkflowBase.name_test,
                 trained_model=self.model,
+                graph_name=ClassificationCommonFunction.ROC_CURVE.value,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -346,6 +349,7 @@ class ClassificationWorkflowBase(WorkflowBase):
                 name_column2=ClassificationWorkflowBase.name_test,
                 trained_model=self.model,
                 image_config=self.image_config,
+                graph_name=ClassificationCommonFunction.TWO_DIMENSIONAL_DECISION_BOUNDARY_DIAGRAM.value,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -372,6 +376,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             trained_model=self.auto_model,
             X_train=ClassificationWorkflowBase.X_train,
             y_train=ClassificationWorkflowBase.y_train,
+            graph_name=ClassificationCommonFunction.CROSS_VALIDATION.value,
             average=average,
             cv_num=10,
             algorithm_name=self.naming,
@@ -382,6 +387,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             y_test_predict=ClassificationWorkflowBase.y_test_predict,
             name_column=ClassificationWorkflowBase.name_test,
             trained_model=self.auto_model,
+            graph_name=ClassificationCommonFunction.CONFUSION_MATRIX.value,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -412,6 +418,7 @@ class ClassificationWorkflowBase(WorkflowBase):
                 y_test=ClassificationWorkflowBase.y_test,
                 name_column=ClassificationWorkflowBase.name_test,
                 trained_model=self.auto_model,
+                graph_name=ClassificationCommonFunction.ROC_CURVE.value,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -434,6 +441,7 @@ class ClassificationWorkflowBase(WorkflowBase):
                 name_column2=ClassificationWorkflowBase.name_test,
                 trained_model=self.auto_model,
                 image_config=self.image_config,
+                graph_name=ClassificationCommonFunction.TWO_DIMENSIONAL_DECISION_BOUNDARY_DIAGRAM.value,
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
