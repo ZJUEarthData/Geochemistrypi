@@ -144,24 +144,24 @@ class ClassificationWorkflowBase(WorkflowBase):
         mlflow.log_artifact(os.path.join(store_path, f"Classification Report - {algorithm_name}.txt"))
 
     @staticmethod
-    def _cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, average: str, cv_num: int, algorithm_name: str, store_path: str) -> None:
+    def _cross_validation(trained_model: object, X_train: pd.DataFrame, graph_name: str, y_train: pd.DataFrame, average: str, cv_num: int, algorithm_name: str, store_path: str) -> None:
         """Perform cross validation on the model."""
-        print("-----* Cross Validation *-----")
+        print(f"-----* {graph_name} *-----")
         print(f"K-Folds: {cv_num}")
         scores = cross_validation(trained_model, X_train, y_train, average=average, cv_num=cv_num)
         scores_str = json.dumps(scores, indent=4)
-        save_text(scores_str, f"Cross Validation - {algorithm_name}", store_path)
+        save_text(scores_str, f"{graph_name} - {algorithm_name}", store_path)
 
     @staticmethod
-    def _plot_confusion_matrix(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, name_column: str, trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_confusion_matrix(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, graph_name: str, trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the confusion matrix of the model."""
-        print("-----* Confusion Matrix *-----")
+        print(f"-----* {graph_name} *-----")
         data = plot_confusion_matrix(y_test, y_test_predict, trained_model)
-        save_fig(f"Confusion Matrix - {algorithm_name}", local_path, mlflow_path)
+        save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
         index = [f"true_{i}" for i in range(int(y_test.nunique().values))]
         columns = [f"pred_{i}" for i in range(int(y_test.nunique().values))]
         data = pd.DataFrame(data, columns=columns, index=index)
-        save_data(data, name_column, f"Confusion Matrix - {algorithm_name}", local_path, mlflow_path, True)
+        save_data(data, f"{graph_name} - {algorithm_name}", local_path, mlflow_path, True)
 
     @staticmethod
     def _plot_precision_recall(X_test: pd.DataFrame, y_test: pd.DataFrame, name_column: str, trained_model: object, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
@@ -192,29 +192,27 @@ class ClassificationWorkflowBase(WorkflowBase):
         save_data(thresholds, name_column, f"{graph_name} - Thresholds", local_path, mlflow_path)
 
     @staticmethod
-    def _plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, name_column: str, trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
-        print("-----* ROC Curve *-----")
+    def _plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+        print(f"-----* {graph_name} *-----")
         y_probs, fpr, tpr, thresholds = plot_ROC(X_test, y_test, trained_model, algorithm_name)
-        save_fig(f"ROC Curve - {algorithm_name}", local_path, mlflow_path)
+        save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
         y_probs = pd.DataFrame(y_probs, columns=["Probabilities"])
         fpr = pd.DataFrame(fpr, columns=["False Positive Rate"])
         tpr = pd.DataFrame(tpr, columns=["True Positive Rate"])
         thresholds = pd.DataFrame(thresholds, columns=["Thresholds"])
-        save_data(y_probs, name_column, "ROC Curve - Probabilities", local_path, mlflow_path)
-        save_data(fpr, name_column, "ROC Curve - False Positive Rate", local_path, mlflow_path)
-        save_data(tpr, name_column, "ROC Curve - True Positive Rate", local_path, mlflow_path)
-        save_data(thresholds, name_column, "ROC Curve - Thresholds", local_path, mlflow_path)
+        save_data(y_probs, f"{graph_name} - Probabilities", local_path, mlflow_path)
+        save_data(fpr, f"{graph_name} - False Positive Rate", local_path, mlflow_path)
+        save_data(tpr, f"{graph_name} - True Positive Rate", local_path, mlflow_path)
+        save_data(thresholds, f"{graph_name} - Thresholds", local_path, mlflow_path)
 
     @staticmethod
-    def _plot_2d_decision_boundary(
-        X: pd.DataFrame, X_test: pd.DataFrame, name_column1: str, name_column2: str, trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str
-    ) -> None:
+    def _plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, trained_model: object, graph_name: str, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the decision boundary of the trained model with the testing data set below."""
-        print("-----* Two-dimensional Decision Boundary Diagram *-----")
+        print(f"-----* {graph_name} *-----")
         plot_2d_decision_boundary(X, X_test, trained_model, image_config)
-        save_fig(f"Decision Boundary - {algorithm_name}", local_path, mlflow_path)
-        save_data(X, name_column1, "Decision Boundary - X", local_path, mlflow_path)
-        save_data(X_test, name_column2, "Decision Boundary - X Test", local_path, mlflow_path)
+        save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+        save_data(X, f"{graph_name} - X", local_path, mlflow_path)
+        save_data(X_test, f"{graph_name} - X Test", local_path, mlflow_path)
 
     @staticmethod
     def sample_balance(X_train: pd.DataFrame, y_train: pd.DataFrame, name_column: str, local_path: str, mlflow_path: str) -> tuple:
