@@ -202,6 +202,9 @@ class WorkflowBase(metaclass=ABCMeta):
         X_test: Optional[pd.DataFrame] = None,
         y_train: Optional[pd.DataFrame] = None,
         y_test: Optional[pd.DataFrame] = None,
+        name_train: Optional[pd.Series] = None,
+        name_test: Optional[pd.Series] = None,
+        name_all: Optional[pd.Series] = None,
         y_train_predict: Optional[pd.DataFrame] = None,
         y_test_predict: Optional[pd.DataFrame] = None,
     ) -> None:
@@ -218,13 +221,19 @@ class WorkflowBase(metaclass=ABCMeta):
             WorkflowBase.y_train = y_train
         if y_test is not None:
             WorkflowBase.y_test = y_test
+        if name_train is not None:
+            WorkflowBase.name_train = name_train
+        if name_test is not None:
+            WorkflowBase.name_test = name_test
+        if name_all is not None:
+            WorkflowBase.name_all = name_all
         if y_test_predict is not None:
             WorkflowBase.y_test_predict = y_test_predict
         if y_train_predict is not None:
             WorkflowBase.y_train_predict = y_train_predict
 
     @staticmethod
-    def data_save(df: pd.DataFrame, df_name: str, local_path: str, mlflow_path: str, slogan: str) -> None:
+    def data_save(df: pd.DataFrame, name: str, df_name: str, local_path: str, mlflow_path: str, slogan: str) -> None:
         """This method saves the data into the local path and the mlflow path.
 
         Parameters
@@ -232,6 +241,8 @@ class WorkflowBase(metaclass=ABCMeta):
         df : pd.DataFrame
             The data to be saved.
 
+        name: str
+            The name.
         df_name : str
             The name of the data.
 
@@ -246,7 +257,7 @@ class WorkflowBase(metaclass=ABCMeta):
         """
         print(f"-----* {slogan} *-----")
         print(df)
-        save_data(df, df_name, local_path, mlflow_path)
+        save_data(df, name, df_name, local_path, mlflow_path)
 
     @staticmethod
     def save_hyper_parameters(hyper_parameters_dict: Dict, model_name: str, local_path: str) -> None:
@@ -285,6 +296,7 @@ class WorkflowBase(metaclass=ABCMeta):
     def _plot_permutation_importance(
         X_test: pd.DataFrame,
         y_test: pd.DataFrame,
+        name_column: str,
         trained_model: object,
         image_config: dict,
         algorithm_name: str,
@@ -295,8 +307,8 @@ class WorkflowBase(metaclass=ABCMeta):
         print("-----* Permutation Importance Diagram *-----")
         importances_mean, importances_std, importances = plot_permutation_importance(X_test, y_test, trained_model, image_config)
         save_fig(f"Permutation Importance - {algorithm_name}", local_path, mlflow_path)
-        save_data(X_test, "Permutation Importance - X Test", local_path, mlflow_path)
-        save_data(y_test, "Permutation Importance - Y Test", local_path, mlflow_path)
+        save_data(X_test, name_column, "Permutation Importance - X Test", local_path, mlflow_path)
+        save_data(y_test, name_column, "Permutation Importance - Y Test", local_path, mlflow_path)
         data_dict = {"importances_mean": importances_mean.tolist(), "importances_std": importances_std.tolist(), "importances": importances.tolist()}
         data_str = json.dumps(data_dict, indent=4)
         save_text(data_str, f"Permutation Importance - {algorithm_name}", local_path, mlflow_path)
@@ -306,14 +318,14 @@ class TreeWorkflowMixin:
     """Mixin class for tree models."""
 
     @staticmethod
-    def _plot_feature_importance(X_train: pd.DataFrame, trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_feature_importance(X_train: pd.DataFrame, name_column: str, trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Draw the feature importance bar diagram."""
         print("-----* Feature Importance Diagram *-----")
         columns_name = X_train.columns
         feature_importances = trained_model.feature_importances_
         data = plot_feature_importance(columns_name, feature_importances, image_config)
         save_fig(f"Feature Importance - {algorithm_name}", local_path, mlflow_path)
-        save_data(data, f"Feature Importance - {algorithm_name}", local_path, mlflow_path, True)
+        save_data(data, name_column, f"Feature Importance - {algorithm_name}", local_path, mlflow_path, True)
 
     @staticmethod
     def _plot_tree(trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
@@ -337,40 +349,40 @@ class LinearWorkflowMixin:
         save_text(formula_str, f"{algorithm_name} Formula", local_path, mlflow_path)
 
     @staticmethod
-    def _plot_2d_scatter_diagram(feature_data: pd.DataFrame, target_data: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_2d_scatter_diagram(feature_data: pd.DataFrame, target_data: pd.DataFrame, data_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the 2D graph of the linear regression model."""
         print("-----* 2D Scatter Diagram *-----")
         plot_2d_scatter_diagram(feature_data, target_data)
         save_fig(f"2D Scatter Diagram - {algorithm_name}", local_path, mlflow_path)
         data = pd.concat([feature_data, target_data], axis=1)
-        save_data(data, f"2D Scatter Diagram - {algorithm_name}", local_path, mlflow_path)
+        save_data(data, data_name, f"2D Scatter Diagram - {algorithm_name}", local_path, mlflow_path)
 
     @staticmethod
-    def _plot_2d_line_diagram(feature_data: pd.DataFrame, target_data: pd.DataFrame, y_test_predict: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_2d_line_diagram(feature_data: pd.DataFrame, target_data: pd.DataFrame, y_test_predict: pd.DataFrame, data_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the 2D graph of the linear regression model."""
         print("-----* 2D Line Diagram *-----")
         plot_2d_line_diagram(feature_data, target_data, y_test_predict)
         save_fig(f"2D Line Diagram - {algorithm_name}", local_path, mlflow_path)
         data = pd.concat([feature_data, target_data, y_test_predict], axis=1)
-        save_data(data, f"2D Line Diagram - {algorithm_name}", local_path, mlflow_path)
+        save_data(data, data_name, f"2D Line Diagram - {algorithm_name}", local_path, mlflow_path)
 
     @staticmethod
-    def _plot_3d_scatter_diagram(feature_data: pd.DataFrame, target_data: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_3d_scatter_diagram(feature_data: pd.DataFrame, target_data: pd.DataFrame, data_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the 3D graph of the linear regression model."""
         print("-----*  3D Scatter Diagram *-----")
         plot_3d_scatter_diagram(feature_data, target_data)
         save_fig(f"3D Scatter Diagram - {algorithm_name}", local_path, mlflow_path)
         data = pd.concat([feature_data, target_data], axis=1)
-        save_data(data, f"3D Scatter Diagram - {algorithm_name}", local_path, mlflow_path)
+        save_data(data, data_name, f"3D Scatter Diagram - {algorithm_name}", local_path, mlflow_path)
 
     @staticmethod
-    def _plot_3d_surface_diagram(feature_data: pd.DataFrame, target_data: pd.DataFrame, y_test_predict: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_3d_surface_diagram(feature_data: pd.DataFrame, target_data: pd.DataFrame, y_test_predict: pd.DataFrame, data_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the 3D graph of the linear regression model."""
         print("-----* 3D Surface Diagram *-----")
         plot_3d_surface_diagram(feature_data, target_data, y_test_predict)
         save_fig(f"3D Surface Diagram - {algorithm_name}", local_path, mlflow_path)
         data = pd.concat([feature_data, target_data, y_test_predict], axis=1)
-        save_data(data, f"3D Surface Diagram - {algorithm_name}", local_path, mlflow_path)
+        save_data(data, data_name, f"3D Surface Diagram - {algorithm_name}", local_path, mlflow_path)
 
 
 class ClusteringMetricsMixin:

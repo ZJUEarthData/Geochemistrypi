@@ -10,7 +10,7 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import MDS, TSNE
 
 from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH
-from ..utils.base import clear_output, save_data, save_fig
+from ..utils.base import clear_output, save_data, save_data_without_data_identifier, save_fig
 from ._base import WorkflowBase
 from .func.algo_decomposition._common import plot_2d_scatter_diagram, plot_contour, plot_heatmap
 from .func.algo_decomposition._enum import DecompositionCommonFunction, PCASpecialFunction
@@ -67,28 +67,28 @@ class DecompositionWorkflowBase(WorkflowBase):
         self.X_reduced.columns = pa_name
 
     @staticmethod
-    def _plot_2d_scatter_diagram(data: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_2d_scatter_diagram(data: pd.DataFrame, name_column: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the two-dimensional diagram of the decomposition result."""
         print("-----* Decomposition Two-Dimensional Diagram *-----")
         plot_2d_scatter_diagram(data, algorithm_name)
         save_fig(f"Decomposition Two-Dimensional Diagram - {algorithm_name}", local_path, mlflow_path)
-        save_data(data, f"Decomposition Two-Dimensional Data - {algorithm_name}", local_path, mlflow_path)
+        save_data(data, name_column, f"Decomposition Two-Dimensional Data - {algorithm_name}", local_path, mlflow_path)
 
     @staticmethod
-    def _plot_heatmap(data: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_heatmap(data: pd.DataFrame, name_column: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot a heatmap for the decomposition result."""
         print("-----* Decomposition Heatmap *-----")
         plot_heatmap(data, algorithm_name)
         save_fig(f"Decomposition Heatmap - {algorithm_name}", local_path, mlflow_path)
-        save_data(data, f"Decomposition Heatmap Data - {algorithm_name}", local_path, mlflow_path)
+        save_data(data, name_column, f"Decomposition Heatmap Data - {algorithm_name}", local_path, mlflow_path)
 
     @staticmethod
-    def _plot_contour(data: pd.DataFrame, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_contour(data: pd.DataFrame, name_column: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot a contour plot for dimensionality reduction results."""
         print("-----* Dimensionality Reduction Contour Plot *-----")
         plot_contour(data, algorithm_name)
         save_fig(f"Dimensionality Reduction Contour Plot - {algorithm_name}", local_path, mlflow_path)
-        save_data(data, f"Dimensionality Reduction Contour Plot Data - {algorithm_name}", local_path, mlflow_path)
+        save_data(data, name_column, f"Dimensionality Reduction Contour Plot Data - {algorithm_name}", local_path, mlflow_path)
 
     def common_components(self) -> None:
         """Invoke all common application functions for decomposition algorithms by Scikit-learn framework."""
@@ -96,18 +96,21 @@ class DecompositionWorkflowBase(WorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_2d_scatter_diagram(
             data=self.X,
+            name_column=self.name_all,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
         self._plot_heatmap(
             data=self.X,
+            name_column=self.name_all,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
         self._plot_contour(
             data=self.X,
+            name_column=self.name_all,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
@@ -296,8 +299,8 @@ class PCADecomposition(DecompositionWorkflowBase):
         print(f"-----* {graph_name} *-----")
         biplot(reduced_data, pc_data, algorithm_name)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
-        save_data(reduced_data, f"{graph_name} - Reduced Data", local_path, mlflow_path)
-        save_data(pc_data, f"{graph_name} - PC Data", local_path, mlflow_path)
+        save_data_without_data_identifier(reduced_data, f"{graph_name} - Reduced Data", local_path, mlflow_path)
+        save_data_without_data_identifier(pc_data, f"{graph_name} - PC Data", local_path, mlflow_path)
 
     @staticmethod
     def _triplot(reduced_data: pd.DataFrame, pc_data: pd.DataFrame, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
@@ -305,8 +308,8 @@ class PCADecomposition(DecompositionWorkflowBase):
         print(f"-----* {graph_name} *-----")
         triplot(reduced_data, pc_data, algorithm_name)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
-        save_data(reduced_data, f"{graph_name} - Reduced Data", local_path, mlflow_path)
-        save_data(pc_data, f"{graph_name} - PC Data", local_path, mlflow_path)
+        save_data_without_data_identifier(reduced_data, f"{graph_name} - Reduced Data", local_path, mlflow_path)
+        save_data_without_data_identifier(pc_data, f"{graph_name} - PC Data", local_path, mlflow_path)
 
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""

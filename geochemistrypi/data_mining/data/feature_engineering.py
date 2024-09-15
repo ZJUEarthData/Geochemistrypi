@@ -20,7 +20,7 @@ class FeatureConstructor(object):
     # parenthesis = ['(', ')']
     cal_words = ["pow", "sin", "cos", "tan", "pi", "mean", "std", "var", "log"]
 
-    def __init__(self, data: pd.DataFrame) -> None:
+    def __init__(self, data: pd.DataFrame, name_all: str) -> None:
         self.feature_name = None
         self.data = data
         self.alphabet = string.ascii_lowercase
@@ -29,6 +29,7 @@ class FeatureConstructor(object):
         self.map_dict = {}
         self._result = None
         self.config = {}
+        self.name_all = name_all
 
     def index2name(self) -> None:
         """Show the index of columns in the data set. The display pattern is [letter : column name], e.g. a : 1st column name; b : 2nd column name."""
@@ -171,12 +172,12 @@ class FeatureConstructor(object):
                     clear_output()
                     continue
                 else:
-                    save_data(self.data, "Data Selected Dropped-Imputed Feature-Engineering", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                    save_data(self.data, self.name_all, "Data Selected Dropped-Imputed Feature-Engineering", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
                     print("Exit Feature Engineering Mode.")
                     clear_output()
                     break
             else:
-                save_data(self.data, "Data Selected Dropped-Imputed Feature-Engineering", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                save_data(self.data, self.name_all, "Data Selected Dropped-Imputed Feature-Engineering", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
                 clear_output()
                 break
         return self.data
