@@ -196,7 +196,7 @@ class ClassificationWorkflowBase(WorkflowBase):
     @staticmethod
     def _plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         print(f"-----* {graph_name} *-----")
-        y_probs, fpr, tpr, thresholds = plot_ROC(X_test, y_test, trained_model, algorithm_name)
+        y_probs, fpr, tpr, thresholds = plot_ROC(X_test, y_test, trained_model, graph_name, algorithm_name)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
         y_probs = pd.DataFrame(y_probs, columns=["Probabilities"])
         fpr = pd.DataFrame(fpr, columns=["False Positive Rate"])
