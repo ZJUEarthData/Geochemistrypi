@@ -1,4 +1,4 @@
 
 window.difyChatbotConfig = {
-    token: 'fQEsdVSPPy5MKVgo'
+    token: 'T76i6OWatem8lTEs'
 }

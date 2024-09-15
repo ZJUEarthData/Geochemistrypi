@@ -22,7 +22,7 @@ from .func.algo_decomposition._tsne import tsne_manual_hyper_parameters
 class DecompositionWorkflowBase(WorkflowBase):
     """The base workflow class of decomposition algorithms."""
 
-    common_function = [func.value for func in DecompositionCommonFunction]  # 'Decomposition Result',
+    common_function = [func.value for func in DecompositionCommonFunction]
 
     def __init__(self) -> None:
         super().__init__()
