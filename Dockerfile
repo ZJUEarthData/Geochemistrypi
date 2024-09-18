@@ -34,6 +34,6 @@ EXPOSE 8000 3001
 
 # Mount the volume
 VOLUME /app
-
+# test test test
 # Dummy CMD to prevent container from exiting immediately
 CMD ["tail", "-f", "/dev/null"]
