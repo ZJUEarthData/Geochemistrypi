@@ -153,7 +153,9 @@ class ClassificationWorkflowBase(WorkflowBase):
         save_text(scores_str, f"{graph_name} - {algorithm_name}", store_path)
 
     @staticmethod
-    def _plot_confusion_matrix(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, graph_name: str, trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_confusion_matrix(
+        y_test: pd.DataFrame, y_test_predict: pd.DataFrame, name_column: str, graph_name: str, trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str
+    ) -> None:
         """Plot the confusion matrix of the model."""
         print(f"-----* {graph_name} *-----")
         data = plot_confusion_matrix(y_test, y_test_predict, trained_model, graph_name)
@@ -161,7 +163,7 @@ class ClassificationWorkflowBase(WorkflowBase):
         index = [f"true_{i}" for i in range(int(y_test.nunique().values))]
         columns = [f"pred_{i}" for i in range(int(y_test.nunique().values))]
         data = pd.DataFrame(data, columns=columns, index=index)
-        save_data(data, f"{graph_name} - {algorithm_name}", local_path, mlflow_path, True)
+        save_data(data, name_column, f"{graph_name} - {algorithm_name}", local_path, mlflow_path, True)
 
     @staticmethod
     def _plot_precision_recall(X_test: pd.DataFrame, y_test: pd.DataFrame, name_column: str, trained_model: object, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
@@ -192,7 +194,7 @@ class ClassificationWorkflowBase(WorkflowBase):
         save_data(thresholds, name_column, f"{graph_name} - Thresholds", local_path, mlflow_path)
 
     @staticmethod
-    def _plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, name_column: str, trained_model: object, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         print(f"-----* {graph_name} *-----")
         y_probs, fpr, tpr, thresholds = plot_ROC(X_test, y_test, trained_model, graph_name, algorithm_name)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
@@ -200,19 +202,21 @@ class ClassificationWorkflowBase(WorkflowBase):
         fpr = pd.DataFrame(fpr, columns=["False Positive Rate"])
         tpr = pd.DataFrame(tpr, columns=["True Positive Rate"])
         thresholds = pd.DataFrame(thresholds, columns=["Thresholds"])
-        save_data(y_probs, f"{graph_name} - Probabilities", local_path, mlflow_path)
-        save_data(fpr, f"{graph_name} - False Positive Rate", local_path, mlflow_path)
-        save_data(tpr, f"{graph_name} - True Positive Rate", local_path, mlflow_path)
-        save_data(thresholds, f"{graph_name} - Thresholds", local_path, mlflow_path)
+        save_data(y_probs, name_column, f"{graph_name} - Probabilities", local_path, mlflow_path)
+        save_data(fpr, name_column, f"{graph_name} - False Positive Rate", local_path, mlflow_path)
+        save_data(tpr, name_column, f"{graph_name} - True Positive Rate", local_path, mlflow_path)
+        save_data(thresholds, name_column, f"{graph_name} - Thresholds", local_path, mlflow_path)
 
     @staticmethod
-    def _plot_2d_decision_boundary(X: pd.DataFrame, X_test: pd.DataFrame, trained_model: object, graph_name: str, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_2d_decision_boundary(
+        X: pd.DataFrame, X_test: pd.DataFrame, name_column1: str, name_column2: str, trained_model: object, graph_name: str, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str
+    ) -> None:
         """Plot the decision boundary of the trained model with the testing data set below."""
         print(f"-----* {graph_name} *-----")
         plot_2d_decision_boundary(X, X_test, trained_model, image_config)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
-        save_data(X, f"{graph_name} - X", local_path, mlflow_path)
-        save_data(X_test, f"{graph_name} - X Test", local_path, mlflow_path)
+        save_data(X, name_column1, f"{graph_name} - X", local_path, mlflow_path)
+        save_data(X_test, name_column2, f"{graph_name} - X Test", local_path, mlflow_path)
 
     @staticmethod
     def sample_balance(X_train: pd.DataFrame, y_train: pd.DataFrame, name_column: str, local_path: str, mlflow_path: str) -> tuple:
