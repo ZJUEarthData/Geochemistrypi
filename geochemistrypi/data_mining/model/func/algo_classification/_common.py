@@ -68,7 +68,7 @@ def score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> tuple[str, Dict]:
     return average, scores
 
 
-def plot_confusion_matrix(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, trained_model: object) -> np.ndarray:
+def plot_confusion_matrix(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, trained_model: object, graph_name: str) -> np.ndarray:
     """Plot the confusion matrix.
 
     Parameters
@@ -124,7 +124,7 @@ def display_cross_validation_scores(scores: np.ndarray, score_name: str) -> Dict
     return cv_scores
 
 
-def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, average: str, cv_num: int = 10) -> Dict:
+def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, graph_name: str, average: str, cv_num: int = 10) -> Dict:
     """Evaluate metric(s) by cross-validation and also record fit/score times.
 
     Parameters
@@ -286,7 +286,7 @@ def plot_precision_recall_threshold(X_test: pd.DataFrame, y_test: pd.DataFrame, 
     return y_probs, precisions, recalls, thresholds
 
 
-def plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, algorithm_name: str) -> tuple:
+def plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, graph_name: str, algorithm_name: str) -> tuple:
     """Plot the ROC curve.
 
     Parameters
@@ -324,7 +324,7 @@ def plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, 
     plt.plot([0, 1], [0, 1], "r--")
     plt.xlabel("False Positive Rate")
     plt.ylabel("True Positive Rate (Recall)")
-    plt.title(f"ROC Curve - {algorithm_name}")
+    plt.title(f"{graph_name} - {algorithm_name}")
     return y_probs, fpr, tpr, thresholds
 
 
