@@ -216,7 +216,8 @@ def save_data(df: pd.DataFrame, name_column: str, df_name: str, local_data_path:
         Whether to write the index.
     """
     if name_column is not None and len(df) == len(name_column):
-        name_column = name_column.loc[df.index].reset_index(drop=True)
+        if not df.index.empty and len(name_column.index) == len(df.index) and set(df.index) == set(name_column.index):
+            name_column = name_column.reindex(df.index)
         df.reset_index(drop=True, inplace=True)
         name_column.reset_index(drop=True, inplace=True)
         df = pd.concat([name_column, df], axis=1)
