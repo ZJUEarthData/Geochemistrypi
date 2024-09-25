@@ -286,7 +286,7 @@ def plot_precision_recall_threshold(X_test: pd.DataFrame, y_test: pd.DataFrame, 
     return y_probs, precisions, recalls, thresholds
 
 
-def plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, algorithm_name: str) -> tuple:
+def plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, graph_name: str, algorithm_name: str) -> tuple:
     """Plot the ROC curve.
 
     Parameters
@@ -324,7 +324,7 @@ def plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, 
     plt.plot([0, 1], [0, 1], "r--")
     plt.xlabel("False Positive Rate")
     plt.ylabel("True Positive Rate (Recall)")
-    plt.title(f"ROC Curve - {algorithm_name}")
+    plt.title(f"{graph_name} - {algorithm_name}")
     return y_probs, fpr, tpr, thresholds
 
 
