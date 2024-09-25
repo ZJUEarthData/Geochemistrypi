@@ -1,4 +1,27 @@
 import os
+from typing import Optional
+
+
+def ensure_directories_exist(directory_paths: Optional[list], base_path: str = None) -> None:
+    """Ensure that the specified directories exist. If not, create them.
+
+    Parameters
+    ----------
+    directory_paths : list of str
+        List of directory paths to check and create if necessary.
+    base_path : str, optional
+        Base path to prepend to each directory path in `directory_paths`.
+
+    Returns
+    -------
+    None
+    """
+    for directory_path in directory_paths:
+        full_path = os.path.join(base_path, directory_path) if base_path else directory_path
+        if not os.path.exists(full_path):
+            os.makedirs(full_path)
+        else:
+            pass
 
 
 def list_excel_files(directory: str) -> list:
@@ -27,7 +50,7 @@ def list_excel_files(directory: str) -> list:
     return excel_files
 
 
-def toggle_address_status(status: str = None, training_data_path: str = None) -> list:
+def toggle_address_status(status: str = None, training_data_path: str = None, user_conformation: int = 0) -> list:
     """Toggles the training data path and output path based on the provided status.
 
     Parameters
@@ -38,6 +61,8 @@ def toggle_address_status(status: str = None, training_data_path: str = None) ->
         - "2": Retrieves all Excel files from the "data" folder on the desktop as the training data path, and sets the output path to the desktop.
     training_data_path : str, optional
         The path to the training data. This parameter is used when `status` is "1".
+    user_conformation : int, optional
+        Whether the user needs to confirm that the processing file has been placed.
 
     Returns
     -------
@@ -49,8 +74,17 @@ def toggle_address_status(status: str = None, training_data_path: str = None) ->
     if int(status) == 1:
         working_path = os.path.dirname(os.getcwd())
     elif int(status) == 2:
+        file_name = ["geopi_data_input", "geopi_data_output"]
         desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
-        training_data_path = list_excel_files(os.path.join(desktop_path, "data"))
+        ensure_directories_exist(file_name, desktop_path)
+        if int(user_conformation) == 1:
+            while True:
+                confirmation_parameter = input("Place the data you need to process in the geopi_data_input folder on the desktop [y]: ")
+                if confirmation_parameter.lower() == "y":
+                    break
+                else:
+                    print("Please confirm again and enter 'y'!")
+        training_data_path = list_excel_files(os.path.join(desktop_path, "geopi_data_input"))
         working_path = desktop_path
     else:
         raise ValueError("Invalid status value. It should be '1' or '2'.")

@@ -45,6 +45,7 @@ from .data.data_readiness import (
     num_input,
     read_data,
     select_column_name,
+    set_folder_and_contents_hidden,
     show_data_columns,
     show_excel_columns,
 )
@@ -103,7 +104,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         sleep(0.75)
 
     # Call toggle_address_status and pass status and training_data_path as parameters to obtain the address of the training data
-    training_data_path = toggle_address_status(status=TOGGLE_ADDRESS_STATUS, training_data_path=training_data_path)[0]
+    training_data_path = toggle_address_status(status=TOGGLE_ADDRESS_STATUS, training_data_path=training_data_path, user_conformation=1)[0]
 
     # Check if the length of training_data_path is greater than 1
     if len(training_data_path) > 1:
@@ -169,8 +170,11 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     # Create a new experiment or use the previous experiment
     is_used_previous_experiment = Confirm.ask("✨ Use Previous Experiment", default=False)
     # Set the tracking uri to the local directory, in the future, we can set it to the remote server.
-    experiments_localtion = f"file:{WORKING_PATH}/geopi_tracking"
+    folder_path = os.path.join(os.path.join(WORKING_PATH, "geopi_data_output"), "geopi_tracking")
+    os.makedirs(folder_path, exist_ok=True)
+    experiments_localtion = f"file:{folder_path}"
     mlflow.set_tracking_uri(experiments_localtion)
+    set_folder_and_contents_hidden(folder_path)
     # Print the tracking uri for debugging.
     # print("tracking uri:", mlflow.get_tracking_uri())
     if is_used_previous_experiment:

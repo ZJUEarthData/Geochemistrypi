@@ -1,4 +1,5 @@
 import os
+import subprocess
 import sys
 import time
 from typing import Dict, List, Optional, Tuple, Union
@@ -574,3 +575,34 @@ def tuple_input(default: Tuple[int], prefix: Optional[str] = None, slogan: Optio
             option = eval(option)
             break
     return option
+
+
+def set_folder_and_contents_hidden(folder_path: str = None) -> None:
+    """
+    Sets the specified folder and all its contents (files and subdirectories) as hidden.
+
+    Parameters
+    ----------
+    folder_path : str
+        The path to the folder to be set as hidden.
+
+    Returns
+    -------
+    None
+    """
+    try:
+        # Recursively process all files and subdirectories in the folder
+        for root, dirs, files in os.walk(folder_path):
+            for name in dirs + files:
+                full_path = os.path.join(root, name)
+                try:
+                    subprocess.run(["attrib", "+H", full_path], check=True)
+                except subprocess.CalledProcessError as e:
+                    print(f"Failed to set {full_path} as hidden: {e}")
+        print(f"Successfully set {folder_path} and its contents as hidden.")
+
+        # Set the folder itself as hidden
+        subprocess.run(["attrib", "+H", folder_path], check=True)
+
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to set folder or its contents as hidden: {e}")

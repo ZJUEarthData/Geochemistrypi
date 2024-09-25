@@ -18,7 +18,7 @@ BUILT_IN_DATASET_PATH = os.path.join(PACKAGEDIR, "data", "dataset")
 WORKING_PATH = toggle_address_status(status=TOGGLE_ADDRESS_STATUS)[1]
 
 # the root directory where all the output stays
-OUTPUT_PATH = os.path.join(WORKING_PATH, "geopi_output")
+OUTPUT_PATH = os.path.join(WORKING_PATH, "geopi_data_output")
 
 # the directory where the artifact is saved within the MLflow run's artifact directory
 MLFLOW_ARTIFACT_DATA_PATH = "data"
