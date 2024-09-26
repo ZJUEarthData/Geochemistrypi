@@ -29,6 +29,7 @@ python-dotenv
 rich
 mlflow
 imblearn
+requests
 sphinx
 furo
 m2r2
