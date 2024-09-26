@@ -2,6 +2,9 @@ import os
 
 from .utils.toggle_address_status import toggle_address_status
 
+# Release version
+RELEASE_VERSION = "0.5.0"
+
 # Adjust the path of project data flow: The number 1 indicates standard mode, and the number 2 indicates APP mode.
 TOGGLE_ADDRESS_STATUS = 1
 
