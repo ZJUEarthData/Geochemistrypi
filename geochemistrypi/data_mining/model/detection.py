@@ -20,7 +20,7 @@ from .func.algo_anomalydetection._local_outlier_factor import local_outlier_fact
 class AnomalyDetectionWorkflowBase(WorkflowBase):
     """The base workflow class of anomaly detection algorithms."""
 
-    # common_function = []
+    common_function = [func.value for func in AnormalyDetectionCommonFunction]
 
     def __init__(self) -> None:
         super().__init__()
@@ -153,7 +153,7 @@ class IsolationForestAnomalyDetection(AnomalyDetectionWorkflowBase):
     """The automation workflow of using Isolation Forest algorithm to make insightful products."""
 
     name = "Isolation Forest"
-    # special_function = []
+    special_function = []
 
     def __init__(
         self,
@@ -306,7 +306,8 @@ class LocalOutlierFactorAnomalyDetection(AnomalyDetectionWorkflowBase):
     """The automation workflow of using Local Outlier Factor algorithm to make insightful products."""
 
     name = "Local Outlier Factor"
-    # special_function = []
+    special_function = [func.value for func in LocalOutlierFactorSpecialFunction]
+
 
     def __init__(
         self,
