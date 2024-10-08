@@ -308,7 +308,6 @@ class LocalOutlierFactorAnomalyDetection(AnomalyDetectionWorkflowBase):
     name = "Local Outlier Factor"
     special_function = [func.value for func in LocalOutlierFactorSpecialFunction]
 
-
     def __init__(
         self,
         n_neighbors: int = 20,
