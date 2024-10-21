@@ -10,7 +10,8 @@ import xgboost
 from flaml import AutoML
 from multipledispatch import dispatch
 from rich import print
-from sklearn.ensemble import ExtraTreesClassifier, GradientBoostingClassifier, RandomForestClassifier
+from sklearn.ensemble import ExtraTreesClassifier, GradientBoostingClassifier, RandomForestClassifier, \
+    AdaBoostClassifier
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.metrics import classification_report
 from sklearn.neighbors import KNeighborsClassifier
@@ -18,7 +19,8 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 
-from ..constants import CUSTOMIZE_LABEL_STRATEGY, MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, OPTION, RAY_FLAML, SAMPLE_BALANCE_STRATEGY, SECTION
+from ..constants import CUSTOMIZE_LABEL_STRATEGY, MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, OPTION, RAY_FLAML, \
+    SAMPLE_BALANCE_STRATEGY, SECTION
 from ..data.data_readiness import limit_num_input, num2option, num_input
 from ..plot.statistic_plot import basic_statistic
 from ..utils.base import clear_output, save_data, save_fig, save_text
@@ -45,6 +47,7 @@ from .func.algo_classification._rf import random_forest_manual_hyper_parameters
 from .func.algo_classification._sgd_classification import sgd_classificaiton_manual_hyper_parameters
 from .func.algo_classification._svc import svc_manual_hyper_parameters
 from .func.algo_classification._xgboost import xgboost_manual_hyper_parameters
+from .func.algo_classification._adaboost import adaboost_manual_hyper_parameters
 
 
 class ClassificationWorkflowBase(WorkflowBase):
@@ -134,7 +137,8 @@ class ClassificationWorkflowBase(WorkflowBase):
         return average
 
     @staticmethod
-    def _classification_report(y_true: pd.DataFrame, y_predict: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
+    def _classification_report(y_true: pd.DataFrame, y_predict: pd.DataFrame, algorithm_name: str,
+                               store_path: str) -> None:
         """Print the classification report of the model."""
         print("-----* Classification Report *-----")
         print(classification_report(y_true, y_predict))
@@ -144,7 +148,8 @@ class ClassificationWorkflowBase(WorkflowBase):
         mlflow.log_artifact(os.path.join(store_path, f"Classification Report - {algorithm_name}.txt"))
 
     @staticmethod
-    def _cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, graph_name: str, average: str, cv_num: int, algorithm_name: str, store_path: str) -> None:
+    def _cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, graph_name: str,
+                          average: str, cv_num: int, algorithm_name: str, store_path: str) -> None:
         """Perform cross validation on the model."""
         print(f"-----* {graph_name} *-----")
         print(f"K-Folds: {cv_num}")
@@ -154,7 +159,8 @@ class ClassificationWorkflowBase(WorkflowBase):
 
     @staticmethod
     def _plot_confusion_matrix(
-        y_test: pd.DataFrame, y_test_predict: pd.DataFrame, name_column: str, graph_name: str, trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str
+            y_test: pd.DataFrame, y_test_predict: pd.DataFrame, name_column: str, graph_name: str,
+            trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str
     ) -> None:
         """Plot the confusion matrix of the model."""
         print("-----* {graph_name} *-----")
@@ -166,9 +172,11 @@ class ClassificationWorkflowBase(WorkflowBase):
         save_data(data, name_column, f"{graph_name} - {algorithm_name}", local_path, mlflow_path, True)
 
     @staticmethod
-    def _plot_precision_recall(X_test: pd.DataFrame, y_test: pd.DataFrame, name_column: str, trained_model: object, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_precision_recall(X_test: pd.DataFrame, y_test: pd.DataFrame, name_column: str, trained_model: object,
+                               graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         print(f"-----* {graph_name} *-----")
-        y_probs, precisions, recalls, thresholds = plot_precision_recall(X_test, y_test, trained_model, graph_name, algorithm_name)
+        y_probs, precisions, recalls, thresholds = plot_precision_recall(X_test, y_test, trained_model, graph_name,
+                                                                         algorithm_name)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
         y_probs = pd.DataFrame(y_probs, columns=["Probabilities"])
         precisions = pd.DataFrame(precisions, columns=["Precisions"])
@@ -179,10 +187,12 @@ class ClassificationWorkflowBase(WorkflowBase):
 
     @staticmethod
     def _plot_precision_recall_threshold(
-        X_test: pd.DataFrame, y_test: pd.DataFrame, name_column: str, trained_model: object, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str
+            X_test: pd.DataFrame, y_test: pd.DataFrame, name_column: str, trained_model: object, graph_name: str,
+            algorithm_name: str, local_path: str, mlflow_path: str
     ) -> None:
         print(f"-----* {graph_name} *-----")
-        y_probs, precisions, recalls, thresholds = plot_precision_recall_threshold(X_test, y_test, trained_model, graph_name, algorithm_name)
+        y_probs, precisions, recalls, thresholds = plot_precision_recall_threshold(X_test, y_test, trained_model,
+                                                                                   graph_name, algorithm_name)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
         y_probs = pd.DataFrame(y_probs, columns=["Probabilities"])
         precisions = pd.DataFrame(precisions, columns=["Precisions"])
@@ -194,7 +204,8 @@ class ClassificationWorkflowBase(WorkflowBase):
         save_data(thresholds, name_column, f"{graph_name} - Thresholds", local_path, mlflow_path)
 
     @staticmethod
-    def _plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, name_column: str, graph_name: str, trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, name_column: str, graph_name: str, trained_model: object,
+                  algorithm_name: str, local_path: str, mlflow_path: str) -> None:
         print(f"-----* {graph_name} *-----")
         y_probs, fpr, tpr, thresholds = plot_ROC(X_test, y_test, trained_model, graph_name, algorithm_name)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
@@ -209,7 +220,8 @@ class ClassificationWorkflowBase(WorkflowBase):
 
     @staticmethod
     def _plot_2d_decision_boundary(
-        X: pd.DataFrame, X_test: pd.DataFrame, name_column1: str, name_column2: str, trained_model: object, graph_name: str, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str
+            X: pd.DataFrame, X_test: pd.DataFrame, name_column1: str, name_column2: str, trained_model: object,
+            graph_name: str, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str
     ) -> None:
         """Plot the decision boundary of the trained model with the testing data set below."""
         print(f"-----* {graph_name} *-----")
@@ -219,7 +231,8 @@ class ClassificationWorkflowBase(WorkflowBase):
         save_data(X_test, name_column2, f"{graph_name} - X Test", local_path, mlflow_path)
 
     @staticmethod
-    def sample_balance(X_train: pd.DataFrame, y_train: pd.DataFrame, name_column: str, local_path: str, mlflow_path: str) -> tuple:
+    def sample_balance(X_train: pd.DataFrame, y_train: pd.DataFrame, name_column: str, local_path: str,
+                       mlflow_path: str) -> tuple:
         """Use this method when the sample size is unbalanced."""
         print("-*-*- Sample Balance on Train Set -*-*-")
         num2option(OPTION)
@@ -228,7 +241,8 @@ class ClassificationWorkflowBase(WorkflowBase):
             print("Which strategy do you want to apply?")
             num2option(SAMPLE_BALANCE_STRATEGY)
             sample_balance_num = limit_num_input(SAMPLE_BALANCE_STRATEGY, SECTION[1], num_input)
-            sample_balance_config, X_train, y_train = resampler(X_train, y_train, SAMPLE_BALANCE_STRATEGY, sample_balance_num - 1)
+            sample_balance_config, X_train, y_train = resampler(X_train, y_train, SAMPLE_BALANCE_STRATEGY,
+                                                                sample_balance_num - 1)
             train_set_resampled = pd.concat([X_train, y_train], axis=1)
             print("Train Set After Resampling:")
             print(train_set_resampled)
@@ -243,7 +257,8 @@ class ClassificationWorkflowBase(WorkflowBase):
 
     @staticmethod
     def customize_label(
-        y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, name_column1: str, name_column2: str, name_column3: str, local_path: str, mlflow_path: str
+            y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, name_column1: str, name_column2: str,
+            name_column3: str, local_path: str, mlflow_path: str
     ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """Using this function to customize the label to which samples of each category belong."""
         print("-*-*- Customize Label on Label Set -*-*-")
@@ -2946,6 +2961,176 @@ class GradientBoostingClassification(TreeWorkflowMixin, ClassificationWorkflowBa
         )
         self._plot_tree(
             trained_model=self.auto_model.estimators_[0][0],
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+
+
+class AdaBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
+    """The automation workflow of using AdaBoosting algorithm to make insightful products."""
+
+    name = "AdaBoost"
+    special_function = ["Feature Importance Diagram", "Single Tree Diagram"]
+
+    def __init__(
+            self,
+            estimator: object = None,
+            *,
+            n_estimators: int = 50,
+            learning_rate: float = 1.0,
+            random_state: Optional[int] = None,
+            # algorithm: str = "SAMME",  # may deprecated in new version
+    ) -> None:
+        """
+        Parameters
+        ----------
+        estimator : object, default=None
+            The base estimator from which the boosted ensemble is built.
+            Support for sample weighting is required, as well as proper
+            ``classes_`` and ``n_classes_`` attributes. If ``None``, then
+            the base estimator is :class:`~sklearn.tree.DecisionTreeClassifier`
+            initialized with `max_depth=1`.
+
+            .. versionadded:: 1.2
+               `base_estimator` was renamed to `estimator`.
+
+        n_estimators : int, default=50
+            The maximum number of estimators at which boosting is terminated.
+            In case of perfect fit, the learning procedure is stopped early.
+            Values must be in the range `[1, inf)`.
+
+        learning_rate : float, default=1.0
+            Weight applied to each classifier at each boosting iteration. A higher
+            learning rate increases the contribution of each classifier. There is
+            a trade-off between the `learning_rate` and `n_estimators` parameters.
+            Values must be in the range `(0.0, inf)`.
+
+        algorithm : {'SAMME'}, default='SAMME'
+            Use the SAMME discrete boosting algorithm.
+
+            .. deprecated:: 1.6
+                `algorithm` is deprecated and will be removed in version 1.8. This
+                estimator only implements the 'SAMME' algorithm.
+
+        random_state : int, RandomState instance or None, default=None
+            Controls the random seed given at each `estimator` at each
+            boosting iteration.
+            Thus, it is only used when `estimator` exposes a `random_state`.
+            Pass an int for reproducible output across multiple function calls.
+            See :term:`Glossary <random_state>`.
+
+        References
+        ----------
+        Scikit-learn API: sklearn.ensemble.AdaBoostClassifier
+        https://scikit-learn.org/1.5/modules/generated/sklearn.ensemble.AdaBoostClassifier.html
+        """
+        super().__init__()
+        self.estimator = None
+        self.n_estimators = n_estimators
+        self.learning_rate = learning_rate
+        # self.algorithm = algorithm
+
+        # if 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
+        if random_state:
+            self.random_state = (random_state,)
+        else:
+            self.random_state = (self.random_state,)
+
+        self.model = AdaBoostClassifier(
+            base_estimator=self.estimator,
+            n_estimators=self.n_estimators,
+            learning_rate=self.learning_rate,
+            # algorithm=self.algorithm,  # may be deprecated in version 1.6 of sklearn
+            random_state=self.random_state[0],
+        )
+
+        self.naming = AdaBoostClassification.name
+        self.customized = True
+        self.customized_name = "AdaBoost"
+
+    @property
+    def settings(self) -> Dict:
+        """The configuration of AdaBoosting to implenment AutoML by FLAML framework."""
+        configuration = {
+            "time_budget": 10,  # total running time in seconds
+            "metric": "accuracy",
+            "estimator_list": [self.customized_name],  # list of ML learners
+            "task": "classification",  # task type
+        }
+        return configuration
+
+    @property
+    def customization(self) -> object:
+        """The customized AdaBoosting of FLAML framework"""
+        from flaml import tune
+        from flaml.data import CLASSIFICATION
+        from flaml.model import SKLearnEstimator
+        from sklearn.ensemble import AdaBoostClassifier
+
+        class MyAdaBoostClassification(SKLearnEstimator):
+            def __init__(self, task="classification", n_jobs=None, **config):
+                super().__init__(task, **config)
+                if task in CLASSIFICATION:
+                    # print("hey")
+                    self.estimator_class = AdaBoostClassifier
+                    # print(self.estimator_class)
+
+            @classmethod
+            def search_space(cls, data_size, task):
+                space = {
+                    "n_estimators": {"domain": tune.lograndint(lower=4, upper=512), "init_value": 50},
+                    "learning_rate": {"domain": tune.loguniform(lower=0.001, upper=1.0), "init_value": 0.1},
+                }
+                return space
+
+        return MyAdaBoostClassification
+
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
+        """Manual hyper-parameters specification."""
+        print(f"-*-* {cls.name} - Hyper-parameters Specification -*-*")
+        hyper_parameters = adaboost_manual_hyper_parameters()
+        clear_output()
+        return hyper_parameters
+
+    @dispatch()
+    def special_components(self, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_feature_importance(
+            X_train=AdaBoostClassification.X_train,
+            name_column=DecisionTreeClassification.name_train,
+            trained_model=self.model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._plot_tree(
+            trained_model=self.model.estimators_[0],
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+
+    @dispatch(bool)
+    def special_components(self, is_automl: bool, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by FLAML frameworks"""
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_feature_importance(
+            X_train=AdaBoostClassification.X_train,
+            name_column=DecisionTreeClassification.name_train,
+            trained_model=self.auto_model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._plot_tree(
+            trained_model=self.auto_model.estimators_[0],
             image_config=self.image_config,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,

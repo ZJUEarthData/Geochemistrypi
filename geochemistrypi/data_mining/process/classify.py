@@ -10,6 +10,7 @@ from ..model.classification import (
     DecisionTreeClassification,
     ExtraTreesClassification,
     GradientBoostingClassification,
+    AdaBoostClassification,
     KNNClassification,
     LogisticRegressionClassification,
     MLPClassification,
@@ -139,6 +140,13 @@ class ClassificationModelSelection(ModelSelectionBase):
                 subsample=hyper_parameters["subsample"],
                 loss=hyper_parameters["loss"],
             )
+        elif self.model_name == "AdaBoost":
+            hyper_parameters = AdaBoostClassification.manual_hyper_parameters()
+            self.clf_workflow = AdaBoostClassification(
+                n_estimators=hyper_parameters["n_estimators"],
+                learning_rate=hyper_parameters["learning_rate"]
+
+            )
         elif self.model_name == "K-Nearest Neighbors":
             hyper_parameters = KNNClassification.manual_hyper_parameters()
             self.clf_workflow = KNNClassification(
@@ -240,6 +248,8 @@ class ClassificationModelSelection(ModelSelectionBase):
             self.clf_workflow = ExtraTreesClassification()
         elif self.model_name == "Gradient Boosting":
             self.clf_workflow = GradientBoostingClassification()
+        elif self.model_name == "AdaBoost":
+            self.clf_workflow = AdaBoostClassification()
         elif self.model_name == "K-Nearest Neighbors":
             self.clf_workflow = KNNClassification()
         elif self.model_name == "Stochastic Gradient Descent":
