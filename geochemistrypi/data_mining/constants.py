@@ -67,6 +67,7 @@ CLASSIFICATION_MODELS = [
     "Gradient Boosting",
     "K-Nearest Neighbors",
     "Stochastic Gradient Descent",
+    "AdaBoost"
     # "Bagging Classification",
     # "Decision Tree",
     # Histogram-based Gradient Boosting,
