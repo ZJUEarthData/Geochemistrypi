@@ -3,7 +3,7 @@ from typing import Dict
 from rich import print
 
 from ....constants import SECTION
-from ....data.data_readiness import num_input, str_input, float_input
+from ....data.data_readiness import num_input, float_input
 
 
 def adaboost_manual_hyper_parameters() -> Dict:
