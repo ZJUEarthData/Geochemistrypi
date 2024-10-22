@@ -5,17 +5,20 @@ import pandas as pd
 from multipledispatch import dispatch
 
 from ..constants import MLFLOW_ARTIFACT_DATA_PATH
-from ..model.classification import (AdaBoostClassification,
-                                    ClassificationWorkflowBase,
-                                    DecisionTreeClassification,
-                                    ExtraTreesClassification,
-                                    GradientBoostingClassification,
-                                    KNNClassification,
-                                    LogisticRegressionClassification,
-                                    MLPClassification,
-                                    RandomForestClassification,
-                                    SGDClassification, SVMClassification,
-                                    XGBoostClassification)
+from ..model.classification import (
+    AdaBoostClassification,
+    ClassificationWorkflowBase,
+    DecisionTreeClassification,
+    ExtraTreesClassification,
+    GradientBoostingClassification,
+    KNNClassification,
+    LogisticRegressionClassification,
+    MLPClassification,
+    RandomForestClassification,
+    SGDClassification,
+    SVMClassification,
+    XGBoostClassification,
+)
 from ._base import ModelSelectionBase
 
 
@@ -43,13 +46,38 @@ class ClassificationModelSelection(ModelSelectionBase):
         """Train by Scikit-learn framework."""
 
         # Load the required data into the base class's attributes
-        self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test, name_train=name_train, name_test=name_test, name_all=name_all)
+        self.clf_workflow.data_upload(
+            X=X,
+            y=y,
+            X_train=X_train,
+            X_test=X_test,
+            y_train=y_train,
+            y_test=y_test,
+            name_train=name_train,
+            name_test=name_test,
+            name_all=name_all,
+        )
 
         # Customize label
-        y, y_train, y_test = self.clf_workflow.customize_label(y, y_train, y_test, name_all, name_train, name_test, os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH)
+        y, y_train, y_test = self.clf_workflow.customize_label(
+            y,
+            y_train,
+            y_test,
+            name_all,
+            name_train,
+            name_test,
+            os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"),
+            MLFLOW_ARTIFACT_DATA_PATH,
+        )
 
         # Sample balance
-        sample_balance_config, X_train, y_train = self.clf_workflow.sample_balance(X_train, y_train, name_train, os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH)
+        sample_balance_config, X_train, y_train = self.clf_workflow.sample_balance(
+            X_train,
+            y_train,
+            name_train,
+            os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"),
+            MLFLOW_ARTIFACT_DATA_PATH,
+        )
 
         # Model option
         if self.model_name == "Support Vector Machine":
@@ -94,7 +122,9 @@ class ClassificationModelSelection(ModelSelectionBase):
                 lambd=hyper_parameters["lambd"],
             )
         elif self.model_name == "Logistic Regression":
-            hyper_parameters = LogisticRegressionClassification.manual_hyper_parameters()
+            hyper_parameters = (
+                LogisticRegressionClassification.manual_hyper_parameters()
+            )
             self.clf_workflow = LogisticRegressionClassification(
                 penalty=hyper_parameters["penalty"],
                 C=hyper_parameters["C"],
@@ -141,8 +171,7 @@ class ClassificationModelSelection(ModelSelectionBase):
             hyper_parameters = AdaBoostClassification.manual_hyper_parameters()
             self.clf_workflow = AdaBoostClassification(
                 n_estimators=hyper_parameters["n_estimators"],
-                learning_rate=hyper_parameters["learning_rate"]
-
+                learning_rate=hyper_parameters["learning_rate"],
             )
         elif self.model_name == "K-Nearest Neighbors":
             hyper_parameters = KNNClassification.manual_hyper_parameters()
@@ -186,10 +215,20 @@ class ClassificationModelSelection(ModelSelectionBase):
         y_test_predict = self.clf_workflow.np2pd(y_test_predict, y_test.columns)
         y_test_predict = y_test_predict.dropna()
         y_test_predict = y_test_predict.reset_index(drop=True)
-        self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test, y_test_predict=y_test_predict)
+        self.clf_workflow.data_upload(
+            X=X,
+            y=y,
+            X_train=X_train,
+            X_test=X_test,
+            y_train=y_train,
+            y_test=y_test,
+            y_test_predict=y_test_predict,
+        )
 
         # Save the model hyper-parameters
-        self.clf_workflow.save_hyper_parameters(hyper_parameters, self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
+        self.clf_workflow.save_hyper_parameters(
+            hyper_parameters, self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH")
+        )
 
         # Common components for every classification algorithm
         self.clf_workflow.common_components()
@@ -198,13 +237,29 @@ class ClassificationModelSelection(ModelSelectionBase):
         self.clf_workflow.special_components()
 
         # Save the prediction result
-        self.clf_workflow.data_save(y_train_predict, name_train, "Y Train Predict", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Model Train Prediction")
-        self.clf_workflow.data_save(y_test_predict, name_test, "Y Test Predict", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Model Test Prediction")
+        self.clf_workflow.data_save(
+            y_train_predict,
+            name_train,
+            "Y Train Predict",
+            os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"),
+            MLFLOW_ARTIFACT_DATA_PATH,
+            "Model Train Prediction",
+        )
+        self.clf_workflow.data_save(
+            y_test_predict,
+            name_test,
+            "Y Test Predict",
+            os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"),
+            MLFLOW_ARTIFACT_DATA_PATH,
+            "Model Test Prediction",
+        )
 
         # Save the trained model
         self.clf_workflow.model_save()
 
-    @dispatch(object, object, object, object, object, object, object, object, object, bool)
+    @dispatch(
+        object, object, object, object, object, object, object, object, object, bool
+    )
     def activate(
         self,
         X: pd.DataFrame,
@@ -220,13 +275,38 @@ class ClassificationModelSelection(ModelSelectionBase):
     ) -> None:
         """Train by FLAML framework + RAY framework."""
 
-        self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test, name_train=name_train, name_test=name_test, name_all=name_all)
+        self.clf_workflow.data_upload(
+            X=X,
+            y=y,
+            X_train=X_train,
+            X_test=X_test,
+            y_train=y_train,
+            y_test=y_test,
+            name_train=name_train,
+            name_test=name_test,
+            name_all=name_all,
+        )
 
         # Customize label
-        y, y_train, y_test = self.clf_workflow.customize_label(y, y_train, y_test, name_all, name_train, name_test, os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH)
+        y, y_train, y_test = self.clf_workflow.customize_label(
+            y,
+            y_train,
+            y_test,
+            name_all,
+            name_train,
+            name_test,
+            os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"),
+            MLFLOW_ARTIFACT_DATA_PATH,
+        )
 
         # Sample balance
-        sample_balance_config, X_train, y_train = self.clf_workflow.sample_balance(X_train, y_train, name_train, os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH)
+        sample_balance_config, X_train, y_train = self.clf_workflow.sample_balance(
+            X_train,
+            y_train,
+            name_train,
+            os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"),
+            MLFLOW_ARTIFACT_DATA_PATH,
+        )
 
         # Model option
         if self.model_name == "Support Vector Machine":
@@ -265,13 +345,29 @@ class ClassificationModelSelection(ModelSelectionBase):
         y_test_predict = self.clf_workflow.np2pd(y_test_predict, y_test.columns)
         y_test_predict = y_test_predict.dropna()
         y_test_predict = y_test_predict.reset_index(drop=True)
-        self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test, y_test_predict=y_test_predict)
+        self.clf_workflow.data_upload(
+            X=X,
+            y=y,
+            X_train=X_train,
+            X_test=X_test,
+            y_train=y_train,
+            y_test=y_test,
+            y_test_predict=y_test_predict,
+        )
 
         # Save the model hyper-parameters
         if self.clf_workflow.ray_best_model is not None:
-            self.clf_workflow.save_hyper_parameters(self.clf_workflow.ray_best_model.get_params(), self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
+            self.clf_workflow.save_hyper_parameters(
+                self.clf_workflow.ray_best_model.get_params(),
+                self.model_name,
+                os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"),
+            )
         else:
-            self.clf_workflow.save_hyper_parameters(self.clf_workflow.automl.best_config, self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
+            self.clf_workflow.save_hyper_parameters(
+                self.clf_workflow.automl.best_config,
+                self.model_name,
+                os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"),
+            )
 
         # Common components for every classification algorithm
         self.clf_workflow.common_components(is_automl)
@@ -280,8 +376,22 @@ class ClassificationModelSelection(ModelSelectionBase):
         self.clf_workflow.special_components(is_automl)
 
         # Save the prediction result
-        self.clf_workflow.data_save(y_train_predict, name_train, "Y Train Predict", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Model Train Prediction")
-        self.clf_workflow.data_save(y_test_predict, name_test, "Y Test Predict", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Model Test Prediction")
+        self.clf_workflow.data_save(
+            y_train_predict,
+            name_train,
+            "Y Train Predict",
+            os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"),
+            MLFLOW_ARTIFACT_DATA_PATH,
+            "Model Train Prediction",
+        )
+        self.clf_workflow.data_save(
+            y_test_predict,
+            name_test,
+            "Y Test Predict",
+            os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"),
+            MLFLOW_ARTIFACT_DATA_PATH,
+            "Model Test Prediction",
+        )
 
         # Save the trained model
         self.clf_workflow.model_save(is_automl)
