@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import json
 import os
-from typing import Any, Callable, Dict, List, Literal, Optional, Sequence, Tuple, Union
+from typing import (Any, Callable, Dict, List, Literal, Optional, Sequence,
+                    Tuple, Union)
 
 import mlflow
 import numpy as np
@@ -10,12 +11,9 @@ import xgboost
 from flaml import AutoML
 from multipledispatch import dispatch
 from rich import print
-from sklearn.ensemble import (
-    AdaBoostClassifier,
-    ExtraTreesClassifier,
-    GradientBoostingClassifier,
-    RandomForestClassifier,
-)
+from sklearn.ensemble import (AdaBoostClassifier, ExtraTreesClassifier,
+                              GradientBoostingClassifier,
+                              RandomForestClassifier)
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.metrics import classification_report
 from sklearn.neighbors import KNeighborsClassifier
@@ -23,50 +21,37 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 
-from ..constants import (
-    CUSTOMIZE_LABEL_STRATEGY,
-    MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-    OPTION,
-    RAY_FLAML,
-    SAMPLE_BALANCE_STRATEGY,
-    SECTION,
-)
+from ..constants import (CUSTOMIZE_LABEL_STRATEGY,
+                         MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, OPTION,
+                         RAY_FLAML, SAMPLE_BALANCE_STRATEGY, SECTION)
 from ..data.data_readiness import limit_num_input, num2option, num_input
 from ..plot.statistic_plot import basic_statistic
 from ..utils.base import clear_output, save_data, save_fig, save_text
 from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
-from .func.algo_classification._adaboost import adaboost_manual_hyper_parameters
-from .func.algo_classification._common import (
-    cross_validation,
-    plot_2d_decision_boundary,
-    plot_confusion_matrix,
-    plot_precision_recall,
-    plot_precision_recall_threshold,
-    plot_ROC,
-    resampler,
-    reset_label,
-    score,
-)
-from .func.algo_classification._decision_tree import (
-    decision_tree_manual_hyper_parameters,
-)
+from .func.algo_classification._adaboost import \
+    adaboost_manual_hyper_parameters
+from .func.algo_classification._common import (cross_validation,
+                                               plot_2d_decision_boundary,
+                                               plot_confusion_matrix,
+                                               plot_precision_recall,
+                                               plot_precision_recall_threshold,
+                                               plot_ROC, resampler,
+                                               reset_label, score)
+from .func.algo_classification._decision_tree import \
+    decision_tree_manual_hyper_parameters
 from .func.algo_classification._enum import ClassificationCommonFunction
-from .func.algo_classification._extra_trees import extra_trees_manual_hyper_parameters
-from .func.algo_classification._gradient_boosting import (
-    gradient_boosting_manual_hyper_parameters,
-)
+from .func.algo_classification._extra_trees import \
+    extra_trees_manual_hyper_parameters
+from .func.algo_classification._gradient_boosting import \
+    gradient_boosting_manual_hyper_parameters
 from .func.algo_classification._knn import knn_manual_hyper_parameters
 from .func.algo_classification._logistic_regression import (
-    logistic_regression_manual_hyper_parameters,
-    plot_logistic_importance,
-)
-from .func.algo_classification._multi_layer_perceptron import (
-    multi_layer_perceptron_manual_hyper_parameters,
-)
+    logistic_regression_manual_hyper_parameters, plot_logistic_importance)
+from .func.algo_classification._multi_layer_perceptron import \
+    multi_layer_perceptron_manual_hyper_parameters
 from .func.algo_classification._rf import random_forest_manual_hyper_parameters
-from .func.algo_classification._sgd_classification import (
-    sgd_classificaiton_manual_hyper_parameters,
-)
+from .func.algo_classification._sgd_classification import \
+    sgd_classificaiton_manual_hyper_parameters
 from .func.algo_classification._svc import svc_manual_hyper_parameters
 from .func.algo_classification._xgboost import xgboost_manual_hyper_parameters
 
