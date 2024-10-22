@@ -5,20 +5,17 @@ import pandas as pd
 from multipledispatch import dispatch
 
 from ..constants import MLFLOW_ARTIFACT_DATA_PATH
-from ..model.classification import (
-    ClassificationWorkflowBase,
-    DecisionTreeClassification,
-    ExtraTreesClassification,
-    GradientBoostingClassification,
-    AdaBoostClassification,
-    KNNClassification,
-    LogisticRegressionClassification,
-    MLPClassification,
-    RandomForestClassification,
-    SGDClassification,
-    SVMClassification,
-    XGBoostClassification,
-)
+from ..model.classification import (AdaBoostClassification,
+                                    ClassificationWorkflowBase,
+                                    DecisionTreeClassification,
+                                    ExtraTreesClassification,
+                                    GradientBoostingClassification,
+                                    KNNClassification,
+                                    LogisticRegressionClassification,
+                                    MLPClassification,
+                                    RandomForestClassification,
+                                    SGDClassification, SVMClassification,
+                                    XGBoostClassification)
 from ._base import ModelSelectionBase
 
 
