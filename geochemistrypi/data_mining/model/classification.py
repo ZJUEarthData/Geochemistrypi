@@ -2981,7 +2981,8 @@ class AdaBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             n_estimators: int = 50,
             learning_rate: float = 1.0,
             random_state: Optional[int] = None,
-            # algorithm: str = "SAMME",  # may deprecated in new version
+            max_depth: int = 1,
+            # algorithm: str = "SAMME",  # may deprecated in new sci-kit version 1.6
     ) -> None:
         """
         Parameters
@@ -3027,9 +3028,10 @@ class AdaBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         https://scikit-learn.org/1.5/modules/generated/sklearn.ensemble.AdaBoostClassifier.html
         """
         super().__init__()
-        self.estimator = None
+        self.estimator = DecisionTreeClassifier(max_depth=max_depth)
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
+        self.max_depth = max_depth
         # self.algorithm = algorithm
 
         # if 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
@@ -3043,7 +3045,7 @@ class AdaBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             n_estimators=self.n_estimators,
             learning_rate=self.learning_rate,
             # algorithm=self.algorithm,  # may be deprecated in version 1.6 of sklearn
-            random_state=self.random_state[0],
+            random_state=self.random_state[0]
         )
 
         self.naming = AdaBoostClassification.name
