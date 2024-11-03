@@ -16,7 +16,8 @@ export default [
       'space-before-function-paren': 0,
       'generator-star-spacing': 'off',
       'object-curly-spacing': 0, // Enforce consistent spacing within curly braces
-      'array-bracket-spacing': 0 // square brackets
+      'array-bracket-spacing': 0, // square brackets
+      'no-irregular-whitespace':0
     }
   }
 ]
