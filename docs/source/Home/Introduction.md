@@ -8,15 +8,11 @@
 
 ---
 
-**Documentation**: <a href="https://geochemistrypi.readthedocs.io" target="_blank">https://geochemistrypi.readthedocs.io</a>
+**Online Documentation**: <a href="https://geochemistrypi.readthedocs.io" target="_blank">https://geochemistrypi.readthedocs.io</a>
 
 **Source Code**: <a href="https://github.com/ZJUEarthData/geochemistrypi" target="_blank">https://github.com/ZJUEarthData/geochemistrypi</a>
 
 ---
-
-# Introduction
-
-## What it is
 
 Geochemistry π is an **open-sourced highly automated machine learning Python framework** dedicating to build up MLOps level 1 software product for data-driven geochemistry discovery on tabular data.
 
@@ -33,6 +29,8 @@ Key features are:
 + **Traceable**: It integrates MLflow to build special storage mechanism to streamline the end-to-end machine learning lifecycle.
 
 Latest Update: follow up by clicking `Starred` and  `Watch` on our [GitHub repository](https://github.com/ZJUEarthData/geochemistrypi), then get email notifications of the newest features automatically.
+
+Note: **Chatbot** driven by multi-agent system is available in the right-bottom corner of [Online Documentation](https://geochemistrypi.readthedocs.io) with a blue button.
 
 The following figure is the simplified overview of Geochemistry π: <br>
 
@@ -60,6 +58,8 @@ Geochemistry π was selected for featuring as an Editor’s Highlight in EOS 
 
 Eos Website: https://eos.org/editor-highlights/machine-learning-for-geochemists-who-dont-want-to-code.
 
+![Geochemistry pi news](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/bdd33a31-824a-492e-adcf-e660da4eaf1d)
+
 ## Quick Installation
 
 Our software is well tested on **macOS** and **Windows** system with **Python 3.9**. Other systems and Python version are not guranteed.
@@ -72,7 +72,7 @@ pip install geochemistrypi
 
 Download the latest version to avoid some old version issues, such as dependency downloading.
 ```
-pip install "geochemistrypi==0.5.0"
+pip install "geochemistrypi==0.6.1"
 ```
 
 One instruction to download on **Jupyter Notebook** or **Google Colab**.
@@ -82,7 +82,7 @@ One instruction to download on **Jupyter Notebook** or **Google Colab**.
 ```
 Download the latest version to avoid some old version issues, such as dependency downloading.
 ```
-!pip install "geochemistrypi==0.5.0"
+!pip install "geochemistrypi==0.6.1"
 ```
 Check the downloaded version of our software:
 
@@ -225,8 +225,6 @@ Copy the URL shown on the console into any browser to open the MLflow web interf
 
 For more details: Please refer to:
 
-- Manual v1.1.0 for Geochemistry π - Beta [[Tencent Docs]](https://docs.qq.com/pdf/DQ0l5d2xVd2VwcnVW?&u=6868f96d4a384b309036e04e637e367a) | [[Google drive]](https://drive.google.com/file/d/1yryykCyWKM-Sj88fOYbOba6QkB_fu2ws/view?usp=sharing)
-
 - Geochemistry π - Download and Run the Beta Version [[Bilibili]](https://www.bilibili.com/video/BV1UM4y1Q7Ju/?spm_id_from=333.999.0.0&vd_source=27944ab3b73a78970c1a52a5dcbb9140) | [[YouTube]](https://www.youtube.com/watch?v=EeVaJ3H7_AU&list=PLy8hNsI55lvh1UHjhVhqNUj3xPdV9sEiM&index=9)
 
 - MLflow UI user guide - Geochemistry π v0.5.0 [[Bilibili]](https://b23.tv/CW5Rjmo) | [[YouTube]](https://www.youtube.com/watch?v=Yu1nzNeLfRY)
@@ -234,7 +232,7 @@ For more details: Please refer to:
 The following screenshot shows the downloads and launching of our software on macOS:
 
 <p align="center">
-  <img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/70728795-59b7-4741-ab5b-9e63d284ad37" alt="Downloads and Launching on macOS" width="450" />
+  <img src="https://github.com/user-attachments/assets/4fa0e2e7-20ad-4548-ab6c-ca5f26ba0106" alt="Downloads and Launching on macOS" width="450" />
 </p>
 
 ## Roadmap
@@ -294,18 +292,25 @@ The whole package is under construction and the documentation is progressively e
 
 ## Team Info
 
-**Leader:**
+**Leaders:**
 
 + Can He (Sany, National University of Singapore, Singapore)
+  Duty: Be responsible for the overall development of the project.
   Email: sanyhew1097618435@163.com
++ Jianming Zhao (Jamie, Zhejiang University, China)
+  Duty: Head of the technical group.
+  Email: jmzhao29@gmail.com
++ Yongkang Chan (Kill-virus, Lanzhou University, China)
+  Duty: Head of the product group.
+  Email: kk1361207571@163.com
++ Yang Lyu (Daisy, Zhejiang University, China)
+  Duty: Be responsible for the cloud product.
+  Email: lyuyang1007@zju.edu.cn
 
 **Technical Group:**
 
-+ Jianming Zhao (Jamie, Zhejiang University, China)
-+ Jianhao Sun (Jin, China University of Geosciences, Wuhan, China)
-+ Yongkang Chan (Kill-virus, Lanzhou University, China)
++ Jianhao Sun (Jin, Nanjing University, China)
 + Mengying Ye (Mary, Jilin University, China)
-+ Mengqi Gao (China University of Geosciences, Beijing, China)
 + Chengtu Li（Trenki, Henan Polytechnic University, Beijing, China）
 + Yucheng Yan (Andy, University of Sydney, Australia)
 + Ruitao Chang (China University of Geosciences Beijing, China)
@@ -313,15 +318,15 @@ The whole package is under construction and the documentation is progressively e
 
 **Product Group**:
 
-+ Yang Lyu (Daisy, Zhejiang University, China)
 + Siqi Yao (Clara, Dongguan University of Technology, China)
 + Zhelan Lin（Lan, Fuzhou University, China）
 + ShuYi Li (Communication University Of China, Beijing, China)
-+ Junbo Wang (China University Of Geosciences, Beijing, China)
++ Junbo Wang (China University of Geosciences, Beijing, China)
 + Haibin Wang（Watson, University of Sydney, Australia）
 + Guoqiang Qiu（Elsen, Fuzhou University, China）
 + Yating Dong (Yetta，Dongguan University of Technology，China)
 + Haibin Lai (Michael, Southern University of Science and Technology, China)
++ Bailun Jiang (EPSI / Lille University, France)
 
 ## Join Us :)
 
@@ -385,6 +390,7 @@ More Videos will be recorded soon.
 
 ## Contributors
 
++ Mengqi Gao (China University of Geosciences, Beijing, China)
 + Shengxin Wang (Samson, Lanzhou University, China)
 + Wenyu Zhao (Molly, Zhejiang University, China)
 + Qiuhao Zhao (Brad, Zhejiang University, China)
@@ -392,6 +398,16 @@ More Videos will be recorded soon.
 + Anzhou Li (Andrian, Zhejiang University, China)
 + Keran Li (Kirk, Chengdu University of Technology, China)
 + Dan Hu (Notre Dame University, United States)
++ Xunxin Liu (Tante, China University of Geosciences, Wuhan, China)
++ Fang Li (liv, Shenzhen University, China)
++ Xin Li (The University of Manchester, United Kingdom)
++ Ting Liu (Kira, Sun Yat-sen University, China)
++ Xirui Zhu (Rae, University of York, United Kingdom)
++ Aixiwake·Janganuer (Ayshuak, Sun Yat-sen University, China)
++ Zhenglin Xu (Garry, Jilin University, China)
++ Jianing Wang (National University of Singapore, Singapore)
++ Junchi Liao(Roceda, University of Electronic Science and Technology of China, China)
+ame University, United States)
 + Xunxin Liu (Tante, China University of Geosciences, Wuhan, China)
 + Fang Li (liv, Shenzhen University, China)
 + Xin Li (The University of Manchester, United Kingdom)
