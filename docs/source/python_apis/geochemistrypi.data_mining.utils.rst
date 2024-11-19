@@ -28,6 +28,14 @@ geochemistrypi.data\_mining.utils.mlflow\_utils module
    :undoc-members:
    :show-inheritance:
 
+geochemistrypi.data\_mining.utils.toggle\_address\_status module
+----------------------------------------------------------------
+
+.. automodule:: geochemistrypi.data_mining.utils.toggle_address_status
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 
