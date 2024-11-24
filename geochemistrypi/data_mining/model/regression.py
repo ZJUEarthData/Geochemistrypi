@@ -19,7 +19,7 @@ from sklearn.svm import SVR
 from sklearn.tree import DecisionTreeRegressor
 
 from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, RAY_FLAML
-from ..utils.base import clear_output, save_data, save_fig, save_text
+from ..utils.base import clear_output, save_data, save_data_without_data_identifier, save_fig, save_text
 from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
 from .func.algo_regression._bayesianridge_regression import bayesian_ridge_manual_hyper_parameters
 from .func.algo_regression._common import cross_validation, plot_predicted_vs_actual, plot_residuals, score
@@ -2024,7 +2024,7 @@ class MLPRegression(RegressionWorkflowBase):
         data = pd.DataFrame(trained_model.loss_curve_, columns=["Loss"])
         data.plot(title="Loss")
         save_fig(f"Loss Curve Diagram - {algorithm_name}", local_path, mlflow_path)
-        save_data(data, f"Loss Curve Diagram - {algorithm_name}", local_path, mlflow_path)
+        save_data_without_data_identifier(data, f"Loss Curve Diagram - {algorithm_name}", local_path, mlflow_path)
 
     @dispatch()
     def special_components(self, **kwargs) -> None:

@@ -395,7 +395,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         save_data(data_selected, name_column_select, "Data Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
         clear_output()
     data_selected = data_selected_dropped if drop_rows_with_missing_value_flag else data_selected
-    drop_name_column = data_selected_dropped_name.iloc[:, 0] if drop_rows_with_missing_value_flag else name_column_select
+    process_name_column = data_selected_dropped_name.iloc[:, 0] if drop_rows_with_missing_value_flag else name_column_select
     # If the selected data set contains missing values and the user wants to deal with the missing values and choose not to drop the rows with missing values,
     # then use imputation techniques to deal with the missing values.
     if imputed_flag:
@@ -419,10 +419,10 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
             test="kruskal",
             confidence=0.05,
         )
-        probability_plot(data_selected.columns, data_selected, data_selected_imputed)
+        probability_plot(data_selected.columns, data_selected, data_selected_imputed, process_name_column)
         basic_info(data_selected_imputed)
         basic_statistic(data_selected_imputed)
-        save_data(data_selected_imputed, drop_name_column, "Data Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+        save_data(data_selected_imputed, process_name_column, "Data Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
         del data_selected
         clear_output()
     else:
@@ -433,7 +433,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     # <--- Feature Engineering --->
     logger.debug("Feature Engineering")
     print("-*-*- Feature Engineering -*-*-")
-    feature_builder = FeatureConstructor(data_selected_imputed, drop_name_column)
+    feature_builder = FeatureConstructor(data_selected_imputed, process_name_column)
     data_selected_imputed_fe = feature_builder.build()
     # feature_engineering_config is possible to be {}
     feature_engineering_config = feature_builder.config
@@ -464,7 +464,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     # <--- Data Segmentation --->
     # divide X and y data set when it is supervised learning
     logger.debug("Data Divsion")
-    name_all = drop_name_column
+    name_all = process_name_column
     if mode_num == 1 or mode_num == 2:
         # Supervised learning
         print("-*-*- Data Segmentation - X Set and Y Set -*-*-")
@@ -538,7 +538,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         print("-*-*- Data Split - Train Set and Test Set -*-*-")
         print("Notice: Normally, set 20% of the dataset aside as test set, such as 0.2.")
         test_ratio = float_input(default=0.2, prefix=SECTION[1], slogan="@Test Ratio: ")
-        train_test_data = data_split(X, y, drop_name_column, test_ratio)
+        train_test_data = data_split(X, y, process_name_column, test_ratio)
         for key, value in train_test_data.items():
             if key in ["Name Train", "Name Test"]:
                 continue
@@ -585,7 +585,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         # Create training data without data split because it is unsupervised learning
         X_train = X
         y, X_test, y_train, y_test, name_train, name_test = None, None, None, None, None, None
-        name_all = drop_name_column
+        name_all = process_name_column
     # <--- Model Selection --->
     logger.debug("Model Selection")
     print("-*-*- Model Selection -*-*-")
@@ -646,12 +646,12 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
             if feature_engineering_config:
                 # If inference_data is not None and feature_engineering_config is not {}, then apply feature engineering with the same operation to the input data.
                 print("The same feature engineering operation will be applied to the inference data.")
-                new_feature_builder = FeatureConstructor(inference_data)
+                new_feature_builder = FeatureConstructor(inference_data, name_column_origin)
                 inference_data_fe = new_feature_builder.batch_build(feature_engineering_config)
                 inference_data_fe_selected = inference_data_fe[selected_columns]
                 inference_name_column = inference_data[NAME]
                 save_data(inference_data, name_column_origin, "Application Data Original", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
-                save_data(inference_data_fe, inference_name_column, "Application Data Feature-Engineering", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+                save_data(inference_data_fe, name_column_origin, "Application Data Feature-Engineering", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
                 save_data(inference_data_fe_selected, inference_name_column, "Application Data Feature-Engineering Selected", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
             else:
                 print("You have not applied feature engineering to the training data.")
@@ -700,12 +700,15 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         if inference_data_fe_selected is not None:
             print("-*-*- Model Inference -*-*-")
             if drop_rows_with_missing_value_flag:
-                inference_data_fe_selected_dropped = inference_data_fe_selected.dropna()
                 inference_name_column = inference_data[NAME]
-                model_inference(inference_data_fe_selected_dropped, inference_name_column, is_inference, run, transformer_config, transform_pipeline)
+                inference_data_name = pd.concat([inference_name_column, inference_data_fe_selected], axis=1)
+                inference_data_fe_selected_dropped = inference_data_fe_selected.dropna()
+                inference_data_fe_selected_dropped_name = inference_data_name.dropna()
+                inference_name_column_drop = inference_data_fe_selected_dropped_name[NAME]
+                model_inference(inference_data_fe_selected_dropped, inference_name_column_drop, is_inference, run, transformer_config, transform_pipeline)
                 save_data(
                     inference_data_fe_selected_dropped,
-                    inference_name_column,
+                    inference_name_column_drop,
                     "Application Data Feature-Engineering Selected Dropped-Imputed",
                     GEOPI_OUTPUT_ARTIFACTS_DATA_PATH,
                     MLFLOW_ARTIFACT_DATA_PATH,
@@ -754,12 +757,15 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
                 if inference_data_fe_selected is not None:
                     print("-*-*- Model Inference -*-*-")
                     if drop_rows_with_missing_value_flag:
-                        inference_data_fe_selected_dropped = inference_data_fe_selected.dropna()
                         inference_name_column = inference_data[NAME]
-                        model_inference(inference_data_fe_selected_dropped, inference_name_column, is_inference, run, transformer_config, transform_pipeline)
+                        inference_data_name = pd.concat([inference_name_column, inference_data_fe_selected], axis=1)
+                        inference_data_fe_selected_dropped = inference_data_fe_selected.dropna()
+                        inference_data_fe_selected_dropped_name = inference_data_name.dropna()
+                        inference_name_column_drop = inference_data_fe_selected_dropped_name[NAME]
+                        model_inference(inference_data_fe_selected_dropped, inference_name_column_drop, is_inference, run, transformer_config, transform_pipeline)
                         save_data(
                             inference_data_fe_selected_dropped,
-                            inference_name_column,
+                            inference_name_column_drop,
                             "Application Data Feature-Engineering Selected Dropped-Imputed",
                             GEOPI_OUTPUT_ARTIFACTS_DATA_PATH,
                             MLFLOW_ARTIFACT_DATA_PATH,

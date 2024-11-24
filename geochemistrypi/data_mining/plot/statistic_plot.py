@@ -143,7 +143,7 @@ def log_distribution_plot(col: pd.Index, df: pd.DataFrame, name_column: str) -> 
     save_data(df_log_transformed, name_column, "Distribution Histogram After Log Transformation", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_STATISTIC_PATH"), MLFLOW_ARTIFACT_IMAGE_STATISTIC_PATH)
 
 
-def probability_plot(col: pd.Index, df_origin: pd.DataFrame, df_impute: pd.DataFrame) -> None:
+def probability_plot(col: pd.Index, df_origin: pd.DataFrame, df_impute: pd.DataFrame, name_column: str) -> None:
     """A large graph containing the respective probability plots (origin vs. impute) of the required columns.
 
     Parameters
@@ -170,4 +170,4 @@ def probability_plot(col: pd.Index, df_origin: pd.DataFrame, df_impute: pd.DataF
     data = pd.concat([df_origin, df_impute], axis=1)
     print("Successfully draw the respective probability plot (origin vs. impute) of the selected columns")
     save_fig("Probability Plot", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_STATISTIC_PATH"), MLFLOW_ARTIFACT_IMAGE_STATISTIC_PATH)
-    save_data(data, "Probability Plot", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_STATISTIC_PATH"), MLFLOW_ARTIFACT_IMAGE_STATISTIC_PATH)
+    save_data(data, name_column, "Probability Plot", os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_STATISTIC_PATH"), MLFLOW_ARTIFACT_IMAGE_STATISTIC_PATH)
