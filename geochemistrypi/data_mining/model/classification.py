@@ -35,7 +35,16 @@ from .func.algo_classification._common import (
     score,
 )
 from .func.algo_classification._decision_tree import decision_tree_manual_hyper_parameters
-from .func.algo_classification._enum import ClassificationCommonFunction, DecisionTreeSpecialFunction, MLPSpecialFunction
+from .func.algo_classification._enum import (
+    ClassificationCommonFunction,
+    DecisionTreeSpecialFunction,
+    ExtraTreesSpecialFunction,
+    GradientBoostingSpecialFunction,
+    LogisticRegressionSpecialFunction,
+    MLPSpecialFunction,
+    RandomForestSpecialFunction,
+    XGBoostSpecialFunction,
+)
 from .func.algo_classification._extra_trees import extra_trees_manual_hyper_parameters
 from .func.algo_classification._gradient_boosting import gradient_boosting_manual_hyper_parameters
 from .func.algo_classification._knn import knn_manual_hyper_parameters
@@ -1263,7 +1272,7 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
-            func_name=DecisionTreeSpecialFunction.FEATURE_IMPORTANCE.value,
+            func_name=RandomForestSpecialFunction.FEATURE_IMPORTANCE.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -1271,7 +1280,7 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             trained_model=self.model.estimators_[0],
             image_config=self.image_config,
             algorithm_name=self.naming,
-            func_name=DecisionTreeSpecialFunction.TREE_DIAGRAM.value,
+            func_name=RandomForestSpecialFunction.TREE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -1286,7 +1295,7 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
-            func_name=DecisionTreeSpecialFunction.FEATURE_IMPORTANCE.value,
+            func_name=RandomForestSpecialFunction.FEATURE_IMPORTANCE.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -1294,7 +1303,7 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             trained_model=self.auto_model.estimators_[0],
             image_config=self.image_config,
             algorithm_name=self.naming,
-            func_name=DecisionTreeSpecialFunction.TREE_DIAGRAM.value,
+            func_name=RandomForestSpecialFunction.TREE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -1646,7 +1655,7 @@ class XGBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
-            func_name=DecisionTreeSpecialFunction.FEATURE_IMPORTANCE.value,
+            func_name=XGBoostSpecialFunction.FEATURE_IMPORTANCE.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -1661,7 +1670,7 @@ class XGBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
-            func_name=DecisionTreeSpecialFunction.FEATURE_IMPORTANCE.value,
+            func_name=XGBoostSpecialFunction.FEATURE_IMPORTANCE.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -1930,7 +1939,7 @@ class LogisticRegressionClassification(LinearWorkflowMixin, ClassificationWorkfl
             name_column=LogisticRegressionClassification.name_all,
             trained_model=self.model,
             algorithm_name=self.naming,
-            func_name=DecisionTreeSpecialFunction.FEATURE_IMPORTANCE.value,
+            func_name=LogisticRegressionSpecialFunction.FEATURE_IMPORTANCE.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -1955,7 +1964,7 @@ class LogisticRegressionClassification(LinearWorkflowMixin, ClassificationWorkfl
             name_column=LogisticRegressionClassification.name_all,
             trained_model=self.auto_model,
             algorithm_name=self.naming,
-            func_name=DecisionTreeSpecialFunction.FEATURE_IMPORTANCE.value,
+            func_name=LogisticRegressionSpecialFunction.FEATURE_IMPORTANCE.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -2573,7 +2582,7 @@ class ExtraTreesClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
-            func_name=DecisionTreeSpecialFunction.FEATURE_IMPORTANCE.value,
+            func_name=ExtraTreesSpecialFunction.FEATURE_IMPORTANCE.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -2581,7 +2590,7 @@ class ExtraTreesClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             trained_model=self.model.estimators_[0],
             image_config=self.image_config,
             algorithm_name=self.naming,
-            func_name=DecisionTreeSpecialFunction.TREE_DIAGRAM.value,
+            func_name=ExtraTreesSpecialFunction.TREE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -2596,7 +2605,7 @@ class ExtraTreesClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
-            func_name=DecisionTreeSpecialFunction.FEATURE_IMPORTANCE.value,
+            func_name=ExtraTreesSpecialFunction.FEATURE_IMPORTANCE.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -2604,7 +2613,7 @@ class ExtraTreesClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             trained_model=self.auto_model.estimators_[0],
             image_config=self.image_config,
             algorithm_name=self.naming,
-            func_name=DecisionTreeSpecialFunction.TREE_DIAGRAM.value,
+            func_name=ExtraTreesSpecialFunction.TREE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -2942,7 +2951,7 @@ class GradientBoostingClassification(TreeWorkflowMixin, ClassificationWorkflowBa
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
-            func_name=DecisionTreeSpecialFunction.FEATURE_IMPORTANCE.value,
+            func_name=GradientBoostingSpecialFunction.FEATURE_IMPORTANCE.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -2950,7 +2959,7 @@ class GradientBoostingClassification(TreeWorkflowMixin, ClassificationWorkflowBa
             trained_model=self.model.estimators_[0][0],
             image_config=self.image_config,
             algorithm_name=self.naming,
-            func_name=DecisionTreeSpecialFunction.TREE_DIAGRAM.value,
+            func_name=GradientBoostingSpecialFunction.TREE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -2965,7 +2974,7 @@ class GradientBoostingClassification(TreeWorkflowMixin, ClassificationWorkflowBa
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
-            func_name=DecisionTreeSpecialFunction.FEATURE_IMPORTANCE.value,
+            func_name=GradientBoostingSpecialFunction.FEATURE_IMPORTANCE.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -2973,7 +2982,7 @@ class GradientBoostingClassification(TreeWorkflowMixin, ClassificationWorkflowBa
             trained_model=self.auto_model.estimators_[0][0],
             image_config=self.image_config,
             algorithm_name=self.naming,
-            func_name=DecisionTreeSpecialFunction.TREE_DIAGRAM.value,
+            func_name=GradientBoostingSpecialFunction.TREE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )

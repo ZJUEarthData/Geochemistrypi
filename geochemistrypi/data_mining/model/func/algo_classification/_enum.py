@@ -20,5 +20,28 @@ class DecisionTreeSpecialFunction(Enum):
     TREE_DIAGRAM = "Tree Diagram"
 
 
+class RandomForestSpecialFunction(Enum):
+    FEATURE_IMPORTANCE = "Feature Importance"
+    TREE_DIAGRAM = "Tree Diagram"
+
+
+class XGBoostSpecialFunction(Enum):
+    FEATURE_IMPORTANCE = "Feature Importance"
+
+
+class LogisticRegressionSpecialFunction(Enum):
+    FEATURE_IMPORTANCE = "Feature Importance"
+
+
 class MLPSpecialFunction(Enum):
     LOSS_CURVE_DIAGRAM = "Loss Curve Diagram"
+
+
+class ExtraTreesSpecialFunction(Enum):
+    FEATURE_IMPORTANCE = "Feature Importance"
+    TREE_DIAGRAM = "Tree Diagram"
+
+
+class GradientBoostingSpecialFunction(Enum):
+    FEATURE_IMPORTANCE = "Feature Importance"
+    TREE_DIAGRAM = "Tree Diagram"
