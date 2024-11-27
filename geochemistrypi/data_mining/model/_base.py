@@ -319,21 +319,21 @@ class TreeWorkflowMixin:
     """Mixin class for tree models."""
 
     @staticmethod
-    def _plot_feature_importance(X_train: pd.DataFrame, name_column: str, trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_feature_importance(X_train: pd.DataFrame, name_column: str, trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str, func_name: str) -> None:
         """Draw the feature importance bar diagram."""
-        print("-----* Feature Importance Diagram *-----")
+        print(f"-----* {func_name} *-----")
         columns_name = X_train.columns
         feature_importances = trained_model.feature_importances_
         data = plot_feature_importance(columns_name, feature_importances, image_config)
-        save_fig(f"Feature Importance - {algorithm_name}", local_path, mlflow_path)
-        save_data(data, name_column, f"Feature Importance - {algorithm_name}", local_path, mlflow_path, True)
+        save_fig(f"{func_name} - {algorithm_name}", local_path, mlflow_path)
+        save_data(data, name_column, f"{func_name} - {algorithm_name}", local_path, mlflow_path, True)
 
     @staticmethod
-    def _plot_tree(trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_tree(trained_model: object, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str, func_name: str) -> None:
         """Drawing decision tree diagrams."""
-        print("-----* Single Tree Diagram *-----")
+        print(f"-----* {func_name} *-----")
         plot_decision_tree(trained_model, image_config)
-        save_fig(f"Tree Diagram - {algorithm_name}", local_path, mlflow_path)
+        save_fig(f"{func_name} - {algorithm_name}", local_path, mlflow_path)
 
 
 class LinearWorkflowMixin:
