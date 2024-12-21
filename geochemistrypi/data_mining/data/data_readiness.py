@@ -162,10 +162,10 @@ def select_column_name(data: pd.DataFrame) -> str:
         The data set to be selected name.
     """
     print(
-        "You need to choose the number of the column above as the output data identifier column.\n"
+        "You need to choose the number of the column above as [bold red]the output data identifier column[/bold red].\n"
         "The data identifier column helps identify uniquely each row of data point in the output data.\n"
-        "** For example, when using built-in dataset, you can choose the column ‘SAMPLE NAME’.**\n"
-        "Once finishing the whole run, in the output data file, all data point will have the value in the column ‘SAMPLE NAME’ as its unique identifier.\n"
+        "For example, when using built-in dataset, you can choose the column [bold red]SAMPLE NAME[/bold red].\n"
+        "Once finishing the whole run, in the output data files, each row of data will have the value in the column [bold red]SAMPLE NAME[/bold red] as its unique identifier.\n"
         "Enter the number of the output data identifier column."
     )
     while True:

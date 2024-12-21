@@ -26,13 +26,10 @@ from .constants import (
     MODE_OPTION_WITH_MISSING_VALUES,
     NON_AUTOML_MODELS,
     OPTION,
-    OUTPUT_PATH,
     REGRESSION_MODELS,
     REGRESSION_MODELS_WITH_MISSING_VALUES,
     SECTION,
     TEST_DATA_OPTION,
-    TOGGLE_ADDRESS_STATUS,
-    WORKING_PATH,
 )
 from .data.data_readiness import (
     basic_info,
@@ -53,6 +50,7 @@ from .data.imputation import imputer
 from .data.inference import build_transform_pipeline, model_inference
 from .data.preprocessing import feature_scaler, feature_selector
 from .data.statistic import monte_carlo_simulator
+from .enum import DataSource
 from .plot.map_plot import process_world_map
 from .plot.statistic_plot import basic_statistic, check_missing_value, correlation_plot, distribution_plot, is_null_value, log_distribution_plot, probability_plot, ratio_null_vs_filled
 from .process.classify import ClassificationModelSelection
@@ -60,12 +58,11 @@ from .process.cluster import ClusteringModelSelection
 from .process.decompose import DecompositionModelSelection
 from .process.detect import AnomalyDetectionModelSelection
 from .process.regress import RegressionModelSelection
-from .utils.base import check_package, clear_output, copy_files, create_geopi_output_dir, get_os, install_package, log, save_data, show_warning
+from .utils.base import check_package, clear_output, copy_files, create_geopi_output_dir, get_os, install_package, list_excel_files, log, save_data, show_warning
 from .utils.mlflow_utils import retrieve_previous_experiment_id
-from .utils.toggle_address_status import toggle_address_status
 
 
-def cli_pipeline(training_data_path: str, application_data_path: Optional[str] = None) -> None:
+def cli_pipeline(training_data_path: str, application_data_path: Optional[str] = None, data_source: Optional[DataSource] = None) -> None:
     """The command line interface software for Geochemistry π.
     The business logic of this CLI software can be found in the figures in the README.md file.
     It provides three  MLOps core functionalities:
@@ -82,37 +79,76 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         The path of the application data, by default None
     """
 
-    # Local test: Uncomment the following line to utilize built-in datasets to test the pipeline. Don't forget to modify the path value to be consistent with your own location.
-    # training_data_path = "/Users/can/Documents/github/work/geo_ml/geochemistrypi/geochemistrypi/data_mining/data/dataset/Data_Classification.xlsx"
-    # application_data_path = "/Users/can/Documents/github/work/geo_ml/geochemistrypi/geochemistrypi/data_mining/data/dataset/Data_Classification.xlsx"
-
     # Local test: If the argument is False, hide all Python level warnings. Developers can turn it on by setting the argument to True.
     show_warning(False)
-
-    os.makedirs(OUTPUT_PATH, exist_ok=True)
-    logger = log(OUTPUT_PATH, "geopi_inner_test.log")
-    logger.info("Geochemistry Pi is running.")
 
     # Display the interactive splash screen when launching the CLI software
     console = Console()
     print("\n[bold blue]Welcome to Geochemistry π![/bold blue]")
-    print("[bold]Initializing...[/bold]")
+    print("[bold blue]Three cores components:[/bold blue]")
+    print("✨ [bold blue]Continuous Training[/bold blue]")
+    print("✨ [bold blue]Model Inference[/bold blue]")
+    print("✨ [bold blue]Machine Learning Lifecycle Management[/bold blue]")
+    print("[bold green]Initializing...[/bold green]")
+
+    # Set the working path based on the data source
+    # If the user uses the built-in data, the working path is the desktop, the output path is the desktop.
+    # If the user uses the desktop data, the working path is the desktop, the output path is the desktop.
+    # If the user uses the any path, the working path is the current working directory, the output path is the current working directory.
+    if data_source == DataSource.BUILT_IN:
+        # If the user uses the built-in data, the working path is the desktop.
+        WORKING_PATH = os.path.join(os.path.expanduser("~"), "Desktop")
+    elif data_source == DataSource.DESKTOP:
+        WORKING_PATH = os.path.join(os.path.expanduser("~"), "Desktop")
+        INPUT_PATH = os.path.join(WORKING_PATH, "geopi_input")
+        if not os.path.exists(INPUT_PATH):
+            print("[bold red]The 'geopi_input' directory is not found on the desktop.[/bold red]")
+            os.makedirs(INPUT_PATH, exist_ok=True)
+            print("[bold green]Creating the 'geopi_input' directory ...[/bold green]")
+            print("[bold green]Successfully create 'geopi_input' directory on the desktop.[/bold green]")
+            print("Please restart the software after putting the data in the 'geopi_input' directory.")
+            print("Currently, the data file format only supports '.xlsx', '.xls', '.csv'.")
+            print("If you want to activate the model inference, please put the 'application data' in it as well.")
+            print("Check our online documentation for more information on the format of the 'application data'.")
+            clear_output("(Press Enter key to exit)")
+            exit(1)
+
+        with console.status("[bold green]Data Loading...[/bold green]", spinner="dots"):
+            sleep(1)
+
+        # List all existing Excel files in the 'geopi_input' directory on the desktop.
+        existing_excel_files = list_excel_files(INPUT_PATH)
+        if len(existing_excel_files) == 0:
+            print("[bold red]No data files found in the 'geopi_input' directory on the desktop.[/bold red]")
+            print("[bold green]Please put the data files in the 'geopi_input' directory on the desktop.[/bold green]")
+            clear_output("(Press Enter key to exit)")
+            exit(1)
+        show_excel_columns(existing_excel_files)
+
+        # Read the training data from the Excel file.
+        print("Please select the training data by index:")
+        # Limit the user input to a number within the range of available files and assign the result to training_data_path
+        training_data_path = existing_excel_files[limit_num_input(range(1, len(existing_excel_files) + 1), SECTION[0], num_input) - 1]
+        is_application_data = Confirm.ask("Do you want to activate the inference functionality", default=False)
+        if is_application_data:
+            # Read the application data from the Excel file.
+            print("Please select the application data by index:")
+            # Limit the user input to a number within the range of available files and assign the result to application_data_path
+            application_data_path = existing_excel_files[limit_num_input(range(1, len(existing_excel_files) + 1), SECTION[0], num_input) - 1]
+    elif data_source == DataSource.ANY_PATH:
+        WORKING_PATH = os.getcwd()
+
+    # Set the output path to the working path
+    OUTPUT_PATH = os.path.join(WORKING_PATH, "geopi_output")
+    os.makedirs(OUTPUT_PATH, exist_ok=True)
+
+    # Set the log file path
+    logger = log(OUTPUT_PATH, "geopi_inner_test.log")
+    logger.info("Geochemistry Pi is running.")
 
     # <-- User Training Data Loading -->
     with console.status("[bold green]Training Data Loading...[/bold green]", spinner="dots"):
         sleep(0.75)
-
-    # Call toggle_address_status and pass status and training_data_path as parameters to obtain the address of the training data
-    training_data_path = toggle_address_status(status=TOGGLE_ADDRESS_STATUS, training_data_path=training_data_path)[0]
-
-    # Check if the length of training_data_path is greater than 1
-    if len(training_data_path) > 1:
-        # Display the columns of the Excel file located at training_data_path
-        show_excel_columns(training_data_path)
-        print("Please select only one file that you want to process:")
-        # Limit the user input to a number within the range of available files and assign the result to training_data_path
-        training_data_path = training_data_path[limit_num_input(range(1, len(training_data_path) + 1), SECTION[0], num_input) - 1]
-
     if training_data_path:
         # If the user provides file name, then load the training data from the file.
         data = read_data(file_path=training_data_path, is_own_data=1)
@@ -124,6 +160,13 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     # <-- User Application Data Loading -->
     with console.status("[bold green]Application Data Loading...[/bold green]", spinner="dots"):
         sleep(0.75)
+    # Three scenarios for the application data loading:
+    # 1. The user provides the training data path and the application data path.
+    #   - The user wants to use the model inference.
+    # 2. The user provides the training data path but doesn't provide the application data path.
+    #   - The user doesn't want to use the model inference.
+    # 3. The user doesn't provide the training data path and the application data path.
+    #   - The continuous training and model inference will use the built-in data.
     is_built_in_inference_data = False
     if training_data_path and application_data_path:
         # If the user provides file name, then load the inference data from the file.
@@ -169,8 +212,8 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     # Create a new experiment or use the previous experiment
     is_used_previous_experiment = Confirm.ask("✨ Use Previous Experiment", default=False)
     # Set the tracking uri to the local directory, in the future, we can set it to the remote server.
-    experiments_localtion = f"file:{WORKING_PATH}/geopi_tracking"
-    mlflow.set_tracking_uri(experiments_localtion)
+    experiments_location = os.path.join("file:", WORKING_PATH, "geopi_tracking")
+    mlflow.set_tracking_uri(experiments_location)
     # Print the tracking uri for debugging.
     # print("tracking uri:", mlflow.get_tracking_uri())
     if is_used_previous_experiment:
@@ -207,7 +250,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     # run_description = Prompt.ask("✨ Run Description", default="Use xgboost for GeoPi classification.")
     # mlflow.start_run(run_name=run_name, experiment_id=experiment.experiment_id, tags={"version": run_tag, "description": run_description})
     mlflow.start_run(run_name=run_name, experiment_id=experiment.experiment_id)
-    create_geopi_output_dir(experiment.name, run_name)
+    create_geopi_output_dir(OUTPUT_PATH, experiment.name, run_name)
     clear_output()
 
     # <--- Built-in Training Data Loading --->
@@ -235,6 +278,11 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     # <--- Built-in Application Data Loading --->
     logger.debug("Built-in Application Data Loading")
     # If the user doesn't provide training data path and inference data path, then use the built-in inference data.
+    # There are two scenarios for the built-in inference data loading:
+    # 1. The user chooses the built-in training data for regression or classification.
+    #   - Only the supervised learning mode supports model inference.
+    # 2. The user chooses the built-in training data for clustering, decomposition or anomaly detection.
+    #   - The unsupervised learning mode doesn't support model inference.
     if is_built_in_inference_data and built_in_training_data_num == 1:
         application_data_path = "ApplicationData_Regression.xlsx"
         inference_data = read_data(file_path=application_data_path)
@@ -616,7 +664,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     # Add the option of all models
     all_models_num = len(MODELS) + 1
     print(str(all_models_num) + " - All models above to be trained")
-    print("Which model do you want to apply?(Enter the Corresponding Number)")
+    print("Which model do you want to apply?")
     MODELS.append("all_models")
     model_num = limit_num_input(MODELS, SECTION[2], num_input)
     clear_output()
@@ -628,7 +676,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     if mode_num == 1 or mode_num == 2:
         # If the model is not in the NON_AUTOML_MODELS, then ask the user whether to use AutoML.
         if model_name not in NON_AUTOML_MODELS:
-            print("Do you want to employ automated machine learning with respect to this algorithm?" "(Enter the Corresponding Number):")
+            print("Do you want to employ automated machine learning with respect to this algorithm?")
             num2option(OPTION)
             automl_num = limit_num_input(OPTION, SECTION[2], num_input)
             if automl_num == 1:
@@ -731,7 +779,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         for i in range(len(MODELS) - 1):
             # Start a nested MLflow run within the current MLflow run
             with mlflow.start_run(run_name=MODELS[i], experiment_id=experiment.experiment_id, nested=True):
-                create_geopi_output_dir(experiment.name, run_name, MODELS[i])
+                create_geopi_output_dir(OUTPUT_PATH, experiment.name, run_name, MODELS[i])
                 run = Modes2Initiators[mode_num](MODELS[i])
                 # If is_automl is False, then run all models without AutoML.
                 if not is_automl:
