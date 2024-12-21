@@ -1,10 +1,5 @@
 import os
 
-from .utils.toggle_address_status import toggle_address_status
-
-# Adjust the path of project data flow: The number 1 indicates standard mode, and the number 2 indicates APP mode.
-TOGGLE_ADDRESS_STATUS = 1
-
 # The number of uploading dataset per user is limited to 5.
 MAX_UPLOADS_PER_USER = 5
 
@@ -13,12 +8,6 @@ PACKAGEDIR = os.path.dirname(os.path.realpath(__file__))
 
 # the directory where the built-in data set to be processed stays
 BUILT_IN_DATASET_PATH = os.path.join(PACKAGEDIR, "data", "dataset")
-
-# current working directory in which the user activates the application
-WORKING_PATH = toggle_address_status(status=TOGGLE_ADDRESS_STATUS)[1]
-
-# the root directory where all the output stays
-OUTPUT_PATH = os.path.join(WORKING_PATH, "geopi_output")
 
 # the directory where the artifact is saved within the MLflow run's artifact directory
 MLFLOW_ARTIFACT_DATA_PATH = "data"

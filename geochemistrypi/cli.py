@@ -6,10 +6,11 @@ import threading
 from typing import Optional
 
 import typer
+from rich import print
 
 from ._version import __version__
 from .data_mining.cli_pipeline import cli_pipeline
-from .data_mining.constants import WORKING_PATH
+from .data_mining.enum import DataSource
 
 app = typer.Typer()
 
@@ -17,7 +18,6 @@ CURRENT_PATH = os.path.dirname(os.path.realpath(__file__))
 FRONTEND_PATH = os.path.join(CURRENT_PATH, "frontend")
 BACKEND_PATH = os.path.join(CURRENT_PATH, "start_dash_pipeline.py")
 PIPELINE_PATH = os.path.join(CURRENT_PATH, "start_cli_pipeline.py")
-MLFLOW_STORE_PATH = os.path.join(f"file:{WORKING_PATH}", "geopi_tracking")
 
 
 def _version_callback(value: bool) -> None:
@@ -39,6 +39,7 @@ def main(version: Optional[bool] = typer.Option(None, "--version", "-v", help="S
 @app.command()
 def data_mining(
     data: str = typer.Option("", help="The path of the training data without model inference."),
+    desktop: bool = typer.Option(False, help="Use the data in the directory 'geopi_input' on the desktop for training and inference."),
     training: str = typer.Option("", help="The path of the training data."),
     application: str = typer.Option("", help="The path of the inference data."),
     mlflow: bool = typer.Option(False, help="Start the mlflow server."),
@@ -58,6 +59,21 @@ def data_mining(
 
     def start_mlflow():
         """Start the mlflow server."""
+        # Check if the current working directory has the 'geopi_tracking' directory to store the tracking data for mlflow
+        # If yes, set the MLFLOW_STORE_PATH to the current working directory
+        # If no, set the MLFLOW_STORE_PATH to the desktop
+        geopi_tracking_dir = os.path.join(os.getcwd(), "geopi_tracking")
+        if not os.path.exists(geopi_tracking_dir):
+            print("[bold red]The 'geopi_tracking' directory is not found in the current working directory.[bold red]")
+            geopi_tracking_dir = os.path.join(os.path.expanduser("~"), "Desktop", "geopi_tracking")
+            if not os.path.exists(geopi_tracking_dir):
+                print("[bold red]The 'geopi_tracking' directory is not found on the desktop.[bold red]")
+                print("[bold red]Our software will create a 'geopi_tracking' directory on the desktop to store the tracking data for mlflow.[bold red]")
+            else:
+                print("[bold green]The 'geopi_tracking' directory is found on the desktop.[bold green]")
+                print("[bold green]Our software will use the 'geopi_tracking' directory on the desktop to store the tracking data for mlflow.[bold green]")
+        MLFLOW_STORE_PATH = os.path.join("file:", geopi_tracking_dir)
+        print("[bold green]Press [bold magenta]Ctrl + C[/bold magenta] to close mlflow server at any time.[bold green]")
         start_mlflow_command = f"mlflow ui --backend-store-uri {MLFLOW_STORE_PATH} "
         subprocess.run(start_mlflow_command, shell=True)
 
@@ -76,16 +92,19 @@ def data_mining(
             # Start mlflow server to track the experiment
             mlflow_thread = threading.Thread(target=start_mlflow)
             mlflow_thread.start()
+        elif desktop:
+            # Start the CLI pipeline with the data in the directory 'geopi_input' on the desktop
+            cli_pipeline(training_data_path="", application_data_path="", data_source=DataSource.DESKTOP)
         else:
             # If the data is provided, start the CLI pipeline with continuous training
             if data:
-                cli_pipeline(data)
+                cli_pipeline(training_data_path=data, application_data_path="", data_source=DataSource.ANY_PATH)
             # If the training data and inference data are provided, start the CLI pipeline with continuous training and inference
             elif training and application:
-                cli_pipeline(training, application)
-            # If no data is provided, use built-in data to start the CLI pipeline with continuous training and inference
+                cli_pipeline(training_data_path=training, application_data_path=application, data_source=DataSource.ANY_PATH)
+            # If no data is provided, look for the data in the desktop to start the CLI pipeline with continuous training and inference
             else:
-                cli_pipeline(training, application)
+                cli_pipeline(training_data_path="", application_data_path="", data_source=DataSource.BUILT_IN)
 
 
 @app.command()
