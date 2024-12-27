@@ -392,6 +392,23 @@ def copy_files(GEOPI_OUTPUT_ARTIFACTS_PATH: str, GEOPI_OUTPUT_METRICS_PATH: str,
                 shutil.copy2(source_file_path, GEOPI_OUTPUT_SUMMARY_PATH)
 
 
+def copy_files_from_source_dir_to_dest_dir(source_dir: str, dest_dir: str) -> None:
+    """Copy all files from the source folder to the destination folder.
+
+    Parameters
+    ----------
+    source_dir: str
+        Source folder path.
+
+    dest_dir: str
+        Destination folder path
+    """
+    for root, dirs, files in os.walk(source_dir):
+        for file in files:
+            source_file_path = os.path.join(root, file)
+            shutil.copy2(source_file_path, dest_dir)
+
+
 def list_excel_files(directory: str) -> list:
     """Recursively lists all Excel files (including .xlsx, .xls, and .csv) in the specified directory and its subdirectories.
 

@@ -31,11 +31,11 @@ class WorkflowBase(metaclass=ABCMeta):
     @classmethod
     def show_info(cls) -> None:
         """Display what application functions the algorithm will provide."""
-        print("*-*" * 2, cls.name, "is running ...", "*-*" * 2)
-        print("Expected Functionality:")
+        print(f"[bold green]-*-*- {cls.name} Training Process -*-*-[/bold green]")
+        print("[bold green]Expected Functionality:[/bold green]")
         function = cls.common_function + cls.special_function
         for i in range(len(function)):
-            print("+ ", function[i])
+            print(f"[bold green]+ {function[i]}[/bold green]")
 
     def __init__(self) -> None:
         # Default for child class. They need to be overwritten in child classes.
@@ -43,6 +43,7 @@ class WorkflowBase(metaclass=ABCMeta):
         self.naming = None
         self.automl = None
         self.ray_best_model = None
+        # Set the random state fixed value for reproducibility of the results.
         self.random_state = 42
 
     @property

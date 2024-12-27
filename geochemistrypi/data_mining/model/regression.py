@@ -59,7 +59,7 @@ class RegressionWorkflowBase(WorkflowBase):
     @dispatch(object, object, bool)
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None, is_automl: bool = False) -> None:
         """Fit the model by FLAML framework and RAY framework."""
-        # print(f"-*-*- {self.naming} - AutoML -*-*-.")
+        # print(f"[bold green]-*-*- {self.naming} - AutoML -*-*-[/bold green].")
         if self.naming not in RAY_FLAML:
             self.automl = AutoML()
             if self.customized:  # When the model is not built-in in FLAML framwork, use FLAML customization.
@@ -299,7 +299,7 @@ class PolynomialRegression(LinearWorkflowMixin, RegressionWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = polynomial_regression_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -623,7 +623,7 @@ class XGBoostRegression(TreeWorkflowMixin, RegressionWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = xgboost_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -906,7 +906,7 @@ class DecisionTreeRegression(TreeWorkflowMixin, RegressionWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = decision_tree_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -1204,7 +1204,7 @@ class ExtraTreesRegression(TreeWorkflowMixin, RegressionWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = extra_trees_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -1504,7 +1504,7 @@ class RandomForestRegression(TreeWorkflowMixin, RegressionWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = random_forest_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -1706,7 +1706,7 @@ class SVMRegression(RegressionWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = svr_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -2012,7 +2012,7 @@ class MLPRegression(RegressionWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = multi_layer_perceptron_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -2111,7 +2111,7 @@ class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = linear_regression_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -2337,7 +2337,7 @@ class KNNRegression(RegressionWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = knn_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -2677,7 +2677,7 @@ class GradientBoostingRegression(TreeWorkflowMixin, RegressionWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = gradient_boosting_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -2880,7 +2880,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = lasso_regression_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -3224,7 +3224,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = elastic_net_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -3672,7 +3672,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = sgd_regression_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -4009,7 +4009,7 @@ class BayesianRidgeRegression(RegressionWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = bayesian_ridge_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -4222,7 +4222,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = ridge_regression_manual_hyper_parameters()
         clear_output()
         return hyper_parameters

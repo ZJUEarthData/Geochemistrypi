@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "geochemistrypi"
-version = "0.6.1"
+version = "0.7.0"
 authors = [
   { name="Can He", email="sanyhew1097618435@163.com"},
   { name="Jianhao Sun", email="sjh20171502@gmail.com"},
@@ -15,8 +15,7 @@ maintainers = [
   { name="Can He", email="sanyhew1097618435@163.com"},
   { name="Jianhao Sun", email="sjh20171502@gmail.com"},
   { name="Jianming Zhao", email="zhaojianming@zju.edu.cn"},
-  { name="Yongkang Shan", email="kk1361207571@163.com"},
-  { name="Mengqi Gao", email="2534671415@qq.com"}
+  { name="Yongkang Shan", email="kk1361207571@163.com"}
 ]
 description = "A highly automated machine learning Python framework dedicating to build up MLOps level 1 software product for data-driven geochemistry discovery"
 keywords = ["Geochemistry π", "Automated", "Machine Learning", "MLOps", "Geochemistry Discovery", "Continuous Training", "Machine Learning Lifecycle Management", "Model Inference", "Data Mining"]
