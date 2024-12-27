@@ -221,7 +221,7 @@ class ClassificationWorkflowBase(WorkflowBase):
     @staticmethod
     def sample_balance(X_train: pd.DataFrame, y_train: pd.DataFrame, name_column: str, local_path: str, mlflow_path: str) -> tuple:
         """Use this method when the sample size is unbalanced."""
-        print("-*-*- Sample Balance on Train Set -*-*-")
+        print("[bold green]-*-*- Sample Balance on Train Set -*-*-[/bold green]")
         num2option(OPTION)
         is_sample_balance = limit_num_input(OPTION, SECTION[1], num_input)
         if is_sample_balance == 1:
@@ -246,7 +246,7 @@ class ClassificationWorkflowBase(WorkflowBase):
         y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, name_column1: str, name_column2: str, name_column3: str, local_path: str, mlflow_path: str
     ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """Using this function to customize the label to which samples of each category belong."""
-        print("-*-*- Customize Label on Label Set -*-*-")
+        print("[bold green]-*-*- Customize Label on Label Set -*-*-[/bold green]")
         num2option(OPTION)
         is_customize_label = limit_num_input(OPTION, SECTION[1], num_input)
         if is_customize_label == 1:
@@ -667,7 +667,7 @@ class SVMClassification(ClassificationWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = svc_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -921,7 +921,7 @@ class DecisionTreeClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = decision_tree_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -1240,7 +1240,7 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = random_forest_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -1599,7 +1599,7 @@ class XGBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = xgboost_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -1883,7 +1883,7 @@ class LogisticRegressionClassification(LinearWorkflowMixin, ClassificationWorkfl
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = logistic_regression_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -2252,7 +2252,7 @@ class MLPClassification(ClassificationWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = multi_layer_perceptron_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -2540,7 +2540,7 @@ class ExtraTreesClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = extra_trees_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -2905,7 +2905,7 @@ class GradientBoostingClassification(TreeWorkflowMixin, ClassificationWorkflowBa
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = gradient_boosting_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -3085,7 +3085,7 @@ class KNNClassification(ClassificationWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = knn_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -3421,7 +3421,7 @@ class SGDClassification(LinearWorkflowMixin, ClassificationWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = sgd_classificaiton_manual_hyper_parameters()
         clear_output()
         return hyper_parameters

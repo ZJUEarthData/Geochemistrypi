@@ -8,12 +8,12 @@ Used for internal testing, run in debug mode in IDE to inspect the pipeline
 
 # Mock the scenario where the user uses the built-in dataset for both training and application
 #   - Test both continuous training and model inference
-# cli_pipeline(training_data_path="", application_data_path="", data_source=DataSource.BUILT_IN)
+cli_pipeline(training_data_path="", application_data_path="", data_source=DataSource.BUILT_IN)
 
 # Mock the scenario where the user uses the desktop dataset for both training and application
 #   - Test both continuous training and model inference
 #   - Test continuous training only
-cli_pipeline(training_data_path="", application_data_path="", data_source=DataSource.DESKTOP)
+# cli_pipeline(training_data_path="", application_data_path="", data_source=DataSource.DESKTOP)
 
 # Mock the scenario where the user uses the provided dataset for both training and application
 #   - Test both continuous training and model inference

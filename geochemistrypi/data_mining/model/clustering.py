@@ -364,7 +364,7 @@ class KMeansClustering(ClusteringWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = kmeans_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -464,7 +464,7 @@ class DBSCANClustering(ClusteringMetricsMixin, ClusteringWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = dbscan_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -599,7 +599,7 @@ class Agglomerative(ClusteringWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = agglomerative_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -701,7 +701,7 @@ class AffinityPropagationClustering(ClusteringWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = affinitypropagation_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -802,7 +802,7 @@ class MeanShiftClustering(ClusteringMetricsMixin, ClusteringWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = meanshift_manual_hyper_parameters()
         clear_output()
         return hyper_parameters

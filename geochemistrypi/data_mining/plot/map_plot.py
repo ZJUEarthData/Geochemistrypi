@@ -160,7 +160,7 @@ def process_world_map(data: pd.DataFrame, name_column: str) -> None:
             clear_output()
         if is_map_projection == 1:
             # If the user chooses to project the data on the world map, then the user can select the element to be projected.
-            print("-*-*- Distribution in World Map -*-*-")
+            print("[bold green]-*-*- Distribution in World Map -*-*-[/bold green]")
             print("Select one of the elements below to be projected in the World Map: ")
             show_data_columns(data.columns)
             elm_num = limit_num_input(data.columns, SECTION[3], num_input)
