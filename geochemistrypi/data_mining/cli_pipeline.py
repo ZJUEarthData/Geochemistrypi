@@ -237,7 +237,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     # Create a new experiment or use the previous experiment
     is_used_previous_experiment = Confirm.ask("✨ Use Previous Experiment", default=False)
     # Set the tracking uri to the local directory, in the future, we can set it to the remote server.
-    experiments_location = os.path.join("file:", WORKING_PATH, "geopi_tracking")
+    experiments_location = "file:///" + os.path.join(WORKING_PATH, "geopi_tracking")
     mlflow.set_tracking_uri(experiments_location)
     # Print the tracking uri for debugging.
     # print("tracking uri:", mlflow.get_tracking_uri())
