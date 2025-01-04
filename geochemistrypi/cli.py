@@ -78,7 +78,7 @@ def data_mining(
         else:
             print(f"[bold green]The 'geopi_tracking' directory is found in the current working directory '{cur_working_dir}'.[bold green]")
             print("[bold green]Our software will use the 'geopi_tracking' directory in the current working directory to store the tracking data for mlflow.[bold green]")
-        MLFLOW_STORE_PATH = os.path.join("file:", geopi_tracking_dir)
+        MLFLOW_STORE_PATH = "file:///" + geopi_tracking_dir
         print("[bold green]Press [bold magenta]Ctrl + C[/bold magenta] to close mlflow server at any time.[bold green]")
         start_mlflow_command = f"mlflow ui --backend-store-uri {MLFLOW_STORE_PATH} "
         subprocess.run(start_mlflow_command, shell=True)
