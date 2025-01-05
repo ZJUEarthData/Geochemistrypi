@@ -190,7 +190,7 @@ On Jupyter Notebook / Google Colab:
 
 + There are five built-in data sets corresponding to five kinds of model pattern.
 
-+ The generated output directory `geopi_output` and `geopi_tracking` will be on desktop by default.
++ The generated output directory `geopi_output` and `geopi_tracking` will be on the directory where you run this command.
 
 
 ### Case 2: Run with your own data set on desktop for model training and model inference
@@ -253,7 +253,7 @@ On Jupyter Notebook / Google Colab:
 
 + The training data in our pipeline will be divided into the train set and test set used for training the ML model and evaluating the model's performance. The score includes two types. The first type is the scores from the prediction on the test set while the second type is cv scores from the cross validation on the train set.
 
-+ The generated output directory 'geopi_output' and 'geopi_tracking' will be on the directory where you run this command.
++ The generated output directory `geopi_output` and `geopi_tracking` will be on the directory where you run this command.
 
 ### Case 5: Activate MLflow web interface
 
