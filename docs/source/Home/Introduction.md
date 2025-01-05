@@ -192,7 +192,7 @@ On Jupyter Notebook / Google Colab:
 
 + There are five built-in data sets corresponding to five kinds of model pattern.
 
-+ The generated output directory `geopi_output` and `geopi_tracking` will be on the directory where you run this command.
++ The generated output directory `geopi_output` and `geopi_tracking` will be on desktop by default.
 
 
 ### Case 2: Run with your own data set on desktop for model training and model inference
@@ -211,7 +211,7 @@ On Jupyter Notebook / Google Colab:
 
 **Note**:
 
-+ You need to create a directory `geopi_input` on desktop and put the date sets in it.
++ You need to create a directory `geopi_input` on desktop and put the datesets in it. If there is no `geopi_input` on desktop, our software will create one for you with all built-in datasets provided.
 
 + The generated output directory `geopi_output` and `geopi_tracking` will be on desktop by default.
 
