@@ -270,7 +270,7 @@ class PCADecomposition(DecompositionWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = pca_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -594,7 +594,7 @@ class TSNEDecomposition(DecompositionWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = tsne_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -719,7 +719,7 @@ class MDSDecomposition(DecompositionWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = mds_manual_hyper_parameters()
         clear_output()
         return hyper_parameters

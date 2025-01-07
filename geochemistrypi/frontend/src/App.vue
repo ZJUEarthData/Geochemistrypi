@@ -4,7 +4,7 @@ import NavBar from './components/nav-bar.vue'
 </script>
 
 <template>
-  <header>
+  <header v-if="!$route.meta.noNav">
     <NavBar />
   </header>
 

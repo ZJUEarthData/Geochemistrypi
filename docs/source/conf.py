@@ -40,6 +40,7 @@ html_js_files = [
     "dify.js",
     ("https://udify.app/embed.min.js", {"defer": "true", "id": "T76i6OWatem8lTEs"}),
 ]
+html_css_files = ["custom.css"]
 html_theme_options = {
     "top_of_page_button": "edit",
     "sidebar_hide_name": True,

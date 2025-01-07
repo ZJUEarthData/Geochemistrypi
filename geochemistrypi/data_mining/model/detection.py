@@ -292,7 +292,7 @@ class IsolationForestAnomalyDetection(AnomalyDetectionWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = isolation_forest_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -451,7 +451,7 @@ class LocalOutlierFactorAnomalyDetection(AnomalyDetectionWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = local_outlier_factor_manual_hyper_parameters()
         clear_output()
         return hyper_parameters

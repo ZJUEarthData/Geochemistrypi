@@ -8,11 +8,18 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: HomeView
+    },{
+      path: '/guide',
+      name: 'guide',
+      component: () => import('../views/guide/guide-index.vue')
     },
     {
-      path: '/guide',
-      name: 'about',
-      component: () => import('../views/guide-view/guide-page.vue')
+      path: '/guide-view',
+      name: 'guideView',
+      component: () => import('../views/guide-view/guide-page.vue'),
+      meta:{
+        noNav:true
+      }
     }
   ]
 })

@@ -44,7 +44,7 @@ repos:
         name: Large Files Checker
         description: Checks for large files added to git.
         types: [file]
-        exclude: ^node_modules/
+        exclude: (^node_modules/|^geochemistrypi/frontend/public/imgs/|^geochemistrypi/frontend/src/assets/imgs/)
 
   - repo: https://github.com/pycqa/flake8
     rev: 6.0.0

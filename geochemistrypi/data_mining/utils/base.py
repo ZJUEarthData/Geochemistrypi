@@ -12,14 +12,15 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from rich import print
 
-from ..constants import OUTPUT_PATH
 
-
-def create_geopi_output_dir(experiment_name: str, run_name: str, sub_run_name: Optional[str] = None) -> None:
+def create_geopi_output_dir(output_path: str, experiment_name: str, run_name: str, sub_run_name: Optional[str] = None) -> None:
     """Create the output directory for the current run and store the related pathes as environment variable.
 
     Parameters
     ----------
+    output_path : str
+        The root path to store the output.
+
     experiment_name : str
         The name of the experiment.
 
@@ -32,9 +33,9 @@ def create_geopi_output_dir(experiment_name: str, run_name: str, sub_run_name: O
     # Set the output path for the current run
     # timestamp = datetime.datetime.now().strftime("%m-%d-%H-%M")
     if sub_run_name:
-        geopi_output_path = os.path.join(OUTPUT_PATH, experiment_name, f"{run_name}", sub_run_name)
+        geopi_output_path = os.path.join(output_path, experiment_name, f"{run_name}", sub_run_name)
     else:
-        geopi_output_path = os.path.join(OUTPUT_PATH, experiment_name, f"{run_name}")
+        geopi_output_path = os.path.join(output_path, experiment_name, f"{run_name}")
     os.environ["GEOPI_OUTPUT_PATH"] = geopi_output_path
     os.makedirs(geopi_output_path, exist_ok=True)
 
@@ -143,9 +144,12 @@ def install_package(package_name: str) -> None:
     subprocess.check_call(["python", "-m", "pip", "install", "--quiet", package_name])
 
 
-def clear_output() -> None:
+def clear_output(text: str = None) -> None:
     """Clear the console output."""
-    flag = input("(Press Enter key to move forward.)")
+    if text:
+        flag = input(text)
+    else:
+        flag = input("(Press Enter key to move forward)")
     my_os = platform.system()
     if flag == "":
         if my_os == "Windows":
@@ -386,3 +390,46 @@ def copy_files(GEOPI_OUTPUT_ARTIFACTS_PATH: str, GEOPI_OUTPUT_METRICS_PATH: str,
             for file in files:
                 source_file_path = os.path.join(root, file)
                 shutil.copy2(source_file_path, GEOPI_OUTPUT_SUMMARY_PATH)
+
+
+def copy_files_from_source_dir_to_dest_dir(source_dir: str, dest_dir: str) -> None:
+    """Copy all files from the source folder to the destination folder.
+
+    Parameters
+    ----------
+    source_dir: str
+        Source folder path.
+
+    dest_dir: str
+        Destination folder path
+    """
+    for root, dirs, files in os.walk(source_dir):
+        for file in files:
+            source_file_path = os.path.join(root, file)
+            shutil.copy2(source_file_path, dest_dir)
+
+
+def list_excel_files(directory: str) -> list:
+    """Recursively lists all Excel files (including .xlsx, .xls, and .csv) in the specified directory and its subdirectories.
+
+    Parameters
+    ----------
+    directory : str
+        The path to the directory to search for Excel files.
+
+    Returns
+    -------
+    excel_files : list
+        A list of file paths for all Excel files found.
+
+    Notes
+    -----
+    (1) The function uses `os.walk` to traverse the directory and its subdirectories.
+    (2) Only files with extensions .xlsx, .xls, and .csv are considered as Excel files.
+    """
+    excel_files = []
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if file.endswith(".xlsx") or file.endswith(".xls") or file.endswith(".csv"):
+                excel_files.append(os.path.join(root, file))
+    return excel_files
