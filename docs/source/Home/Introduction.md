@@ -69,7 +69,7 @@ Eos Website: https://eos.org/editor-highlights/machine-learning-for-geochemists
 
 ## Video Demo
 
-Have an overview of what our software can accelerate your data-mining experiment.
+Have an overview of how our software can accelerate your data-mining experiment.
 
 - Geochemistry π v0.7.0 Introduction Video [[Bilibili]](https://www.bilibili.com/video/BV1TorTYVEgn/?vd_source=27944ab3b73a78970c1a52a5dcbb9140) | [[YouTube]](https://www.youtube.com/watch?v=6IVaO_gq22A)
 
