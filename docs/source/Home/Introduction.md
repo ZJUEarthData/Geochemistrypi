@@ -21,6 +21,8 @@
 
 Geochemistry π is an **open-sourced highly automated machine learning Python framework** dedicating to build up MLOps level 1 software product for data-driven geochemistry discovery on tabular data.
 
+**Our goal**: one data-mining run in 5 minutes, ten data-mining runs in 10 minutes.
+
 Core capabilities are:
 
 + **Continous Training**
@@ -64,6 +66,20 @@ Geochemistry π was selected for featuring as an Editor’s Highlight in EOS 
 Eos Website: https://eos.org/editor-highlights/machine-learning-for-geochemists-who-dont-want-to-code.
 
 ![Geochemistry pi news](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/bdd33a31-824a-492e-adcf-e660da4eaf1d)
+
+## Video Demo
+
+Have an overview of what our software can accelerate your data-mining experiment.
+
+- Geochemistry π v0.7.0 Introduction Video [[Bilibili]](https://www.bilibili.com/video/BV1TorTYVEgn/?vd_source=27944ab3b73a78970c1a52a5dcbb9140) | [[YouTube]](https://www.youtube.com/watch?v=6IVaO_gq22A)
+
+- Geochemistry π v0.7.0 for Regression Demo [[Bilibili]](https://www.bilibili.com/video/BV1VormYvEt8/?spm_id_from=333.1387.homepage.video_card.click&vd_source=27944ab3b73a78970c1a52a5dcbb9140) | [[YouTube]](https://www.youtube.com/watch?v=eTJ-IV1n4QM)
+
+- Geochemistry π v0.7.0 for Classification Demo [[Bilibili]](https://www.bilibili.com/video/BV1ZDrSYjEBv/?spm_id_from=333.1387.homepage.video_card.click&vd_source=27944ab3b73a78970c1a52a5dcbb9140) | [[YouTube]](https://www.youtube.com/watch?v=c_eDI2gVTr0)
+
+- MLflow UI user guide - Geochemistry π v0.5.0 [[Bilibili]](https://b23.tv/CW5Rjmo) | [[YouTube]](https://www.youtube.com/watch?v=Yu1nzNeLfRY)
+
+- Geochemistry π - Download and Run the Beta Version [[Bilibili]](https://www.bilibili.com/video/BV1UM4y1Q7Ju/?spm_id_from=333.999.0.0&vd_source=27944ab3b73a78970c1a52a5dcbb9140) | [[YouTube]](https://www.youtube.com/watch?v=EeVaJ3H7_AU&list=PLy8hNsI55lvh1UHjhVhqNUj3xPdV9sEiM&index=9)
 
 ## Quick Installation
 
@@ -125,6 +141,7 @@ Check the updated version of our software:
 geochemistrypi --version
 ```
 
+
 ## Data Preparation
 
 In order to utilize the functions provided by our software, your own data set should satisfy:
@@ -173,6 +190,10 @@ Once the software starts, there are two folders `geopi_output` and `geopi_tracki
 `geopi_tracking`: It is used by MLflow as the storage for visualized operations in the web interface, which users cannot modify directly.
 
 `geopi_output`: It is a regular folder aligning with MLflow's storage structure, which users can operate.
+
+From v0.7.0 onwards, there is one new command with the option `--desktop` to read the training data and application from the folder `geopi_input` on desktop.
+
+`geopi_input`: It is used to put the datasets you want our software to process.
 
 ### Case 1: Run with built-in data set for model training and model inference
 
@@ -276,12 +297,6 @@ On Jupyter Notebook / Google Colab:
 + Once the command is executed, our software will search `geopi_tracking` directory from the current working directory. If it doesn't exist, then our software will search it on desktop.
 
 + Copy the URL shown on the console into any browser to open the MLflow web interface. The URL is normally like this http://127.0.0.1:5000. Search MLflow online to see more operations and usages.
-
-For more details: Please refer to:
-
-- Geochemistry π - Download and Run the Beta Version [[Bilibili]](https://www.bilibili.com/video/BV1UM4y1Q7Ju/?spm_id_from=333.999.0.0&vd_source=27944ab3b73a78970c1a52a5dcbb9140) | [[YouTube]](https://www.youtube.com/watch?v=EeVaJ3H7_AU&list=PLy8hNsI55lvh1UHjhVhqNUj3xPdV9sEiM&index=9)
-
-- MLflow UI user guide - Geochemistry π v0.5.0 [[Bilibili]](https://b23.tv/CW5Rjmo) | [[YouTube]](https://www.youtube.com/watch?v=Yu1nzNeLfRY)
 
 
 ## Roadmap
