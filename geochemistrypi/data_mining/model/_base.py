@@ -301,19 +301,19 @@ class WorkflowBase(metaclass=ABCMeta):
         trained_model: object,
         image_config: dict,
         algorithm_name: str,
-        grah_name: str,
+        graph_name: str,
         local_path: str,
         mlflow_path: str,
     ) -> None:
         """Permutation importance plot."""
-        print(f"-----* {grah_name} *-----")  # Permutation Importance
+        print(f"-----* {graph_name} *-----")  # Permutation Importance
         importances_mean, importances_std, importances = plot_permutation_importance(X_test, y_test, trained_model, image_config)
-        save_fig(f"{grah_name} - {algorithm_name}", local_path, mlflow_path)
-        save_data(X_test, name_column, f"{grah_name} - X Test", local_path, mlflow_path)
-        save_data(y_test, name_column, f"{grah_name} - Y Test", local_path, mlflow_path)
+        save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+        save_data(X_test, name_column, f"{graph_name} - X Test", local_path, mlflow_path)
+        save_data(y_test, name_column, f"{graph_name} - Y Test", local_path, mlflow_path)
         data_dict = {"importances_mean": importances_mean.tolist(), "importances_std": importances_std.tolist(), "importances": importances.tolist()}
         data_str = json.dumps(data_dict, indent=4)
-        save_text(data_str, f"{grah_name} - {algorithm_name}", local_path, mlflow_path)
+        save_text(data_str, f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
 
 
 class TreeWorkflowMixin:
