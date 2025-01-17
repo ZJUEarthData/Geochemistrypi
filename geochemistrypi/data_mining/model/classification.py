@@ -21,7 +21,7 @@ from sklearn.tree import DecisionTreeClassifier
 from ..constants import CUSTOMIZE_LABEL_STRATEGY, MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, OPTION, RAY_FLAML, SAMPLE_BALANCE_STRATEGY, SECTION
 from ..data.data_readiness import limit_num_input, num2option, num_input
 from ..plot.statistic_plot import basic_statistic
-from ..utils.base import clear_output, save_data, save_fig, save_text
+from ..utils.base import clear_output, save_data, save_data_without_data_identifier, save_fig, save_text
 from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
 from .func.algo_classification._common import (
     cross_validation,
@@ -2289,7 +2289,7 @@ class MLPClassification(ClassificationWorkflowBase):
         data = pd.DataFrame(trained_model.loss_curve_, columns=["Loss"])
         data.plot(title="Loss")
         save_fig(f"{func_name} - {algorithm_name}", local_path, mlflow_path)
-        save_data(data, f"{func_name} - {algorithm_name}", local_path, mlflow_path)
+        save_data_without_data_identifier(data, f"{func_name} - {algorithm_name}", local_path, mlflow_path)
 
     @dispatch()
     def special_components(self, **kwargs) -> None:
