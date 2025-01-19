@@ -12,3 +12,7 @@ class ClassificationCommonFunction(Enum):
     ROC_CURVE = "ROC Curve"
     TWO_DIMENSIONAL_DECISION_BOUNDARY_DIAGRAM = "Two-dimensional Decision Boundary Diagram"
     PERMUTATION_IMPORTANCE_DIAGRAM = "Permutation Importance Diagram"
+
+
+class AdaboostSpecialFunction(Enum):
+    SPECIAL_FUNCTION = ["Feature Importance Diagram", "Single Tree Diagram"]

@@ -10,7 +10,7 @@ import xgboost
 from flaml import AutoML
 from multipledispatch import dispatch
 from rich import print
-from sklearn.ensemble import ExtraTreesClassifier, GradientBoostingClassifier, RandomForestClassifier
+from sklearn.ensemble import AdaBoostClassifier, ExtraTreesClassifier, GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.metrics import classification_report
 from sklearn.neighbors import KNeighborsClassifier
@@ -23,6 +23,7 @@ from ..data.data_readiness import limit_num_input, num2option, num_input
 from ..plot.statistic_plot import basic_statistic
 from ..utils.base import clear_output, save_data, save_data_without_data_identifier, save_fig, save_text
 from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
+from .func.algo_classification._adaboost import adaboost_manual_hyper_parameters
 from .func.algo_classification._common import (
     cross_validation,
     plot_2d_decision_boundary,
@@ -35,7 +36,7 @@ from .func.algo_classification._common import (
     score,
 )
 from .func.algo_classification._decision_tree import decision_tree_manual_hyper_parameters
-from .func.algo_classification._enum import ClassificationCommonFunction
+from .func.algo_classification._enum import AdaboostSpecialFunction, ClassificationCommonFunction
 from .func.algo_classification._extra_trees import extra_trees_manual_hyper_parameters
 from .func.algo_classification._gradient_boosting import gradient_boosting_manual_hyper_parameters
 from .func.algo_classification._knn import knn_manual_hyper_parameters
@@ -2946,6 +2947,176 @@ class GradientBoostingClassification(TreeWorkflowMixin, ClassificationWorkflowBa
         )
         self._plot_tree(
             trained_model=self.auto_model.estimators_[0][0],
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+
+
+class AdaBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
+    """The automation workflow of using AdaBoosting algorithm to make insightful products."""
+
+    name = "AdaBoost"
+    special_function = [func.value for func in AdaboostSpecialFunction]
+
+    def __init__(
+        self,
+        estimator: object = None,
+        *,
+        n_estimators: int = 50,
+        learning_rate: float = 1.0,
+        random_state: Union[int] = None,
+        max_depth: int = 3,
+        # algorithm: str = "SAMME",  # may deprecated in new sklearn version 1.6
+    ) -> None:
+        """
+        Parameters
+        ----------
+        estimator : object, default=None
+            The base estimator from which the boosted ensemble is built.
+            Support for sample weighting is required, as well as proper
+            ``classes_`` and ``n_classes_`` attributes. If ``None``, then
+            the base estimator is :class:`~sklearn.tree.DecisionTreeClassifier`
+            initialized with `max_depth=1`.
+            .. versionadded:: 1.2
+               `base_estimator` was renamed to `estimator`.
+        n_estimators : int, default=50
+            The maximum number of estimators at which boosting is terminated.
+            In case of perfect fit, the learning procedure is stopped early.
+            Values must be in the range `[1, inf)`.
+        learning_rate : float, default=1.0
+            Weight applied to each classifier at each boosting iteration. A higher
+            learning rate increases the contribution of each classifier. There is
+            a trade-off between the `learning_rate` and `n_estimators` parameters.
+            Values must be in the range `(0.0, inf)`.
+        algorithm : {'SAMME'}, default='SAMME'
+            Use the SAMME discrete boosting algorithm.
+            .. deprecated:: 1.6
+                `algorithm` is deprecated and will be removed in version 1.8. This
+                estimator only implements the 'SAMME' algorithm.
+        random_state : int, RandomState instance or None, default=None
+            Controls the random seed given at each `estimator` at each
+            boosting iteration.
+            Thus, it is only used when `estimator` exposes a `random_state`.
+            Pass an int for reproducible output across multiple function calls.
+            See :term:`Glossary <random_state>`.
+        References
+        ----------
+        Scikit-learn API: sklearn.ensemble.AdaBoostClassifier
+        https://scikit-learn.org/1.5/modules/generated/sklearn.ensemble.AdaBoostClassifier.html
+        """
+        super().__init__()
+        self.estimator = DecisionTreeClassifier(
+            max_depth=max_depth,
+        )
+        self.n_estimators = n_estimators
+        self.learning_rate = learning_rate
+        self.max_depth = max_depth
+
+        # if 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
+        if random_state:
+            self.random_state = (random_state,)
+        else:
+            self.random_state = (self.random_state,)
+
+        self.model = AdaBoostClassifier(
+            base_estimator=self.estimator,
+            n_estimators=self.n_estimators,
+            learning_rate=self.learning_rate,
+            # algorithm=self.algorithm,  # deprecated in version 1.6 of sklearn
+            random_state=self.random_state[0],
+        )
+
+        self.naming = AdaBoostClassification.name
+        self.customized = True
+        self.customized_name = "AdaBoost"
+
+    @property
+    def settings(self) -> Dict:
+        """The configuration of AdaBoosting to implenment AutoML by FLAML framework."""
+        configuration = {
+            "time_budget": 10,  # total running time in seconds
+            "metric": "accuracy",
+            "estimator_list": [self.customized_name],  # list of ML learners
+            "task": "classification",  # task type
+        }
+        return configuration
+
+    @property
+    def customization(self) -> object:
+        """The customized AdaBoosting of FLAML framework"""
+        from flaml import tune
+        from flaml.data import CLASSIFICATION
+        from flaml.model import SKLearnEstimator
+        from sklearn.ensemble import AdaBoostClassifier
+
+        class MyAdaBoostClassification(SKLearnEstimator):
+            def __init__(self, task="classification", n_jobs=None, **config):
+                super().__init__(task, **config)
+                if task in CLASSIFICATION:
+                    self.estimator_class = AdaBoostClassifier
+
+            @classmethod
+            def search_space(cls, data_size, task):
+                space = {  # FLAML can only change these two hyperparameter
+                    "n_estimators": {
+                        "domain": tune.lograndint(lower=4, upper=512),
+                        "init_value": 50,
+                    },
+                    "learning_rate": {
+                        "domain": tune.loguniform(lower=0.001, upper=1.0),
+                        "init_value": 0.1,
+                    },
+                }
+                return space
+
+        return MyAdaBoostClassification
+
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
+        """Manual hyper-parameters specification."""
+        print(f"-*-* {cls.name} - Hyper-parameters Specification -*-*")
+        hyper_parameters = adaboost_manual_hyper_parameters()
+        clear_output()
+        return hyper_parameters
+
+    @dispatch()
+    def special_components(self, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_feature_importance(
+            X_train=AdaBoostClassification.X_train,
+            name_column=DecisionTreeClassification.name_train,
+            trained_model=self.model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._plot_tree(
+            trained_model=self.model.estimators_[0],
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+
+    @dispatch(bool)
+    def special_components(self, is_automl: bool, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by FLAML frameworks"""
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_feature_importance(
+            X_train=AdaBoostClassification.X_train,
+            name_column=DecisionTreeClassification.name_train,
+            trained_model=self.auto_model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._plot_tree(
+            trained_model=self.auto_model.estimators_[0],
             image_config=self.image_config,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
