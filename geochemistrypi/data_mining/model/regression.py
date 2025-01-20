@@ -29,10 +29,13 @@ from .func.algo_regression._enum import (
     ClassicalLinearSpecialFunction,
     DecisionTreeSpecialFunction,
     ElasticNetSpecialFunction,
+    ExtraTreesSpecialFunction,
+    GradientBoostingSpecialFunction,
     LassoSpecialFunction,
     MLPSpecialFunction,
+    PolynomialSpecialFunction,
+    RandomForestSpecialFunction,
     RegressionCommonFunction,
-    RegressionSpecialFunction,
     RidgeSpecialFunction,
     SGDSpecialFunction,
     XGBoostSpecialFunction,
@@ -276,7 +279,7 @@ class PolynomialRegression(LinearWorkflowMixin, RegressionWorkflowBase):
     """The automation workflow of using Polynomial Regression algorithm to make insightful products."""
 
     name = "Polynomial Regression"
-    special_function = []  # "Polynomial Regression Formula"
+    special_function = [func.value for func in PolynomialSpecialFunction]
 
     def __init__(
         self,
@@ -337,6 +340,7 @@ class PolynomialRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             regression_classification="Regression",
             y_train=PolynomialRegression.y,
             algorithm_name=self.naming,
+            func_name=PolynomialSpecialFunction.POLYNOMIAL_REGRESSION_FORMULA.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
             mlflow_path="root",
         )
@@ -670,7 +674,7 @@ class XGBoostRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            func_name=RegressionSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
+            func_name=XGBoostSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
         )
         # self._histograms_feature_weights(
         #     X=XGBoostRegression.X,
@@ -693,7 +697,7 @@ class XGBoostRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            func_name=RegressionSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
+            func_name=XGBoostSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
         )
         # self._histograms_feature_weights(
         #     X=XGBoostRegression.X,
@@ -950,7 +954,7 @@ class DecisionTreeRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            func_name=RegressionSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
+            func_name=DecisionTreeSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
         )
         self._plot_tree(
             trained_model=self.model,
@@ -958,7 +962,7 @@ class DecisionTreeRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            func_name=RegressionSpecialFunction.SINGLE_TREE_DIAGRAM.value,
+            func_name=DecisionTreeSpecialFunction.SINGLE_TREE_DIAGRAM.value,
         )
 
     @dispatch(bool)
@@ -973,7 +977,7 @@ class DecisionTreeRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            func_name=RegressionSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
+            func_name=DecisionTreeSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
         )
         self._plot_tree(
             trained_model=self.auto_model,
@@ -981,7 +985,7 @@ class DecisionTreeRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            func_name=RegressionSpecialFunction.SINGLE_TREE_DIAGRAM.value,
+            func_name=DecisionTreeSpecialFunction.SINGLE_TREE_DIAGRAM.value,
         )
 
 
@@ -989,7 +993,7 @@ class ExtraTreesRegression(TreeWorkflowMixin, RegressionWorkflowBase):
     """The automation workflow of using Extra-Trees algorithm to make insightful products."""
 
     name = "Extra-Trees"
-    special_function = [func.value for func in DecisionTreeSpecialFunction]
+    special_function = [func.value for func in ExtraTreesSpecialFunction]
     # ["Feature Importance Diagram", "Single Tree Diagram"]
 
     def __init__(
@@ -1253,7 +1257,7 @@ class ExtraTreesRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            func_name=RegressionSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
+            func_name=ExtraTreesSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
         )
         self._plot_tree(
             trained_model=self.model.estimators_[0],
@@ -1261,7 +1265,7 @@ class ExtraTreesRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            func_name=RegressionSpecialFunction.SINGLE_TREE_DIAGRAM.value,
+            func_name=ExtraTreesSpecialFunction.SINGLE_TREE_DIAGRAM.value,
         )
 
     @dispatch(bool)
@@ -1276,7 +1280,7 @@ class ExtraTreesRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            func_name=RegressionSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
+            func_name=ExtraTreesSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
         )
         self._plot_tree(
             trained_model=self.auto_model.estimators_[0],
@@ -1284,7 +1288,7 @@ class ExtraTreesRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            func_name=RegressionSpecialFunction.SINGLE_TREE_DIAGRAM.value,
+            func_name=ExtraTreesSpecialFunction.SINGLE_TREE_DIAGRAM.value,
         )
 
 
@@ -1292,7 +1296,7 @@ class RandomForestRegression(TreeWorkflowMixin, RegressionWorkflowBase):
     """The automation workflow of using Random Forest algorithm to make insightful products."""
 
     name = "Random Forest"
-    special_function = [func.value for func in DecisionTreeSpecialFunction]
+    special_function = [func.value for func in RandomForestSpecialFunction]
     # ["Feature Importance Diagram", "Single Tree Diagram"]
 
     def __init__(
@@ -1558,7 +1562,7 @@ class RandomForestRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            func_name=RegressionSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
+            func_name=RandomForestSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
         )
         self._plot_tree(
             trained_model=self.model.estimators_[0],
@@ -1566,7 +1570,7 @@ class RandomForestRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            func_name=RegressionSpecialFunction.SINGLE_TREE_DIAGRAM.value,
+            func_name=RandomForestSpecialFunction.SINGLE_TREE_DIAGRAM.value,
         )
 
     @dispatch(bool)
@@ -1581,7 +1585,7 @@ class RandomForestRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            func_name=RegressionSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
+            func_name=RandomForestSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
         )
         self._plot_tree(
             trained_model=self.auto_model.estimators_[0],
@@ -1589,7 +1593,7 @@ class RandomForestRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            func_name=RegressionSpecialFunction.SINGLE_TREE_DIAGRAM.value,
+            func_name=RandomForestSpecialFunction.SINGLE_TREE_DIAGRAM.value,
         )
 
 
@@ -2172,6 +2176,7 @@ class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             regression_classification="Regression",
             y_train=ClassicalLinearRegression.y,
             algorithm_name=self.naming,
+            func_name=ClassicalLinearSpecialFunction.LINEAR_REGRESSION_FORMULA.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
             mlflow_path="root",
         )
@@ -2186,7 +2191,7 @@ class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=ClassicalLinearSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             # choose two of dimensions to draw
             three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(ClassicalLinearRegression.X_test, 2)
@@ -2197,7 +2202,7 @@ class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=ClassicalLinearSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
         elif columns_num == 2:
             # choose one of dimensions to draw
@@ -2209,7 +2214,7 @@ class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=ClassicalLinearSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             # no need to choose
             self._plot_3d_scatter_diagram(
@@ -2219,7 +2224,7 @@ class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=ClassicalLinearSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             self._plot_3d_surface_diagram(
                 feature_data=ClassicalLinearRegression.X_test,
@@ -2229,7 +2234,7 @@ class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SURFACE_DIAGRAM.value,
+                func_name=ClassicalLinearSpecialFunction.THREE_DIMENSIONAL_SURFACE_DIAGRAM.value,
             )
         elif columns_num == 1:
             # no need to choose
@@ -2240,7 +2245,7 @@ class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=ClassicalLinearSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             self._plot_2d_line_diagram(
                 feature_data=ClassicalLinearRegression.X_test,
@@ -2250,7 +2255,7 @@ class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_LINE_DIAGRAM.value,
+                func_name=ClassicalLinearSpecialFunction.TWO_DIMENSIONAL_LINE_DIAGRAM.value,
             )
         else:
             pass
@@ -2409,7 +2414,7 @@ class GradientBoostingRegression(TreeWorkflowMixin, RegressionWorkflowBase):
     """The automation workflow of using Gradient Boosting algorithm to make insightful products."""
 
     name = "Gradient Boosting"
-    special_function = [func.value for func in DecisionTreeSpecialFunction]
+    special_function = [func.value for func in GradientBoostingSpecialFunction]
     # ["Feature Importance Diagram", "Single Tree Diagram"]
 
     def __init__(
@@ -2747,7 +2752,7 @@ class GradientBoostingRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            func_name=RegressionSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
+            func_name=GradientBoostingSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
         )
         self._plot_tree(
             trained_model=self.model.estimators_[0][0],
@@ -2755,7 +2760,7 @@ class GradientBoostingRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            func_name=RegressionSpecialFunction.SINGLE_TREE_DIAGRAM.value,
+            func_name=GradientBoostingSpecialFunction.SINGLE_TREE_DIAGRAM.value,
         )
 
     @dispatch(bool)
@@ -2770,7 +2775,7 @@ class GradientBoostingRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            func_name=RegressionSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
+            func_name=GradientBoostingSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
         )
         self._plot_tree(
             trained_model=self.auto_model.estimators_[0][0],
@@ -2778,7 +2783,7 @@ class GradientBoostingRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            func_name=RegressionSpecialFunction.SINGLE_TREE_DIAGRAM.value,
+            func_name=GradientBoostingSpecialFunction.SINGLE_TREE_DIAGRAM.value,
         )
 
 
@@ -2955,6 +2960,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             regression_classification="Regression",
             y_train=LassoRegression.y,
             algorithm_name=self.naming,
+            func_name=LassoSpecialFunction.LASSO_REGRESSION_FORMULA.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
             mlflow_path="root",
         )
@@ -2969,7 +2975,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=LassoSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             # choose two of dimensions to draw
             three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(LassoRegression.X_test, 2)
@@ -2980,7 +2986,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=LassoSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
         elif columns_num == 2:
             # choose one of dimensions to draw
@@ -2992,7 +2998,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=LassoSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             # no need to choose
             self._plot_3d_scatter_diagram(
@@ -3002,7 +3008,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=LassoSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             self._plot_3d_surface_diagram(
                 feature_data=LassoRegression.X_test,
@@ -3012,7 +3018,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SURFACE_DIAGRAM.value,
+                func_name=LassoSpecialFunction.THREE_DIMENSIONAL_SURFACE_DIAGRAM.value,
             )
         elif columns_num == 1:
             # no need to choose
@@ -3023,7 +3029,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=LassoSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             self._plot_2d_line_diagram(
                 feature_data=LassoRegression.X_test,
@@ -3033,7 +3039,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_LINE_DIAGRAM.value,
+                func_name=LassoSpecialFunction.TWO_DIMENSIONAL_LINE_DIAGRAM.value,
             )
         else:
             pass
@@ -3050,6 +3056,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             regression_classification="Regression",
             y_train=LassoRegression.y,
             algorithm_name=self.naming,
+            func_name=LassoSpecialFunction.LASSO_REGRESSION_FORMULA.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
             mlflow_path="root",
         )
@@ -3064,7 +3071,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=LassoSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             # choose two of dimensions to draw
             three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(LassoRegression.X_test, 2)
@@ -3075,7 +3082,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=LassoSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
         elif columns_num == 2:
             # choose one of dimensions to draw
@@ -3087,7 +3094,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=LassoSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             # no need to choose
             self._plot_3d_scatter_diagram(
@@ -3097,7 +3104,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=LassoSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             self._plot_3d_surface_diagram(
                 feature_data=LassoRegression.X_test,
@@ -3107,7 +3114,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SURFACE_DIAGRAM.value,
+                func_name=LassoSpecialFunction.THREE_DIMENSIONAL_SURFACE_DIAGRAM.value,
             )
         elif columns_num == 1:
             # no need to choose
@@ -3118,7 +3125,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=LassoSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             self._plot_2d_line_diagram(
                 feature_data=LassoRegression.X_test,
@@ -3128,7 +3135,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_LINE_DIAGRAM.value,
+                func_name=LassoSpecialFunction.TWO_DIMENSIONAL_LINE_DIAGRAM.value,
             )
         else:
             pass
@@ -3314,6 +3321,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             regression_classification="Regression",
             y_train=ElasticNetRegression.y,
             algorithm_name=self.naming,
+            func_name=ElasticNetSpecialFunction.ELASTIC_NET_FORMULA.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
             mlflow_path="root",
         )
@@ -3328,7 +3336,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=ElasticNetSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             # choose two of dimensions to draw
             three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(ElasticNetRegression.X_test, 2)
@@ -3339,7 +3347,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=ElasticNetSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
         elif columns_num == 2:
             # choose one of dimensions to draw
@@ -3351,7 +3359,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=ElasticNetSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             # no need to choose
             self._plot_3d_scatter_diagram(
@@ -3361,7 +3369,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=ElasticNetSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             self._plot_3d_surface_diagram(
                 feature_data=ElasticNetRegression.X_test,
@@ -3371,7 +3379,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SURFACE_DIAGRAM.value,
+                func_name=ElasticNetSpecialFunction.THREE_DIMENSIONAL_SURFACE_DIAGRAM.value,
             )
         elif columns_num == 1:
             # no need to choose
@@ -3382,7 +3390,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=ElasticNetSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             self._plot_2d_line_diagram(
                 feature_data=ElasticNetRegression.X_test,
@@ -3392,7 +3400,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_LINE_DIAGRAM.value,
+                func_name=ElasticNetSpecialFunction.TWO_DIMENSIONAL_LINE_DIAGRAM.value,
             )
         else:
             pass
@@ -3409,6 +3417,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             regression_classification="Regression",
             y_train=ElasticNetRegression.y,
             algorithm_name=self.naming,
+            func_name=ElasticNetSpecialFunction.ELASTIC_NET_FORMULA.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
             mlflow_path="root",
         )
@@ -3423,7 +3432,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=ElasticNetSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             # choose two of dimensions to draw
             three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(ElasticNetRegression.X_test, 2)
@@ -3434,7 +3443,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=ElasticNetSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
         elif columns_num == 2:
             # choose one of dimensions to draw
@@ -3446,7 +3455,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=ElasticNetSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             # no need to choose
             self._plot_3d_scatter_diagram(
@@ -3456,7 +3465,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=ElasticNetSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             self._plot_3d_surface_diagram(
                 feature_data=ElasticNetRegression.X_test,
@@ -3466,7 +3475,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SURFACE_DIAGRAM.value,
+                func_name=ElasticNetSpecialFunction.THREE_DIMENSIONAL_SURFACE_DIAGRAM.value,
             )
         elif columns_num == 1:
             # no need to choose
@@ -3477,7 +3486,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=ElasticNetSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             self._plot_2d_line_diagram(
                 feature_data=ElasticNetRegression.X_test,
@@ -3487,7 +3496,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_LINE_DIAGRAM.value,
+                func_name=ElasticNetSpecialFunction.TWO_DIMENSIONAL_LINE_DIAGRAM.value,
             )
         else:
             pass
@@ -3777,6 +3786,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             regression_classification="Regression",
             y_train=SGDRegression.y,
             algorithm_name=self.naming,
+            func_name=SGDSpecialFunction.SGD_REGRESSION_FORMULA.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
             mlflow_path="root",
         )
@@ -3791,7 +3801,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=SGDSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             # choose two of dimensions to draw
             three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(SGDRegression.X_test, 2)
@@ -3802,7 +3812,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=SGDSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
         elif columns_num == 2:
             # choose one of dimensions to draw
@@ -3814,7 +3824,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=SGDSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             # no need to choose
             self._plot_3d_scatter_diagram(
@@ -3824,7 +3834,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=SGDSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             self._plot_3d_surface_diagram(
                 feature_data=SGDRegression.X_test,
@@ -3834,7 +3844,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SURFACE_DIAGRAM.value,
+                func_name=SGDSpecialFunction.THREE_DIMENSIONAL_SURFACE_DIAGRAM.value,
             )
         elif columns_num == 1:
             # no need to choose
@@ -3845,7 +3855,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=SGDSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             self._plot_2d_line_diagram(
                 feature_data=SGDRegression.X_test,
@@ -3855,7 +3865,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_LINE_DIAGRAM.value,
+                func_name=SGDSpecialFunction.TWO_DIMENSIONAL_LINE_DIAGRAM.value,
             )
         else:
             pass
@@ -3872,6 +3882,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             regression_classification="Regression",
             y_train=SGDRegression.y,
             algorithm_name=self.naming,
+            func_name=SGDSpecialFunction.SGD_REGRESSION_FORMULA.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
             mlflow_path="root",
         )
@@ -3886,7 +3897,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=SGDSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             # choose two of dimensions to draw
             three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(SGDRegression.X_test, 2)
@@ -3897,7 +3908,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=SGDSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
         elif columns_num == 2:
             # choose one of dimensions to draw
@@ -3909,7 +3920,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=SGDSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             # no need to choose
             self._plot_3d_scatter_diagram(
@@ -3919,7 +3930,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=SGDSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             self._plot_3d_surface_diagram(
                 feature_data=SGDRegression.X_test,
@@ -3929,7 +3940,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SURFACE_DIAGRAM.value,
+                func_name=SGDSpecialFunction.THREE_DIMENSIONAL_SURFACE_DIAGRAM.value,
             )
         elif columns_num == 1:
             # no need to choose
@@ -3940,7 +3951,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=SGDSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             self._plot_2d_line_diagram(
                 feature_data=SGDRegression.X_test,
@@ -3950,7 +3961,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_LINE_DIAGRAM.value,
+                func_name=SGDSpecialFunction.TWO_DIMENSIONAL_LINE_DIAGRAM.value,
             )
         else:
             pass
@@ -4342,6 +4353,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             regression_classification="Regression",
             y_train=RidgeRegression.y,
             algorithm_name=self.naming,
+            func_name=RidgeSpecialFunction.RIDGE_REGRESSION_FORMULA.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
             mlflow_path="root",
         )
@@ -4356,7 +4368,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=RidgeSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             # choose two of dimensions to draw
             three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(RidgeRegression.X_test, 2)
@@ -4367,7 +4379,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=RidgeSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
         elif columns_num == 2:
             # choose one of dimensions to draw
@@ -4379,7 +4391,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=RidgeSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             # no need to choose
             self._plot_3d_scatter_diagram(
@@ -4389,7 +4401,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=RidgeSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             self._plot_3d_surface_diagram(
                 feature_data=RidgeRegression.X_test,
@@ -4399,7 +4411,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SURFACE_DIAGRAM.value,
+                func_name=RidgeSpecialFunction.THREE_DIMENSIONAL_SURFACE_DIAGRAM.value,
             )
         elif columns_num == 1:
             # no need to choose
@@ -4410,7 +4422,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=RidgeSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             self._plot_2d_line_diagram(
                 feature_data=RidgeRegression.X_test,
@@ -4420,7 +4432,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_LINE_DIAGRAM.value,
+                func_name=RidgeSpecialFunction.TWO_DIMENSIONAL_LINE_DIAGRAM.value,
             )
         else:
             pass
@@ -4437,6 +4449,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             regression_classification="Regression",
             y_train=RidgeRegression.y,
             algorithm_name=self.naming,
+            func_name=RidgeSpecialFunction.RIDGE_REGRESSION_FORMULA.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
             mlflow_path="root",
         )
@@ -4451,7 +4464,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=RidgeSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             # choose two of dimensions to draw
             three_dimen_axis_index, three_dimen_data = self.choose_dimension_data(RidgeRegression.X_test, 2)
@@ -4462,7 +4475,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=RidgeSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
         elif columns_num == 2:
             # choose one of dimensions to draw
@@ -4474,7 +4487,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=RidgeSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             # no need to choose
             self._plot_3d_scatter_diagram(
@@ -4484,7 +4497,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=RidgeSpecialFunction.THREE_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             self._plot_3d_surface_diagram(
                 feature_data=RidgeRegression.X_test,
@@ -4494,7 +4507,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.THREE_DIMENSIONAL_SURFACE_DIAGRAM.value,
+                func_name=RidgeSpecialFunction.THREE_DIMENSIONAL_SURFACE_DIAGRAM.value,
             )
         elif columns_num == 1:
             # no need to choose
@@ -4505,7 +4518,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
+                func_name=RidgeSpecialFunction.TWO_DIMENSIONAL_SCATTER_DIAGRAM.value,
             )
             self._plot_2d_line_diagram(
                 feature_data=RidgeRegression.X_test,
@@ -4515,7 +4528,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=RegressionSpecialFunction.TWO_DIMENSIONAL_LINE_DIAGRAM.value,
+                func_name=RidgeSpecialFunction.TWO_DIMENSIONAL_LINE_DIAGRAM.value,
             )
         else:
             pass
