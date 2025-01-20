@@ -45,3 +45,7 @@ class ExtraTreesSpecialFunction(Enum):
 class GradientBoostingSpecialFunction(Enum):
     FEATURE_IMPORTANCE = "Feature Importance"
     TREE_DIAGRAM = "Tree Diagram"
+
+
+class AdaboostSpecialFunction(Enum):
+    SPECIAL_FUNCTION = ["Feature Importance Diagram", "Single Tree Diagram"]
