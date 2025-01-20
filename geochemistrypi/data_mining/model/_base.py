@@ -342,13 +342,21 @@ class LinearWorkflowMixin:
 
     @staticmethod
     def _show_formula(
-        coef: np.ndarray, intercept: np.ndarray, features_name: np.ndarray, algorithm_name: str, regression_classification: str, y_train: pd.DataFrame, local_path: str, mlflow_path: str
+        coef: np.ndarray,
+        intercept: np.ndarray,
+        features_name: np.ndarray,
+        algorithm_name: str,
+        func_name: str,
+        regression_classification: str,
+        y_train: pd.DataFrame,
+        local_path: str,
+        mlflow_path: str,
     ) -> None:
         """Show the formula."""
-        print(f"-----* {algorithm_name} Formula *-----")
+        print(f"-----* {func_name} *-----")
         formula = show_formula(coef, intercept, features_name, regression_classification, y_train)
         formula_str = json.dumps(formula, indent=4)
-        save_text(formula_str, f"{algorithm_name} Formula", local_path, mlflow_path)
+        save_text(formula_str, f"{func_name}", local_path, mlflow_path)
 
     @staticmethod
     def _plot_2d_scatter_diagram(feature_data: pd.DataFrame, target_data: pd.DataFrame, data_name: str, algorithm_name: str, func_name: str, local_path: str, mlflow_path: str) -> None:

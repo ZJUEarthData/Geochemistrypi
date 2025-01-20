@@ -11,15 +11,6 @@ class RegressionCommonFunction(Enum):
     PERMUTATION_IMPORTANC_DIAGRAM = "Permutation Importance Diagram"
 
 
-class RegressionSpecialFunction(Enum):
-    FEATURE_IMPORTANCE_DIAGRAM = "Feature Importance Diagram"
-    SINGLE_TREE_DIAGRAM = "Single Tree Diagram"
-    TWO_DIMENSIONAL_SCATTER_DIAGRAM = "2D Scatter Diagram"
-    THREE_DIMENSIONAL_SCATTER_DIAGRAM = "3D Scatter Diagram"
-    TWO_DIMENSIONAL_LINE_DIAGRAM = "2D Line Diagram"
-    THREE_DIMENSIONAL_SURFACE_DIAGRAM = "3D Surface Diagram"
-
-
 class XGBoostSpecialFunction(Enum):
     FEATURE_IMPORTANCE_DIAGRAM = "Feature Importance Diagram"
 
@@ -71,3 +62,22 @@ class RidgeSpecialFunction(Enum):
     THREE_DIMENSIONAL_SCATTER_DIAGRAM = "3D Scatter Diagram"
     TWO_DIMENSIONAL_LINE_DIAGRAM = "2D Line Diagram"
     THREE_DIMENSIONAL_SURFACE_DIAGRAM = "3D Surface Diagram"
+
+
+class ExtraTreesSpecialFunction(Enum):
+    FEATURE_IMPORTANCE_DIAGRAM = "Feature Importance Diagram"
+    SINGLE_TREE_DIAGRAM = "Single Tree Diagram"
+
+
+class RandomForestSpecialFunction(Enum):
+    FEATURE_IMPORTANCE_DIAGRAM = "Feature Importance Diagram"
+    SINGLE_TREE_DIAGRAM = "Single Tree Diagram"
+
+
+class GradientBoostingSpecialFunction(Enum):
+    FEATURE_IMPORTANCE_DIAGRAM = "Feature Importance Diagram"
+    SINGLE_TREE_DIAGRAM = "Single Tree Diagram"
+
+
+class PolynomialSpecialFunction(Enum):
+    POLYNOMIAL_REGRESSION_FORMULA = "Polynomial Regression Formula"
