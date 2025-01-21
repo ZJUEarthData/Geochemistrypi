@@ -16,21 +16,22 @@ class ClassificationCommonFunction(Enum):
 
 
 class DecisionTreeSpecialFunction(Enum):
-    FEATURE_IMPORTANCE = "Feature Importance"
-    TREE_DIAGRAM = "Tree Diagram"
+    FEATURE_IMPORTANCE_DIAGRAM = "Feature Importance Diagram"
+    SINGLE_TREE_DIAGRAM = "Single Tree Diagram"
 
 
 class RandomForestSpecialFunction(Enum):
-    FEATURE_IMPORTANCE = "Feature Importance"
-    TREE_DIAGRAM = "Tree Diagram"
+    FEATURE_IMPORTANCE_DIAGRAM = "Feature Importance Diagram"
+    SINGLE_TREE_DIAGRAM = "Single Tree Diagram"
 
 
 class XGBoostSpecialFunction(Enum):
-    FEATURE_IMPORTANCE = "Feature Importance"
+    FEATURE_IMPORTANCE_DIAGRAM = "Feature Importance Diagram"
 
 
 class LogisticRegressionSpecialFunction(Enum):
-    FEATURE_IMPORTANCE = "Feature Importance"
+    LOGISTIC_REGRESSION_FORMULA = "Logistic Regression Formula"
+    FEATURE_IMPORTANCE_DIAGRAM = "Feature Importance Diagram"
 
 
 class MLPSpecialFunction(Enum):
@@ -38,14 +39,19 @@ class MLPSpecialFunction(Enum):
 
 
 class ExtraTreesSpecialFunction(Enum):
-    FEATURE_IMPORTANCE = "Feature Importance"
-    TREE_DIAGRAM = "Tree Diagram"
+    FEATURE_IMPORTANCE_DIAGRAM = "Feature Importance Diagram"
+    SINGLE_TREE_DIAGRAM = "Single Tree Diagram"
 
 
 class GradientBoostingSpecialFunction(Enum):
-    FEATURE_IMPORTANCE = "Feature Importance"
-    TREE_DIAGRAM = "Tree Diagram"
+    FEATURE_IMPORTANCE_DIAGRAM = "Feature Importance Diagram"
+    SINGLE_TREE_DIAGRAM = "Single Tree Diagram"
 
 
-class AdaboostSpecialFunction(Enum):
-    SPECIAL_FUNCTION = ["Feature Importance Diagram", "Single Tree Diagram"]
+class AdaBoostSpecialFunction(Enum):
+    FEATURE_IMPORTANCE_DIAGRAM = "Feature Importance Diagram"
+    SINGLE_TREE_DIAGRAM = "Single Tree Diagram"
+
+
+class SGDSpecialFunction(Enum):
+    SGD_CLASSIFICATION_FORMULA = "SGD Classification Formula"
