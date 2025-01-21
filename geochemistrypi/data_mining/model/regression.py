@@ -668,7 +668,7 @@ class XGBoostRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=XGBoostRegression.X_train,
-            name_column=RegressionWorkflowBase.name_train,
+            name_column=XGBoostRegression.name_train,
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -691,7 +691,7 @@ class XGBoostRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=XGBoostRegression.X_train,
-            name_column=RegressionWorkflowBase.name_train,
+            name_column=XGBoostRegression.name_train,
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -948,7 +948,7 @@ class DecisionTreeRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=DecisionTreeRegression.X_train,
-            name_column=RegressionWorkflowBase.name_train,
+            name_column=DecisionTreeRegression.name_train,
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -971,7 +971,7 @@ class DecisionTreeRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=DecisionTreeRegression.X_train,
-            name_column=RegressionWorkflowBase.name_train,
+            name_column=DecisionTreeRegression.name_train,
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -1251,7 +1251,7 @@ class ExtraTreesRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=ExtraTreesRegression.X_train,
-            name_column=RegressionWorkflowBase.name_train,
+            name_column=ExtraTreesRegression.name_train,
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -1274,7 +1274,7 @@ class ExtraTreesRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=ExtraTreesRegression.X_train,
-            name_column=RegressionWorkflowBase.name_train,
+            name_column=ExtraTreesRegression.name_train,
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -1556,7 +1556,7 @@ class RandomForestRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=RandomForestRegression.X_train,
-            name_column=RegressionWorkflowBase.name_train,
+            name_column=RandomForestRegression.name_train,
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -1579,7 +1579,7 @@ class RandomForestRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=RandomForestRegression.X_train,
-            name_column=RegressionWorkflowBase.name_train,
+            name_column=RandomForestRegression.name_train,
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -2746,7 +2746,7 @@ class GradientBoostingRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=GradientBoostingRegression.X_train,
-            name_column=RegressionWorkflowBase.name_train,
+            name_column=GradientBoostingRegression.name_train,
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
@@ -2769,7 +2769,7 @@ class GradientBoostingRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=GradientBoostingRegression.X_train,
-            name_column=RegressionWorkflowBase.name_train,
+            name_column=GradientBoostingRegression.name_train,
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
