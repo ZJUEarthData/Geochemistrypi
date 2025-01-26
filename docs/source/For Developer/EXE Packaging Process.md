@@ -1,8 +1,8 @@
-# Project packaging process
+# EXE Packaging Process
 
 ## Table of Contents
 
-- [1. Download the original code file from the project's [Github address]([Jin-sjh/Geochemistrypi: an open-sourced highly automated machine learning Python framework for data-driven geochemistry discovery](https://github.com/Jin-sjh/Geochemistrypi))](#1)
+- [1. Download the original code file from GitHub](#1)
 - [2. Open the folder in WinRAR](#2)
 - [3. Select `Command'`-> `Add file to compressed file`](#3)
 - [4. Create a compressed file in self-extracting format](#4)
@@ -13,7 +13,7 @@
 
 ---
 
-## 1. Download the original code file from the project's [Github address]([Jin-sjh/Geochemistrypi: an open-sourced highly automated machine learning Python framework for data-driven geochemistry discovery](https://github.com/Jin-sjh/Geochemistrypi))<a id="1"></a>
+## 1. Download the original code file from GitHub<a id="1"></a>
 
 ![o51scq3a n42](https://github.com/user-attachments/assets/dccaad75-6548-4264-9cf8-8d57c51b969c)
 
