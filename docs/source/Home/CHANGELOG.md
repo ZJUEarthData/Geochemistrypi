@@ -20,7 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 + Chatbot driven by LLM AI agent for online docs
 + Row identifier column selection for output data
 + Mean normalization technique in feature scaling section
-+ Download geopi by one-click via .exe
++ Download geopi by one-click via [.exe](https://github.com/ZJUEarthData/Geochemistrypi/releases/download/v0.7.0_exe/geochemistrypi_v0.7.0.exe)
 + New models:
   + Anomaly detection mode
     + Local outlier factor
