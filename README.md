@@ -85,6 +85,8 @@ Have an overview of how our software can accelerate your data-mining experiment.
 
 Our software is well tested on **macOS** and **Windows** system with **Python 3.9**. Other systems and Python version are not guranteed.
 
+### 1. Download via Terminal
+
 One instruction to download on **command line**, such as Terminal on macOS, Power Shell on Windows.
 
 ```
@@ -105,20 +107,24 @@ Download the latest version to avoid some old version issues, such as dependency
 ```
 !pip install "geochemistrypi==0.7.0"
 ```
-Check the downloaded version of our software:
+
+The following screenshot shows the downloads by instruction and launching of our software on macOS:
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/4fa0e2e7-20ad-4548-ab6c-ca5f26ba0106" alt="Downloads and Launching on macOS" width="450" />
+</p>
+
+### 2. Download via EXE
+
+For Windows users, there is an alternative way to download by one-click via [.exe](https://github.com/ZJUEarthData/Geochemistrypi/releases/download/v0.7.0_exe/geochemistrypi_v0.7.0.exe) file. You can watch this video [[Bilibili]](https://www.bilibili.com/video/BV1YmFPe4ESQ/?spm_id_from=333.337.search-card.all.click) | [[YouTube]](https://www.youtube.com/watch?v=LW5Cngcal9Q) to learn about it.
+
+After downloading, please check the downloaded version of our software:
 
 ```
 geochemistrypi --version
 ```
 
 **Note**: For more detail on installation, please refer to our online documentation in **Installation Manual** under the section of **FOR USER**. Over there, we highly recommend to use virtual environment (Conda) to avoid dependency version problems.
-
-
-The following screenshot shows the downloads and launching of our software on macOS:
-
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/4fa0e2e7-20ad-4548-ab6c-ca5f26ba0106" alt="Downloads and Launching on macOS" width="450" />
-</p>
 
 
 ## Quick Update
