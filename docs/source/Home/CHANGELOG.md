@@ -11,6 +11,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 + More new algorithms and new processing techniques
 
 
+## [0.7.0] - 2025-01-27
+
+### Added
+
++ New command option to read dataset and save artifacts on the desktop
+  + `geochemistrypi data-mining --desktop`
++ Chatbot driven by LLM AI agent for online docs
++ Row identifier column selection for output data
++ Mean normalization technique in feature scaling section
++ Download geopi by one-click via [.exe](https://github.com/ZJUEarthData/Geochemistrypi/releases/download/v0.7.0_exe/geochemistrypi_v0.7.0.exe)
++ New models:
+  + Anomaly detection mode
+    + Local outlier factor
+  + Clustering mode
+    + Mean shift
++ Video demo:
+  + Geochemistry π v0.7.0 Introduction Video [[Bilibili]](https://www.bilibili.com/video/BV1TorTYVEgn/?vd_source=27944ab3b73a78970c1a52a5dcbb9140) | [[YouTube]](https://www.youtube.com/watch?v=6IVaO_gq22A)
+  + Geochemistry π v0.7.0 for Regression Demo [[Bilibili]](https://www.bilibili.com/video/BV1VormYvEt8/?spm_id_from=333.1387.homepage.video_card.click&vd_source=27944ab3b73a78970c1a52a5dcbb9140) | [[YouTube]](https://www.youtube.com/watch?v=eTJ-IV1n4QM)
+  + Geochemistry π v0.7.0 for Classification Demo [[Bilibili]](https://www.bilibili.com/video/BV1ZDrSYjEBv/?spm_id_from=333.1387.homepage.video_card.click&vd_source=27944ab3b73a78970c1a52a5dcbb9140) | [[YouTube]](https://www.youtube.com/watch?v=c_eDI2gVTr0)
+  + Geochemistry π - Installation Guide via EXE File [[Bilibili]](https://www.bilibili.com/video/BV1YmFPe4ESQ/?spm_id_from=333.337.search-card.all.click) | [[YouTube]](https://www.youtube.com/watch?v=LW5Cngcal9Q)
+
++ Documentation
+  + *EXE Installation and Operation Guide* in user section
+  + *EXE Packaging Process* in developer section
+
+### Changed
+
++ Documentation
+  + *Add New Model to Framework* in developer section
+  + *Regression Example* in user section
+
+
 ## [0.6.1] - 2024-07-05
 
 ### Added
@@ -179,6 +211,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 
 [ unreleased ]: https://github.com/ZJUEarthData/geochemistrypi
+[ 0.7.0 ]: https://github.com/ZJUEarthData/Geochemistrypi/compare/v0.6.1...v0.7.0
 [ 0.6.1 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.6.0...v0.6.1
 [ 0.6.0 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.5.0...v0.6.0
 [ 0.5.0 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.4.0...v0.5.0

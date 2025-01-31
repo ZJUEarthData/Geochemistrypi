@@ -11,13 +11,15 @@
 
 ---
 
-**Documentation**: <a href="https://geochemistrypi.readthedocs.io" target="_blank">https://geochemistrypi.readthedocs.io</a>
+**Online Documentation**: <a href="https://geochemistrypi.readthedocs.io" target="_blank">https://geochemistrypi.readthedocs.io</a>
 
 **Source Code**: <a href="https://github.com/ZJUEarthData/geochemistrypi" target="_blank">https://github.com/ZJUEarthData/geochemistrypi</a>
 
 ---
 
 Geochemistry π is an **open-sourced highly automated machine learning Python framework** dedicating to build up MLOps level 1 software product for data-driven geochemistry discovery on tabular data.
+
+**Our goal**: one data-mining run in 5 minutes, ten data-mining runs in 10 minutes.
 
 Core capabilities are:
 
@@ -32,6 +34,8 @@ Key features are:
 + **Traceable**: It integrates MLflow to build special storage mechanism to streamline the end-to-end machine learning lifecycle.
 
 Latest Update: follow up by clicking `Starred` and  `Watch` on our [GitHub repository](https://github.com/ZJUEarthData/geochemistrypi), then get email notifications of the newest features automatically.
+
+Note: **Chatbot** driven by multi-agent system is available in the right-bottom corner of [Online Documentation](https://geochemistrypi.readthedocs.io) with a blue button.
 
 The following figure is the simplified overview of Geochemistry π: <br>
 
@@ -61,9 +65,27 @@ Eos Website: https://eos.org/editor-highlights/machine-learning-for-geochemists
 
 ![Geochemistry pi news](https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/bdd33a31-824a-492e-adcf-e660da4eaf1d)
 
+## Video Demo
+
+Have an overview of how our software can accelerate your data-mining experiment.
+
+- Geochemistry π v0.7.0 Introduction Video [[Bilibili]](https://www.bilibili.com/video/BV1TorTYVEgn/?vd_source=27944ab3b73a78970c1a52a5dcbb9140) | [[YouTube]](https://www.youtube.com/watch?v=6IVaO_gq22A)
+
+- Geochemistry π v0.7.0 for Regression Demo [[Bilibili]](https://www.bilibili.com/video/BV1VormYvEt8/?spm_id_from=333.1387.homepage.video_card.click&vd_source=27944ab3b73a78970c1a52a5dcbb9140) | [[YouTube]](https://www.youtube.com/watch?v=eTJ-IV1n4QM)
+
+- Geochemistry π v0.7.0 for Classification Demo [[Bilibili]](https://www.bilibili.com/video/BV1ZDrSYjEBv/?spm_id_from=333.1387.homepage.video_card.click&vd_source=27944ab3b73a78970c1a52a5dcbb9140) | [[YouTube]](https://www.youtube.com/watch?v=c_eDI2gVTr0)
+
+- MLflow UI user guide - Geochemistry π v0.5.0 [[Bilibili]](https://b23.tv/CW5Rjmo) | [[YouTube]](https://www.youtube.com/watch?v=Yu1nzNeLfRY)
+
+- Geochemistry π - Download and Run the Beta Version [[Bilibili]](https://www.bilibili.com/video/BV1UM4y1Q7Ju/?spm_id_from=333.999.0.0&vd_source=27944ab3b73a78970c1a52a5dcbb9140) | [[YouTube]](https://www.youtube.com/watch?v=EeVaJ3H7_AU&list=PLy8hNsI55lvh1UHjhVhqNUj3xPdV9sEiM&index=9)
+
+- Geochemistry π - Installation Guide via EXE File [[Bilibili]](https://www.bilibili.com/video/BV1YmFPe4ESQ/?spm_id_from=333.337.search-card.all.click) | [[YouTube]](https://www.youtube.com/watch?v=LW5Cngcal9Q)
+
 ## Quick Installation
 
 Our software is well tested on **macOS** and **Windows** system with **Python 3.9**. Other systems and Python version are not guranteed.
+
+### 1. Download via Terminal
 
 One instruction to download on **command line**, such as Terminal on macOS, Power Shell on Windows.
 
@@ -73,7 +95,7 @@ pip install geochemistrypi
 
 Download the latest version to avoid some old version issues, such as dependency downloading.
 ```
-pip install "geochemistrypi==0.6.1"
+pip install "geochemistrypi==0.7.0"
 ```
 
 One instruction to download on **Jupyter Notebook** or **Google Colab**.
@@ -83,15 +105,27 @@ One instruction to download on **Jupyter Notebook** or **Google Colab**.
 ```
 Download the latest version to avoid some old version issues, such as dependency downloading.
 ```
-!pip install "geochemistrypi==0.6.1"
+!pip install "geochemistrypi==0.7.0"
 ```
-Check the downloaded version of our software:
+
+The following screenshot shows the downloads by instruction and launching of our software on macOS:
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/4fa0e2e7-20ad-4548-ab6c-ca5f26ba0106" alt="Downloads and Launching on macOS" width="450" />
+</p>
+
+### 2. Download via EXE
+
+For Windows users, there is an alternative way to download by one-click via [.exe](https://github.com/ZJUEarthData/Geochemistrypi/releases/download/v0.7.0_exe/geochemistrypi_v0.7.0.exe) file. You can watch this video [[Bilibili]](https://www.bilibili.com/video/BV1YmFPe4ESQ/?spm_id_from=333.337.search-card.all.click) | [[YouTube]](https://www.youtube.com/watch?v=LW5Cngcal9Q) to learn about it.
+
+After downloading, please check the downloaded version of our software:
 
 ```
 geochemistrypi --version
 ```
 
 **Note**: For more detail on installation, please refer to our online documentation in **Installation Manual** under the section of **FOR USER**. Over there, we highly recommend to use virtual environment (Conda) to avoid dependency version problems.
+
 
 ## Quick Update
 
@@ -112,6 +146,7 @@ Check the updated version of our software:
 ```
 geochemistrypi --version
 ```
+
 
 ## Data Preparation
 
@@ -154,9 +189,19 @@ https://docs.qq.com/document/DQ2hqQ2N2ZGlOUWlT)
 
 ## Running Example
 
-**How to run:** After successfully downloading, run this instruction on **command line / Jupyter Notebook / Google Colab** whatever directory it is.
+**How to run:** After successfully downloading, run the instructions as the following examples shown on **command line / Jupyter Notebook / Google Colab**.
 
-### Case 1: Run with built-in data set for testing
+Once the software starts, there are two folders `geopi_output` and `geopi_tracking` generated automatically for result storage.
+
+`geopi_tracking`: It is used by MLflow as the storage for visualized operations in the web interface, which users cannot modify directly.
+
+`geopi_output`: It is a regular folder aligning with MLflow's storage structure, which users can operate.
+
+From v0.7.0 onwards, there is one new command with the option `--desktop` to read the training data and application from the folder `geopi_input` on desktop.
+
+`geopi_input`: It is used to put the datasets you want our software to process.
+
+### Case 1: Run with built-in data set for model training and model inference
 
 On command line:
 
@@ -170,9 +215,34 @@ On Jupyter Notebook / Google Colab:
 !geochemistrypi data-mining
 ```
 
-**Note**: There are four built-in data sets corresponding to four kinds of model pattern.
+**Note**:
 
-### Case 2: Run with your own data set without model inference
++ There are five built-in data sets corresponding to five kinds of model pattern.
+
++ The generated output directory `geopi_output` and `geopi_tracking` will be on desktop by default.
+
+
+### Case 2: Run with your own data set on desktop for model training and model inference
+
+On command line:
+
+```
+geochemistrypi data-mining --desktop
+```
+
+On Jupyter Notebook / Google Colab:
+
+```
+!geochemistrypi data-mining --desktop
+```
+
+**Note**:
+
++ You need to create a directory `geopi_input` on desktop and put the datesets in it. If there is no `geopi_input` on desktop, our software will create one for you with all built-in datasets provided.
+
++ The generated output directory `geopi_output` and `geopi_tracking` will be on desktop by default.
+
+### Case 3: Run with your own data set without model inference
 
 On command line:
 
@@ -186,9 +256,13 @@ On Jupyter Notebook / Google Colab:
 !geochemistrypi data-mining --data your_own_data_set.xlsx
 ```
 
-**Note**: Currently, `.xlsx` and `.csv` files are supported. Please specify the path your data file exists. For Google Colab, don't forget to upload your dataset first.
+**Note**:
 
-### Case 3: Implement model inference on application data
++ Currently, `.xlsx` and `.csv` files are supported. Please specify the path your data file exists. For Google Colab, don't forget to upload your dataset first.
+
++ The generated output directory `geopi_output` and `geopi_tracking` will be on the directory where you run this command.
+
+### Case 4: Implement model inference on application data
 
 On command line:
 
@@ -202,11 +276,15 @@ On Jupyter Notebook / Google Colab:
 !geochemistrypi data-mining --training your_own_training_data.xlsx --application your_own_application_data.xlsx
 ```
 
-**Note**: Please make sure the column names (data schema) in both training data file and application data file are the same. Because the operations you perform via our software on the training data will be record automatically and subsequently applied to the application data in the same order.
+**Note**:
 
-The training data in our pipeline will be divided into the train set and test set used for training the ML model and evaluating the model's performance. The score includes two types. The first type is the scores from the prediction on the test set while the second type is cv scores from the cross validation on the train set.
++ Please make sure the column names (data schema) in both training data file and application data file are the same. Because the operations you perform via our software on the training data will be record automatically and subsequently applied to the application data in the same order.
 
-### Case 4: Activate MLflow web interface
++ The training data in our pipeline will be divided into the train set and test set used for training the ML model and evaluating the model's performance. The score includes two types. The first type is the scores from the prediction on the test set while the second type is cv scores from the cross validation on the train set.
+
++ The generated output directory `geopi_output` and `geopi_tracking` will be on the directory where you run this command.
+
+### Case 5: Activate MLflow web interface
 
 On command line:
 
@@ -220,21 +298,12 @@ On Jupyter Notebook / Google Colab:
 !geochemistrypi data-mining --mlflow
 ```
 
-**Note**: Once you run our software, there are two folders (`geopi_output` and `geopi_tracking`) generated automatically. Make sure the directory where you execute using the above command should have the genereted file `geopi_tracking`.
+**Note**:
 
-Copy the URL shown on the console into any browser to open the MLflow web interface. The URL is normally like this http://127.0.0.1:5000. Search MLflow online to see more operations and usages.
++ Once the command is executed, our software will search `geopi_tracking` directory from the current working directory. If it doesn't exist, then our software will search it on desktop.
 
-For more details: Please refer to:
++ Copy the URL shown on the console into any browser to open the MLflow web interface. The URL is normally like this http://127.0.0.1:5000. Search MLflow online to see more operations and usages.
 
-- Geochemistry π - Download and Run the Beta Version [[Bilibili]](https://www.bilibili.com/video/BV1UM4y1Q7Ju/?spm_id_from=333.999.0.0&vd_source=27944ab3b73a78970c1a52a5dcbb9140) | [[YouTube]](https://www.youtube.com/watch?v=EeVaJ3H7_AU&list=PLy8hNsI55lvh1UHjhVhqNUj3xPdV9sEiM&index=9)
-
-- MLflow UI user guide - Geochemistry π v0.5.0 [[Bilibili]](https://b23.tv/CW5Rjmo) | [[YouTube]](https://www.youtube.com/watch?v=Yu1nzNeLfRY)
-
-The following screenshot shows the downloads and launching of our software on macOS:
-
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/4fa0e2e7-20ad-4548-ab6c-ca5f26ba0106" alt="Downloads and Launching on macOS" width="450" />
-</p>
 
 ## Roadmap
 
@@ -293,34 +362,40 @@ The whole package is under construction and the documentation is progressively e
 
 ## Team Info
 
-**Leader:**
+**Leaders:**
 
 + Can He (Sany, National University of Singapore, Singapore)
+  Duty: Be responsible for the overall development of the project.
   Email: sanyhew1097618435@163.com
++ Jianming Zhao (Jamie, Zhejiang University, China)
+  Duty: Head of the technical group.
+  Email: jmzhao29@gmail.com
++ Yongkang Chan (Kill-virus, Lanzhou University, China)
+  Duty: Head of the product group.
+  Email: kk1361207571@163.com
++ Yang Lyu (Daisy, Zhejiang University, China)
+  Duty: Be responsible for the cloud product.
+  Email: lyuyang1007@zju.edu.cn
 
 **Technical Group:**
 
-+ Jianming Zhao (Jamie, Zhejiang University, China)
-+ Jianhao Sun (Jin, China University of Geosciences, Wuhan, China)
-+ Yongkang Chan (Kill-virus, Lanzhou University, China)
++ Jianhao Sun (Jin, Nanjing University, China)
 + Mengying Ye (Mary, Jilin University, China)
-+ Mengqi Gao (China University of Geosciences, Beijing, China)
 + Chengtu Li（Trenki, Henan Polytechnic University, Beijing, China）
-+ Yucheng Yan (Andy, University of Sydney, Australia)
-+ Ruitao Chang (China University of Geosciences Beijing, China)
 + Panyan Weng (The University of Sydney, Australia)
++ Haibin Lai (Michael, Southern University of Science and Technology, China)
++ Siqi Yao (Clara, Dongguan University of Technology, China)
 
 **Product Group**:
 
-+ Yang Lyu (Daisy, Zhejiang University, China)
-+ Siqi Yao (Clara, Dongguan University of Technology, China)
 + Zhelan Lin（Lan, Fuzhou University, China）
 + ShuYi Li (Communication University Of China, Beijing, China)
-+ Junbo Wang (China University Of Geosciences, Beijing, China)
++ Junbo Wang (China University of Geosciences, Beijing, China)
 + Haibin Wang（Watson, University of Sydney, Australia）
 + Guoqiang Qiu（Elsen, Fuzhou University, China）
 + Yating Dong (Yetta，Dongguan University of Technology，China)
-+ Haibin Lai (Michael, Southern University of Science and Technology, China)
++ Bailun Jiang (EPSI / Lille University, France)
++ Chufan Zhou (Yoko, Institute of Geochemistry, Chinese Academy of Sciences; University of Chinese Academy of Sciences, China)
 
 ## Join Us :)
 
@@ -384,10 +459,13 @@ More Videos will be recorded soon.
 
 ## Contributors
 
++ Mengqi Gao (China University of Geosciences, Beijing, China)
 + Shengxin Wang (Samson, Lanzhou University, China)
 + Wenyu Zhao (Molly, Zhejiang University, China)
 + Qiuhao Zhao (Brad, Zhejiang University, China)
 + Kaixin Zheng (Hayne, Sun Yat-sen University, China)
++ Ruitao Chang (China University of Geosciences Beijing, China)
++ Yucheng Yan (Andy, University of Sydney, Australia)
 + Anzhou Li (Andrian, Zhejiang University, China)
 + Keran Li (Kirk, Chengdu University of Technology, China)
 + Dan Hu (Notre Dame University, United States)
@@ -400,4 +478,3 @@ More Videos will be recorded soon.
 + Zhenglin Xu (Garry, Jilin University, China)
 + Jianing Wang (National University of Singapore, Singapore)
 + Junchi Liao(Roceda, University of Electronic Science and Technology of China, China)
-+ Bailun Jiang (EPSI / Lille University, France)

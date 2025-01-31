@@ -10,7 +10,7 @@ import xgboost
 from flaml import AutoML
 from multipledispatch import dispatch
 from rich import print
-from sklearn.ensemble import ExtraTreesClassifier, GradientBoostingClassifier, RandomForestClassifier
+from sklearn.ensemble import AdaBoostClassifier, ExtraTreesClassifier, GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.metrics import classification_report
 from sklearn.neighbors import KNeighborsClassifier
@@ -21,8 +21,9 @@ from sklearn.tree import DecisionTreeClassifier
 from ..constants import CUSTOMIZE_LABEL_STRATEGY, MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, OPTION, RAY_FLAML, SAMPLE_BALANCE_STRATEGY, SECTION
 from ..data.data_readiness import limit_num_input, num2option, num_input
 from ..plot.statistic_plot import basic_statistic
-from ..utils.base import clear_output, save_data, save_fig, save_text
+from ..utils.base import clear_output, save_data, save_data_without_data_identifier, save_fig, save_text
 from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
+from .func.algo_classification._adaboost import adaboost_manual_hyper_parameters
 from .func.algo_classification._common import (
     cross_validation,
     plot_2d_decision_boundary,
@@ -35,7 +36,18 @@ from .func.algo_classification._common import (
     score,
 )
 from .func.algo_classification._decision_tree import decision_tree_manual_hyper_parameters
-from .func.algo_classification._enum import ClassificationCommonFunction
+from .func.algo_classification._enum import (
+    AdaBoostSpecialFunction,
+    ClassificationCommonFunction,
+    DecisionTreeSpecialFunction,
+    ExtraTreesSpecialFunction,
+    GradientBoostingSpecialFunction,
+    LogisticRegressionSpecialFunction,
+    MLPSpecialFunction,
+    RandomForestSpecialFunction,
+    SGDSpecialFunction,
+    XGBoostSpecialFunction,
+)
 from .func.algo_classification._extra_trees import extra_trees_manual_hyper_parameters
 from .func.algo_classification._gradient_boosting import gradient_boosting_manual_hyper_parameters
 from .func.algo_classification._knn import knn_manual_hyper_parameters
@@ -124,24 +136,24 @@ class ClassificationWorkflowBase(WorkflowBase):
         return dict()
 
     @staticmethod
-    def _score(y_true: pd.DataFrame, y_predict: pd.DataFrame, algorithm_name: str, store_path: str) -> str:
+    def _score(y_true: pd.DataFrame, y_predict: pd.DataFrame, algorithm_name: str, store_path: str, func_name: str) -> str:
         """Print the classification score report of the model."""
-        print("-----* Model Score *-----")
+        print(f"-----* {func_name} *-----")
         average, scores = score(y_true, y_predict)
         scores_str = json.dumps(scores, indent=4)
-        save_text(scores_str, f"Model Score - {algorithm_name}", store_path)
+        save_text(scores_str, f"{func_name} - {algorithm_name}", store_path)
         mlflow.log_metrics(scores)
         return average
 
     @staticmethod
-    def _classification_report(y_true: pd.DataFrame, y_predict: pd.DataFrame, algorithm_name: str, store_path: str) -> None:
+    def _classification_report(y_true: pd.DataFrame, y_predict: pd.DataFrame, algorithm_name: str, store_path: str, func_name: str) -> None:
         """Print the classification report of the model."""
-        print("-----* Classification Report *-----")
+        print(f"-----* {func_name} *-----")
         print(classification_report(y_true, y_predict))
         scores = classification_report(y_true, y_predict, output_dict=True)
         scores_str = json.dumps(scores, indent=4)
-        save_text(scores_str, f"Classification Report - {algorithm_name}", store_path)
-        mlflow.log_artifact(os.path.join(store_path, f"Classification Report - {algorithm_name}.txt"))
+        save_text(scores_str, f"{func_name} - {algorithm_name}", store_path)
+        mlflow.log_artifact(os.path.join(store_path, f"{func_name} - {algorithm_name}.txt"))
 
     @staticmethod
     def _cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, graph_name: str, average: str, cv_num: int, algorithm_name: str, store_path: str) -> None:
@@ -157,7 +169,7 @@ class ClassificationWorkflowBase(WorkflowBase):
         y_test: pd.DataFrame, y_test_predict: pd.DataFrame, name_column: str, graph_name: str, trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str
     ) -> None:
         """Plot the confusion matrix of the model."""
-        print("-----* {graph_name} *-----")
+        print(f"-----* {graph_name} *-----")
         data = plot_confusion_matrix(y_test, y_test_predict, trained_model)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
         index = [f"true_{i}" for i in range(int(y_test.nunique().values))]
@@ -221,7 +233,7 @@ class ClassificationWorkflowBase(WorkflowBase):
     @staticmethod
     def sample_balance(X_train: pd.DataFrame, y_train: pd.DataFrame, name_column: str, local_path: str, mlflow_path: str) -> tuple:
         """Use this method when the sample size is unbalanced."""
-        print("-*-*- Sample Balance on Train Set -*-*-")
+        print("[bold green]-*-*- Sample Balance on Train Set -*-*-[/bold green]")
         num2option(OPTION)
         is_sample_balance = limit_num_input(OPTION, SECTION[1], num_input)
         if is_sample_balance == 1:
@@ -246,7 +258,7 @@ class ClassificationWorkflowBase(WorkflowBase):
         y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, name_column1: str, name_column2: str, name_column3: str, local_path: str, mlflow_path: str
     ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """Using this function to customize the label to which samples of each category belong."""
-        print("-*-*- Customize Label on Label Set -*-*-")
+        print("[bold green]-*-*- Customize Label on Label Set -*-*-[/bold green]")
         num2option(OPTION)
         is_customize_label = limit_num_input(OPTION, SECTION[1], num_input)
         if is_customize_label == 1:
@@ -275,12 +287,14 @@ class ClassificationWorkflowBase(WorkflowBase):
         average = self._score(
             y_true=ClassificationWorkflowBase.y_test,
             y_predict=ClassificationWorkflowBase.y_test_predict,
+            func_name=ClassificationCommonFunction.MODEL_SCORE.value,
             algorithm_name=self.naming,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
         self._classification_report(
             y_true=ClassificationWorkflowBase.y_test,
             y_predict=ClassificationWorkflowBase.y_test_predict,
+            func_name=ClassificationCommonFunction.CLASSIFICATION_REPORT.value,
             algorithm_name=self.naming,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
@@ -342,6 +356,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
+            graph_name=ClassificationCommonFunction.PERMUTATION_IMPORTANCE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -368,12 +383,14 @@ class ClassificationWorkflowBase(WorkflowBase):
             y_true=ClassificationWorkflowBase.y_test,
             y_predict=ClassificationWorkflowBase.y_test_predict,
             algorithm_name=self.naming,
+            func_name=ClassificationCommonFunction.MODEL_SCORE.value,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
         self._classification_report(
             y_true=ClassificationWorkflowBase.y_test,
             y_predict=ClassificationWorkflowBase.y_test_predict,
             algorithm_name=self.naming,
+            func_name=ClassificationCommonFunction.CLASSIFICATION_REPORT.value,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
         self._cross_validation(
@@ -434,6 +451,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
+            graph_name=ClassificationCommonFunction.PERMUTATION_IMPORTANCE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -667,7 +685,7 @@ class SVMClassification(ClassificationWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = svc_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -687,7 +705,7 @@ class DecisionTreeClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
     """The automation workflow of using Decision Tree algorithm to make insightful products."""
 
     name = "Decision Tree"
-    special_function = ["Feature Importance Diagram", "Single Tree Diagram"]
+    special_function = [func.value for func in DecisionTreeSpecialFunction]
 
     def __init__(
         self,
@@ -921,7 +939,7 @@ class DecisionTreeClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = decision_tree_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -936,6 +954,7 @@ class DecisionTreeClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
+            func_name=DecisionTreeSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -943,6 +962,7 @@ class DecisionTreeClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
+            func_name=DecisionTreeSpecialFunction.SINGLE_TREE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -957,6 +977,7 @@ class DecisionTreeClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
+            func_name=DecisionTreeSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -964,6 +985,7 @@ class DecisionTreeClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
+            func_name=DecisionTreeSpecialFunction.SINGLE_TREE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -973,7 +995,7 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
     """The automation workflow of using Random Forest algorithm to make insightful products."""
 
     name = "Random Forest"
-    special_function = ["Feature Importance Diagram", "Single Tree Diagram"]
+    special_function = [func.value for func in RandomForestSpecialFunction]
 
     def __init__(
         self,
@@ -1240,7 +1262,7 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = random_forest_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -1251,10 +1273,11 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=RandomForestClassification.X_train,
-            name_column=DecisionTreeClassification.name_train,
+            name_column=RandomForestClassification.name_train,
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
+            func_name=RandomForestSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -1262,6 +1285,7 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             trained_model=self.model.estimators_[0],
             image_config=self.image_config,
             algorithm_name=self.naming,
+            func_name=RandomForestSpecialFunction.SINGLE_TREE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -1272,10 +1296,11 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=RandomForestClassification.X_train,
-            name_column=DecisionTreeClassification.name_train,
+            name_column=RandomForestClassification.name_train,
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
+            func_name=RandomForestSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -1283,6 +1308,7 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             trained_model=self.auto_model.estimators_[0],
             image_config=self.image_config,
             algorithm_name=self.naming,
+            func_name=RandomForestSpecialFunction.SINGLE_TREE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -1292,7 +1318,7 @@ class XGBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
     """The automation workflow of using XGBoost algorithm to make insightful products."""
 
     name = "XGBoost"
-    special_function = ["Feature Importance Diagram"]
+    special_function = [func.value for func in XGBoostSpecialFunction]
 
     # https: // xgboost.readthedocs.io / en / stable / python / python_api.html  # module-xgboost.sklearn
     _SklObjective = Optional[Union[str, Callable[[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]]]
@@ -1599,7 +1625,7 @@ class XGBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = xgboost_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -1630,10 +1656,11 @@ class XGBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         # )
         self._plot_feature_importance(
             X_train=XGBoostClassification.X_train,
-            name_column=DecisionTreeClassification.name_train,
+            name_column=XGBoostClassification.name_train,
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
+            func_name=XGBoostSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -1644,10 +1671,11 @@ class XGBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=XGBoostClassification.X_train,
-            name_column=DecisionTreeClassification.name_train,
+            name_column=XGBoostClassification.name_train,
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
+            func_name=XGBoostSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -1657,7 +1685,7 @@ class LogisticRegressionClassification(LinearWorkflowMixin, ClassificationWorkfl
     """The automation workflow of using Logistic Regression algorithm to make insightful products."""
 
     name = "Logistic Regression"
-    special_function = ["Logistic Regression Formula", "Feature Importance Diagram"]
+    special_function = [func.value for func in LogisticRegressionSpecialFunction]
 
     def __init__(
         self,
@@ -1883,18 +1911,18 @@ class LogisticRegressionClassification(LinearWorkflowMixin, ClassificationWorkfl
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = logistic_regression_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
 
     @staticmethod
-    def _plot_feature_importance(columns_name: np.ndarray, name_column: str, trained_model: any, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_feature_importance(columns_name: np.ndarray, name_column: str, trained_model: any, algorithm_name: str, local_path: str, mlflow_path: str, func_name: str) -> None:
         """Print the feature coefficient value orderly."""
-        print("-----* Feature Importance *-----")
+        print(f"-----* {func_name} *-----")
         data = plot_logistic_importance(columns_name, trained_model)
-        save_fig(f"Feature Importance - {algorithm_name}", local_path, mlflow_path)
-        save_data(data, name_column, f"Feature Importance - {algorithm_name}", local_path, mlflow_path)
+        save_fig(f"{func_name} - {algorithm_name}", local_path, mlflow_path)
+        save_data(data, name_column, f"{func_name} - {algorithm_name}", local_path, mlflow_path)
 
     @dispatch()
     def special_components(self, **kwargs) -> None:
@@ -1908,6 +1936,7 @@ class LogisticRegressionClassification(LinearWorkflowMixin, ClassificationWorkfl
             regression_classification="Classification",
             y_train=LogisticRegressionClassification.y,
             algorithm_name=self.naming,
+            func_name=LogisticRegressionSpecialFunction.LOGISTIC_REGRESSION_FORMULA.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
             mlflow_path="root",
         )
@@ -1916,6 +1945,7 @@ class LogisticRegressionClassification(LinearWorkflowMixin, ClassificationWorkfl
             name_column=LogisticRegressionClassification.name_all,
             trained_model=self.model,
             algorithm_name=self.naming,
+            func_name=LogisticRegressionSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -1932,6 +1962,7 @@ class LogisticRegressionClassification(LinearWorkflowMixin, ClassificationWorkfl
             regression_classification="Classification",
             y_train=LogisticRegressionClassification.y,
             algorithm_name=self.naming,
+            func_name=LogisticRegressionSpecialFunction.LOGISTIC_REGRESSION_FORMULA.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
             mlflow_path="root",
         )
@@ -1940,6 +1971,7 @@ class LogisticRegressionClassification(LinearWorkflowMixin, ClassificationWorkfl
             name_column=LogisticRegressionClassification.name_all,
             trained_model=self.auto_model,
             algorithm_name=self.naming,
+            func_name=LogisticRegressionSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -1949,7 +1981,7 @@ class MLPClassification(ClassificationWorkflowBase):
     """The automation workflow of using Multi-layer Perceptron algorithm to make insightful products."""
 
     name = "Multi-layer Perceptron"
-    special_function = ["Loss Curve Diagram"]
+    special_function = [func.value for func in MLPSpecialFunction]
 
     def __init__(
         self,
@@ -2252,19 +2284,19 @@ class MLPClassification(ClassificationWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = multi_layer_perceptron_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
 
     @staticmethod
-    def _plot_loss_curve(trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_loss_curve(trained_model: object, algorithm_name: str, func_name: str, local_path: str, mlflow_path: str) -> None:
         """Plot the learning curve of the trained model."""
-        print("-----* Loss Curve Diagram *-----")
+        print(f"-----* {func_name} *-----")
         data = pd.DataFrame(trained_model.loss_curve_, columns=["Loss"])
         data.plot(title="Loss")
-        save_fig(f"Loss Curve Diagram - {algorithm_name}", local_path, mlflow_path)
-        save_data(data, f"Loss Curve Diagram - {algorithm_name}", local_path, mlflow_path)
+        save_fig(f"{func_name} - {algorithm_name}", local_path, mlflow_path)
+        save_data_without_data_identifier(data, f"{func_name} - {algorithm_name}", local_path, mlflow_path)
 
     @dispatch()
     def special_components(self, **kwargs) -> None:
@@ -2274,6 +2306,7 @@ class MLPClassification(ClassificationWorkflowBase):
             self._plot_loss_curve(
                 trained_model=self.model,
                 algorithm_name=self.naming,
+                func_name=MLPSpecialFunction.LOSS_CURVE_DIAGRAM.value,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
@@ -2286,6 +2319,7 @@ class MLPClassification(ClassificationWorkflowBase):
             self._plot_loss_curve(
                 trained_model=self.auto_model,
                 algorithm_name=self.naming,
+                func_name=MLPSpecialFunction.LOSS_CURVE_DIAGRAM.value,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
@@ -2295,7 +2329,7 @@ class ExtraTreesClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
     """The automation workflow of using Extra-Trees algorithm to make insightful products."""
 
     name = "Extra-Trees"
-    special_function = ["Feature Importance Diagram", "Single Tree Diagram"]
+    special_function = [func.value for func in ExtraTreesSpecialFunction]
 
     def __init__(
         self,
@@ -2540,7 +2574,7 @@ class ExtraTreesClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = extra_trees_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -2551,10 +2585,11 @@ class ExtraTreesClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=ExtraTreesClassification.X_train,
-            name_column=LogisticRegressionClassification.name_train,
+            name_column=ExtraTreesClassification.name_train,
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
+            func_name=ExtraTreesSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -2562,6 +2597,7 @@ class ExtraTreesClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             trained_model=self.model.estimators_[0],
             image_config=self.image_config,
             algorithm_name=self.naming,
+            func_name=ExtraTreesSpecialFunction.SINGLE_TREE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -2572,10 +2608,11 @@ class ExtraTreesClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=ExtraTreesClassification.X_train,
-            name_column=LogisticRegressionClassification.name_train,
+            name_column=ExtraTreesClassification.name_train,
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
+            func_name=ExtraTreesSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -2583,6 +2620,7 @@ class ExtraTreesClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             trained_model=self.auto_model.estimators_[0],
             image_config=self.image_config,
             algorithm_name=self.naming,
+            func_name=ExtraTreesSpecialFunction.SINGLE_TREE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -2592,7 +2630,7 @@ class GradientBoostingClassification(TreeWorkflowMixin, ClassificationWorkflowBa
     """The automation workflow of using Gradient Boosting algorithm to make insightful products."""
 
     name = "Gradient Boosting"
-    special_function = ["Feature Importance Diagram", "Single Tree Diagram"]
+    special_function = [func.value for func in GradientBoostingSpecialFunction]
 
     def __init__(
         self,
@@ -2905,7 +2943,7 @@ class GradientBoostingClassification(TreeWorkflowMixin, ClassificationWorkflowBa
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = gradient_boosting_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -2916,10 +2954,11 @@ class GradientBoostingClassification(TreeWorkflowMixin, ClassificationWorkflowBa
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=GradientBoostingClassification.X_train,
-            name_column=LogisticRegressionClassification.name_train,
+            name_column=GradientBoostingClassification.name_train,
             trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
+            func_name=GradientBoostingSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -2927,6 +2966,7 @@ class GradientBoostingClassification(TreeWorkflowMixin, ClassificationWorkflowBa
             trained_model=self.model.estimators_[0][0],
             image_config=self.image_config,
             algorithm_name=self.naming,
+            func_name=GradientBoostingSpecialFunction.SINGLE_TREE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -2937,10 +2977,11 @@ class GradientBoostingClassification(TreeWorkflowMixin, ClassificationWorkflowBa
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._plot_feature_importance(
             X_train=GradientBoostingClassification.X_train,
-            name_column=LogisticRegressionClassification.name_train,
+            name_column=GradientBoostingClassification.name_train,
             trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
+            func_name=GradientBoostingSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -2948,6 +2989,181 @@ class GradientBoostingClassification(TreeWorkflowMixin, ClassificationWorkflowBa
             trained_model=self.auto_model.estimators_[0][0],
             image_config=self.image_config,
             algorithm_name=self.naming,
+            func_name=GradientBoostingSpecialFunction.SINGLE_TREE_DIAGRAM.value,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+
+
+class AdaBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
+    """The automation workflow of using AdaBoosting algorithm to make insightful products."""
+
+    name = "AdaBoost"
+    special_function = [func.value for func in AdaBoostSpecialFunction]
+
+    def __init__(
+        self,
+        estimator: object = None,
+        *,
+        n_estimators: int = 50,
+        learning_rate: float = 1.0,
+        random_state: Union[int] = None,
+        max_depth: int = 3,
+        # algorithm: str = "SAMME",  # may deprecated in new sklearn version 1.6
+    ) -> None:
+        """
+        Parameters
+        ----------
+        estimator : object, default=None
+            The base estimator from which the boosted ensemble is built.
+            Support for sample weighting is required, as well as proper
+            ``classes_`` and ``n_classes_`` attributes. If ``None``, then
+            the base estimator is :class:`~sklearn.tree.DecisionTreeClassifier`
+            initialized with `max_depth=1`.
+            .. versionadded:: 1.2
+               `base_estimator` was renamed to `estimator`.
+        n_estimators : int, default=50
+            The maximum number of estimators at which boosting is terminated.
+            In case of perfect fit, the learning procedure is stopped early.
+            Values must be in the range `[1, inf)`.
+        learning_rate : float, default=1.0
+            Weight applied to each classifier at each boosting iteration. A higher
+            learning rate increases the contribution of each classifier. There is
+            a trade-off between the `learning_rate` and `n_estimators` parameters.
+            Values must be in the range `(0.0, inf)`.
+        algorithm : {'SAMME'}, default='SAMME'
+            Use the SAMME discrete boosting algorithm.
+            .. deprecated:: 1.6
+                `algorithm` is deprecated and will be removed in version 1.8. This
+                estimator only implements the 'SAMME' algorithm.
+        random_state : int, RandomState instance or None, default=None
+            Controls the random seed given at each `estimator` at each
+            boosting iteration.
+            Thus, it is only used when `estimator` exposes a `random_state`.
+            Pass an int for reproducible output across multiple function calls.
+            See :term:`Glossary <random_state>`.
+        References
+        ----------
+        Scikit-learn API: sklearn.ensemble.AdaBoostClassifier
+        https://scikit-learn.org/1.5/modules/generated/sklearn.ensemble.AdaBoostClassifier.html
+        """
+        super().__init__()
+        self.estimator = DecisionTreeClassifier(
+            max_depth=max_depth,
+        )
+        self.n_estimators = n_estimators
+        self.learning_rate = learning_rate
+        self.max_depth = max_depth
+
+        # if 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
+        if random_state:
+            self.random_state = (random_state,)
+        else:
+            self.random_state = (self.random_state,)
+
+        self.model = AdaBoostClassifier(
+            base_estimator=self.estimator,
+            n_estimators=self.n_estimators,
+            learning_rate=self.learning_rate,
+            # algorithm=self.algorithm,  # deprecated in version 1.6 of sklearn
+            random_state=self.random_state[0],
+        )
+
+        self.naming = AdaBoostClassification.name
+        self.customized = True
+        self.customized_name = "AdaBoost"
+
+    @property
+    def settings(self) -> Dict:
+        """The configuration of AdaBoosting to implenment AutoML by FLAML framework."""
+        configuration = {
+            "time_budget": 10,  # total running time in seconds
+            "metric": "accuracy",
+            "estimator_list": [self.customized_name],  # list of ML learners
+            "task": "classification",  # task type
+        }
+        return configuration
+
+    @property
+    def customization(self) -> object:
+        """The customized AdaBoosting of FLAML framework"""
+        from flaml import tune
+        from flaml.data import CLASSIFICATION
+        from flaml.model import SKLearnEstimator
+        from sklearn.ensemble import AdaBoostClassifier
+
+        class MyAdaBoostClassification(SKLearnEstimator):
+            def __init__(self, task="classification", n_jobs=None, **config):
+                super().__init__(task, **config)
+                if task in CLASSIFICATION:
+                    self.estimator_class = AdaBoostClassifier
+
+            @classmethod
+            def search_space(cls, data_size, task):
+                space = {  # FLAML can only change these two hyperparameter
+                    "n_estimators": {
+                        "domain": tune.lograndint(lower=4, upper=512),
+                        "init_value": 50,
+                    },
+                    "learning_rate": {
+                        "domain": tune.loguniform(lower=0.001, upper=1.0),
+                        "init_value": 0.1,
+                    },
+                }
+                return space
+
+        return MyAdaBoostClassification
+
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
+        """Manual hyper-parameters specification."""
+        print(f"-*-* {cls.name} - Hyper-parameters Specification -*-*")
+        hyper_parameters = adaboost_manual_hyper_parameters()
+        clear_output()
+        return hyper_parameters
+
+    @dispatch()
+    def special_components(self, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_feature_importance(
+            X_train=AdaBoostClassification.X_train,
+            name_column=AdaBoostClassification.name_train,
+            trained_model=self.model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            func_name=AdaBoostSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._plot_tree(
+            trained_model=self.model.estimators_[0],
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            func_name=AdaBoostSpecialFunction.SINGLE_TREE_DIAGRAM.value,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+
+    @dispatch(bool)
+    def special_components(self, is_automl: bool, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by FLAML frameworks"""
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_feature_importance(
+            X_train=AdaBoostClassification.X_train,
+            name_column=AdaBoostClassification.name_train,
+            trained_model=self.auto_model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            func_name=AdaBoostSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._plot_tree(
+            trained_model=self.auto_model.estimators_[0],
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            func_name=AdaBoostSpecialFunction.SINGLE_TREE_DIAGRAM.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
@@ -3085,7 +3301,7 @@ class KNNClassification(ClassificationWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = knn_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -3105,8 +3321,8 @@ class SGDClassification(LinearWorkflowMixin, ClassificationWorkflowBase):
     """The automation workflow of using Stochastic Gradient Descent - SGD algorithm to make insightful products."""
 
     name = "Stochastic Gradient Descent"
-    # special_function = ["SGD Formula"]
-    special_function = []
+
+    special_function = [func.value for func in SGDSpecialFunction]
 
     def __init__(
         self,
@@ -3421,7 +3637,7 @@ class SGDClassification(LinearWorkflowMixin, ClassificationWorkflowBase):
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
-        print(f"-*-*- {cls.name} - Hyper-parameters Specification -*-*-")
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
         hyper_parameters = sgd_classificaiton_manual_hyper_parameters()
         clear_output()
         return hyper_parameters
@@ -3437,6 +3653,7 @@ class SGDClassification(LinearWorkflowMixin, ClassificationWorkflowBase):
             regression_classification="Classification",
             y_train=SGDClassification.y,
             algorithm_name=self.naming,
+            func_name=SGDSpecialFunction.SGD_CLASSIFICATION_FORMULA.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
             mlflow_path="root",
         )
@@ -3452,6 +3669,7 @@ class SGDClassification(LinearWorkflowMixin, ClassificationWorkflowBase):
             regression_classification="Classification",
             y_train=SGDClassification.y,
             algorithm_name=self.naming,
+            func_name=SGDSpecialFunction.SGD_CLASSIFICATION_FORMULA.value,
             local_path=GEOPI_OUTPUT_ARTIFACTS_PATH,
             mlflow_path="root",
         )
