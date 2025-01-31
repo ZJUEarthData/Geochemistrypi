@@ -41,7 +41,7 @@ REGRESSION_MODELS = [
     "SGD Regression",
     "BayesianRidge Regression",
     "Ridge Regression",
-    "Ada Boost Regression"
+    "AdaBoost"
     # "Bagging Regression",
     # "Decision Tree",
     # Histogram-based Gradient Boosting,

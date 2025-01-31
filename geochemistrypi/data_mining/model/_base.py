@@ -93,7 +93,7 @@ class WorkflowBase(metaclass=ABCMeta):
             "label": "all",  # Whether to show informative labels for impurity, etc
             "filled": True,  # color filling
             "impurity": True,  # When set to True, show the impurity at each node
-            "node_ids": None,  # When set to True, show the ID number on each node
+            "node_ids": False,  # When set to True, show the ID number on each node
             "proportion": False,  # When set to True, change the display of ‘values’ and/or ‘samples’ to be proportions and percentages respectively
             "rounded": True,  # When set to True, draw node boxes with rounded corners and use Helvetica fonts instead of Times-Roman
             "precision": 3,  # Number of digits of precision for floating point in the values of impurity, threshold and value attributes of each node

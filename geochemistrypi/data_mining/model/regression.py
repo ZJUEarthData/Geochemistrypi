@@ -27,6 +27,7 @@ from .func.algo_regression._common import cross_validation, plot_predicted_vs_ac
 from .func.algo_regression._decision_tree import decision_tree_manual_hyper_parameters
 from .func.algo_regression._elastic_net import elastic_net_manual_hyper_parameters
 from .func.algo_regression._enum import (
+    AdaBoostSpecialFunction,
     ClassicalLinearSpecialFunction,
     DecisionTreeSpecialFunction,
     ElasticNetSpecialFunction,
@@ -4535,20 +4536,20 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
             pass
 
 
-class AdaBoostRegression(RegressionWorkflowBase):
-    """The automation workflow of using Ada Boost Regression algorithm to make insightful products."""
+class AdaBoostRegression(TreeWorkflowMixin, RegressionWorkflowBase):
+    """The automation workflow of using AdaBoost Regression algorithm to make insightful products."""
 
-    name = "Ada Boost Regression"
-    special_function = []
+    name = "AdaBoost"
+    special_function = ["Feature Importance Diagram", "Single Tree Diagram"]
 
     def __init__(
         self,
-        estimator=None,
+        estimator: object = None,
         *,
-        n_estimators=50,
-        learning_rate=1.0,
-        loss="linear",
-        random_state=None,
+        n_estimators: int = 50,
+        learning_rate: float = 1.0,
+        loss: str = "linear",
+        random_state: Optional[int] = None,
     ) -> None:
         """Parameters
         ----------
@@ -4610,20 +4611,48 @@ class AdaBoostRegression(RegressionWorkflowBase):
 
         self.naming = AdaBoostRegression.name
         self.customized = True
-        self.customized_name = "Ada Boost"
+        self.customized_name = "AdaBoost"
 
     @property
     def settings(self) -> Dict:
-        """The configuration of Ada Boost Regression to implement AutoML by FLAML framework."""
+        """The configuration of AdaBoost Regression to implement AutoML by FLAML framework."""
         configuration = {
             "time_budget": 10,  # total running time in seconds
             "metric": "r2",
             "estimator_list": [self.customized_name],  # list of ML learners
             "task": "regression",  # task type
-            # "log_file_name": f'{self.naming} - automl.log',  # flaml log file
-            # "log_training_metric": True,  # whether to log training metric
         }
         return configuration
+
+    @property
+    def customization(self) -> object:
+        """The customized Adaboost Regression of FLAML framework."""
+        from flaml import tune
+        from flaml.data import REGRESSION
+        from flaml.model import SKLearnEstimator
+        from sklearn.ensemble import AdaBoostRegressor
+
+        class MyAdaBoostRegression(SKLearnEstimator):
+            def __init__(self, task="regression", n_jobs=None, **config):
+                super().__init__(task, **config)
+                if task in REGRESSION:
+                    self.estimator_class = AdaBoostRegressor
+
+            @classmethod
+            def search_space(cls, data_size, task):
+                space = {
+                    "n_estimators": {
+                        "domain": tune.lograndint(lower=4, upper=512),
+                        "init_value": 50,
+                    },
+                    "learning_rate": {
+                        "domain": tune.loguniform(lower=0.001, upper=1.0),
+                        "init_value": 0.1,
+                    },
+                }
+                return space
+
+        return MyAdaBoostRegression
 
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
@@ -4636,4 +4665,45 @@ class AdaBoostRegression(RegressionWorkflowBase):
     @dispatch()
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        pass
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_feature_importance(
+            X_train=AdaBoostRegression.X_train,
+            name_column=RegressionWorkflowBase.name_train,
+            trained_model=self.model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            func_name=AdaBoostSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._plot_tree(
+            trained_model=self.model.estimators_[0],
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            func_name=AdaBoostSpecialFunction.SINGLE_TREE_DIAGRAM.value,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+
+    @dispatch(bool)
+    def special_components(self, is_automl: bool, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by FLAML framework."""
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._plot_feature_importance(
+            X_train=AdaBoostRegression.X_train,
+            name_column=RegressionWorkflowBase.name_train,
+            trained_model=self.auto_model,
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            func_name=AdaBoostSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )
+        self._plot_tree(
+            trained_model=self.auto_model.estimators_[0][0],
+            image_config=self.image_config,
+            algorithm_name=self.naming,
+            func_name=AdaBoostSpecialFunction.SINGLE_TREE_DIAGRAM.value,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+        )

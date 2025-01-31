@@ -209,7 +209,7 @@ class RegressionModelSelection(ModelSelectionBase):
                 max_iter=hyper_parameters["max_iter"],
                 tol=hyper_parameters["tol"],
             )
-        elif self.model_name == "Ada Boost Regression":
+        elif self.model_name == "AdaBoost":
             hyper_parameters = AdaBoostRegression.manual_hyper_parameters()
             self.reg_workflow = AdaBoostRegression(loss=hyper_parameters["loss"], n_estimators=hyper_parameters["n_estimators"], learning_rate=hyper_parameters["learning_rate"])
 
@@ -297,7 +297,7 @@ class RegressionModelSelection(ModelSelectionBase):
             self.reg_workflow = BayesianRidgeRegression()
         elif self.model_name == "Ridge Regression":
             self.reg_workflow = RidgeRegression()
-        elif self.model_name == "Ada Boost Regression":
+        elif self.model_name == "AdaBoost":
             self.reg_workflow = AdaBoostRegression()
 
         self.reg_workflow.show_info()
