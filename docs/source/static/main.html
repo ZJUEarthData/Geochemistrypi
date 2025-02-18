@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xterm.js Example</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css" />
+</head>
+<body>
+    <div id="terminal-container" style="width: 100%; height: 400px;"></div>
+    <script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js"></script>
+    <script>
+		document.addEventListener("DOMContentLoaded", async function() {
+			const terminal = new Terminal({ cols: 80, rows: 24, cursorBlink: true });
+			const terminalContainer = document.getElementById('terminal-container');
+			terminal.open(terminalContainer);
+			terminal.write("> ");
+
+			let currentStep = 0;
+			let inputBuffer = "";
+			let workflow;
+
+			// 加载 JSON 文件
+			try {
+				const response = await fetch('../_static/chatbox.json'); // 确保 JSON 文件路径正确
+				workflow = await response.json();
+			} catch (error) {
+				terminal.writeln("\nFailed to load the workflow JSON.");
+				return;
+			}
+
+			// 显示当前步骤
+			function displayStep(stepIndex) {
+				const step = workflow.steps[stepIndex];
+				step.prompt.forEach(line => terminal.writeln(line));
+				terminal.write("> ");
+			}
+
+			// 验证输入（例如列范围格式）
+			function validateInput(input, validationType) {
+				if (validationType === "columns") {
+					return /^(\[?\d+,\s*\d+\]?\;?\s*)+$/.test(input);
+				}
+				return true;
+			}
+
+			// 处理用户输入
+			terminal.onData(e => {
+				if (e === '\r') { // Enter 键
+					const step = workflow.steps[currentStep];
+					const input = inputBuffer.trim();
+					inputBuffer = "";
+
+					if (step.options) {
+						const option = step.options[input];
+						if (option) {
+							option.message.forEach(line => terminal.writeln(line));
+							
+							if (option.nextStep !== null) {
+								currentStep = option.nextStep - 1;
+								displayStep(currentStep);
+								console.log(`Current step: ${currentStep}, Next step: ${step.nextStep}`); 
+							} else {
+								terminal.writeln("Workflow complete.");
+							}
+						} else {
+							terminal.writeln("\nInvalid option. Try again.");
+							terminal.write("> ");
+						}
+					} else if (step.validate) {
+						if (validateInput(input, step.validate)) {
+							terminal.writeln(`\n${step.message}`);
+							
+							console.log(`Current step: ${currentStep}, Next step: ${step.nextStep}`); 
+							
+							currentStep = step.nextStep - 1;
+							displayStep(currentStep);
+						} else {
+							terminal.writeln("\nInvalid input format. Try again.");
+							terminal.write("> ");
+						}
+					}
+				} else if (e === '\u007F') { // Backspace 键
+					if (inputBuffer.length > 0) {
+						inputBuffer = inputBuffer.slice(0, -1);
+						terminal.write('\b \b');
+					}
+				} else {
+					inputBuffer += e;
+					terminal.write(e);
+				}
+			});
+
+			// 开始工作流
+			displayStep(currentStep);
+		});
+
+
+
+	</script>
+</body>
+</html>
