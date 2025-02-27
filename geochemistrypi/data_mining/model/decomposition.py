@@ -12,17 +12,21 @@ from sklearn.manifold import MDS, TSNE
 from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH
 from ..utils.base import clear_output, save_data, save_data_without_data_identifier, save_fig
 from ._base import WorkflowBase
-from .func.algo_decomposition._common import plot_2d_scatter_diagram, plot_contour, plot_heatmap
-from .func.algo_decomposition._enum import DecompositionCommonFunction, PCASpecialFunction
+from .func.algo_decomposition._common import (
+    plot_2d_scatter_diagram,
+    plot_contour,
+    plot_heatmap
+)
 from .func.algo_decomposition._mds import mds_manual_hyper_parameters
 from .func.algo_decomposition._pca import biplot, pca_manual_hyper_parameters, triplot
 from .func.algo_decomposition._tsne import tsne_manual_hyper_parameters
+from .func.algo_decomposition._enum import DecompositionCommonFunction, PCASpecialFunction
 
 
 class DecompositionWorkflowBase(WorkflowBase):
     """The base workflow class of decomposition algorithms."""
 
-    common_function = [func.value for func in DecompositionCommonFunction]
+    common_function = [func.value for func in DecompositionCommonFunction]  # 'Decomposition Result',
 
     def __init__(self) -> None:
         super().__init__()
@@ -302,8 +306,8 @@ class PCADecomposition(DecompositionWorkflowBase):
         print(f"-----* {graph_name} *-----")
         biplot(reduced_data, pc_data, algorithm_name)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
-        save_data_without_data_identifier(reduced_data, f"{graph_name} - Reduced Data", local_path, mlflow_path)
-        save_data_without_data_identifier(pc_data, f"{graph_name} - PC Data", local_path, mlflow_path)
+        save_data(reduced_data, f"{graph_name} - Reduced Data", local_path, mlflow_path)
+        save_data(pc_data, f"{graph_name} - PC Data", local_path, mlflow_path)
 
     @staticmethod
     def _triplot(reduced_data: pd.DataFrame, pc_data: pd.DataFrame, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
@@ -311,19 +315,19 @@ class PCADecomposition(DecompositionWorkflowBase):
         print(f"-----* {graph_name} *-----")
         triplot(reduced_data, pc_data, algorithm_name)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
-        save_data_without_data_identifier(reduced_data, f"{graph_name} - Reduced Data", local_path, mlflow_path)
-        save_data_without_data_identifier(pc_data, f"{graph_name} - PC Data", local_path, mlflow_path)
+        save_data(reduced_data, f"{graph_name} - Reduced Data", local_path, mlflow_path)
+        save_data(pc_data, f"{graph_name} - PC Data", local_path, mlflow_path)
 
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         self._reduced_data2pd(kwargs["reduced_data"], kwargs["components_num"])
         self._get_principal_components(
-            graph_name=PCASpecialFunction.PRINCIPAL_COMPONENTS.value,
+            graph_name=PCADecomposition.func.PRINCIPAL_COMPONENTS.value,
             trained_model=self.model,
             n_components=self.n_components,
         )
         self._get_explained_variance_ratio(
-            graph_name=PCASpecialFunction.EXPLAINED_VARIANCE_RATIO.value,
+            graph_name=PCADecomposition.func.EXPLAINED_VARIANCE_RATIO.value,
             trained_model=self.model,
         )
 
