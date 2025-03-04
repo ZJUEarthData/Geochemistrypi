@@ -920,7 +920,10 @@ class DecisionTreeRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             @classmethod
             def search_space(cls, data_size, task):
                 space = {
-                    "criterion": {"domain": tune.choice(["squared_error", "friedman_mse", "absolute_error", "poisson"])},
+                    # "criterion": {"domain": tune.choice(["squared_error", "friedman_mse", "absolute_error", "poisson"])},
+                    # TODO: Handle the issue of 'poisson' not supporting negative values. This workaround excludes 'poisson' for now.
+                    # Future work: If required, implement a solution to support negative values for 'poisson' or handle them dynamically.
+                    "criterion": {"domain": tune.choice(["squared_error", "friedman_mse", "absolute_error"])},
                     "max_depth": {"domain": tune.randint(lower=2, upper=20), "init_value": 1, "low_cost_init_value": 1},
                     "min_samples_split": {
                         "domain": tune.randint(lower=2, upper=10),
@@ -1738,7 +1741,10 @@ class SVMRegression(RegressionWorkflowBase):
             def search_space(cls, data_size, task):
                 space = {
                     "C": {"domain": tune.uniform(lower=1, upper=data_size[0]), "init_value": 1, "low_cost_init_value": 1},
-                    "kernel": {"domain": tune.choice(["poly", "rbf", "sigmoid"])},
+                    # "kernel": {"domain": tune.choice(["poly", "rbf", "sigmoid"])},
+                    # TODO: Exclude 'poly' kernel due to its slow search speed and negative impact on framework performance.
+                    # Future work: Reevaluate kernel options if performance requirements change or improvements are made to handle 'poly' more efficiently.
+                    "kernel": {"domain": tune.choice(["rbf", "sigmoid"])},
                     "gamma": {"domain": tune.uniform(lower=1e-5, upper=10), "init_value": 1e-1, "low_cost_init_value": 1e-1},
                     "degree": {"domain": tune.quniform(lower=1, upper=5, q=1), "init_value": 3, "low_cost_init_value": 3},
                     "coef0": {"domain": tune.uniform(lower=0, upper=1), "init_value": 0, "low_cost_init_value": 0},
