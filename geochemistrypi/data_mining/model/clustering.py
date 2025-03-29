@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
 from rich import print
-from sklearn.cluster import DBSCAN, AffinityPropagation, AgglomerativeClustering, KMeans, MeanShift
+from sklearn.cluster import DBSCAN, OPTICS, AffinityPropagation, AgglomerativeClustering, KMeans, MeanShift
 
 from ..constants import MLFLOW_ARTIFACT_DATA_PATH, MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH
 from ..utils.base import clear_output, save_data, save_fig, save_text
@@ -20,6 +20,7 @@ from .func.algo_clustering._dbscan import dbscan_manual_hyper_parameters
 from .func.algo_clustering._enum import ClusteringCommonFunction, KMeansSpecialFunction, MeanShiftSpecialFunction
 from .func.algo_clustering._kmeans import kmeans_manual_hyper_parameters
 from .func.algo_clustering._meanshift import meanshift_manual_hyper_parameters
+from .func.algo_clustering._optics import OPTICS_manual_hyper_parameters
 
 
 class ClusteringWorkflowBase(WorkflowBase):
@@ -818,6 +819,190 @@ class MeanShiftClustering(ClusteringMetricsMixin, ClusteringWorkflowBase):
         )
 
 
+class OPTICSClustering(ClusteringWorkflowBase):
+
+    name = "OPTICS"
+    special_function = []
+
+    def __init__(
+        self,
+        min_samples: int = 5,
+        max_eps: float = np.inf,
+        metric: str = "minkowski",
+        p: float = 2,
+        metric_params: Optional[Dict] = None,
+        cluster_method: str = "xi",
+        eps: float = None,
+        xi: float = 0.05,
+        predecessor_correction: bool = True,
+        min_cluster_size: int = None,
+        algorithm: str = "auto",
+        leaf_size: int = 30,
+        memory: str = None,
+        n_jobs: int = None,
+    ) -> None:
+
+        """
+        Parameters
+        ----------
+        min_samples : int > 1 or float between 0 and 1, default=5
+            The number of samples in a neighborhood for a point to be considered as
+            a core point. Also, up and down steep regions can't have more than
+            ``min_samples`` consecutive non-steep points. Expressed as an absolute
+            number or a fraction of the number of samples (rounded to be at least
+            2).
+
+        max_eps : float, default=np.inf
+            The maximum distance between two samples for one to be considered as
+            in the neighborhood of the other. Default value of ``np.inf`` will
+            identify clusters across all scales; reducing ``max_eps`` will result
+            in shorter run times.
+
+        metric : str or callable, default='minkowski'
+            Metric to use for distance computation. Any metric from scikit-learn
+            or scipy.spatial.distance can be used.
+
+            If metric is a callable function, it is called on each
+            pair of instances (rows) and the resulting value recorded. The callable
+            should take two arrays as input and return one value indicating the
+            distance between them. This works for Scipy's metrics, but is less
+            efficient than passing the metric name as a string. If metric is
+            "precomputed", `X` is assumed to be a distance matrix and must be
+            square.
+
+            Valid values for metric are:
+            - from scikit-learn: ['cityblock', 'cosine', 'euclidean', 'l1', 'l2',
+            'manhattan']
+            - from scipy.spatial.distance: ['braycurtis', 'canberra', 'chebyshev',
+            'correlation', 'dice', 'hamming', 'jaccard', 'kulsinski',
+            'mahalanobis', 'minkowski', 'rogerstanimoto', 'russellrao',
+            'seuclidean', 'sokalmichener', 'sokalsneath', 'sqeuclidean',
+            'yule']
+
+            Sparse matrices are only supported by scikit-learn metrics.
+            See the documentation for scipy.spatial.distance for details on these
+            metrics.
+
+        p : float, default=2
+            Parameter for the Minkowski metric from
+            :class:`~sklearn.metrics.pairwise_distances`. When p = 1, this is
+            equivalent to using manhattan_distance (l1), and euclidean_distance
+            (l2) for p = 2. For arbitrary p, minkowski_distance (l_p) is used.
+
+        metric_params : dict, default=None
+            Additional keyword arguments for the metric function.
+
+        cluster_method : str, default='xi'
+            The extraction method used to extract clusters using the calculated
+            reachability and ordering. Possible values are "xi" and "dbscan".
+
+        eps : float, default=None
+            The maximum distance between two samples for one to be considered as
+            in the neighborhood of the other. By default it assumes the same value
+            as ``max_eps``.
+            Used only when ``cluster_method='dbscan'``.
+
+        xi : float between 0 and 1, default=0.05
+            Determines the minimum steepness on the reachability plot that
+            constitutes a cluster boundary. For example, an upwards point in the
+            reachability plot is defined by the ratio from one point to its
+            successor being at most 1-xi.
+            Used only when ``cluster_method='xi'``.
+
+        predecessor_correction : bool, default=True
+            Correct clusters according to the predecessors calculated by OPTICS
+            [2]_. This parameter has minimal effect on most datasets.
+            Used only when ``cluster_method='xi'``.
+
+        min_cluster_size : int > 1 or float between 0 and 1, default=None
+            Minimum number of samples in an OPTICS cluster, expressed as an
+            absolute number or a fraction of the number of samples (rounded to be
+            at least 2). If ``None``, the value of ``min_samples`` is used instead.
+            Used only when ``cluster_method='xi'``.
+
+        algorithm : {'auto', 'ball_tree', 'kd_tree', 'brute'}, default='auto'
+            Algorithm used to compute the nearest neighbors:
+
+            - 'ball_tree' will use :class:`~sklearn.neighbors.BallTree`.
+            - 'kd_tree' will use :class:`~sklearn.neighbors.KDTree`.
+            - 'brute' will use a brute-force search.
+            - 'auto' (default) will attempt to decide the most appropriate
+            algorithm based on the values passed to :meth:`fit` method.
+
+            Note: fitting on sparse input will override the setting of
+            this parameter, using brute force.
+
+        leaf_size : int, default=30
+            Leaf size passed to :class:`~sklearn.neighbors.BallTree` or
+            :class:`~sklearn.neighbors.KDTree`. This can affect the speed of the
+            construction and query, as well as the memory required to store the
+            tree. The optimal value depends on the nature of the problem.
+
+        memory : str or object with the joblib.Memory interface, default=None
+            Used to cache the output of the computation of the tree.
+            By default, no caching is done. If a string is given, it is the
+            path to the caching directory.
+
+        n_jobs : int, default=None
+            The number of parallel jobs to run for neighbors search.
+            ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
+            ``-1`` means using all processors. See :term:`Glossary <n_jobs>`
+            for more details.
+
+        References
+        ----------
+        Scikit-learn API: sklearn.cluster.OPTICS
+        https://scikit-learn.org/stable/modules/generated/sklearn.cluster.OPTICS.html#sklearn.cluster.OPTICS
+        """
+
+        super().__init__()
+        self.min_samples = min_samples
+        self.max_eps = max_eps
+        self.metric = metric
+        self.p = p
+        self.metric_params = metric_params
+        self.cluster_method = cluster_method
+        self.eps = eps
+        self.xi = xi
+        self.predecessor_correction = predecessor_correction
+        self.min_cluster_size = min_cluster_size
+        self.algorithm = algorithm
+        self.leaf_size = leaf_size
+        self.memory = memory
+        self.n_jobs = n_jobs
+
+        self.model = OPTICS(
+            min_samples=self.min_samples,
+            max_eps=self.max_eps,
+            metric=self.metric,
+            p=self.p,
+            metric_params=self.metric_params,
+            cluster_method=self.cluster_method,
+            eps=self.eps,
+            xi=self.xi,
+            predecessor_correction=self.predecessor_correction,
+            min_cluster_size=self.min_cluster_size,
+            algorithm=self.algorithm,
+            leaf_size=self.leaf_size,
+            memory=self.memory,
+            n_jobs=self.n_jobs,
+        )
+
+        self.naming = OPTICSClustering.name
+
+    @classmethod
+    def manual_hyper_parameters(cls) -> Dict:
+        """Manual hyper-parameters specification."""
+        print(f"[bold green]-*-*- {cls.name} - Hyper-parameters Specification -*-*-[/bold green]")
+        hyper_parameters = OPTICS_manual_hyper_parameters()
+        clear_output()
+        return hyper_parameters
+
+    def special_components(self, **kwargs) -> None:
+        """Invoke all special application functions for this algorithms by Scikit-learn framework."""
+        pass
+
+
 class SpectralClustering(ClusteringWorkflowBase):
     name = "Spectral"
     pass
@@ -825,11 +1010,6 @@ class SpectralClustering(ClusteringWorkflowBase):
 
 class WardHierarchicalClustering(ClusteringWorkflowBase):
     name = "WardHierarchical"
-    pass
-
-
-class OPTICSClustering(ClusteringWorkflowBase):
-    name = "OPTICS"
     pass
 
 
