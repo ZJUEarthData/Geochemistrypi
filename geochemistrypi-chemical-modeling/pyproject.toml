@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "geochemistrypi-chemical-modeling"
+version = "0.1.0"
+authors = [
+  { name="Chufan Zhou", email="1176733817@qq.com" },
+]
+description = "A package for chemical modeling using fsolve and root methods."
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Intended Audience :: Science/Research",
+]
+license = "MIT"
+license-files = ["LICENSE.txt"]
+dependencies = [
+    "numpy",
+    "scipy",
+    "typer",
+    "rich",
+]
+
+[project.urls]
+Homepage = "https://github.com/Yoko286/Geochemistrypi-chemical-modeling"
+Issues = "https://github.com/Yoko286/Geochemistrypi-chemical-modeling/issues"
+Documentation = "https://geochemistrypi.readthedocs.io/"
+
+[tool.hatch.build]
+directory = "dist"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[project.scripts]
+geochemistrypi = "geochemistrypi.cli:app"
