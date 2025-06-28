@@ -1,10 +1,11 @@
+
 name: Python package
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   build:
@@ -30,12 +31,9 @@ jobs:
     - name: Run pre-commit hooks
       run: |
         pre-commit run --all-files
-    # - name: Lint with flake8
-    #   run: |
-    #     # stop the build if there are Python syntax errors or undefined names
-    #     flake8 . --count --ignore=F811,W605 --show-source --statistics
-    #     # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-    #     flake8 . --count --exit-zero --max-complexity=20 --max-line-length=200 --statistics
-    # - name: Test with pytest
-      # run: |
-        # pytest
+    - name: Lint with flake8
+      run: |
+        flake8 .
+    - name: Test with pytest
+      run: |
+        pytest
