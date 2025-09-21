@@ -1,0 +1,19 @@
+ 
+  #dify-chatbot-bubble-button {
+    background-color: #1C64F2 !important;
+    width: 200px !important;
+  }
+
+  #dify-chatbot-bubble-button>div::after {
+    content: 'Chatbot 聊天机器人';
+    display: inline-block;
+    margin-left: 8px;
+    color: #fff;
+    font-size: 16px;
+
+  }
+
+  #dify-chatbot-bubble-window {
+    width: 40rem !important;
+    height: 64rem !important;
+  }

@@ -1,0 +1,65 @@
+# distribution archives
+**/dist
+
+# all produced graphs in png format under the directory images
+**/images
+
+# all produced data set under the directory output
+**/output
+**/geopi_output
+
+# all saved trained model under the directory trained model
+**/trained_models
+
+# log
+*.log
+
+# OS
+.DS_Store
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Pycharm
+.idea
+
+# Bytecode
+__pycache__
+*.pyc
+
+# pytest
+.pytest_cache
+
+# Python Virtual Environment
+venv_geo/*
+venv_geo
+
+# Ignore text files for the report
+report.txt
+output.txt
+
+# Web Dependency
+node_modules
+
+# yarn v2
+yarn.lock
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# fake database
+**/fake_database
+
+# docs/build
+docs/build
+
+# sqlite database
+*.db
+
+# env
+.env
+
+# mlflow
+mlruns
+geopi_tracking
