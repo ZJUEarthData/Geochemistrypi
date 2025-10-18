@@ -11,7 +11,7 @@ from rich import print
 
 from ._version import __version__
 from .data_mining.cli_pipeline import cli_pipeline
-from .data_mining.enum import DataSource
+from .data_mining.enum_ import DataSource
 
 app = typer.Typer()
 

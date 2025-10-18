@@ -51,7 +51,7 @@ from .data.imputation import imputer
 from .data.inference import build_transform_pipeline, model_inference
 from .data.preprocessing import feature_scaler, feature_selector
 from .data.statistic import monte_carlo_simulator
-from .enum import DataSource
+from .enum_ import DataSource
 from .plot.map_plot import process_world_map
 from .plot.statistic_plot import basic_statistic, check_missing_value, correlation_plot, distribution_plot, is_null_value, log_distribution_plot, probability_plot, ratio_null_vs_filled
 from .process.classify import ClassificationModelSelection
