@@ -1,5 +1,5 @@
 <p>
-<img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/6f970708-7811-40bb-8172-9b98563c7659" class="center"/>
+<img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/6f970708-7811-40bb-8172-9b9git8563c7659" class="center"/>
 </p>
 <p align="center">
 <img src="https://img.shields.io/github/actions/workflow/status/ZJUEarthData/geochemistrypi/geochemistrypi.yml?logo=github">
