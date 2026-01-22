@@ -1,126 +1,207 @@
 # GeochemistryPi — Chemical Modeling Module
 
-This module (chemical modeling) provides two kinds of routines:
-- Internal standard method (currently: Hg)
-- Double-spike method (currently: Mo)
+The Chemical Modeling module provides a structured framework for geochemical computations with an extensible task-method-element architecture. It supports both interactive CLI and programmatic usage.
 
-It is an interactive command-line tool located under `src/` and designed to read inputs from `data/` and write outputs to `results/`.
+## 🚀 Quick Start
 
----
-
-## For users
-
-Prerequisites (macOS)
+### Prerequisites
 - Python 3.8+
-- Recommended virtual environment:
-  - python3 -m venv .venv
-  - source .venv/bin/activate
-- Install dependencies:
-  - pip install -r requirements.txt
-  If not present, at minimum install: pandas, numpy, scipy, openpyxl, xlsxwriter
+- Required packages: `pandas`, `numpy`, `scipy`, `openpyxl`, `xlsxwriter`
 
-Quick start
-1. Put input Excel files under `data/`:
-   - `data/Hg_data.xlsx` for Hg internal-standard method
-   - `data/Mo_data.xlsx` (sheet `3程序处理_输入常数`) for Mo double-spike method
-2. Run the launcher:
-   - From project root: `python src/main.py`
-3. Follow prompts:
-   - First choose method:
-     - `1` Internal standard method
-     - `2` Double spike method
-   - Then choose element for the selected method:
-     - If Internal standard → `1` (Hg)
-     - If Double spike → `1` (Mo)
-4. Results are written to `results/`:
-   - Hg internal-standard: `results/Hg_results.xlsx` (or script-specific outputs)
-   - Mo double-spike: `results/Mo_results.csv`
+### Installation
 
-Notes
-- The launcher executes element-specific scripts or functions. Errors during execution are printed to the console.
-- Keep input sheet/column names as expected by the scripts (see data examples).
+```bash
+# Clone the repository
+git clone https://github.com/ZJUEarthData/Geochemistrypi.git
+```
+```bash
+cd Geochemistrypi
+```
+```bash
+# Create and activate virtual environment (recommended)
+python3 -m venv .venv
+```
+```bash
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+```
+```bash
+# Install dependencies
+pip install -r requirements.txt
+```
+```bash
+# From project root
+python -m geochemistrypi.cli
 
----
+# Follow the prompts:
+# 1. Choose option 1 for “data mining”, 2 for "chemical modeling"
+# 2. Select input file or use sample data
+# 3. Choose task → method → element
+```
 
-## For developers
+### Expected Output & Interaction:
+```bash
+Welcome to Geochemistry π
+Please choose a module to run:
+1 - Data Mining (automated ML pipelines)
+2 - Chemical Modeling (equilibrium / fractionation / etc.)
+Q - Quit
+Enter 1 or 2 (or Q to quit): 2
 
-Goal
-- Make it easy to add new elements and methods while keeping the launcher UI intact:
-  - First select method → then select element(s) available under that method.
+Chemical Modeling launcher
+Run non-interactively with a file? (y/N): n
 
-Project structure (relevant)
-- src/
-  - main.py                     — interactive launcher and core solvers
-  - Hg_Internal_standard_method.py — Hg internal-standard implementation
-  - (future) <Element>_Internal_standard_method.py
-  - (future) <Element>_Double_spike.py
-- data/                          — input Excel files
-- results/                       — outputs
-- tests/                         — unit tests (recommended)
+Input Data File
+Please provide the path to your input data file (Excel format).
+You can:
+1. Enter a file path
+2. Press Enter to use sample data (if available)
+3. Type 'exit' to cancel
 
-How to add a new element (internal standard method)
-1. Create a new script:
-   - `src/<Element>_Internal_standard_method.py`
-   - The script should be runnable standalone (executable by runpy.run_path) and locate its input via:
-     ```python
-     excel_path = os.path.join(os.path.dirname(__file__), '..', 'data', '<Element>_data.xlsx')
-     ```
-2. Implement:
-   - Basic input validation (required columns, types).
-   - Core processing function(s).
-   - Save outputs into `results/` with a clear filename (e.g., `<Element>_results.xlsx`).
-3. Wire it into the launcher:
-   - In `src/main.py`, add the element to the Internal Standard branch:
-     - Add a menu entry (simple prompt text).
-     - Call the script via the helper `runpy.run_path(script_path, run_name="__main__")` or call a function you export.
-   - Prefer adding a small wrapper function `run_<element>_internal_script()` in `main.py` that checks script path and calls runpy.
+File path (or press Enter for sample data):
+```
+### Using Sample Data
 
-How to add a new element (double-spike method)
-1. Create a new script or extend `main.py` with solver functions:
-   - If a dedicated script, follow the same placement as internal-standard scripts: `src/<Element>_Double_spike.py`.
-2. Define expected data layout:
-   - Input Excel sheet name(s) and required column names — document them in the script header.
-3. Export results to `results/` and optionally return a minimal summary (CSV) for the launcher to display/save.
+The module includes ready-to-use sample datasets. When prompted for file path, simply press Enter:
+```bash
+File path (or press Enter for sample data): [Press Enter]
 
-Recommended developer practices
-- Keep element logic isolated in its own script/module to avoid merging lots of domain code into `main.py`.
-- Use consistent input file naming: `<Element>_data.xlsx`.
-- Use try/except with clear user-facing error messages.
-- Add unit tests under `tests/`:
-  - Test parsing of input files
-  - Test solver functions (use small synthetic examples)
-  - Test menu logic (mock input)
-- Maintain a `requirements.txt` for reproducible environments.
+[green]Using sample data: Hg_data.xlsx[/green]
 
-Function hooks (suggested)
-- run_<element>_internal_script() — wrapper to execute internal-standard script
-- run_<element>_double_spike() — wrapper to execute double-spike solver (or return results)
+Select task:
+1. algo_fractionation
+2. algo_equilibrium
+3. algo_kinetic
+4. algo_thermodynamic
+5. algo_transport
+Enter number (or blank to cancel): 1
 
-Example: adding "Pb" to internal-standard
-1. Add `src/Pb_Internal_standard_method.py` with required processing.
-2. Add menu text and a wrapper in `src/main.py`:
-   - Prompt: `2. Pb` (under Internal standard menu)
-   - Call `run_pb_internal_script()` which runs the script.
+Select method:
+1. internal_standard: Internal standard method
+2. double_spike: Double-spike (double-diluent) method
+Enter number (or blank to cancel): 1
 
----
+Select element:
+1. Hg
+Enter number (or blank to cancel): 1
 
-## Troubleshooting & notes
+Running -> task=algo_fractionation, method=internal_standard, element=Hg
+Finished.
+{'status': 'success', 'out_path': '/path/to/results/Hg_results.xlsx'}
+```
 
-- If scipy is missing, the program will terminate with an instruction to install it.
-- Keep Excel inputs clean: no merged headers, consistent column names, and numeric columns parseable by `pandas.to_numeric`.
-- Use encoding `utf-8-sig` when producing CSV for easy opening in Excel on Windows.
+## 📁 Project Structure
+The structure refers to the data mining section
 
----
+```bash
+geochemistrypi/chemical_modeling/
+├── __init__.py              # Module initialization
+├── cli_pipeline.py          # Main CLI entry point
+├── dispatcher.py            # Task/method/element discovery
+├── data/
+│   ├── data_readiness.py    # Data loading utilities
+│   ├── Hg_data.xlsx         # Sample Hg data
+│   └── Mo_data.xlsx         # Sample Mo data
+├── model/func/
+│   ├── algo_fractionation/  # Fractionation task implementations
+│   │   ├── __init__.py
+│   │   ├── internal_standard.py  # Internal standard method
+│   │   └── double_spike.py       # Double-spike method
+│   ├── algo_equilibrium/    # Equilibrium tasks (placeholder)
+│   ├── algo_kinetic/        # Kinetic tasks (placeholder)
+│   ├── algo_thermodynamic/  # Thermodynamic tasks (placeholder)
+│   └── algo_transport/      # Transport tasks (placeholder)
+├── process/
+│   ├── hg_internal.py       # Hg-specific processing
+│   └── mo_double_spike.py   # Mo-specific processing
+└── results/                 # Output directory (gitignored)
+```
 
-If you want, can also:
-- Produce a `requirements.txt`.
-- Add a template script for new elements (boilerplate).
-- Add unit-test stubs under `tests/`.
+## 🔧 Current Implementations
 
-## License
+### Available Tasks
 
-This project is licensed under the MIT License - see the LICENSE.txt file for details.
+algo_fractionation: Isotope fractionation calculations
+### Available Methods
 
-## Author
+1.Internal Standard Method
 
-Chufan Zhou (1176733817@qq.com)
+Elements: Hg
+Implementation: process/hg_internal.py
+
+2.Double-Spike Method
+
+Elements: Mo
+Implementation: process/mo_double_spike.py
+
+## 🛠️ For Developers
+
+Extending the Module
+
+Adding a New Element to Existing Method
+
+Create element-specific processing script in process/:
+
+```bash
+# process/new_element.py
+def run(input_path: str, out_dir: str) -> dict:
+    # Your implementation
+    return {"status": "success", "output": "path/to/results"}
+Register the element in the method's __init__.py:
+```
+```bash
+# model/func/algo_fractionation/internal_standard.py
+from ..process.new_element import run as new_element_run
+
+def run(element: str, input_path: str, out_dir: str, **kwargs):
+    if element == "NewElement":
+        return new_element_run(input_path, out_dir, **kwargs)
+Adding a New Method
+
+Create method implementation in model/func/<task>/:
+```
+```bash
+# model/func/algo_fractionation/new_method.py
+def run(element: str, input_path: str, out_dir: str, **kwargs):
+    # Dispatch to element-specific implementations
+    pass
+Register in task's __init__.py:
+```
+```bash
+# model/func/algo_fractionation/__init__.py
+from .new_method import run as new_method_run
+
+def run(method: str, element: str, input_path: str, out_dir: str, **kwargs):
+    if method == "new_method":
+        return new_method_run(element, input_path, out_dir, **kwargs)
+Adding a New Task
+
+Create task directory structure:
+
+text
+model/func/new_task/
+├── __init__.py
+└── method1.py
+Implement task dispatcher:
+```
+```bash
+# model/func/new_task/__init__.py
+def run(method: str, element: str, input_path: str, out_dir: str, **kwargs):
+    # Task logic
+    pass
+```
+
+### Development Practices
+
+Code Style: Follow PEP 8, enforced via pre-commit (black, isort, flake8)
+Testing: Add unit tests for new implementations
+Documentation: Update docstrings and README
+Data Validation: Use data/data_readiness.py utilities
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## 👥 Authors & Contributors
+
+Chufan Zhou (1176733817@qq.com) - Initial implementation
+GeochemistryPi Development Team
