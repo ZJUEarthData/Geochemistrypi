@@ -5,8 +5,10 @@
 #     python src/main.py
 #
 # After launch you will be asked:
-#     1. Hg
-#     2. Mo
+# Select method:
+# 1. Internal standard method
+# 2. Double spike method
+# Enter 1 or 2:
 # Type 1 or 2 and press <Enter>.
 # ------------------------------------------------------------------------------
 
