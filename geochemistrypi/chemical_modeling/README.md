@@ -137,17 +137,17 @@ Implementation: process/mo_double_spike.py
 
 Extending the Module
 
-Adding a New Element to Existing Method
+### Adding a New Element to Existing Method
 
-Create element-specific processing script in process/:
+1.Create element-specific processing script in process/:
 
 ```bash
 # process/new_element.py
 def run(input_path: str, out_dir: str) -> dict:
     # Your implementation
     return {"status": "success", "output": "path/to/results"}
-Register the element in the method's __init__.py:
 ```
+2.Register the element in the method's __init__.py:
 ```bash
 # model/func/algo_fractionation/internal_standard.py
 from ..process.new_element import run as new_element_run
@@ -155,17 +155,20 @@ from ..process.new_element import run as new_element_run
 def run(element: str, input_path: str, out_dir: str, **kwargs):
     if element == "NewElement":
         return new_element_run(input_path, out_dir, **kwargs)
-Adding a New Method
-
-Create method implementation in model/func/<task>/:
 ```
+### Adding a New Method
+
+1.Create method implementation in model/func/<task>/:
+
 ```bash
 # model/func/algo_fractionation/new_method.py
 def run(element: str, input_path: str, out_dir: str, **kwargs):
     # Dispatch to element-specific implementations
     pass
-Register in task's __init__.py:
 ```
+
+2.Register in task's __init__.py:
+
 ```bash
 # model/func/algo_fractionation/__init__.py
 from .new_method import run as new_method_run
@@ -173,16 +176,19 @@ from .new_method import run as new_method_run
 def run(method: str, element: str, input_path: str, out_dir: str, **kwargs):
     if method == "new_method":
         return new_method_run(element, input_path, out_dir, **kwargs)
-Adding a New Task
+```
+### Adding a New Task
 
-Create task directory structure:
-
+1.Create task directory structure:
+```bash
 text
 model/func/new_task/
 ├── __init__.py
 └── method1.py
-Implement task dispatcher:
 ```
+
+2.Implement task dispatcher:
+
 ```bash
 # model/func/new_task/__init__.py
 def run(method: str, element: str, input_path: str, out_dir: str, **kwargs):
