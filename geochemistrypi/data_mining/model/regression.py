@@ -66,10 +66,29 @@ class RegressionWorkflowBase(WorkflowBase):
         self.customized = False
         self.customized_name = None
         self.mode = "Regression"
+    
+    def _get_model_coef_intercept(self):
+        """获取模型的系数和截距，支持MultiOutputRegressor"""
+        from sklearn.multioutput import MultiOutputRegressor
+        if isinstance(self.model, MultiOutputRegressor):
+            # 对于MultiOutputRegressor，获取内部估计器的系数
+            coef = np.array([estimator.coef_ for estimator in self.model.estimators_])
+            intercept = np.array([estimator.intercept_ for estimator in self.model.estimators_])
+        else:
+            # 对于单输出回归器，直接使用原有属性
+            coef = self.model.coef_
+            intercept = self.model.intercept_
+        return coef, intercept
 
     @dispatch(object, object)
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
         """Fit the model by Scikit-learn framework."""
+        # 支持多列Y：使用MultiOutputRegressor包装单输出回归器
+        if y is not None and y.shape[1] > 1:
+            from sklearn.multioutput import MultiOutputRegressor
+            # 如果模型还没有被包装，则包装它
+            if not isinstance(self.model, MultiOutputRegressor):
+                self.model = MultiOutputRegressor(self.model)
         self.model.fit(X, y)
 
     @dispatch(object, object, bool)
@@ -80,8 +99,14 @@ class RegressionWorkflowBase(WorkflowBase):
             self.automl = AutoML()
             if self.customized:  # When the model is not built-in in FLAML framwork, use FLAML customization.
                 self.automl.add_learner(learner_name=self.customized_name, learner_class=self.customization)
+            # 支持多列Y：只有当Y是单列时才转换为Series，多列Y保持DataFrame格式
             if y.shape[1] == 1:  # FLAML's data format validation mechanism
                 y = y.squeeze()  # Convert a single dataFrame column into a series
+            # 对于多列Y，FLAML不支持，我们需要使用scikit-learn的MultiOutputRegressor
+            elif y.shape[1] > 1:
+                from sklearn.multioutput import MultiOutputRegressor
+                # 为多列Y创建MultiOutputRegressor包装器
+                self.automl = MultiOutputRegressor(self.automl)
             self.automl.fit(X_train=X, y_train=y, **self.settings)
         else:
             # When the model is not built-in in FLAML framework, use RAY + FLAML customization.
@@ -333,9 +358,11 @@ class PolynomialRegression(LinearWorkflowMixin, RegressionWorkflowBase):
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+        # 使用_get_model_coef_intercept方法获取系数和截距
+        coef, intercept = self._get_model_coef_intercept()
         self._show_formula(
-            coef=self.model.coef_,
-            intercept=self.model.intercept_,
+            coef=coef,
+            intercept=intercept,
             features_name=self._features_name,
             regression_classification="Regression",
             y_train=PolynomialRegression.y,
@@ -999,7 +1026,7 @@ class ExtraTreesRegression(TreeWorkflowMixin, RegressionWorkflowBase):
     def __init__(
         self,
         n_estimators: int = 100,
-        criterion: str = "mse",
+        criterion: str = "squared_error",  # 修改为squared_error
         max_depth: Optional[int] = None,
         min_samples_split: Union[int, float] = 2,
         min_samples_leaf: Union[int, float] = 1,
@@ -1302,7 +1329,7 @@ class RandomForestRegression(TreeWorkflowMixin, RegressionWorkflowBase):
     def __init__(
         self,
         n_estimators: int = 100,
-        criterion: str = "mse",
+        criterion: str = "squared_error",  # 修改为squared_error
         max_depth: Optional[int] = None,
         min_samples_split: Union[int, float] = 2,
         min_samples_leaf: Union[int, float] = 1,
@@ -2076,27 +2103,39 @@ class MLPRegression(RegressionWorkflowBase):
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        if self.model.get_params()["solver"] in ["sgd", "adam"]:
-            self._plot_loss_curve(
-                trained_model=self.model,
-                algorithm_name=self.naming,
-                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=MLPSpecialFunction.LOSS_CURVE_DIAGRAM.value,
-            )
+        # 安全检查: 检查model是否有get_params方法，以及solver参数是否存在
+        try:
+            if hasattr(self.model, 'get_params'):
+                params = self.model.get_params()
+                if 'solver' in params and params["solver"] in ["sgd", "adam"]:
+                    self._plot_loss_curve(
+                        trained_model=self.model,
+                        algorithm_name=self.naming,
+                        local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                        mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+                        func_name=MLPSpecialFunction.LOSS_CURVE_DIAGRAM.value,
+                    )
+        except Exception as e:
+            print(f"警告: 无法绘制损失曲线图 - {str(e)}")
 
     @dispatch(bool)
     def special_components(self, is_automl: bool, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        if self.model.get_params()["solver"] in ["sgd", "adam"]:
-            self._plot_loss_curve(
-                trained_model=self.auto_model,
-                algorithm_name=self.naming,
-                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=MLPSpecialFunction.LOSS_CURVE_DIAGRAM.value,
-            )
+        # 安全检查: 检查model是否有get_params方法，以及solver参数是否存在
+        try:
+            if hasattr(self.model, 'get_params'):
+                params = self.model.get_params()
+                if 'solver' in params and params["solver"] in ["sgd", "adam"]:
+                    self._plot_loss_curve(
+                        trained_model=self.auto_model,
+                        algorithm_name=self.naming,
+                        local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                        mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+                        func_name=MLPSpecialFunction.LOSS_CURVE_DIAGRAM.value,
+                    )
+        except Exception as e:
+            print(f"警告: 无法绘制损失曲线图 - {str(e)}")
 
 
 class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
@@ -2169,9 +2208,13 @@ class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        
+        # 使用辅助方法获取系数和截距
+        coef, intercept = self._get_model_coef_intercept()
+        
         self._show_formula(
-            coef=self.model.coef_,
-            intercept=self.model.intercept_,
+            coef=coef,
+            intercept=intercept,
             features_name=ClassicalLinearRegression.X_train.columns,
             regression_classification="Regression",
             y_train=ClassicalLinearRegression.y,
@@ -2953,9 +2996,13 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+        
+        # 使用辅助方法获取系数和截距
+        coef, intercept = self._get_model_coef_intercept()
+        
         self._show_formula(
-            coef=[self.model.coef_],
-            intercept=self.model.intercept_,
+            coef=[coef],
+            intercept=intercept,
             features_name=LassoRegression.X_train.columns,
             regression_classification="Regression",
             y_train=LassoRegression.y,
@@ -3314,9 +3361,12 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+        # 使用辅助方法获取系数和截距
+        coef, intercept = self._get_model_coef_intercept()
+        
         self._show_formula(
-            coef=[self.model.coef_],
-            intercept=self.model.intercept_,
+            coef=[coef],
+            intercept=intercept,
             features_name=ElasticNetRegression.X_train.columns,
             regression_classification="Regression",
             y_train=ElasticNetRegression.y,
@@ -3779,9 +3829,12 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+        # 使用辅助方法获取系数和截距
+        coef, intercept = self._get_model_coef_intercept()
+        
         self._show_formula(
-            coef=[self.model.coef_],
-            intercept=self.model.intercept_,
+            coef=[coef],
+            intercept=intercept,
             features_name=SGDRegression.X_train.columns,
             regression_classification="Regression",
             y_train=SGDRegression.y,
@@ -4346,9 +4399,12 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+        # 使用辅助方法获取系数和截距
+        coef, intercept = self._get_model_coef_intercept()
+        
         self._show_formula(
-            coef=[self.model.coef_],
-            intercept=self.model.intercept_,
+            coef=[coef],
+            intercept=intercept,
             features_name=RidgeRegression.X_train.columns,
             regression_classification="Regression",
             y_train=RidgeRegression.y,

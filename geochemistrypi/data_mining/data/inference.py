@@ -1,7 +1,7 @@
 import copy
 import json
 import os
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import mlflow
 import pandas as pd
@@ -109,7 +109,7 @@ def build_transform_pipeline(imputation_config: Dict, feature_scaling_config: Di
     return transformer_config, transform_pipeline
 
 
-def model_inference(inference_data: pd.DataFrame, inference_name_column: str, is_inference: bool, run: object, transformer_config: Dict, transform_pipeline: Optional[object] = None):
+def model_inference(inference_data: pd.DataFrame, inference_name_column: str, is_inference: bool, run: object, transformer_config: Dict, transform_pipeline: Optional[object] = None, y_columns: Optional[List[str]] = None):
     """Run the model inference.
 
     Parameters
@@ -131,6 +131,9 @@ def model_inference(inference_data: pd.DataFrame, inference_name_column: str, is
 
     transform_pipeline : Optional[object], optional
         The transform pipeline object. The default is None.
+        
+    y_columns : Optional[List[str]], optional
+        The column names of the target variables. The default is None.
     """
     # If is_inference is True, then run the model inference.
     if is_inference is True:
@@ -142,6 +145,18 @@ def model_inference(inference_data: pd.DataFrame, inference_name_column: str, is
             inference_data_transformed = inference_data
         loaded_model = mlflow.sklearn.load_model(f"runs:/{mlflow.active_run().info.run_id}/{run.model_name}")
         inference_data_predicted_np = loaded_model.predict(inference_data_transformed)
-        inference_data_predicted = np2pd(inference_data_predicted_np, ["Predicted Value"])
+        
+        # 支持多列Y：根据预测结果的形状生成列名
+        if y_columns is not None and len(y_columns) > 0:
+            # 使用原始Y的列名
+            predicted_columns = [f"Predicted_{col}" for col in y_columns]
+        else:
+            # 根据预测结果的形状生成列名
+            if inference_data_predicted_np.ndim == 1:
+                predicted_columns = ["Predicted Value"]
+            else:
+                predicted_columns = [f"Predicted_Value_{i+1}" for i in range(inference_data_predicted_np.shape[1])]
+        
+        inference_data_predicted = np2pd(inference_data_predicted_np, predicted_columns)
         GEOPI_OUTPUT_ARTIFACTS_DATA_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH")
         save_data(inference_data_predicted, inference_name_column, "Application Data Predicted", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)

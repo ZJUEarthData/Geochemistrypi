@@ -317,14 +317,22 @@ class WorkflowBase(metaclass=ABCMeta):
 
 
 class TreeWorkflowMixin:
-    """Mixin class for tree models."""
+    """Mixin class for tree-based models."""
 
     @staticmethod
     def _plot_feature_importance(X_train: pd.DataFrame, name_column: str, trained_model: object, image_config: dict, algorithm_name: str, func_name: str, local_path: str, mlflow_path: str) -> None:
         """Draw the feature importance bar diagram."""
         print(f"-----* {func_name} *-----")  # Feature Importance Diagram
         columns_name = X_train.columns
-        feature_importances = trained_model.feature_importances_
+        
+        # 修复：添加对MultiOutputRegressor对象的支持
+        if hasattr(trained_model, 'estimators_'):
+            # 如果是MultiOutputRegressor，从每个估计器获取特征重要性并取平均值
+            feature_importances = np.mean([est.feature_importances_ for est in trained_model.estimators_], axis=0)
+        else:
+            # 否则直接获取特征重要性
+            feature_importances = trained_model.feature_importances_
+        
         data = plot_feature_importance(columns_name, feature_importances, image_config)
         save_fig(f"{func_name} - {algorithm_name}", local_path, mlflow_path)
         save_data(data, name_column, f"{func_name} - {algorithm_name}", local_path, mlflow_path, True)
@@ -333,8 +341,28 @@ class TreeWorkflowMixin:
     def _plot_tree(trained_model: object, image_config: dict, algorithm_name: str, func_name: str, local_path: str, mlflow_path: str) -> None:
         """Drawing decision tree diagrams."""
         print(f"-----* {func_name} *-----")  # Single Tree Diagram
-        plot_decision_tree(trained_model, image_config)
-        save_fig(f"{func_name} - {algorithm_name}", local_path, mlflow_path)
+        
+        # 修复：为MultiOutputRegressor的每个输出单独绘制决策树
+        if hasattr(trained_model, 'estimators_'):
+            # 如果是MultiOutputRegressor，为每个内部估计器绘制单独的决策树
+            for i, estimator in enumerate(trained_model.estimators_):
+                # 为每个输出创建唯一的功能名称
+                output_func_name = f"{func_name} - Output {i+1}"
+                print(f"-----* {output_func_name} *-----")
+                plot_decision_tree(estimator, image_config)
+                
+                # 为每个输出的决策树保存单独的图
+                save_fig(f"{output_func_name} - {algorithm_name}", local_path, mlflow_path)
+        else:
+            # 处理数组类型输入：如果是数组且只有一个元素，则取第一个元素
+            if hasattr(trained_model, 'shape') and len(trained_model) == 1:
+                model_to_use = trained_model[0]
+            else:
+                model_to_use = trained_model
+            
+            # 使用处理后的模型
+            plot_decision_tree(model_to_use, image_config)
+            save_fig(f"{func_name} - {algorithm_name}", local_path, mlflow_path)
 
 
 class LinearWorkflowMixin:
