@@ -5,6 +5,7 @@ from typing import List
 
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from sklearn.model_selection import train_test_split
 
 from auth.dependencies import get_current_active_user
 from database import get_db
@@ -16,10 +17,10 @@ from .service import (
     remove_dataset,
     upload_dataset,
 )
-from .schemas import Dataset as DatasetOut, BasicDatasetInfo
+from .schemas import Dataset as DatasetOut, BasicDatasetInfo, ClassificationRunRequest
 from .sql_models import Dataset as DatasetModel
+from .process.classify import ClassificationModelSelection 
 
-# 本地留档（可选）
 CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 FAKE_DATABASE_DIR = os.path.join(CURRENT_DIR, "fake_database")
 
@@ -40,19 +41,16 @@ async def post_dataset(
     raw = await dataset.read()
     ext = os.path.splitext(dataset_name)[1].lower()
 
-    # 同时支持 CSV / Excel；把解析错误转成 400，避免 500
     try:
         if ext == ".csv":
             df = pd.read_csv(io.BytesIO(raw))
         elif ext in (".xlsx", ".xls"):
-            # 读 .xlsx 需要 openpyxl
             df = pd.read_excel(io.BytesIO(raw))
         else:
             raise HTTPException(status_code=400, detail="Unsupported file type. Use .csv/.xlsx/.xls")
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to parse file: {e}")
 
-    # 入库
     json_df = df.to_json(orient="records", force_ascii=False)
     db_dataset = upload_dataset(
         db=db,
@@ -61,16 +59,63 @@ async def post_dataset(
         json_dataset=json_df,
     )
 
-    # 可选：在本地留一份，便于 Dash 或调试
     os.makedirs(FAKE_DATABASE_DIR, exist_ok=True)
     if ext == ".csv":
         df.to_csv(os.path.join(FAKE_DATABASE_DIR, "user_data.csv"), index=False)
     else:
         df.to_excel(os.path.join(FAKE_DATABASE_DIR, "user_data.xlsx"), index=False)
 
-    # 直接返回 ORM；FastAPI 会按 BasicDatasetInfo 裁剪为 {id,name,sequence}
     return db_dataset
 
+
+@router.post("/run-classification", tags=["data-mining"])
+async def run_classification_pipeline(
+    request: ClassificationRunRequest,
+    current_user=Depends(get_current_active_user),
+    db=Depends(get_db)
+):
+    db_dataset = read_dataset(db=db, user_id=current_user.id, dataset_id=request.dataset_id)
+    if not db_dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+        
+    try:
+        df = pd.read_json(io.StringIO(db_dataset.json_data), orient="records")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to load dataset data: {e}")
+        
+    if request.target_column not in df.columns:
+        raise HTTPException(status_code=400, detail=f"Target column '{request.target_column}' not found in dataset")
+        
+    X = df.drop(columns=[request.target_column])
+    y = df[[request.target_column]]
+    
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    
+    name_all = pd.Series(df.index, name="Sample ID")
+    name_train = pd.Series(X_train.index, name="Sample ID")
+    name_test = pd.Series(X_test.index, name="Sample ID")
+    
+    transformer_config = {
+        "interactive": False,
+        "label_mapping": request.label_mapping.dict(exclude_none=True) if request.label_mapping else None
+    }
+    
+    model_selector = ClassificationModelSelection(
+        model_name=request.model_name,
+        transformer_config=transformer_config
+    )
+    
+    try:
+        model_selector.activate(
+            X, y, 
+            X_train, X_test, 
+            y_train, y_test, 
+            name_train, name_test, name_all
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Pipeline execution failed: {str(e)}")
+        
+    return {"message": "Classification pipeline executed successfully!", "status": "success"}
 
 @router.delete("/delete-dataset", response_model=DatasetOut)
 async def delete_dataset(
@@ -111,16 +156,6 @@ async def get_dataset(
     if not obj:
         raise HTTPException(status_code=404, detail="Dataset not found")
     return obj
-
-
-# ====== 调试接口：用于定位问题（用完可删除） ======
-
-# 不做权限校验、不按 user 过滤，直接返回全表
 @router.get("/get-all-dataset-open", response_model=List[DatasetOut], tags=["data-mining"])
 def get_all_datasets_open(db=Depends(get_db)):
-    return db.query(DatasetModel).order_by(DatasetModel.sequence).all()
-
-# 需要登录，但不按 user 过滤
-@router.get("/get-all-dataset-nofilter", response_model=List[DatasetOut], tags=["data-mining"])
-def get_all_datasets_nofilter(current_user=Depends(get_current_active_user), db=Depends(get_db)):
     return db.query(DatasetModel).order_by(DatasetModel.sequence).all()

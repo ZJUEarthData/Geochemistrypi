@@ -1,8 +1,8 @@
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
 
 try:
-    from pydantic import ConfigDict  # v2 才有
+    from pydantic import ConfigDict 
     _P2 = True
 except Exception:
     _P2 = False
@@ -39,3 +39,18 @@ class BasicDatasetInfo(BaseModel):
     id: int
     name: str
     sequence: int
+
+class LabelMappingConfig(BaseModel):
+    """用于接收前端传来的多分类映射规则"""
+    type: str 
+    bins: Optional[List[float]] = None
+    labels: Optional[List[str]] = None
+    num_classes: Optional[int] = None
+    mapping: Optional[Dict[str, str]] = None
+
+class ClassificationRunRequest(BaseModel):
+    """用于接收前端触发机器学习训练的请求体"""
+    dataset_id: int
+    target_column: str
+    model_name: str
+    label_mapping: Optional[LabelMappingConfig] = None

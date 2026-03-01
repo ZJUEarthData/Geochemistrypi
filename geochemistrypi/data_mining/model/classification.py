@@ -2,7 +2,6 @@
 import json
 import os
 from typing import Any, Callable, Dict, List, Literal, Optional, Sequence, Tuple, Union
-
 import mlflow
 import numpy as np
 import pandas as pd
@@ -58,7 +57,7 @@ from .func.algo_classification._sgd_classification import sgd_classificaiton_man
 from .func.algo_classification._svc import svc_manual_hyper_parameters
 from .func.algo_classification._xgboost import xgboost_manual_hyper_parameters
 
-
+print(">>> 当前加载的文件路径是:", __file__)
 class ClassificationWorkflowBase(WorkflowBase):
     """The base workflow class of classification algorithms."""
 
@@ -255,29 +254,81 @@ class ClassificationWorkflowBase(WorkflowBase):
 
     @staticmethod
     def customize_label(
-        y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, name_column1: str, name_column2: str, name_column3: str, local_path: str, mlflow_path: str
+        y: pd.DataFrame,
+        y_train: pd.DataFrame,
+        y_test: pd.DataFrame,
+        name_column1: str,
+        name_column2: str,
+        name_column3: str,
+        local_path: str,
+        mlflow_path: str,
+        label_mapping: dict | None = None,
+        interactive: bool = True,
     ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-        """Using this function to customize the label to which samples of each category belong."""
-        print("[bold green]-*-*- Customize Label on Label Set -*-*-[/bold green]")
-        num2option(OPTION)
-        is_customize_label = limit_num_input(OPTION, SECTION[1], num_input)
-        if is_customize_label == 1:
-            y_show = y.copy()
-            print("Which strategy do you want to apply?")
-            num2option(CUSTOMIZE_LABEL_STRATEGY)
-            customize_label_num = limit_num_input(CUSTOMIZE_LABEL_STRATEGY, SECTION[1], num_input)
-            y, y_train, y_test = reset_label(y, y_train, y_test, CUSTOMIZE_LABEL_STRATEGY, customize_label_num - 1)
-            y_show = pd.concat([y_show, y], axis=1)
-            y_show = y_show.drop_duplicates().reset_index(drop=True)
+        if label_mapping is not None:
+            y_old = y.copy()
+            
+            mapping_type = label_mapping.get("type")
+            
+            if mapping_type == "interval":
+                bins = label_mapping.get("bins")
+                labels = label_mapping.get("labels") 
+                
+                def _cut_df(df: pd.DataFrame) -> pd.DataFrame:
+                    df2 = df.copy()
+                    col = df2.columns[0]
+                    df2[col] = pd.cut(df2[col], bins=bins, labels=labels, include_lowest=True)
+                    return df2
+                
+                y = _cut_df(y)
+                y_train = _cut_df(y_train)
+                y_test = _cut_df(y_test)
+
+            elif mapping_type == "quantile":
+                num_classes = label_mapping.get("num_classes", 2)
+                labels = label_mapping.get("labels")
+                
+                col = y.columns[0]
+                _, retbins = pd.qcut(y[col], q=num_classes, retbins=True, duplicates='drop')
+                
+                def _qcut_df(df: pd.DataFrame) -> pd.DataFrame:
+                    df2 = df.copy()
+                    c = df2.columns[0]
+                    df2[c] = pd.cut(df2[c], bins=retbins, labels=labels, include_lowest=True)
+                    return df2
+                
+                y = _qcut_df(y)
+                y_train = _qcut_df(y_train)
+                y_test = _qcut_df(y_test)
+
+            elif mapping_type == "dict":
+                mapping_dict = label_mapping.get("mapping", {})
+                def _map_df(df: pd.DataFrame) -> pd.DataFrame:
+                    df2 = df.copy()
+                    col = df2.columns[0]
+                    df2[col] = df2[col].map(lambda v: mapping_dict.get(v, v))
+                    return df2
+                
+                y = _map_df(y)
+                y_train = _map_df(y_train)
+                y_test = _map_df(y_test)
+            y_show = pd.concat([y_old, y], axis=1).drop_duplicates().reset_index(drop=True)
             y_show.columns = ["original_label", "new_label"]
             print("------------------------------------")
-            print("Originla label VS Customizing label:")
+            print("Original label VS Customizing label:")
             print(y_show)
+
             save_data(y, name_column1, "Y Set After Customizing label", local_path, mlflow_path)
             save_data(y_train, name_column2, "Y Train After Customizing label", local_path, mlflow_path)
             save_data(y_test, name_column3, "Y Test After Customizing label", local_path, mlflow_path)
-        clear_output()
+            clear_output()
+            return y, y_train, y_test
+
+        if not interactive:
+            return y, y_train, y_test
+
         return y, y_train, y_test
+
 
     @dispatch()
     def common_components(self) -> None:

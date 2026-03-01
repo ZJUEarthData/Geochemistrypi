@@ -3,16 +3,15 @@ import uvicorn
 from auth import router as auth_router
 from auth import sql_models as auth_models
 from data_mining import router as data_mining_router
-from data_mining.dash_pipeline import dash_pipeline
 from database import engine
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.wsgi import WSGIMiddleware
 from fastapi.openapi.utils import get_openapi
 
 load_dotenv()
 auth_models.Base.metadata.create_all(bind=engine)
+
 app = FastAPI()
 app.include_router(data_mining_router.router)
 app.include_router(auth_router.router)
@@ -32,15 +31,6 @@ app.add_middleware(
 async def read_root():
     return {"message": "Welcome to Geochemistry Pi!"}
 
-dash_prefix = os.getenv("DASH_REQUESTS_PATHNAME_PREFIX", "/dash/")
-if not dash_prefix.startswith("/"):
-    dash_prefix = "/" + dash_prefix
-if not dash_prefix.endswith("/"):
-    dash_prefix = dash_prefix + "/"
-
-dash_app = dash_pipeline(requests_pathname_prefix=dash_prefix)
-app.mount(dash_prefix.rstrip("/"), WSGIMiddleware(dash_app.server))  # mount at "/dash" (no trailing slash)
-
 def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
@@ -59,5 +49,3 @@ if __name__ == "__main__":
     host = os.getenv("BACKEND_HOST", "0.0.0.0")
     port = int(os.getenv("BACKEND_PORT", 8000))
     uvicorn.run("start_dash_pipeline:app", host=host, port=port, reload=True)
-
-
