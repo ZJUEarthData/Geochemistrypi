@@ -3,11 +3,10 @@ import os
 import dash
 import flask
 import pandas as pd
-from dash import dash_table, dcc, html, Input, Output, State
+from dash import Input, Output, State, dash_table, dcc, html
 from dash.dependencies import Input, Output
 
 from .data.data_readiness import read_data
-from .process.regress import RegressionModelSelection
 
 # Mock the database
 CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -53,57 +52,60 @@ def dash_pipeline(requests_pathname_prefix: str = None) -> dash.Dash:
                 data=[],
                 page_size=10,
             ),
-            
             # 新增：回归功能界面
             html.H2(children="Part 2: Regression Analysis"),
-            html.Div([
-                html.Label("Select X variables (features):"),
-                dcc.Dropdown(
-                    id="x-variables-dropdown",
-                    multi=True,
-                    placeholder="Select X variables...",
-                ),
-            ], style={'margin': '10px'}),
-            
-            html.Div([
-                html.Label("Select Y variables (targets) - 支持多列Y:"),
-                dcc.Dropdown(
-                    id="y-variables-dropdown",
-                    multi=True,
-                    placeholder="Select Y variables (can select multiple)...",
-                ),
-            ], style={'margin': '10px'}),
-            
-            html.Div([
-                html.Label("Select Regression Model:"),
-                dcc.Dropdown(
-                    id="model-dropdown",
-                    options=[
-                        {"label": "Linear Regression", "value": "Linear Regression"},
-                        {"label": "Random Forest", "value": "Random Forest"},
-                        {"label": "XGBoost", "value": "XGBoost"},
-                        {"label": "Support Vector Machine", "value": "Support Vector Machine"},
-                        {"label": "Decision Tree", "value": "Decision Tree"},
-                        {"label": "Gradient Boosting", "value": "Gradient Boosting"},
-                        {"label": "Lasso Regression", "value": "Lasso Regression"},
-                        {"label": "Ridge Regression", "value": "Ridge Regression"},
-                        {"label": "Elastic Net", "value": "Elastic Net"},
-                        {"label": "K-Nearest Neighbors", "value": "K-Nearest Neighbors"},
-                        {"label": "SGD Regression", "value": "SGD Regression"},
-                        {"label": "BayesianRidge Regression", "value": "BayesianRidge Regression"},
-                        {"label": "Multi-layer Perceptron", "value": "Multi-layer Perceptron"},
-                        {"label": "Polynomial Regression", "value": "Polynomial Regression"},
-                        {"label": "Extra-Trees", "value": "Extra-Trees"},
-                    ],
-                    value="Linear Regression",
-                    placeholder="Select a regression model...",
-                ),
-            ], style={'margin': '10px'}),
-            
+            html.Div(
+                [
+                    html.Label("Select X variables (features):"),
+                    dcc.Dropdown(
+                        id="x-variables-dropdown",
+                        multi=True,
+                        placeholder="Select X variables...",
+                    ),
+                ],
+                style={"margin": "10px"},
+            ),
+            html.Div(
+                [
+                    html.Label("Select Y variables (targets) - 支持多列Y:"),
+                    dcc.Dropdown(
+                        id="y-variables-dropdown",
+                        multi=True,
+                        placeholder="Select Y variables (can select multiple)...",
+                    ),
+                ],
+                style={"margin": "10px"},
+            ),
+            html.Div(
+                [
+                    html.Label("Select Regression Model:"),
+                    dcc.Dropdown(
+                        id="model-dropdown",
+                        options=[
+                            {"label": "Linear Regression", "value": "Linear Regression"},
+                            {"label": "Random Forest", "value": "Random Forest"},
+                            {"label": "XGBoost", "value": "XGBoost"},
+                            {"label": "Support Vector Machine", "value": "Support Vector Machine"},
+                            {"label": "Decision Tree", "value": "Decision Tree"},
+                            {"label": "Gradient Boosting", "value": "Gradient Boosting"},
+                            {"label": "Lasso Regression", "value": "Lasso Regression"},
+                            {"label": "Ridge Regression", "value": "Ridge Regression"},
+                            {"label": "Elastic Net", "value": "Elastic Net"},
+                            {"label": "K-Nearest Neighbors", "value": "K-Nearest Neighbors"},
+                            {"label": "SGD Regression", "value": "SGD Regression"},
+                            {"label": "BayesianRidge Regression", "value": "BayesianRidge Regression"},
+                            {"label": "Multi-layer Perceptron", "value": "Multi-layer Perceptron"},
+                            {"label": "Polynomial Regression", "value": "Polynomial Regression"},
+                            {"label": "Extra-Trees", "value": "Extra-Trees"},
+                        ],
+                        value="Linear Regression",
+                        placeholder="Select a regression model...",
+                    ),
+                ],
+                style={"margin": "10px"},
+            ),
             html.Button("Run Regression", id="run-regression-button", n_clicks=0),
-            
             html.Div(id="regression-results"),
-            
             html.Button("Toggle", id="toggle-button"),
             html.Div(id="content-div", children="Content to be hidden or shown"),
         ]
@@ -148,7 +150,7 @@ def dash_pipeline(requests_pathname_prefix: str = None) -> dash.Dash:
             df = data_clustering
         elif selected_dataset == "data_decomposition":
             df = data_decomposition
-        
+
         options = [{"label": col, "value": col} for col in df.columns]
         return options, options
 
@@ -156,16 +158,13 @@ def dash_pipeline(requests_pathname_prefix: str = None) -> dash.Dash:
     @app.callback(
         Output("regression-results", "children"),
         [Input("run-regression-button", "n_clicks")],
-        [State("dataset-dropdown", "value"),
-         State("x-variables-dropdown", "value"),
-         State("y-variables-dropdown", "value"),
-         State("model-dropdown", "value")],
+        [State("dataset-dropdown", "value"), State("x-variables-dropdown", "value"), State("y-variables-dropdown", "value"), State("model-dropdown", "value")],
     )
     def run_regression(n_clicks, selected_dataset, x_vars, y_vars, model_name):
         """Run regression analysis with selected variables."""
         if n_clicks == 0 or not all([selected_dataset, x_vars, y_vars, model_name]):
             return "Please select dataset, X variables, Y variables, and model."
-        
+
         try:
             # 获取数据
             df = pd.DataFrame()
@@ -179,15 +178,15 @@ def dash_pipeline(requests_pathname_prefix: str = None) -> dash.Dash:
                 df = data_clustering
             elif selected_dataset == "data_decomposition":
                 df = data_decomposition
-            
+
             # 准备X和Y数据
             X = df[x_vars]
             y = df[y_vars]
-            
+
             # 检查数据
             if X.empty or y.empty:
                 return "Error: Selected variables contain no data."
-            
+
             # 显示数据信息
             result_text = f"""
             <h3>回归分析结果</h3>
@@ -197,15 +196,13 @@ def dash_pipeline(requests_pathname_prefix: str = None) -> dash.Dash:
             <p><strong>样本数量:</strong> {len(X)}</p>
             <p><strong>支持多列Y:</strong> {'是' if len(y_vars) > 1 else '否'}</p>
             """
-            
+
             # 这里可以添加实际的回归分析代码
             # 由于需要设置环境变量和输出路径，这里只显示基本信息
             result_text += "<p><em>注意：完整的回归分析需要设置环境变量和输出路径。请使用CLI版本进行完整分析。</em></p>"
-            
-            return html.Div([
-                html.Div(result_text, dangerouslySetInnerHTML={'__html': result_text})
-            ])
-            
+
+            return html.Div([html.Div(result_text, dangerouslySetInnerHTML={"__html": result_text})])
+
         except Exception as e:
             return f"Error: {str(e)}"
 

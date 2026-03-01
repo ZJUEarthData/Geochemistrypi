@@ -37,7 +37,7 @@ def plot_2d_scatter_diagram(feature_data: pd.DataFrame, target_data: pd.DataFram
         The target values.
     """
     plt.figure(figsize=(14, 10))
-    
+
     # 支持多列Y：为每个目标变量绘制散点图
     if target_data.shape[1] == 1:
         # 单列Y的情况
@@ -47,18 +47,18 @@ def plot_2d_scatter_diagram(feature_data: pd.DataFrame, target_data: pd.DataFram
     else:
         # 多列Y的情况：为每个目标变量绘制子图
         n_targets = target_data.shape[1]
-        fig, axes = plt.subplots(1, n_targets, figsize=(5*n_targets, 5))
+        fig, axes = plt.subplots(1, n_targets, figsize=(5 * n_targets, 5))
         if n_targets == 1:
             axes = [axes]
-        
+
         for i, target_col in enumerate(target_data.columns):
             axes[i].scatter(feature_data.values, target_data[target_col].values)
             axes[i].set_xlabel(feature_data.columns[0])
             axes[i].set_ylabel(target_col)
             axes[i].grid()
-        
+
         plt.tight_layout()
-    
+
     plt.title("2D Scatter Diagram")
     plt.grid()
 
@@ -78,7 +78,7 @@ def plot_2d_line_diagram(feature_data: pd.DataFrame, target_data: pd.DataFrame, 
         The predicted target values.
     """
     plt.figure(figsize=(14, 10))
-    
+
     # 支持多列Y：为每个目标变量绘制线图
     if target_data.shape[1] == 1:
         # 单列Y的情况
@@ -89,10 +89,10 @@ def plot_2d_line_diagram(feature_data: pd.DataFrame, target_data: pd.DataFrame, 
     else:
         # 多列Y的情况：为每个目标变量绘制子图
         n_targets = target_data.shape[1]
-        fig, axes = plt.subplots(1, n_targets, figsize=(5*n_targets, 5))
+        fig, axes = plt.subplots(1, n_targets, figsize=(5 * n_targets, 5))
         if n_targets == 1:
             axes = [axes]
-        
+
         for i, target_col in enumerate(target_data.columns):
             axes[i].scatter(feature_data.values, target_data[target_col].values, label="Data Points")
             axes[i].plot(feature_data.values, y_test_predict[target_col].values, label="Regression Line")
@@ -100,9 +100,9 @@ def plot_2d_line_diagram(feature_data: pd.DataFrame, target_data: pd.DataFrame, 
             axes[i].set_ylabel(target_col)
             axes[i].grid()
             axes[i].legend()
-        
+
         plt.tight_layout()
-    
+
     plt.title("2D Line Diagram")
     plt.legend()
     plt.grid()
@@ -124,7 +124,7 @@ def plot_3d_scatter_diagram(feature_data: pd.DataFrame, target_data: pd.DataFram
     name_list = feature_data.columns.values.tolist()
     fig = plt.figure(figsize=(14, 10))
     ax = Axes3D(fig)
-    
+
     # 支持多列Y：为每个目标变量绘制3D散点图
     if target_data.shape[1] == 1:
         # 单列Y的情况
@@ -133,13 +133,13 @@ def plot_3d_scatter_diagram(feature_data: pd.DataFrame, target_data: pd.DataFram
         ax.set_zlabel(target_data.columns[0], fontdict={"size": 10, "color": "blue"})
     else:
         # 多列Y的情况：为每个目标变量绘制不同的颜色
-        colors = ['red', 'blue', 'green', 'yellow', 'purple', 'orange']
+        colors = ["red", "blue", "green", "yellow", "purple", "orange"]
         for i, target_col in enumerate(target_data.columns):
             z = target_data[target_col]
             ax.scatter(x, y, z, c=colors[i % len(colors)], label=target_col, alpha=0.7)
         ax.legend()
         ax.set_zlabel("Target Variables", fontdict={"size": 10, "color": "blue"})
-    
+
     ax.set_xlabel(name_list[0], fontdict={"size": 10, "color": "black"})
     ax.set_ylabel(name_list[1], fontdict={"size": 10, "color": "r"})
     plt.title("3D Scatter Diagram")
@@ -165,7 +165,7 @@ def plot_3d_surface_diagram(feature_data: pd.DataFrame, target_data: pd.DataFram
     name_list = feature_data.columns.values.tolist()
     fig = plt.figure(figsize=(14, 10))
     ax = Axes3D(fig)
-    
+
     # 支持多列Y：为每个目标变量绘制3D表面图
     if target_data.shape[1] == 1:
         # 单列Y的情况
@@ -181,20 +181,20 @@ def plot_3d_surface_diagram(feature_data: pd.DataFrame, target_data: pd.DataFram
         ax.set_zlabel(target_data.columns[0], fontdict={"size": 10, "color": "blue"})
     else:
         # 多列Y的情况：为每个目标变量绘制不同的颜色
-        colors = ['red', 'blue', 'green', 'yellow', 'purple', 'orange']
+        colors = ["red", "blue", "green", "yellow", "purple", "orange"]
         for i, target_col in enumerate(target_data.columns):
             z = target_data[target_col]
             ax.scatter(x, y, z, c=colors[i % len(colors)], label=target_col, alpha=0.7)
-            
+
             # Create surface for each target variable
             x_grid, y_grid = np.meshgrid(np.linspace(x.min(), x.max(), 100), np.linspace(y.min(), y.max(), 100))
             z_grid = np.interp(np.ravel(x_grid), x, y_test_predict[target_col])
             z_grid = z_grid.reshape(x_grid.shape)
             ax.plot_surface(x_grid, y_grid, z_grid, alpha=0.2, color=colors[i % len(colors)])
-        
+
         ax.legend()
         ax.set_zlabel("Target Variables", fontdict={"size": 10, "color": "blue"})
-    
+
     ax.set_xlabel(name_list[0], fontdict={"size": 10, "color": "black"})
     ax.set_ylabel(name_list[1], fontdict={"size": 10, "color": "r"})
     plt.title("3D Surface Diagram")

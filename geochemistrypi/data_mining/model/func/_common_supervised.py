@@ -29,7 +29,7 @@ def plot_decision_tree(trained_model: object, image_config: dict) -> None:
     node_ids = image_config["node_ids"]
     if node_ids is None:
         node_ids = False  # 设置默认值为False
-        
+
     plot_tree(
         trained_model,
         max_depth=image_config["max_depth"],
@@ -185,10 +185,10 @@ def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: np.ndar
         if not isinstance(coef, np.ndarray):
             try:
                 coef = np.array(coef)
-            except:
+            except (ValueError, TypeError):
                 # 如果转换失败，尝试将其展平为标量列表
                 coef = np.array([c for c in coef])
-        
+
         # 同样确保intercept是合适的格式
         if isinstance(intercept, np.ndarray):
             intercept_flat = np.ravel(intercept)
@@ -198,7 +198,7 @@ def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: np.ndar
                 intercept = 0
         else:
             intercept = np.around(intercept, decimals=3)
-        
+
         # 检查coef是否为二维数组（多输出情况）
         if len(y_train.columns) == 1 and len(coef.shape) > 1 and coef.shape[0] > 1:
             # 这种情况是：虽然只有一个目标变量，但coef是二维数组（可能是MultiOutputRegressor的结果）
@@ -206,7 +206,7 @@ def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: np.ndar
                 # 对每个输出单独处理
                 coef_single = coef[idx]
                 intercept_single = intercept[idx] if isinstance(intercept, np.ndarray) and intercept.size > 1 else intercept
-                
+
                 # 确保coef_single是标量
                 terms = []
                 for c, f in zip(coef_single, features_name):
@@ -215,16 +215,16 @@ def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: np.ndar
                     else:
                         c_val = c
                     if c_val != 0:
-                        terms.append(("-" if c_val < 0 else "+" ) + " " + str(abs(c_val)) + f)
+                        terms.append(("-" if c_val < 0 else "+") + " " + str(abs(c_val)) + f)
                     else:
                         terms.append("")
-                
+
                 # 确保coef_single[0]是标量
                 if isinstance(coef_single[0], np.ndarray) and coef_single[0].size > 0:
                     coef_first_val = coef_single[0][0]
                 else:
                     coef_first_val = coef_single[0]
-                
+
                 terms_first = (terms[0][2:] if coef_first_val > 0 else terms[0]).replace(" ", "")
                 formula[f"y (output {idx+1}):"] = terms_first + " " + " ".join(terms[1:]) + (" - " if intercept_single < 0 else " + ") + str(abs(intercept_single))
                 print(f"y (output {idx+1}) = ", formula[f"y (output {idx+1}):"])
@@ -233,7 +233,7 @@ def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: np.ndar
             coef_flat = np.ravel(coef)
             if len(coef_flat) > 0:
                 coef = coef_flat
-            
+
             # 检查intercept是否为标量
             if isinstance(intercept, np.ndarray):
                 intercept_flat = np.ravel(intercept)
@@ -243,7 +243,7 @@ def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: np.ndar
                     intercept = 0
             else:
                 intercept = np.around(intercept, decimals=3)
-            
+
             # 处理terms
             terms = []
             for c, f in zip(coef, features_name):
@@ -252,17 +252,17 @@ def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: np.ndar
                 else:
                     c_val = c
                 if c_val != 0:
-                    terms.append(("-" if c_val < 0 else "+" ) + " " + str(abs(c_val)) + f)
+                    terms.append(("-" if c_val < 0 else "+") + " " + str(abs(c_val)) + f)
                 else:
                     terms.append("")
-            
+
             # 处理terms_first
             if len(coef) > 0:
                 if isinstance(coef[0], np.ndarray) and coef[0].size > 0:
                     coef_first_val = coef[0][0]
                 else:
                     coef_first_val = coef[0]
-                
+
                 terms_first = (terms[0][2:] if coef_first_val > 0 else terms[0]).replace(" ", "")
                 formula["y:"] = terms_first + " " + " ".join(terms[1:]) + (" - " if intercept < 0 else " + ") + str(abs(intercept))
                 print("y = ", formula["y:"])
@@ -272,11 +272,11 @@ def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: np.ndar
             if len(coef.shape) == 1:
                 # 如果coef是一维数组，转换为二维数组以便迭代
                 coef = coef.reshape(1, -1)
-            
+
             if not isinstance(intercept, np.ndarray) or intercept.ndim == 0:
                 # 如果intercept是标量，转换为数组以便迭代
                 intercept = np.array([intercept] * len(coef))
-            
+
             for idx, (coef_temp, intercept_temp) in enumerate(zip(coef, intercept)):
                 # 确保不超出y_train的列数
                 if idx < len(y_train.columns):
@@ -287,16 +287,16 @@ def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: np.ndar
                         else:
                             c_val = c
                         if c_val != 0:
-                            terms_temp.append(("-" if c_val < 0 else "+" ) + " " + str(abs(c_val)) + f)
+                            terms_temp.append(("-" if c_val < 0 else "+") + " " + str(abs(c_val)) + f)
                         else:
                             terms_temp.append("")
-                    
+
                     if len(coef_temp) > 0:
                         if isinstance(coef_temp[0], np.ndarray) and coef_temp[0].size > 0:
                             coef_temp_first_val = coef_temp[0][0]
                         else:
                             coef_temp_first_val = coef_temp[0]
-                        
+
                         terms_temp_first = (terms_temp[0][2:] if coef_temp_first_val > 0 else terms_temp[0]).replace(" ", "")
                         formula["y (" + y_train.columns[idx] + ") = "] = terms_temp_first + " " + " ".join(terms_temp[1:]) + (" - " if intercept_temp < 0 else " + ") + str(abs(intercept_temp))
                         print("y (" + y_train.columns[idx] + ") = ", formula["y (" + y_train.columns[idx] + ") = "])

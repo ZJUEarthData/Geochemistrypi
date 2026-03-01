@@ -174,7 +174,7 @@ def plot_residuals(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, algorithm
         # 为多列Y创建对应的残差列名
         residual_columns = [f"Residuals_{col}" for col in y_test.columns]
         residuals = pd.DataFrame(residuals, columns=residual_columns)
-    
+
     plt.scatter(y_test_predict, residuals, color="b")
     plt.axhline(0, color="r", linestyle="--", label="Zero Residual Line")
     plt.title(f"Residuals Diagram - {algorithm_name}")

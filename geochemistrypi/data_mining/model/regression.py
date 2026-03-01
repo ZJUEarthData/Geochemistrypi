@@ -66,10 +66,11 @@ class RegressionWorkflowBase(WorkflowBase):
         self.customized = False
         self.customized_name = None
         self.mode = "Regression"
-    
+
     def _get_model_coef_intercept(self):
         """获取模型的系数和截距，支持MultiOutputRegressor"""
         from sklearn.multioutput import MultiOutputRegressor
+
         if isinstance(self.model, MultiOutputRegressor):
             # 对于MultiOutputRegressor，获取内部估计器的系数
             coef = np.array([estimator.coef_ for estimator in self.model.estimators_])
@@ -86,6 +87,7 @@ class RegressionWorkflowBase(WorkflowBase):
         # 支持多列Y：使用MultiOutputRegressor包装单输出回归器
         if y is not None and y.shape[1] > 1:
             from sklearn.multioutput import MultiOutputRegressor
+
             # 如果模型还没有被包装，则包装它
             if not isinstance(self.model, MultiOutputRegressor):
                 self.model = MultiOutputRegressor(self.model)
@@ -105,6 +107,7 @@ class RegressionWorkflowBase(WorkflowBase):
             # 对于多列Y，FLAML不支持，我们需要使用scikit-learn的MultiOutputRegressor
             elif y.shape[1] > 1:
                 from sklearn.multioutput import MultiOutputRegressor
+
                 # 为多列Y创建MultiOutputRegressor包装器
                 self.automl = MultiOutputRegressor(self.automl)
             self.automl.fit(X_train=X, y_train=y, **self.settings)
@@ -2105,9 +2108,9 @@ class MLPRegression(RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         # 安全检查: 检查model是否有get_params方法，以及solver参数是否存在
         try:
-            if hasattr(self.model, 'get_params'):
+            if hasattr(self.model, "get_params"):
                 params = self.model.get_params()
-                if 'solver' in params and params["solver"] in ["sgd", "adam"]:
+                if "solver" in params and params["solver"] in ["sgd", "adam"]:
                     self._plot_loss_curve(
                         trained_model=self.model,
                         algorithm_name=self.naming,
@@ -2124,9 +2127,9 @@ class MLPRegression(RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         # 安全检查: 检查model是否有get_params方法，以及solver参数是否存在
         try:
-            if hasattr(self.model, 'get_params'):
+            if hasattr(self.model, "get_params"):
                 params = self.model.get_params()
-                if 'solver' in params and params["solver"] in ["sgd", "adam"]:
+                if "solver" in params and params["solver"] in ["sgd", "adam"]:
                     self._plot_loss_curve(
                         trained_model=self.auto_model,
                         algorithm_name=self.naming,
@@ -2208,10 +2211,10 @@ class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        
+
         # 使用辅助方法获取系数和截距
         coef, intercept = self._get_model_coef_intercept()
-        
+
         self._show_formula(
             coef=coef,
             intercept=intercept,
@@ -2996,10 +2999,10 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
-        
+
         # 使用辅助方法获取系数和截距
         coef, intercept = self._get_model_coef_intercept()
-        
+
         self._show_formula(
             coef=[coef],
             intercept=intercept,
@@ -3363,7 +3366,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
         # 使用辅助方法获取系数和截距
         coef, intercept = self._get_model_coef_intercept()
-        
+
         self._show_formula(
             coef=[coef],
             intercept=intercept,
@@ -3831,7 +3834,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
         # 使用辅助方法获取系数和截距
         coef, intercept = self._get_model_coef_intercept()
-        
+
         self._show_formula(
             coef=[coef],
             intercept=intercept,
@@ -4401,7 +4404,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
         # 使用辅助方法获取系数和截距
         coef, intercept = self._get_model_coef_intercept()
-        
+
         self._show_formula(
             coef=[coef],
             intercept=intercept,
