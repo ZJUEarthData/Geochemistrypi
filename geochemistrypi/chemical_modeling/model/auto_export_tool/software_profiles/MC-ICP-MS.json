@@ -1,0 +1,133 @@
+{
+  "software_name": "MC-ICP-MS",
+  "version": "3.2.0.0",
+  "description": "-",
+  "window_title": "Data Evaluation",
+  "actions": [
+    {
+      "type": "mouse",
+      "action": "click",
+      "coordinates": [
+        41,
+        35
+      ],
+      "wait_time": 0.5,
+      "description": "-"
+    },
+    {
+      "type": "mouse",
+      "action": "click",
+      "coordinates": [
+        53,
+        51
+      ],
+      "wait_time": 0.5,
+      "description": "-"
+    },
+    {
+      "type": "mouse",
+      "action": "click",
+      "coordinates": [
+        910,
+        642
+      ],
+      "wait_time": 0.5,
+      "description": "-"
+    },
+    {
+      "type": "keyboard",
+      "action": "hotkey",
+      "keys": ["ctrl", "a"]
+    },
+    {
+      "type": "keyboard",
+      "action": "press",
+      "key": "delete"
+    },
+    {
+      "type": "clipboard",
+      "action": "copy",
+      "content": "{INPUT_FILE}"
+    },
+    {
+      "type": "keyboard",
+      "action": "hotkey",
+      "keys": ["ctrl", "v"]
+    },
+    {
+      "type": "mouse",
+      "action": "click",
+      "coordinates": [
+        1159,
+        639
+      ],
+      "wait_time": 0.5,
+      "description": "-"
+    },
+    {
+      "type": "mouse",
+      "action": "right_click",
+      "coordinates": [
+        1066,
+        386
+      ],
+      "wait_time": 0.5,
+      "description": "-"
+    },
+    {
+      "type": "mouse",
+      "action": "click",
+      "coordinates": [
+        1138,
+        567
+      ],
+      "wait_time": 0.5,
+      "description": "-"
+    },
+    {
+      "type": "mouse",
+      "action": "click",
+      "coordinates": [
+        899,
+        757
+      ],
+      "wait_time": 0.5,
+      "description": "-"
+    },
+    {
+      "type": "keyboard",
+      "action": "hotkey",
+      "keys": ["ctrl", "a"]
+    },
+    {
+      "type": "keyboard",
+      "action": "press",
+      "key": "delete"
+    },
+    {
+      "type": "clipboard",
+      "action": "copy",
+      "content": "{OUTPUT_FILE}"
+    },
+    {
+      "type": "keyboard",
+      "action": "hotkey",
+      "keys": ["ctrl", "v"]
+    },
+    {
+      "type": "mouse",
+      "action": "click",
+      "coordinates": [
+        1144,
+        751
+      ],
+      "wait_time": 0.5,
+      "description": "-"
+    }
+  ],
+  "file_extensions": [
+    ".dat"
+  ],
+  "created_time": "2026-02-10 14:16:13",
+  "modified_time": "2026-02-10 14:16:13"
+}

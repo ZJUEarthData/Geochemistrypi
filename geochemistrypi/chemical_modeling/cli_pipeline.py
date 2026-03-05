@@ -44,6 +44,26 @@ def cli_pipeline(input_path: str, config: Optional[Dict] = None) -> None:
     # In interactive mode, prompt for input file if not provided
     non_interactive = config.get("non_interactive", False)
     if not non_interactive and (not input_path or not input_path.strip() or not os.path.isfile(input_path)):
+        # Check if user wants to run auto export tool first
+        print("\n[bold]Automation Option[/bold]")
+        print("Would you like to run the automated data export tool first?")
+        print("This tool helps export data from geochemical instrument software.")
+        run_auto_export = input("Run auto export tool? (y/N): ").strip().lower()
+
+        if run_auto_export == "y":
+            print("\n[bold]Auto Export Tool[/bold]")
+            print("Launching automated data export tool...")
+            try:
+                # Import and run the auto export tool
+                from .model.auto_export_tool.auto_export import main as run_auto_export_main
+
+                run_auto_export_main()
+                print("\n[green]Auto export tool completed.[/green]")
+                print("You can now proceed with chemical modeling using the exported data.")
+            except Exception as e:
+                print(f"[red]Error running auto export tool: {e}[/red]")
+                print("Continuing with normal chemical modeling workflow...")
+
         print("\n[bold]Input Data File[/bold]")
         print("Please provide the path to your input data file (Excel format).")
         print("You can:")

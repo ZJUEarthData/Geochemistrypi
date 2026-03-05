@@ -50,6 +50,39 @@ Enter 1 or 2 (or Q to quit): 2
 Chemical Modeling launcher
 Run non-interactively with a file? (y/N): n
 
+Automation Option
+Would you like to run the automated data export tool first?
+This tool helps export data from geochemical instrument software.
+Run auto export tool? (y/N): y
+
+Auto Export Tool
+Launching automated data export tool...
+
+============================================================
+🌐 选择语言 / Select Language
+============================================================
+  1. 中文 (Chinese)
+  2. English (英语)
+
+请选择语言 / Please select language (1-2): 1
+✅ 语言已切换为 中文
+
+============================================================
+🌍 地球化学仪器数据通用导出工具
+版本 1.0 - 支持多语言和智能重试
+============================================================
+1. 🆕 创建新的软件配置
+2. 🚀 批量导出数据
+3. 📊 查看导出历史
+4. ⚙️  管理配置档案
+5. 🛠️  编辑现有配置
+6. 🌐 切换语言
+7. ❌ 退出
+
+请选择操作 (1-7): 7
+
+退出...
+
 Input Data File
 Please provide the path to your input data file (Excel format).
 You can:
@@ -94,26 +127,32 @@ The structure refers to the data mining section
 
 ```bash
 geochemistrypi/chemical_modeling/
-├── __init__.py              # Module initialization
-├── cli_pipeline.py          # Main CLI entry point
-├── dispatcher.py            # Task/method/element discovery
+├── __init__.py                       # Module initialization
+├── cli_pipeline.py                   # Main CLI entry point
+├── dispatcher.py                     # Task/method/element discovery
 ├── data/
-│   ├── data_readiness.py    # Data loading utilities
-│   ├── Hg_data.xlsx         # Sample Hg data
-│   └── Mo_data.xlsx         # Sample Mo data
-├── model/func/
-│   ├── algo_fractionation/  # Fractionation task implementations
+│   ├── data_readiness.py             # Data loading utilities
+│   ├── Hg_data.xlsx                  # Sample Hg data
+│   └── Mo_data.xlsx                  # Sample Mo data
+├── model/
+│   ├── auto_export_tool/
 │   │   ├── __init__.py
-│   │   ├── internal_standard.py  # Internal standard method
-│   │   └── double_spike.py       # Double-spike method
-│   ├── algo_equilibrium/    # Equilibrium tasks (placeholder)
-│   ├── algo_kinetic/        # Kinetic tasks (placeholder)
-│   ├── algo_thermodynamic/  # Thermodynamic tasks (placeholder)
-│   └── algo_transport/      # Transport tasks (placeholder)
+│   │   └── auto_export.py            # a versatile automated tool for exporting geochemical instrument data
+│   └── func/
+│       ├── algo_fractionation/       # Fractionation task implementations
+│       │   ├── __init__.py
+│       │   ├── internal_standard.py  # Internal standard method
+│       │   └── double_spike.py       # Double-spike method
+│       ├── algo_equilibrium/         # Equilibrium tasks (placeholder)
+│       ├── algo_kinetic/             # Kinetic tasks (placeholder)
+│       ├── algo_thermodynamic/       # Thermodynamic tasks (placeholder)
+│       └── algo_transport/           # Transport tasks (placeholder)
+│
+│
 ├── process/
-│   ├── hg_internal.py       # Hg-specific processing
-│   └── mo_double_spike.py   # Mo-specific processing
-└── results/                 # Output directory (gitignored)
+│   ├── hg_internal.py                # Hg-specific processing
+│   └── mo_double_spike.py            # Mo-specific processing
+└── results/                          # Output directory (gitignored)
 ```
 
 ## 🔧 Current Implementations
@@ -209,5 +248,8 @@ This project is licensed under the MIT License.
 
 ## 👥 Authors & Contributors
 
-Chufan Zhou (1176733817@qq.com) - Initial implementation
++ Chufan Zhou (Yoko, Institute of Geochemistry, Chinese Academy of Sciences; University of Chinese Academy of Sciences, China)
+  Email: 1176733817@qq.com
++ Guoqiang Qiu（Elsen, Fuzhou University, China）
+  Email: 3121540361@qq.com
 GeochemistryPi Development Team
