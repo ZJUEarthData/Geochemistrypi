@@ -67,7 +67,7 @@ class LanguageManager:
             "menu_title": "🌍 地球化学仪器数据通用导出工具",
             "menu_version": "版本 1.0 - 支持多语言和智能重试",
             "menu_options": "🆕 创建新的软件配置,🚀 批量导出数据,📊 查看导出历史,⚙️  管理配置档案,🛠️  编辑现有配置,🌐 切换语言,❌ 退出",
-            "menu_prompt": "请选择操作 (1-7): ",
+            "menu_prompt": "请选择操作 (1,2,3...): ",
             # 通用
             "invalid_choice": "❌ 无效选择",
             "confirm": "确认",
@@ -83,8 +83,16 @@ class LanguageManager:
             "yes": "是",
             "no": "否",
             "files": "个文件",
+            # 路径选择
+            "path_selection_title": "📂 路径选择方式",
+            "path_selection_custom": "1. 自定义路径",
+            "path_selection_demo": "2. 演示路径",
+            "path_selection_prompt": "请选择 (1/2): ",
+            "demo_source_path": "Geochemistrypi/geochemistrypi/chemical_modeling/data",
+            "demo_output_path": "Geochemistrypi/geopi_output",
             # 文件处理
-            "select_source_folder": "📂 请输入数据文件所在文件夹路径: ",
+            "select_source_folder": "📂 请输入数据文件所在文件夹路径:",
+            "select_source_folder_with_options": "📂 请选择数据文件所在文件夹路径:",
             "folder_not_exist": "文件夹不存在",
             "create_folder": "文件夹 '{folder}' 不存在，是否创建? (y/n): ",
             "folder_created": "✅ 已创建文件夹: {folder}",
@@ -134,7 +142,7 @@ class LanguageManager:
             "paste_from_clipboard": "从剪贴板粘贴",
             # 配置向导
             "wizard_title": "🛠️  创建新的软件自动化配置",
-            "software_name": "请输入软件名称: ",
+            "software_name": "请输入软件名称 (如 MC-ICP-MS,LA-ICP-MS等): ",
             "software_version": "软件版本 (可选): ",
             "software_description": "软件描述 (可选): ",
             "window_title": "软件窗口标题 (用于自动激活窗口): ",
@@ -143,7 +151,7 @@ class LanguageManager:
             "action_instructions": "请按照您平时导出数据的完整流程操作一遍",
             "action_recording_start": "按Enter键开始录制...",
             # 动作类型选择
-            "action_selection": "请选择操作类型 (1-5): ",
+            "action_selection": "请选择操作类型 (1,2,3...): ",
             "action_types": "鼠标点击,键盘输入,复制/粘贴,等待,完成配置",
             "wait_time_prompt": "等待时间(秒): ",
             "action_sequence": "动作序列",
@@ -164,7 +172,8 @@ class LanguageManager:
             # 输出配置
             "output_config": "💾 配置输出选项",
             "output_format": "💾 选择输出文件格式:",
-            "output_folder_prompt": "请输入输出文件夹路径 (留空则使用源文件夹): ",
+            "output_folder_prompt": "请输入输出文件夹路径 (留空则使用源文件夹):",
+            "output_folder_prompt_with_options": "💾 请选择输出文件夹路径 (留空则使用源文件夹):",
             "use_source_folder": "使用源文件夹作为输出文件夹? (y/n): ",
             "batch_delay": "⏱️  文件处理间隔时间(秒, 默认2): ",
             # 预览
@@ -229,7 +238,7 @@ class LanguageManager:
             "profile_formats": "文件类型: {formats}",
             "manage_options": "操作:",
             "delete_profile": "删除配置",
-            "select_delete": "输入要删除的配置编号: ",
+            "select_delete": "输入配置编号: ",
             "confirm_delete": "确认删除 '{name}'? (y/n): ",
             "delete_success": "✅ 删除成功",
             "delete_failed": "❌ 删除失败",
@@ -267,7 +276,7 @@ class LanguageManager:
             "menu_title": "🌍 Universal Geochemical Instrument Data Export Tool",
             "menu_version": "Version 1.0 - Multi-language & Smart Retry",
             "menu_options": "🆕 Create new software profile,🚀 Batch export data,📊 View export history,⚙️  Manage profiles,🛠️  Edit existing profile,🌐 Switch language,❌ Exit",
-            "menu_prompt": "Please select an option (1-7): ",
+            "menu_prompt": "Please select an option (1,2,3...): ",
             # General
             "invalid_choice": "❌ Invalid choice",
             "confirm": "Confirm",
@@ -283,8 +292,16 @@ class LanguageManager:
             "yes": "Yes",
             "no": "No",
             "files": "files",
+            # Path selection
+            "path_selection_title": "📂 Path Selection Method",
+            "path_selection_custom": "1. Custom Path",
+            "path_selection_demo": "2. Demo Path",
+            "path_selection_prompt": "Please select (1/2): ",
+            "demo_source_path": "Geochemistrypi/geochemistrypi/chemical_modeling/data",
+            "demo_output_path": "Geochemistrypi/geopi_output",
             # File processing
             "select_source_folder": "📂 Please enter the source folder path: ",
+            "select_source_folder_with_options": "📂 Please select the source folder path:",
             "folder_not_exist": "Folder does not exist",
             "create_folder": "Folder '{folder}' does not exist, create it? (y/n): ",
             "folder_created": "✅ Folder created: {folder}",
@@ -334,7 +351,7 @@ class LanguageManager:
             "paste_from_clipboard": "Paste from clipboard",
             # Configuration wizard
             "wizard_title": "🛠️  Create New Software Automation Profile",
-            "software_name": "Enter software name: ",
+            "software_name": "Enter software name (such as MC-ICP-MS,LA-ICP-MS...): ",
             "software_version": "Software version (optional): ",
             "software_description": "Software description (optional): ",
             "window_title": "Software window title (for auto-activation): ",
@@ -343,7 +360,7 @@ class LanguageManager:
             "action_instructions": "Please perform your normal export workflow once",
             "action_recording_start": "Press Enter to start recording...",
             # Action type selection
-            "action_selection": "Select action type (1-5): ",
+            "action_selection": "Select action type (1,2,3...): ",
             "action_types": "Mouse click,Keyboard input,Copy/Paste,Wait,Finish configuration",
             "wait_time_prompt": "Wait time (seconds): ",
             "action_sequence": "Action sequence",
@@ -370,6 +387,7 @@ class LanguageManager:
             "output_config": "💾 Configure Output Options",
             "output_format": "💾 Select output file format:",
             "output_folder_prompt": "Enter output folder path (empty to use source folder): ",
+            "output_folder_prompt_with_options": "💾 Please select the output folder path (empty to use source folder):",
             "use_source_folder": "Use source folder as output folder? (y/n): ",
             "batch_delay": "⏱️  Delay between files (seconds, default 2): ",
             # Preview
@@ -434,7 +452,7 @@ class LanguageManager:
             "profile_formats": "File types: {formats}",
             "manage_options": "Operations:",
             "delete_profile": "Delete profile",
-            "select_delete": "Enter profile number to delete: ",
+            "select_delete": "Enter profile number: ",
             "confirm_delete": "Confirm delete '{name}'? (y/n): ",
             "delete_success": "✅ Delete successful",
             "delete_failed": "❌ Delete failed",
@@ -809,7 +827,7 @@ class EnhancedSetupWizard:
 
         # 保存配置
         if self.cm.save_profile(profile):
-            print(f"{self.lang.t('success')}: {self.lang.t('profile_name', name=profile.software_name)}")
+            print(f"{self.lang.t('success')}: {self.lang.t('profile_created', name=profile.software_name)}")
             return profile
         else:
             print(self.lang.t("error"))
@@ -1308,8 +1326,8 @@ class MultilingualExportAssistant:
         if not file_config:
             return
 
-        # 选择源文件夹
-        source_folder = self._select_source_folder()
+        # 选择源文件夹（带路径选择选项）
+        source_folder = self._select_source_folder_with_options()
         if not source_folder:
             return
 
@@ -1318,8 +1336,8 @@ class MultilingualExportAssistant:
         if not files:
             return
 
-        # 配置输出选项
-        output_folder = self._configure_output_options()
+        # 配置输出选项（带路径选择选项）
+        output_folder = self._configure_output_options_with_options()
         file_config.output_folder = output_folder
 
         # 预览和确认
@@ -1441,8 +1459,100 @@ class MultilingualExportAssistant:
 
         return config
 
+    def _select_source_folder_with_options(self):
+        """选择源文件夹 - 提供自定义路径和演示路径选项"""
+        print(f"\n{self.lang.t('select_source_folder_with_options')}")
+        print("=" * 40)
+
+        while True:
+            print(f"\n{self.lang.t('path_selection_title')}")
+            print(f"  {self.lang.t('path_selection_custom')}")
+            print(f"  {self.lang.t('path_selection_demo')} ({self.lang.t('demo_source_path')})")
+
+            choice = input(f"\n{self.lang.t('path_selection_prompt')}")
+
+            if choice == "1":
+                # 自定义路径
+                folder = self._get_folder_path_input(self.lang.t("select_source_folder"))
+                if folder:
+                    return folder
+            elif choice == "2":
+                # 演示路径
+                demo_path = self.lang.t("demo_source_path")
+                folder = os.path.abspath(demo_path)
+                print(f"\n{self.lang.t('select_source_folder')} {folder}")
+                return self._validate_and_create_folder(folder)
+            else:
+                print(self.lang.t("invalid_choice"))
+
+    def _configure_output_options_with_options(self):
+        """配置输出选项 - 提供自定义路径和演示路径选项"""
+        print(f"\n{self.lang.t('output_config')}")
+        print("=" * 40)
+
+        while True:
+            print(f"\n{self.lang.t('path_selection_title')}")
+            print(f"  {self.lang.t('path_selection_custom')}")
+            print(f"  {self.lang.t('path_selection_demo')} ({self.lang.t('demo_output_path')})")
+            print(f"  3. {self.lang.t('use_source_folder')}")
+
+            choice = input(f"\n{self.lang.t('path_selection_prompt')} (或输入3使用源文件夹): ")
+
+            if choice == "1":
+                # 自定义路径
+                folder = self._get_folder_path_input(self.lang.t("output_folder_prompt"), allow_empty=False)
+                if folder:
+                    return folder
+            elif choice == "2":
+                # 演示路径
+                demo_path = self.lang.t("demo_output_path")
+                folder = os.path.abspath(demo_path)
+                print(f"\n{self.lang.t('output_folder_prompt')} {folder}")
+                return self._validate_and_create_folder(folder)
+            elif choice == "3":
+                # 使用源文件夹
+                return ""
+            else:
+                print(self.lang.t("invalid_choice"))
+
+    def _get_folder_path_input(self, prompt, allow_empty=True):
+        """获取文件夹路径输入"""
+        while True:
+            folder = input(f"\n{prompt}").strip()
+
+            if not folder and allow_empty:
+                return ""
+
+            if not folder:
+                print(self.lang.t("error") + ": " + self.lang.t("folder_not_exist"))
+                continue
+
+            result = self._validate_and_create_folder(folder)
+            if result:
+                return result
+
+    def _validate_and_create_folder(self, folder):
+        """验证并创建文件夹"""
+        if not os.path.exists(folder):
+            create = input(self.lang.t("create_folder", folder=folder)).lower()
+            if create in ["y", "yes", "是", "确认"]:
+                try:
+                    os.makedirs(folder, exist_ok=True)
+                    print(self.lang.t("folder_created", folder=folder))
+                    return os.path.abspath(folder)
+                except Exception as e:
+                    print(f"{self.lang.t('error')}: {str(e)}")
+                    return None
+            else:
+                return None
+        elif os.path.isdir(folder):
+            return os.path.abspath(folder)
+        else:
+            print(self.lang.t("not_folder"))
+            return None
+
     def _select_source_folder(self):
-        """选择源文件夹"""
+        """选择源文件夹（保留原方法以兼容）"""
         while True:
             folder = input(f"\n{self.lang.t('select_source_folder')}").strip()
 
@@ -1535,7 +1645,7 @@ class MultilingualExportAssistant:
             return all_files
 
     def _configure_output_options(self):
-        """配置输出选项"""
+        """配置输出选项（保留原方法以兼容）"""
         print(f"\n{self.lang.t('output_config')}")
         print("=" * 40)
 
