@@ -180,7 +180,7 @@ def select_column_name(data: pd.DataFrame) -> str:
             print("Invalid input, please enter an integer.")
 
 
-def create_sub_data_set(data: pd.DataFrame, allow_empty_columns: bool = False) -> pd.DataFrame:
+def create_sub_data_set(data: pd.DataFrame, allow_empty_columns: bool = False, require_numeric: bool = True) -> pd.DataFrame:
     """Create a sub data set.
 
     Parameters
@@ -190,6 +190,9 @@ def create_sub_data_set(data: pd.DataFrame, allow_empty_columns: bool = False) -
 
     allow_empty_columns : bool, optional
         Whether to include empty columns in the sub data set. The default is False.
+
+    require_numeric : bool, optional
+        Whether selected columns must be numeric. The default is True.
 
     Returns
     -------
@@ -293,10 +296,12 @@ def create_sub_data_set(data: pd.DataFrame, allow_empty_columns: bool = False) -
             for i in data_checking.columns.values:
                 df_test = pd.DataFrame(data_checking[i])
                 test_columns = df_test.columns
-                v_value = int(df_test.isnull().sum())
+                v_value = int(df_test.isnull().sum().iloc[0])
                 if not allow_empty_columns and v_value == len(df_test):
                     print(f"Warning: The selected column {df_test.columns.values} is an empty column! It will be automatically removed.")
-                if df_test[test_columns[0]].dtype in ["int64", "float64"]:
+                if not require_numeric:
+                    continue
+                if pd.api.types.is_numeric_dtype(df_test[test_columns[0]]):
                     continue
                 else:
                     print(f"Warning: The data type of selected column {df_test.columns.values} is not numeric!" " Please make sure that the selected data type is numeric and re-enter.")
@@ -314,7 +319,7 @@ def create_sub_data_set(data: pd.DataFrame, allow_empty_columns: bool = False) -
     return sub_data_set
 
 
-def data_split(X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], names: pd.DataFrame, test_size: float = 0.2) -> Dict:
+def data_split(X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], names: pd.DataFrame, test_size: float = 0.2, stratify: Optional[Union[pd.DataFrame, pd.Series]] = None) -> Dict:
     """Split arrays or matrices into random train and test subsets.
 
     Parameters
@@ -336,8 +341,17 @@ def data_split(X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], names: pd.Dat
     dict
         A dictionary containing the split data.
     """
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
-    name_train, name_test = train_test_split(names, test_size=test_size, random_state=42)
+    stratify_values = None
+    if stratify is not None:
+        stratify_values = stratify.squeeze() if isinstance(stratify, (pd.DataFrame, pd.Series)) else stratify
+    X_train, X_test, y_train, y_test, name_train, name_test = train_test_split(
+        X,
+        y,
+        names,
+        test_size=test_size,
+        random_state=42,
+        stratify=stratify_values,
+    )
     return {"X Train": X_train, "X Test": X_test, "Y Train": y_train, "Y Test": y_test, "Name Train": name_train, "Name Test": name_test}
 
 

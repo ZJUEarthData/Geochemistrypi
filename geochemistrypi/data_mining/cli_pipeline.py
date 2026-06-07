@@ -14,6 +14,7 @@ from .constants import (
     BUILT_IN_DATASET_PATH,
     CLASSIFICATION_MODELS,
     CLASSIFICATION_MODELS_WITH_MISSING_VALUES,
+    CALCULATION_METHOD_OPTION,
     CLUSTERING_MODELS,
     CLUSTERING_MODELS_WITH_MISSING_VALUES,
     DECOMPOSITION_MODELS,
@@ -76,7 +77,7 @@ from .utils.mlflow_utils import retrieve_previous_experiment_id
 
 
 def cli_pipeline(training_data_path: str, application_data_path: Optional[str] = None, data_source: Optional[DataSource] = None) -> None:
-    """The command line interface software for Geochemistry π.
+    """The command line interface software for Geochemistry Pi.
     The business logic of this CLI software can be found in the figures in the README.md file.
     It provides three  MLOps core functionalities:
         1. Continuous Training
@@ -97,11 +98,11 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
 
     # Display the interactive splash screen when launching the CLI software
     console = Console()
-    print("\n[bold blue]Welcome to Geochemistry π![/bold blue]")
+    print("\n[bold blue]Welcome to Geochemistry Pi![/bold blue]")
     print("[bold blue]Three cores components:[/bold blue]")
-    print("✨ [bold blue]Continuous Training[/bold blue]")
-    print("✨ [bold blue]Model Inference[/bold blue]")
-    print("✨ [bold blue]Machine Learning Lifecycle Management[/bold blue]")
+    print("- [bold blue]Continuous Training[/bold blue]")
+    print("- [bold blue]Model Inference[/bold blue]")
+    print("- [bold blue]Machine Learning Lifecycle Management[/bold blue]")
     print("[bold green]Initializing...[/bold green]")
 
     # Set the working path based on the data source
@@ -232,10 +233,10 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
 
     # <--- Experiment Setup --->
     logger.debug("Experiment Setup")
-    console.print("✨ Press [bold magenta]Ctrl + C[/bold magenta] to exit our software at any time.")
-    console.print("✨ Input Template [bold magenta][Option1/Option2][/bold magenta] [bold cyan](Default Value)[/bold cyan]: Input Value")
+    console.print("Press [bold magenta]Ctrl + C[/bold magenta] to exit our software at any time.")
+    console.print("Input Template [bold magenta][Option1/Option2][/bold magenta] [bold cyan](Default Value)[/bold cyan]: Input Value")
     # Create a new experiment or use the previous experiment
-    is_used_previous_experiment = Confirm.ask("✨ Use Previous Experiment", default=False)
+    is_used_previous_experiment = Confirm.ask("Use Previous Experiment", default=False)
     # Set the tracking uri to the local directory, in the future, we can set it to the remote server.
     experiments_location = "file:///" + os.path.join(WORKING_PATH, "geopi_tracking")
     mlflow.set_tracking_uri(experiments_location)
@@ -250,13 +251,13 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         old_experiment_id = None
         # If the user doesn't provide the correct experiment name, then ask the user to input again.
         while not old_experiment_id:
-            old_experiment_name = Prompt.ask("✨ Previous Experiment Name")
+            old_experiment_name = Prompt.ask("Previous Experiment Name")
             old_experiment_id = retrieve_previous_experiment_id(old_experiment_name)
         mlflow.set_experiment(experiment_id=old_experiment_id)
         experiment = mlflow.get_experiment(experiment_id=old_experiment_id)
     else:
-        new_experiment_name = Prompt.ask("✨ New Experiment", default="GeoPi - Rock Classification")
-        # new_experiment_tag = Prompt.ask("✨ Experiment Tag Version", default="E - v1.0.0")
+        new_experiment_name = Prompt.ask("New Experiment", default="GeoPi - Rock Classification")
+        # new_experiment_tag = Prompt.ask("Experiment Tag Version", default="E - v1.0.0")
         try:
             # new_experiment_id = mlflow.create_experiment(name=new_experiment_name, artifact_location=artifact_localtion, tags={"version": new_experiment_tag})
             new_experiment_id = mlflow.create_experiment(name=new_experiment_name)
@@ -270,9 +271,9 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
                 raise e
         experiment = mlflow.get_experiment(experiment_id=new_experiment_id)
     # print("Artifact Location: {}".format(experiment.artifact_location))
-    run_name = Prompt.ask("✨ Run Name", default="XGBoost Algorithm - Test 1")
-    # run_tag = Prompt.ask("✨ Run Tag Version", default="R - v1.0.0")
-    # run_description = Prompt.ask("✨ Run Description", default="Use xgboost for GeoPi classification.")
+    run_name = Prompt.ask("Run Name", default="XGBoost Algorithm - Test 1")
+    # run_tag = Prompt.ask("Run Tag Version", default="R - v1.0.0")
+    # run_description = Prompt.ask("Run Description", default="Use xgboost for GeoPi classification.")
     # mlflow.start_run(run_name=run_name, experiment_id=experiment.experiment_id, tags={"version": run_tag, "description": run_description})
     mlflow.start_run(run_name=run_name, experiment_id=experiment.experiment_id)
     create_geopi_output_dir(OUTPUT_PATH, experiment.name, run_name)
@@ -345,7 +346,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     logger.debug("Data Selection")
     print("[bold green]-*-*- Data Selection -*-*-[/bold green]")
     show_data_columns(data.columns)
-    data_selected = create_sub_data_set(data, allow_empty_columns=False)
+    data_selected = create_sub_data_set(data, allow_empty_columns=False, require_numeric=False)
     clear_output()
     print("The Selected Data Set:")
     print(data_selected)
@@ -353,9 +354,13 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     print("[bold green]-*-*- Basic Statistical Information -*-*-[/bold green]")
     basic_info(data_selected)
     basic_statistic(data_selected)
-    correlation_plot(data_selected.columns, data_selected, name_column_select)
-    distribution_plot(data_selected.columns, data_selected, name_column_select)
-    log_distribution_plot(data_selected.columns, data_selected, name_column_select)
+    numeric_columns = data_selected.select_dtypes(include="number").columns
+    if len(numeric_columns) > 0:
+        correlation_plot(numeric_columns, data_selected, name_column_select)
+        distribution_plot(numeric_columns, data_selected, name_column_select)
+        log_distribution_plot(numeric_columns, data_selected, name_column_select)
+    else:
+        print("No numeric columns are selected, so statistic plots are skipped.")
     GEOPI_OUTPUT_ARTIFACTS_DATA_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH")
     save_data(data, name_column_origin, "Data Original", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
     save_data(data_selected, name_column_select, "Data Selected", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
@@ -538,6 +543,8 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     # divide X and y data set when it is supervised learning
     logger.debug("Data Divsion")
     name_all = process_name_column
+    label_config = None
+    metric_average = None
     if mode_num == 1 or mode_num == 2:
         # Supervised learning
         print("[bold green]-*-*- Data Segmentation - X Set and Y Set -*-*-[/bold green]")
@@ -561,14 +568,36 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         show_data_columns(data_selected_imputed_fe.columns)
         print("The selected Y data set:")
         print("Notice: Normally, please choose only one column to be tag column Y, not multiple columns.")
-        print("Notice: For classification model training, please choose the label column which has distinctive integers.")
-        y = create_sub_data_set(data_selected_imputed_fe, allow_empty_columns=False)
+        print("Notice: For classification model training, the selected Y column can be existing class labels or a numeric value to be converted into user-defined classes.")
+        y = create_sub_data_set(data_selected_imputed_fe, allow_empty_columns=False, require_numeric=mode_num != 2)
         print("Successfully create Y data set.")
         print("The Selected Data Set:")
         print(y)
         print("Basic Statistical Information: ")
         basic_statistic(y)
         save_data(y, name_all, "Y", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+        if mode_num == 2:
+            label_customizer = ClassificationModelSelection("__label_customizer__")
+            y, label_config = label_customizer.clf_workflow.customize_label(
+                y=y,
+                name_column1=name_all,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_DATA_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_DATA_PATH,
+                interactive=True,
+                return_config=True,
+            )
+            print("Classification target labels have been converted to contiguous integer codes for model training.")
+            print("Target label mapping and class counts have been saved in the output artifacts.")
+            if label_config["num_classes"] > 2:
+                print("Please select calculation method for multiclass metrics:")
+                print("[bold green]Micro[/bold green]: Calculate metrics globally by counting the total true positives, false negatives and false positives.")
+                print("[bold green]Macro[/bold green]: Calculate metrics for each label and find their unweighted mean.")
+                print("[bold green]Weighted[/bold green]: Calculate metrics for each label and average them by class support. Recommended for imbalanced datasets.")
+                num2option(CALCULATION_METHOD_OPTION)
+                average_num = limit_num_input(CALCULATION_METHOD_OPTION, SECTION[2], num_input)
+                metric_average = ["micro", "macro", "weighted"][average_num - 1]
+            else:
+                metric_average = "binary"
         clear_output()
 
         # <--- Feature Scaling --->
@@ -611,7 +640,14 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         print("[bold green]-*-*- Data Split - Train Set and Test Set -*-*-[/bold green]")
         print("Notice: Normally, set 20% of the dataset aside as test set, such as 0.2.")
         test_ratio = float_input(default=0.2, prefix=SECTION[1], slogan="@Test Ratio: ")
-        train_test_data = data_split(X, y, process_name_column, test_ratio)
+        stratify_target = None
+        if mode_num == 2:
+            class_counts = y.iloc[:, 0].value_counts().sort_index()
+            if (class_counts < 2).any():
+                too_small = class_counts[class_counts < 2].to_dict()
+                raise ValueError(f"Each classification class must have at least 2 samples for stratified splitting. Too-small classes: {too_small}")
+            stratify_target = y.iloc[:, 0]
+        train_test_data = data_split(X, y, process_name_column, test_ratio, stratify=stratify_target)
         for key, value in train_test_data.items():
             if key in ["Name Train", "Name Test"]:
                 continue
@@ -752,7 +788,10 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     # If the user doesn't choose all models, then run the designated model.
     if model_num != all_models_num:
         # run the designated model
-        run = Modes2Initiators[mode_num](model_name)
+        if mode_num == 2:
+            run = Modes2Initiators[mode_num](model_name, label_config=label_config, labels_already_customized=True, metric_average=metric_average)
+        else:
+            run = Modes2Initiators[mode_num](model_name)
         # If is_automl is False, then run the model without AutoML.
         if not is_automl:
             run.activate(X, y, X_train, X_test, y_train, y_test, name_train, name_test, name_all)
@@ -806,7 +845,10 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
             # Start a nested MLflow run within the current MLflow run
             with mlflow.start_run(run_name=MODELS[i], experiment_id=experiment.experiment_id, nested=True):
                 create_geopi_output_dir(OUTPUT_PATH, experiment.name, run_name, MODELS[i])
-                run = Modes2Initiators[mode_num](MODELS[i])
+                if mode_num == 2:
+                    run = Modes2Initiators[mode_num](MODELS[i], label_config=label_config, labels_already_customized=True, metric_average=metric_average)
+                else:
+                    run = Modes2Initiators[mode_num](MODELS[i])
                 # If is_automl is False, then run all models without AutoML.
                 if not is_automl:
                     run.activate(X, y, X_train, X_test, y_train, y_test, name_train, name_test, name_all)
