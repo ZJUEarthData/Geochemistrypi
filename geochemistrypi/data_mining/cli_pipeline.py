@@ -60,7 +60,7 @@ from .process.cluster import ClusteringModelSelection
 from .process.decompose import DecompositionModelSelection
 from .process.detect import AnomalyDetectionModelSelection
 from .process.regress import RegressionModelSelection
-from .process.time_series import compute_subaerial_proportion
+from .process.time_series import compute_subaerial_proportion, plot_and_save
 from .utils.base import (
     check_package,
     clear_output,
@@ -298,25 +298,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         elif built_in_training_data_num == 5:
             training_data_path = "Data_AnomalyDetection.xlsx"
         elif built_in_training_data_num == 6:
-            # For Time Series, prefer a built-in Data_TimeSeries.xlsx if present; otherwise fall back to a packaged sample
-            candidate = os.path.join(BUILT_IN_DATASET_PATH, "Data_TimeSeries.xlsx")
-            if os.path.exists(candidate):
-                training_data_path = "Data_TimeSeries.xlsx"
-                print("Using built-in Data_TimeSeries.xlsx for Time Series analysis.")
-            else:
-                # fallback to chemical_modeling sample (Mo_data.xlsx) which is included in package
-                pkg_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-                fallback = os.path.join(pkg_root, "chemical_modeling", "data", "Mo_data.xlsx")
-                if os.path.exists(fallback):
-                    training_data_path = fallback
-                    print("No built-in Time Series dataset found; falling back to packaged sample Mo_data.xlsx")
-                else:
-                    print("No built-in Time Series dataset found. Please provide a data file path.")
-                    user_input = Prompt.ask("✨ Time Series file (absolute path)", default="")
-                    if len(user_input.strip()) == 0:
-                        print("No Time Series dataset provided. Please run again and provide a data file.")
-                        exit(1)
-                    training_data_path = user_input.strip()
+            training_data_path = "Data_Time_Series.xlsx"
         # If user provided absolute path or path contains os separator, treat as own data
         if os.path.isabs(training_data_path) or (os.sep in training_data_path):
             data = read_data(file_path=training_data_path, is_own_data=1)
@@ -569,34 +551,61 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     # If the user selected Time Series, run dedicated time-series flow and skip model training
     if mode_name == "Time Series":
         print("[bold green]-*-*- Time Series Analysis -*-*-[/bold green]")
-        # Ask user to select required columns
-        print("Please select the columns corresponding to the following variables:")
-        show_data_columns(data_selected.columns)
-        print("Select Age column:")
-        age_col_idx = int_input(column=1, prefix=SECTION[1], slogan="@Column index for Age: ")
-        age_col = data_selected.columns[age_col_idx - 1]
-        print("Select Age Max column:")
-        age_max_col_idx = int_input(column=1, prefix=SECTION[1], slogan="@Column index for Age Max: ")
-        age_max_col = data_selected.columns[age_max_col_idx - 1]
-        print("Select Probability column (SBAP):")
-        prob_col_idx = int_input(column=1, prefix=SECTION[1], slogan="@Column index for Probability: ")
-        prob_col = data_selected.columns[prob_col_idx - 1]
-        print("Select Latitude column:")
-        lat_col_idx = int_input(column=1, prefix=SECTION[1], slogan="@Column index for Latitude: ")
-        lat_col = data_selected.columns[lat_col_idx - 1]
-        print("Select Longitude column:")
-        lon_col_idx = int_input(column=1, prefix=SECTION[1], slogan="@Column index for Longitude: ")
-        lon_col = data_selected.columns[lon_col_idx - 1]
 
-        # Bin width and iterations
-        bin_width = float_input(default=10.0, prefix=SECTION[1], slogan="@Bin width (Ma): ")
+        # Use the built-in Time Series sample data and default columns if available
+        default_time_series_columns = {
+            "age_col": "R_AGE",
+            "age_max_col": "R_MAX_AGE",
+            "prob_col": "Estimated Proportion of Subaerial Basalts",
+            "lat_col": "LATITUDE",
+            "lon_col": "LONGITUDE",
+        }
+
+        # If columns exist, use defaults; otherwise ask the user
+        columns = data_selected.columns
+        if all(col in columns for col in default_time_series_columns.values()):
+            age_col = default_time_series_columns["age_col"]
+            age_max_col = default_time_series_columns["age_max_col"]
+            prob_col = default_time_series_columns["prob_col"]
+            lat_col = default_time_series_columns["lat_col"]
+            lon_col = default_time_series_columns["lon_col"]
+        else:
+            print("Please select the columns corresponding to the following variables:")
+            show_data_columns(data_selected.columns)
+            print("Select Age column:")
+            age_col_idx = int_input(column=1, prefix=SECTION[1], slogan="@Column index for Age: ")
+            age_col = data_selected.columns[age_col_idx - 1]
+            print("Select Age Max column:")
+            age_max_col_idx = int_input(column=1, prefix=SECTION[1], slogan="@Column index for Age Max: ")
+            age_max_col = data_selected.columns[age_max_col_idx - 1]
+            print("Select Probability column (SBAP):")
+            prob_col_idx = int_input(column=1, prefix=SECTION[1], slogan="@Column index for Probability: ")
+            prob_col = data_selected.columns[prob_col_idx - 1]
+            print("Select Latitude column:")
+            lat_col_idx = int_input(column=1, prefix=SECTION[1], slogan="@Column index for Latitude: ")
+            lat_col = data_selected.columns[lat_col_idx - 1]
+            print("Select Longitude column:")
+            lon_col_idx = int_input(column=1, prefix=SECTION[1], slogan="@Column index for Longitude: ")
+            lon_col = data_selected.columns[lon_col_idx - 1]
+
+        # Time unit selection for age values
+        age_unit = Prompt.ask("Select Age unit", choices=["Ma", "Ga"], default="Ma")
+        bin_width = float_input(default=10.0, prefix=SECTION[1], slogan=f"@Bin width ({age_unit}): ")
         n_iter = int_input(column=100, prefix=SECTION[1], slogan="@Bootstrap iterations: ")
 
-        # run computation
+        if age_unit == "Ga":
+            data_selected = data_selected.copy()
+            data_selected[age_col] = data_selected[age_col] * 1000.0
+            data_selected[age_max_col] = data_selected[age_max_col] * 1000.0
+            internal_bin_width = bin_width * 1000.0
+        else:
+            internal_bin_width = bin_width
+
+        print(f"Using bin width = {bin_width} {age_unit}, bootstrap iterations = {n_iter}")
         print("Start computing time series...")
         age_x, ave_bin, std_bin = compute_subaerial_proportion(
             data_selected,
-            bin_width=bin_width,
+            bin_width=internal_bin_width,
             n_iter=n_iter,
             age_col=age_col,
             age_max_col=age_max_col,
@@ -606,8 +615,17 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         )
 
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH") or OUTPUT_PATH
-        # out_base = plot_and_save(age_x, ave_bin, std_bin, out_dir=GEOPI_OUTPUT_ARTIFACTS_PATH)
+        output_base = plot_and_save(
+            age_x,
+            ave_bin,
+            std_bin,
+            out_dir=GEOPI_OUTPUT_ARTIFACTS_PATH,
+            age_unit=age_unit,
+            title=f"Subaerial proportion (bin width {bin_width} {age_unit}, bootstrap {n_iter})",
+            out_name=f"Subaerial_proportion_{bin_width:g}{age_unit}_boot{n_iter}",
+        )
         print(f"Time series outputs saved under {GEOPI_OUTPUT_ARTIFACTS_PATH}")
+        print(f"Saved files: {output_base}.pdf and {output_base}.csv")
         # Copy artifacts to summary as usual
         GEOPI_OUTPUT_SUMMARY_PATH = os.getenv("GEOPI_OUTPUT_SUMMARY_PATH")
         GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")

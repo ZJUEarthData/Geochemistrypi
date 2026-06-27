@@ -34,10 +34,6 @@ def compute_subaerial_proportion(
 
     np.random.seed(2025)
 
-    # all_idx = np.arange(age.size)
-
-    # weights
-    # wei = np.ones((age.size, 1))
     WEI = np.ones((age.size, 1))
     batch_size = 2000
 
@@ -121,25 +117,159 @@ def plot_and_save(
     std_bin: np.ndarray,
     out_dir: Optional[str] = None,
     out_name: str = "Subaerial_proportion",
+    age_unit: str = "Ma",
+    title: Optional[str] = None,
 ) -> str:
-    """Plot the result and save PDF and CSV. Returns base path saved."""
+    """
+    Plot the result and save PDF and CSV.
+
+    Parameters
+    ----------
+    age_x : np.ndarray
+        Array of bin center ages.
+    ave_bin : np.ndarray
+        Array of mean subaerial proportions per bin.
+    std_bin : np.ndarray
+        Array of 2-sigma standard deviations per bin.
+    out_dir : Optional[str], default=None
+        Output directory for saving files. If None, uses current working directory.
+    out_name : str, default="Subaerial_proportion"
+        Base name for output files (without extension).
+    age_unit : str, default="Ma"
+        Unit for age axis. Either "Ma" (million years) or "Ga" (billion years).
+    title : Optional[str], default=None
+        Title for the plot. If None, no title is added.
+
+    Returns
+    -------
+    str
+        Base path of saved files.
+    """
     if out_dir is None:
         out_dir = os.getcwd()
     os.makedirs(out_dir, exist_ok=True)
 
-    plt.figure()
-    plt.errorbar(age_x, ave_bin, yerr=std_bin, ecolor="r", capsize=4)
-    plt.xlabel("Age (Ma)")
-    plt.ylabel("Subaerial proportion (%)")
-    plt.xlim((0, max(age_x) if age_x.size > 0 else 4000))
-    plt.ylim((0, 100))
+    # Convert age unit if needed
+    if age_unit == "Ga":
+        plot_age = age_x / 1000.0
+    else:
+        plot_age = age_x
+
+    # ---- Remove NaN values for automatic range detection ----
+    valid_mask = ~np.isnan(ave_bin)
+    if np.sum(valid_mask) == 0:
+        print("Warning: No valid data to plot.")
+        return os.path.join(out_dir, out_name)
+
+    plot_age_valid = plot_age[valid_mask]
+    ave_bin_valid = ave_bin[valid_mask]
+    std_bin_valid = std_bin[valid_mask]
+
+    # ============================================================
+    # 1. Set publication-quality plotting style
+    # ============================================================
+    # Use a built-in style that is available in most Matplotlib versions
+    try:
+        plt.style.use("seaborn-v0_8-paper")
+    except OSError:
+        try:
+            plt.style.use("seaborn-paper")
+        except OSError:
+            # Fallback: use default style with manual settings
+            plt.style.use("default")
+            print("Info: Using default Matplotlib style (seaborn styles not available)")
+
+    # Set Times New Roman font (standard in geoscience publications)
+    plt.rcParams["font.family"] = "serif"
+    plt.rcParams["font.serif"] = ["Times New Roman"]
+    plt.rcParams["mathtext.fontset"] = "stix"  # Math font matching Times
+
+    # Set font sizes
+    plt.rcParams["font.size"] = 12
+    plt.rcParams["axes.labelsize"] = 14
+    plt.rcParams["axes.titlesize"] = 14
+    plt.rcParams["legend.fontsize"] = 12
+    plt.rcParams["xtick.labelsize"] = 12
+    plt.rcParams["ytick.labelsize"] = 12
+
+    # ============================================================
+    # 2. Create figure
+    # ============================================================
+    fig, ax = plt.subplots(figsize=(10, 5))  # 10" x 5", close to golden ratio
+
+    # ---- 2a. Draw gray error band (2-sigma, semi-transparent) ----
+    ax.fill_between(plot_age_valid, ave_bin_valid - std_bin_valid, ave_bin_valid + std_bin_valid, color="gray", alpha=0.35, label=r"$\pm 2\sigma$")
+
+    # ---- 2b. Draw main line (blue solid line, bold) ----
+    ax.plot(plot_age_valid, ave_bin_valid, color="#1f77b4", linewidth=2.5, label="Mean proportion")  # Matplotlib default blue
+
+    # ---- 2c. (Optional) Add scatter points to show sampling ----
+    # Uncomment if data points are few (e.g., < 50)
+    # ax.scatter(plot_age_valid, ave_bin_valid, s=20, color='#1f77b4', zorder=5)
+
+    # ============================================================
+    # 3. Configure axes
+    # ============================================================
+    # ---- 3a. Automatic x-axis range detection ----
+    x_min = np.min(plot_age_valid) - 0.02 * (np.max(plot_age_valid) - np.min(plot_age_valid))
+    x_max = np.max(plot_age_valid) + 0.02 * (np.max(plot_age_valid) - np.min(plot_age_valid))
+    if x_max - x_min < 0.1:
+        x_min = 0
+        x_max = 4.0 if age_unit == "Ga" else 4000
+    ax.set_xlim((x_min, x_max))
+
+    # ---- 3b. Reverse x-axis (older ages on the left) ----
+    ax.invert_xaxis()
+
+    # ---- 3c. Automatic y-axis range detection ----
+    y_min = 0
+    y_max = np.nanmax(ave_bin_valid) + 5
+    if y_max < 20:
+        y_max = 100
+    ax.set_ylim((y_min, y_max))
+
+    # ---- 3d. Axis labels ----
+    ax.set_xlabel(f"Age ({age_unit})", fontsize=14)
+    ax.set_ylabel("Sub aerial proportion (%)", fontsize=14)
+
+    # ---- 3e. Tick control (fine-grained) ----
+    # x-axis ticks: 0.5 Ga interval for Ga, 500 Ma interval for Ma
+    if age_unit == "Ga":
+        ax.set_xticks(np.arange(0, 4.5, 0.5))
+    else:
+        ax.set_xticks(np.arange(0, 4500, 500))
+
+    # y-axis ticks: 0, 20, 40, 60, 80, 100
+    ax.set_yticks(np.arange(0, 101, 20))
+
+    # ============================================================
+    # 4. Add grid lines (light gray, dashed)
+    # ============================================================
+    ax.grid(True, linestyle="--", alpha=0.4, linewidth=0.8)
+
+    # ============================================================
+    # 5. Legend (best location)
+    # ============================================================
+    ax.legend(loc="best", frameon=True, fancybox=False, edgecolor="black", framealpha=0.9)
+
+    # ============================================================
+    # 6. Title (optional, usually omitted in papers)
+    # ============================================================
+    if title:
+        ax.set_title(title, fontsize=14)
+
+    # ============================================================
+    # 7. Adjust layout and save
+    # ============================================================
+    plt.tight_layout()
 
     pdf_path = os.path.join(out_dir, f"{out_name}.pdf")
     csv_path = os.path.join(out_dir, f"{out_name}.csv")
-    plt.savefig(pdf_path, dpi=300)
+    plt.savefig(pdf_path, dpi=600, bbox_inches="tight")
+    plt.close()
 
-    # save csv with columns age, mean, std
-    df_out = pd.DataFrame({"age": age_x, "mean": ave_bin, "std2": std_bin})
+    # Save CSV with columns: age, mean, std
+    df_out = pd.DataFrame({"age": plot_age, "mean": ave_bin, "std2": std_bin})
     df_out.to_csv(csv_path, index=False)
 
     return os.path.join(out_dir, out_name)
