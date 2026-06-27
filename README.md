@@ -376,6 +376,12 @@ The whole package is under construction and the documentation is progressively e
 + Yang Lyu (Daisy, Zhejiang University, China)
   Duty: Be responsible for the cloud product.
   Email: lyuyang1007@zju.edu.cn
++ Jianhao Sun (Jin, Nanjing University, China)
+  Duty: Be responsible for the overall development of the project.
+  Email: sjh20171502@gmail.com
++ Chufan Zhou (Yoko, Institute of Geochemistry, Chinese Academy of Sciences; University of Chinese Academy of Sciences, China)
+  Duty: Be responsible for the chemical modeling overall development.
+  Email: 1176733817@qq.com
 
 **Technical Group:**
 
