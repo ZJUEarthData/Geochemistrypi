@@ -214,7 +214,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     if my_os == "Windows" or my_os == "Linux":
         if not check_package("basemap"):
             print("[bold red]Downloading Basemap...[/bold red]")
-            install_package("basemap")
+            install_package("basemap==1.3.8")
             print("[bold green]Successfully downloading![/bold green]")
             print("[bold green]Download happens only once![/bold green]")
             clear_output()
