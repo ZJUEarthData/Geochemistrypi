@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 import os
-from typing import Dict, Optional, Union
+from typing import Dict, List, Optional, Union
 
 import mlflow
 import numpy as np
@@ -9,16 +9,17 @@ import pandas as pd
 from numpy.typing import ArrayLike
 from rich import print
 from sklearn.cluster import DBSCAN, AffinityPropagation, AgglomerativeClustering, KMeans, MeanShift
+from sklearn.metrics import silhouette_score
 
 from ..constants import MLFLOW_ARTIFACT_DATA_PATH, MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH
 from ..utils.base import clear_output, save_data, save_fig, save_text
 from ._base import ClusteringMetricsMixin, WorkflowBase
 from .func.algo_clustering._affinitypropagation import affinitypropagation_manual_hyper_parameters
-from .func.algo_clustering._agglomerative import agglomerative_manual_hyper_parameters
+from .func.algo_clustering._agglomerative import agglomerative_manual_hyper_parameters, plot_silhouette_scores
 from .func.algo_clustering._common import plot_silhouette_diagram, plot_silhouette_value_diagram, scatter2d, scatter3d, score
 from .func.algo_clustering._dbscan import dbscan_manual_hyper_parameters
-from .func.algo_clustering._enum import ClusteringCommonFunction, KMeansSpecialFunction, MeanShiftSpecialFunction
-from .func.algo_clustering._kmeans import kmeans_manual_hyper_parameters
+from .func.algo_clustering._enum import AgglomeraSpecialFunction, ClusteringCommonFunction, KMeansSpecialFunction, MeanShiftSpecialFunction
+from .func.algo_clustering._kmeans import kmeans_manual_hyper_parameters, plot_silhouette_scores
 from .func.algo_clustering._meanshift import meanshift_manual_hyper_parameters
 
 
@@ -361,6 +362,22 @@ class KMeansClustering(ClusteringWorkflowBase):
         inertia_scores_str = json.dumps(inertia_scores, indent=4)
         save_text(inertia_scores_str, f"{func_name} - {algorithm_name}", store_path)
 
+    @staticmethod
+    def _get_silhouette_scores(data: pd.DataFrame, k_range: List[int], func_name: str, algorithm_name: str, local_path: str, mlflow_path: str, graph_name: str, store_path: str) -> None:
+        """Get the k in range and silhouette scores of the clustering result."""
+        print(f"-----* {func_name} *-----")
+        silhouette_scores = {}
+
+        for k in k_range:
+            model = KMeans(n_clusters=k, random_state=42)
+            labels = model.fit_predict(data)
+            score = silhouette_score(data, labels)
+            silhouette_scores[str(k)] = score
+        silhouette_scores_str = json.dumps(silhouette_scores, indent=4)
+        save_text(silhouette_scores_str, f"{algorithm_name} - Silhouette Scores", store_path)
+        plot_silhouette_scores(silhouette_scores, algorithm_name)
+        save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
         """Manual hyper-parameters specification."""
@@ -372,10 +389,21 @@ class KMeansClustering(ClusteringWorkflowBase):
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         self._get_inertia_scores(
             func_name=KMeansSpecialFunction.INERTIA_SCORE.value,
             algorithm_name=self.naming,
             trained_model=self.model,
+            store_path=GEOPI_OUTPUT_METRICS_PATH,
+        )
+        self._get_silhouette_scores(
+            data=self.X,
+            func_name=KMeansSpecialFunction.SILHOUETTE_VALUE.value,
+            k_range=list(range(2, 11)),
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            graph_name=ClusteringCommonFunction.SILHOUETTE_VALUE.value,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
 
@@ -604,9 +632,36 @@ class Agglomerative(ClusteringWorkflowBase):
         clear_output()
         return hyper_parameters
 
-    def special_components(self, **kwargs) -> None:
+    @staticmethod
+    def _get_silhouette_scores(data: pd.DataFrame, k_range: List[int], func_name: str, algorithm_name: str, local_path: str, mlflow_path: str, graph_name: str, store_path: str) -> None:
+        """Get the k in range and silhouette scores of the clustering result."""
+        print(f"-----* {func_name} *-----")
+        silhouette_scores = {}
+
+        for k in k_range:
+            model = KMeans(n_clusters=k, random_state=42)
+            labels = model.fit_predict(data)
+            score = silhouette_score(data, labels)
+            silhouette_scores[str(k)] = score
+        silhouette_scores_str = json.dumps(silhouette_scores, indent=4)
+        save_text(silhouette_scores_str, f"{algorithm_name} - Silhouette Scores", store_path)
+        plot_silhouette_scores(silhouette_scores, algorithm_name)
+        save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+
+    def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
-        pass
+        GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
+        GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+        self._get_silhouette_scores(
+            data=self.X,
+            func_name=AgglomeraSpecialFunction.SILHOUETTE_VALUE.value,
+            k_range=list(range(2, 11)),
+            algorithm_name=self.naming,
+            local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+            mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+            graph_name=ClusteringCommonFunction.SILHOUETTE_VALUE.value,
+            store_path=GEOPI_OUTPUT_METRICS_PATH,
+        )
 
 
 class AffinityPropagationClustering(ClusteringWorkflowBase):

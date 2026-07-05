@@ -408,6 +408,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
                 print("Notice: Drop the rows with missing values may lead to a significant loss of data if too many features are chosen.")
                 print("Which strategy do you want to apply?")
                 drop_missing_value_strategy_num = limit_num_input(DROP_MISSING_VALUE_STRATEGY, SECTION[1], num_input)
+                inference_data_dropped = inference_data
                 if drop_missing_value_strategy_num == 1:
                     # Drop the rows with missing values
                     data_selected_dropped = data_selected.dropna()
@@ -425,6 +426,11 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
                     save_data(data_selected_dropped, drop_name_column, "Data Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
                     drop_rows_with_missing_value_flag = True
                     imputed_flag = False
+                    for column_name in data_selected.columns:
+                        # Drop the rows with missing values
+                        inference_data_dropped = inference_data_dropped.dropna(subset=[column_name])
+                        # Reset the index of the data set after dropping the rows with missing values.
+                        inference_data_dropped = inference_data_dropped.reset_index(drop=True)
                 elif drop_missing_value_strategy_num == 2:
                     is_null_value(data_selected)
                     show_data_columns(data_selected.columns)
@@ -441,6 +447,11 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
                         data_selected_dropped_name = data_selected_dropped_name.dropna(subset=[column_name])
                         # Reset the index of the data set after dropping the rows with missing values.
                         data_selected_dropped_name = data_selected_dropped_name.reset_index(drop=True)
+                    for column_name in drop_data_selected.columns:
+                        # Drop the rows with missing values
+                        inference_data_dropped = inference_data_dropped.dropna(subset=[column_name])
+                        # Reset the index of the data set after dropping the rows with missing values.
+                        inference_data_dropped = inference_data_dropped.reset_index(drop=True)
                     print("Successfully drop the rows with missing values.")
                     print("The Selected Data Set After Dropping:")
                     print(data_selected_dropped)
@@ -468,6 +479,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         save_data(data_selected, name_column_select, "Data Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
         clear_output()
     data_selected = data_selected_dropped if drop_rows_with_missing_value_flag else data_selected
+    inference_data = inference_data_dropped if drop_rows_with_missing_value_flag else inference_data
     process_name_column = data_selected_dropped_name.iloc[:, 0] if drop_rows_with_missing_value_flag else name_column_select
     # If the selected data set contains missing values and the user wants to deal with the missing values and choose not to drop the rows with missing values,
     # then use imputation techniques to deal with the missing values.
@@ -479,6 +491,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         imputation_config, data_selected_imputed_np = imputer(data_selected, IMPUTING_STRATEGY[strategy_num - 1])
         data_selected_imputed = np2pd(data_selected_imputed_np, data_selected.columns)
         del data_selected_imputed_np
+        inference_data[data_selected.columns] = data_selected_imputed
         clear_output()
         print("[bold green]-*-*- Hypothesis Testing on Imputation Method -*-*-[/bold green]")
         print("Null Hypothesis: The distributions of the data set before and after imputing remain the same.")

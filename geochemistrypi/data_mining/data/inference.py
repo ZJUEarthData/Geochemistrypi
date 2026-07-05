@@ -81,6 +81,9 @@ def build_transform_pipeline(imputation_config: Dict, feature_scaling_config: Di
         The transform pipeline configuration and the transform pipeline object.
     """
     print("Build the transform pipeline according to the previous operations.")
+    if X_train.isnull().any().any():
+        print("Warning: X_train contains NaN values. Skipping feature selection step.")
+        feature_selection_config = {}
     # Aggregate transformer configuartion.
     transformer_config = {}
     transformer_config.update(imputation_config)
