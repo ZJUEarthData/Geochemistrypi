@@ -1,5 +1,5 @@
 <p>
-<img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/6f970708-7811-40bb-8172-9b9git8563c7659" class="center"/>
+<img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/6f970708-7811-40bb-8172-9b98563c7659" class="center"/>
 </p>
 <p align="center">
 <img src="https://img.shields.io/github/actions/workflow/status/ZJUEarthData/geochemistrypi/geochemistrypi.yml?logo=github">
@@ -376,6 +376,12 @@ The whole package is under construction and the documentation is progressively e
 + Yang Lyu (Daisy, Zhejiang University, China)
   Duty: Be responsible for the cloud product.
   Email: lyuyang1007@zju.edu.cn
++ Jianhao Sun (Jin, Nanjing University, China)
+  Duty: Be responsible for the overall development of the project.
+  Email: sjh20171502@gmail.com
++ Chufan Zhou (Yoko, Institute of Geochemistry, Chinese Academy of Sciences; University of Chinese Academy of Sciences, China)
+  Duty: Be responsible for the chemical modeling overall development.
+  Email: 1176733817@qq.com
 
 **Technical Group:**
 
@@ -385,6 +391,9 @@ The whole package is under construction and the documentation is progressively e
 + Panyan Weng (The University of Sydney, Australia)
 + Haibin Lai (Michael, Southern University of Science and Technology, China)
 + Siqi Yao (Clara, Dongguan University of Technology, China)
++ Yunzhou Han(China University of Geosciences Beijing, China)
++ Feiyu Shi(China University of Geosciences Beijing, China)
++ Wenxuan Xia(China University of Geosciences Beijing, China)
 
 **Product Group**:
 

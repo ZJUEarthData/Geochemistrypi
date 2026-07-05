@@ -37,6 +37,7 @@ from .data.data_readiness import (
     create_sub_data_set,
     data_split,
     float_input,
+    int_input,
     limit_num_input,
     np2pd,
     num2option,
@@ -59,6 +60,7 @@ from .process.cluster import ClusteringModelSelection
 from .process.decompose import DecompositionModelSelection
 from .process.detect import AnomalyDetectionModelSelection
 from .process.regress import RegressionModelSelection
+from .process.time_series import compute_subaerial_proportion, plot_and_save
 from .utils.base import (
     check_package,
     clear_output,
@@ -214,7 +216,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     if my_os == "Windows" or my_os == "Linux":
         if not check_package("basemap"):
             print("[bold red]Downloading Basemap...[/bold red]")
-            install_package("basemap==1.3.8")
+            install_package("basemap")
             print("[bold green]Successfully downloading![/bold green]")
             print("[bold green]Download happens only once![/bold green]")
             clear_output()
@@ -295,7 +297,13 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
             training_data_path = "Data_Decomposition.xlsx"
         elif built_in_training_data_num == 5:
             training_data_path = "Data_AnomalyDetection.xlsx"
-        data = read_data(file_path=training_data_path)
+        elif built_in_training_data_num == 6:
+            training_data_path = "Data_Time_Series.xlsx"
+        # If user provided absolute path or path contains os separator, treat as own data
+        if os.path.isabs(training_data_path) or (os.sep in training_data_path):
+            data = read_data(file_path=training_data_path, is_own_data=1)
+        else:
+            data = read_data(file_path=training_data_path)
         print(f"Successfully loading the built-in training data set '{training_data_path}'.")
         show_data_columns(data.columns)
         clear_output()
@@ -408,7 +416,6 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
                 print("Notice: Drop the rows with missing values may lead to a significant loss of data if too many features are chosen.")
                 print("Which strategy do you want to apply?")
                 drop_missing_value_strategy_num = limit_num_input(DROP_MISSING_VALUE_STRATEGY, SECTION[1], num_input)
-                inference_data_dropped = inference_data
                 if drop_missing_value_strategy_num == 1:
                     # Drop the rows with missing values
                     data_selected_dropped = data_selected.dropna()
@@ -426,11 +433,6 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
                     save_data(data_selected_dropped, drop_name_column, "Data Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
                     drop_rows_with_missing_value_flag = True
                     imputed_flag = False
-                    for column_name in data_selected.columns:
-                        # Drop the rows with missing values
-                        inference_data_dropped = inference_data_dropped.dropna(subset=[column_name])
-                        # Reset the index of the data set after dropping the rows with missing values.
-                        inference_data_dropped = inference_data_dropped.reset_index(drop=True)
                 elif drop_missing_value_strategy_num == 2:
                     is_null_value(data_selected)
                     show_data_columns(data_selected.columns)
@@ -447,11 +449,6 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
                         data_selected_dropped_name = data_selected_dropped_name.dropna(subset=[column_name])
                         # Reset the index of the data set after dropping the rows with missing values.
                         data_selected_dropped_name = data_selected_dropped_name.reset_index(drop=True)
-                    for column_name in drop_data_selected.columns:
-                        # Drop the rows with missing values
-                        inference_data_dropped = inference_data_dropped.dropna(subset=[column_name])
-                        # Reset the index of the data set after dropping the rows with missing values.
-                        inference_data_dropped = inference_data_dropped.reset_index(drop=True)
                     print("Successfully drop the rows with missing values.")
                     print("The Selected Data Set After Dropping:")
                     print(data_selected_dropped)
@@ -479,7 +476,6 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         save_data(data_selected, name_column_select, "Data Selected Dropped-Imputed", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
         clear_output()
     data_selected = data_selected_dropped if drop_rows_with_missing_value_flag else data_selected
-    inference_data = inference_data_dropped if drop_rows_with_missing_value_flag else inference_data
     process_name_column = data_selected_dropped_name.iloc[:, 0] if drop_rows_with_missing_value_flag else name_column_select
     # If the selected data set contains missing values and the user wants to deal with the missing values and choose not to drop the rows with missing values,
     # then use imputation techniques to deal with the missing values.
@@ -491,7 +487,6 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         imputation_config, data_selected_imputed_np = imputer(data_selected, IMPUTING_STRATEGY[strategy_num - 1])
         data_selected_imputed = np2pd(data_selected_imputed_np, data_selected.columns)
         del data_selected_imputed_np
-        inference_data[data_selected.columns] = data_selected_imputed
         clear_output()
         print("[bold green]-*-*- Hypothesis Testing on Imputation Method -*-*-[/bold green]")
         print("Null Hypothesis: The distributions of the data set before and after imputing remain the same.")
@@ -546,6 +541,99 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         num2option(MODE_OPTION)
         mode_num = limit_num_input(MODE_OPTION, SECTION[2], num_input)
     clear_output()
+
+    # Determine selected mode name (handle different option lists)
+    if missing_value_flag and not process_missing_value_flag:
+        mode_name = MODE_OPTION_WITH_MISSING_VALUES[mode_num - 1]
+    else:
+        mode_name = MODE_OPTION[mode_num - 1]
+
+    # If the user selected Time Series, run dedicated time-series flow and skip model training
+    if mode_name == "Time Series":
+        print("[bold green]-*-*- Time Series Analysis -*-*-[/bold green]")
+
+        # Use the built-in Time Series sample data and default columns if available
+        default_time_series_columns = {
+            "age_col": "R_AGE",
+            "age_max_col": "R_MAX_AGE",
+            "prob_col": "Estimated Proportion of Subaerial Basalts",
+            "lat_col": "LATITUDE",
+            "lon_col": "LONGITUDE",
+        }
+
+        # If columns exist, use defaults; otherwise ask the user
+        columns = data_selected.columns
+        if all(col in columns for col in default_time_series_columns.values()):
+            age_col = default_time_series_columns["age_col"]
+            age_max_col = default_time_series_columns["age_max_col"]
+            prob_col = default_time_series_columns["prob_col"]
+            lat_col = default_time_series_columns["lat_col"]
+            lon_col = default_time_series_columns["lon_col"]
+        else:
+            print("Please select the columns corresponding to the following variables:")
+            show_data_columns(data_selected.columns)
+            print("Select Age column:")
+            age_col_idx = int_input(column=1, prefix=SECTION[1], slogan="@Column index for Age: ")
+            age_col = data_selected.columns[age_col_idx - 1]
+            print("Select Age Max column:")
+            age_max_col_idx = int_input(column=1, prefix=SECTION[1], slogan="@Column index for Age Max: ")
+            age_max_col = data_selected.columns[age_max_col_idx - 1]
+            print("Select Probability column (SBAP):")
+            prob_col_idx = int_input(column=1, prefix=SECTION[1], slogan="@Column index for Probability: ")
+            prob_col = data_selected.columns[prob_col_idx - 1]
+            print("Select Latitude column:")
+            lat_col_idx = int_input(column=1, prefix=SECTION[1], slogan="@Column index for Latitude: ")
+            lat_col = data_selected.columns[lat_col_idx - 1]
+            print("Select Longitude column:")
+            lon_col_idx = int_input(column=1, prefix=SECTION[1], slogan="@Column index for Longitude: ")
+            lon_col = data_selected.columns[lon_col_idx - 1]
+
+        # Time unit selection for age values
+        age_unit = Prompt.ask("Select Age unit", choices=["Ma", "Ga"], default="Ma")
+        bin_width = float_input(default=10.0, prefix=SECTION[1], slogan=f"@Bin width ({age_unit}): ")
+        n_iter = int_input(column=100, prefix=SECTION[1], slogan="@Bootstrap iterations: ")
+
+        if age_unit == "Ga":
+            data_selected = data_selected.copy()
+            data_selected[age_col] = data_selected[age_col] * 1000.0
+            data_selected[age_max_col] = data_selected[age_max_col] * 1000.0
+            internal_bin_width = bin_width * 1000.0
+        else:
+            internal_bin_width = bin_width
+
+        print(f"Using bin width = {bin_width} {age_unit}, bootstrap iterations = {n_iter}")
+        print("Start computing time series...")
+        age_x, ave_bin, std_bin = compute_subaerial_proportion(
+            data_selected,
+            bin_width=internal_bin_width,
+            n_iter=n_iter,
+            age_col=age_col,
+            age_max_col=age_max_col,
+            prob_col=prob_col,
+            lat_col=lat_col,
+            lon_col=lon_col,
+        )
+
+        GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH") or OUTPUT_PATH
+        output_base = plot_and_save(
+            age_x,
+            ave_bin,
+            std_bin,
+            out_dir=GEOPI_OUTPUT_ARTIFACTS_PATH,
+            age_unit=age_unit,
+            title=f"Subaerial proportion (bin width {bin_width} {age_unit}, bootstrap {n_iter})",
+            out_name=f"Subaerial_proportion_{bin_width:g}{age_unit}_boot{n_iter}",
+        )
+        print(f"Time series outputs saved under {GEOPI_OUTPUT_ARTIFACTS_PATH}")
+        print(f"Saved files: {output_base}.pdf and {output_base}.csv")
+        # Copy artifacts to summary as usual
+        GEOPI_OUTPUT_SUMMARY_PATH = os.getenv("GEOPI_OUTPUT_SUMMARY_PATH")
+        GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
+        GEOPI_OUTPUT_PARAMETERS_PATH = os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH")
+        copy_files(GEOPI_OUTPUT_ARTIFACTS_PATH, GEOPI_OUTPUT_METRICS_PATH, GEOPI_OUTPUT_PARAMETERS_PATH, GEOPI_OUTPUT_SUMMARY_PATH)
+        # Finish
+        clear_output()
+        return
 
     # <--- Data Segmentation --->
     # divide X and y data set when it is supervised learning
