@@ -23,6 +23,9 @@
 # Pycharm
 .idea
 
+# VSCode
+.vscode/ 
+
 # Bytecode
 __pycache__
 *.pyc
