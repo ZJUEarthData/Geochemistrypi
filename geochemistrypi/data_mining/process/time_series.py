@@ -119,6 +119,7 @@ def plot_and_save(
     out_name: str = "Subaerial_proportion",
     age_unit: str = "Ma",
     title: Optional[str] = None,
+    fit_curve: bool = True,
 ) -> str:
     """
     Plot the result and save PDF and CSV.
@@ -197,15 +198,27 @@ def plot_and_save(
     # ============================================================
     fig, ax = plt.subplots(figsize=(10, 5))  # 10" x 5", close to golden ratio
 
-    # ---- 2a. Draw gray error band (2-sigma, semi-transparent) ----
-    ax.fill_between(plot_age_valid, ave_bin_valid - std_bin_valid, ave_bin_valid + std_bin_valid, color="gray", alpha=0.35, label=r"$\pm 2\sigma$")
-
-    # ---- 2b. Draw main line (blue solid line, bold) ----
-    ax.plot(plot_age_valid, ave_bin_valid, color="#1f77b4", linewidth=2.5, label="Mean proportion")  # Matplotlib default blue
-
-    # ---- 2c. (Optional) Add scatter points to show sampling ----
-    # Uncomment if data points are few (e.g., < 50)
-    # ax.scatter(plot_age_valid, ave_bin_valid, s=20, color='#1f77b4', zorder=5)
+    if fit_curve:
+        # ---- 2a. Draw gray error band (2-sigma, semi-transparent) ----
+        ax.fill_between(plot_age_valid, ave_bin_valid - std_bin_valid, ave_bin_valid + std_bin_valid, color="gray", alpha=0.35, label=r"$\pm 2\sigma$")
+        # ---- 2b. Draw main curve ----
+        ax.plot(plot_age_valid, ave_bin_valid, color="#1f77b4", linewidth=2.5, label="Mean proportion")
+    else:
+        # ---- 2b. Draw scatter points with error bars ----
+        ax.errorbar(
+            plot_age_valid,
+            ave_bin_valid,
+            yerr=std_bin_valid,
+            fmt="o",
+            color="#1f77b4",
+            ecolor="#1f77b4",
+            elinewidth=1.5,
+            capsize=4,
+            markerfacecolor="#1f77b4",
+            markeredgecolor="black",
+            markersize=6,
+            label="Mean proportion",
+        )
 
     # ============================================================
     # 3. Configure axes
@@ -230,7 +243,7 @@ def plot_and_save(
 
     # ---- 3d. Axis labels ----
     ax.set_xlabel(f"Age ({age_unit})", fontsize=14)
-    ax.set_ylabel("Sub aerial proportion (%)", fontsize=14)
+    ax.set_ylabel("Estimated Proportion of Subaerial Basalts (%)", fontsize=14)
 
     # ---- 3e. Tick control (fine-grained) ----
     # x-axis ticks: 0.5 Ga interval for Ga, 500 Ma interval for Ma

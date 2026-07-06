@@ -592,6 +592,8 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         age_unit = Prompt.ask("Select Age unit", choices=["Ma", "Ga"], default="Ma")
         bin_width = float_input(default=10.0, prefix=SECTION[1], slogan=f"@Bin width ({age_unit}): ")
         n_iter = int_input(column=100, prefix=SECTION[1], slogan="@Bootstrap iterations: ")
+        fit_option = Prompt.ask("Do we need to fit it?", choices=["Yes", "No"], default="No")
+        fit_curve = fit_option == "Yes"
 
         if age_unit == "Ga":
             data_selected = data_selected.copy()
@@ -601,7 +603,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         else:
             internal_bin_width = bin_width
 
-        print(f"Using bin width = {bin_width} {age_unit}, bootstrap iterations = {n_iter}")
+        print(f"Using bin width = {bin_width} {age_unit}, bootstrap iterations = {n_iter}, fit = {fit_option}")
         print("Start computing time series...")
         age_x, ave_bin, std_bin = compute_subaerial_proportion(
             data_selected,
@@ -623,6 +625,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
             age_unit=age_unit,
             title=f"Subaerial proportion (bin width {bin_width} {age_unit}, bootstrap {n_iter})",
             out_name=f"Subaerial_proportion_{bin_width:g}{age_unit}_boot{n_iter}",
+            fit_curve=fit_curve,
         )
         print(f"Time series outputs saved under {GEOPI_OUTPUT_ARTIFACTS_PATH}")
         print(f"Saved files: {output_base}.pdf and {output_base}.csv")
