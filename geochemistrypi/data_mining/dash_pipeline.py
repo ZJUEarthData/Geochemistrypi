@@ -67,7 +67,7 @@ def dash_pipeline(requests_pathname_prefix: str = None) -> dash.Dash:
             ),
             html.Div(
                 [
-                    html.Label("Select Y variables (targets) - 支持多列Y:"),
+                    html.Label("Select Y variables (targets) - Supports multiple Y columns:"),
                     dcc.Dropdown(
                         id="y-variables-dropdown",
                         multi=True,
