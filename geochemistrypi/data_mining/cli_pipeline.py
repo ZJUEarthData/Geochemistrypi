@@ -216,7 +216,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     if my_os == "Windows" or my_os == "Linux":
         if not check_package("basemap"):
             print("[bold red]Downloading Basemap...[/bold red]")
-            install_package("basemap")
+            install_package("basemap==1.3.8")
             print("[bold green]Successfully downloading![/bold green]")
             print("[bold green]Download happens only once![/bold green]")
             clear_output()
@@ -661,7 +661,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         print("Selected sub data set to create Y data set:")
         show_data_columns(data_selected_imputed_fe.columns)
         print("The selected Y data set:")
-        print("Notice: Normally, please choose only one column to be tag column Y, not multiple columns.")
+        print("Notice: You can now choose multiple columns for Y (multi-output regression).")
         print("Notice: For classification model training, please choose the label column which has distinctive integers.")
         y = create_sub_data_set(data_selected_imputed_fe, allow_empty_columns=False)
         print("Successfully create Y data set.")
@@ -880,7 +880,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
                 inference_data_fe_selected_dropped = inference_data_fe_selected.dropna()
                 inference_data_fe_selected_dropped_name = inference_data_name.dropna()
                 inference_name_column_drop = inference_data_fe_selected_dropped_name[NAME]
-                model_inference(inference_data_fe_selected_dropped, inference_name_column_drop, is_inference, run, transformer_config, transform_pipeline)
+                model_inference(inference_data_fe_selected_dropped, inference_name_column_drop, is_inference, run, transformer_config, transform_pipeline, y.columns.tolist())
                 save_data(
                     inference_data_fe_selected_dropped,
                     inference_name_column_drop,
@@ -890,7 +890,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
                 )
             else:
                 inference_name_column = inference_data[NAME]
-                model_inference(inference_data_fe_selected, inference_name_column, is_inference, run, transformer_config, transform_pipeline)
+                model_inference(inference_data_fe_selected, inference_name_column, is_inference, run, transformer_config, transform_pipeline, y.columns.tolist())
             clear_output()
 
         # <--- Data Dumping --->
@@ -937,7 +937,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
                         inference_data_fe_selected_dropped = inference_data_fe_selected.dropna()
                         inference_data_fe_selected_dropped_name = inference_data_name.dropna()
                         inference_name_column_drop = inference_data_fe_selected_dropped_name[NAME]
-                        model_inference(inference_data_fe_selected_dropped, inference_name_column_drop, is_inference, run, transformer_config, transform_pipeline)
+                        model_inference(inference_data_fe_selected_dropped, inference_name_column_drop, is_inference, run, transformer_config, transform_pipeline, y.columns.tolist())
                         save_data(
                             inference_data_fe_selected_dropped,
                             inference_name_column_drop,
@@ -947,7 +947,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
                         )
                     else:
                         inference_name_column = inference_data[NAME]
-                        model_inference(inference_data_fe_selected, inference_name_column, is_inference, run, transformer_config, transform_pipeline)
+                        model_inference(inference_data_fe_selected, inference_name_column, is_inference, run, transformer_config, transform_pipeline, y.columns.tolist())
                     clear_output()
 
             # <--- Data Dumping --->

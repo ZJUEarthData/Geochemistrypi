@@ -274,7 +274,7 @@ class ClassificationModelSelection(ModelSelectionBase):
         if self.clf_workflow.ray_best_model is not None:
             self.clf_workflow.save_hyper_parameters(self.clf_workflow.ray_best_model.get_params(), self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
         else:
-            self.clf_workflow.save_hyper_parameters(self.clf_workflow.automl.best_config, self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
+            self.clf_workflow.save_hyper_parameters(self.clf_workflow.auto_best_config, self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
 
         # Common components for every classification algorithm
         self.clf_workflow.common_components(is_automl)

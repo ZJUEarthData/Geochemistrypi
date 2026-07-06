@@ -66,10 +66,33 @@ class RegressionWorkflowBase(WorkflowBase):
         self.customized = False
         self.customized_name = None
         self.mode = "Regression"
+        # For multi-output AutoML, store per-target AutoML instances here
+        self.automls: Optional[List[AutoML]] = None
+
+    def _get_model_coef_intercept(self):
+        """Get the model's coefficients and intercept, supports MultiOutputRegressor"""
+        from sklearn.multioutput import MultiOutputRegressor
+
+        if isinstance(self.model, MultiOutputRegressor):
+            # For MultiOutputRegressor, get the coefficients from each estimator and take the average
+            coef = np.array([estimator.coef_ for estimator in self.model.estimators_])
+            intercept = np.array([estimator.intercept_ for estimator in self.model.estimators_])
+        else:
+            # For single-output regressors, use the existing attributes
+            coef = self.model.coef_
+            intercept = self.model.intercept_
+        return coef, intercept
 
     @dispatch(object, object)
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
         """Fit the model by Scikit-learn framework."""
+        # Support multiple Y columns: Use MultiOutputRegressor to wrap a single-output regressor
+        if y is not None and y.shape[1] > 1:
+            from sklearn.multioutput import MultiOutputRegressor
+
+            # If the model hasn’t been wrapped yet, wrap it.
+            if not isinstance(self.model, MultiOutputRegressor):
+                self.model = MultiOutputRegressor(self.model)
         self.model.fit(X, y)
 
     @dispatch(object, object, bool)
@@ -80,9 +103,27 @@ class RegressionWorkflowBase(WorkflowBase):
             self.automl = AutoML()
             if self.customized:  # When the model is not built-in in FLAML framwork, use FLAML customization.
                 self.automl.add_learner(learner_name=self.customized_name, learner_class=self.customization)
+            # Support multiple Y columns: Only convert to Series when Y is a single column, keep DataFrame format for multiple columns
             if y.shape[1] == 1:  # FLAML's data format validation mechanism
                 y = y.squeeze()  # Convert a single dataFrame column into a series
-            self.automl.fit(X_train=X, y_train=y, **self.settings)
+            # For multiple Y columns, FLAML does not support multi-output
+            # directly. Train an AutoML instance per target column instead
+            # of wrapping AutoML with sklearn's MultiOutputRegressor, which
+            # causes issues in cross-validation / parallel fits.
+            elif y.shape[1] > 1:
+                self.automls = []
+                # iterate over columns and train separate AutoML per target
+                for col in y.columns:
+                    am = AutoML()
+                    if self.customized:
+                        am.add_learner(learner_name=self.customized_name, learner_class=self.customization)
+                    target = y[col]
+                    # FLAML expects series for single-output
+                    am.fit(X_train=X, y_train=target.squeeze(), **self.settings)
+                    self.automls.append(am)
+            else:
+                # single-output AutoML
+                self.automl.fit(X_train=X, y_train=y, **self.settings)
         else:
             # When the model is not built-in in FLAML framework, use RAY + FLAML customization.
             self.ray_tune(
@@ -103,6 +144,13 @@ class RegressionWorkflowBase(WorkflowBase):
     def predict(self, X: pd.DataFrame, is_automl: bool = False) -> np.ndarray:
         """Perform classification on samples in X by FLAML framework and RAY framework."""
         if self.naming not in RAY_FLAML:
+            # If trained per-target AutoMLs exist, predict with each and
+            # concatenate columns; otherwise use single AutoML.
+            if getattr(self, "automls", None):
+                preds = [am.predict(X) for am in self.automls]
+                # each pred is (n_samples,) -> stack to (n_samples, n_targets)
+                y_predict = np.vstack(preds).T
+                return y_predict
             y_predict = self.automl.predict(X)
             return y_predict
         else:
@@ -113,9 +161,29 @@ class RegressionWorkflowBase(WorkflowBase):
     def auto_model(self) -> object:
         """Get AutoML trained model by FLAML framework and RAY framework."""
         if self.naming not in RAY_FLAML:
+            # If per-target AutoMLs were used, return the list; otherwise
+            # return the trained AutoML estimator
+            if getattr(self, "automls", None):
+                return self.automls
             return self.automl.model.estimator
         else:
             return self.ray_best_model
+
+    @property
+    def auto_best_config(self) -> Dict:
+        """Get the best AutoML hyper-parameter configuration."""
+        if self.naming not in RAY_FLAML:
+            # If trained per-target AutoMLs, collect their best_config
+            if getattr(self, "automls", None):
+                best_configs = [getattr(am, "best_config", None) for am in self.automls]
+                best_configs = [c for c in best_configs if c is not None]
+                if len(best_configs) == 1:
+                    return best_configs[0]
+                if best_configs:
+                    return {"best_config_per_output": best_configs}
+                return {}
+            return getattr(self.automl, "best_config", {})
+        return {}
 
     @property
     def settings(self) -> Dict:
@@ -333,9 +401,11 @@ class PolynomialRegression(LinearWorkflowMixin, RegressionWorkflowBase):
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+        # 使用_get_model_coef_intercept方法获取系数和截距
+        coef, intercept = self._get_model_coef_intercept()
         self._show_formula(
-            coef=self.model.coef_,
-            intercept=self.model.intercept_,
+            coef=coef,
+            intercept=intercept,
             features_name=self._features_name,
             regression_classification="Regression",
             y_train=PolynomialRegression.y,
@@ -418,7 +488,7 @@ class XGBoostRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             Verbosity of printing messages. Valid values are 0 (silent), 1 (warning), 2 (info), 3 (debug).
             Sometimes XGBoost tries to change configurations based on heuristics,
             which is displayed as warning message.
-            If there’s unexpected behaviour, please try to increase value of verbosity.
+            If there's unexpected behaviour, please try to increase value of verbosity.
 
         booster [default= gbtree ]
             Which booster to use. Can be gbtree, gblinear or dart;
@@ -430,7 +500,7 @@ class XGBoostRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             Choices: auto, exact, approx, hist, gpu_hist, this is a combination of commonly used updaters. For other updaters like refresh, set the parameter updater directly.
                 auto: Use heuristic to choose the fastest method.
                     For small dataset, exact greedy (exact) will be used.
-                    For larger dataset, approximate algorithm (approx) will be chosen. It’s recommended to try hist and gpu_hist for higher performance with large dataset.
+                    For larger dataset, approximate algorithm (approx) will be chosen. It's recommended to try hist and gpu_hist for higher performance with large dataset.
                       (gpu_hist)has support for external memory.
                     Because old behavior is always use exact greedy in single machine, user will get a message when approximate algorithm is chosen to notify this choice.
                 exact: Exact greedy algorithm. Enumerates all split candidates.
@@ -1002,7 +1072,7 @@ class ExtraTreesRegression(TreeWorkflowMixin, RegressionWorkflowBase):
     def __init__(
         self,
         n_estimators: int = 100,
-        criterion: str = "mse",
+        criterion: str = "squared_error",
         max_depth: Optional[int] = None,
         min_samples_split: Union[int, float] = 2,
         min_samples_leaf: Union[int, float] = 1,
@@ -1305,7 +1375,7 @@ class RandomForestRegression(TreeWorkflowMixin, RegressionWorkflowBase):
     def __init__(
         self,
         n_estimators: int = 100,
-        criterion: str = "mse",
+        criterion: str = "squared_error",  # 修改为squared_error
         max_depth: Optional[int] = None,
         min_samples_split: Union[int, float] = 2,
         min_samples_leaf: Union[int, float] = 1,
@@ -2082,27 +2152,39 @@ class MLPRegression(RegressionWorkflowBase):
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        if self.model.get_params()["solver"] in ["sgd", "adam"]:
-            self._plot_loss_curve(
-                trained_model=self.model,
-                algorithm_name=self.naming,
-                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=MLPSpecialFunction.LOSS_CURVE_DIAGRAM.value,
-            )
+        # Safety check: Check if the model has a get_params method and if the solver parameter exists
+        try:
+            if hasattr(self.model, "get_params"):
+                params = self.model.get_params()
+                if "solver" in params and params["solver"] in ["sgd", "adam"]:
+                    self._plot_loss_curve(
+                        trained_model=self.model,
+                        algorithm_name=self.naming,
+                        local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                        mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+                        func_name=MLPSpecialFunction.LOSS_CURVE_DIAGRAM.value,
+                    )
+        except Exception as e:
+            print(f"Warning: Unable to plot the loss curve - {str(e)}")
 
     @dispatch(bool)
     def special_components(self, is_automl: bool, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        if self.model.get_params()["solver"] in ["sgd", "adam"]:
-            self._plot_loss_curve(
-                trained_model=self.auto_model,
-                algorithm_name=self.naming,
-                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
-                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-                func_name=MLPSpecialFunction.LOSS_CURVE_DIAGRAM.value,
-            )
+        # Safety check: Check if the model has a get_params method and if the solver parameter exists
+        try:
+            if hasattr(self.model, "get_params"):
+                params = self.model.get_params()
+                if "solver" in params and params["solver"] in ["sgd", "adam"]:
+                    self._plot_loss_curve(
+                        trained_model=self.auto_model,
+                        algorithm_name=self.naming,
+                        local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                        mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+                        func_name=MLPSpecialFunction.LOSS_CURVE_DIAGRAM.value,
+                    )
+        except Exception as e:
+            print(f"Warning: Unable to plot the loss curve - {str(e)}")
 
 
 class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
@@ -2175,9 +2257,13 @@ class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
+
+        # Use a helper method to get the coefficients and intercept
+        coef, intercept = self._get_model_coef_intercept()
+
         self._show_formula(
-            coef=self.model.coef_,
-            intercept=self.model.intercept_,
+            coef=coef,
+            intercept=intercept,
             features_name=ClassicalLinearRegression.X_train.columns,
             regression_classification="Regression",
             y_train=ClassicalLinearRegression.y,
@@ -2959,9 +3045,13 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+
+        # 使用辅助方法获取系数和截距
+        coef, intercept = self._get_model_coef_intercept()
+
         self._show_formula(
-            coef=[self.model.coef_],
-            intercept=self.model.intercept_,
+            coef=[coef],
+            intercept=intercept,
             features_name=LassoRegression.X_train.columns,
             regression_classification="Regression",
             y_train=LassoRegression.y,
@@ -3320,9 +3410,12 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+        # 使用辅助方法获取系数和截距
+        coef, intercept = self._get_model_coef_intercept()
+
         self._show_formula(
-            coef=[self.model.coef_],
-            intercept=self.model.intercept_,
+            coef=[coef],
+            intercept=intercept,
             features_name=ElasticNetRegression.X_train.columns,
             regression_classification="Regression",
             y_train=ElasticNetRegression.y,
@@ -3785,9 +3878,12 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+        # Use a helper method to get the coefficients and intercept
+        coef, intercept = self._get_model_coef_intercept()
+
         self._show_formula(
-            coef=[self.model.coef_],
-            intercept=self.model.intercept_,
+            coef=[coef],
+            intercept=intercept,
             features_name=SGDRegression.X_train.columns,
             regression_classification="Regression",
             y_train=SGDRegression.y,
@@ -4352,9 +4448,12 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
+        # Use a helper method to get the coefficients and intercept
+        coef, intercept = self._get_model_coef_intercept()
+
         self._show_formula(
-            coef=[self.model.coef_],
-            intercept=self.model.intercept_,
+            coef=[coef],
+            intercept=intercept,
             features_name=RidgeRegression.X_train.columns,
             regression_classification="Regression",
             y_train=RidgeRegression.y,

@@ -11,14 +11,13 @@ from sklearn.tree import plot_tree
 # Used by tree-based models including classification and regression besides XGBoost
 
 
-def plot_decision_tree(trained_model: object, image_config: Dict) -> None:
-    """Drawing decision tree diagrams.
+def plot_decision_tree(trained_model: object, image_config: dict) -> None:
+    """Plot the decision tree.
 
     Parameters
     ----------
-    trained_model : sklearn algorithm model
-        The sklearn algorithm model trained with X_train data.
-
+    trained_model : object
+        Trained model
     image_config : dict
         Image Configuration
     """
@@ -26,6 +25,11 @@ def plot_decision_tree(trained_model: object, image_config: Dict) -> None:
     fig, ax = plt.subplots(figsize=(image_config["width"], image_config["height"]), dpi=image_config["dpi"])
 
     # draw the main content
+    # Fix: Handle cases where the node_ids parameter is None
+    node_ids = image_config["node_ids"]
+    if node_ids is None:
+        node_ids = False  # Set default value to False
+
     plot_tree(
         trained_model,
         max_depth=image_config["max_depth"],
@@ -34,7 +38,7 @@ def plot_decision_tree(trained_model: object, image_config: Dict) -> None:
         label=image_config["label"],
         filled=image_config["filled"],
         impurity=image_config["impurity"],
-        node_ids=image_config["node_ids"],
+        node_ids=node_ids,  # Use the processed value
         proportion=image_config["proportion"],
         rounded=image_config["rounded"],
         precision=image_config["precision"],
@@ -177,28 +181,125 @@ def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: np.ndar
     formula = {}
 
     if regression_classification == "Regression":
-        if len(y_train.columns) == 1:  # Single target
-            coef = np.around(coef, decimals=3)[0]
+        # First, make sure coef is a numpy array
+        if not isinstance(coef, np.ndarray):
+            try:
+                coef = np.array(coef)
+            except (ValueError, TypeError):
+                # If the conversion fails, try flattening it into a list of scalars
+                coef = np.array([c for c in coef])
+
+        # Also make sure the intercept is in the right format
+        if isinstance(intercept, np.ndarray):
+            intercept_flat = np.ravel(intercept)
+            if len(intercept_flat) > 0:
+                intercept = intercept_flat[0]
+            else:
+                intercept = 0
+        else:
+            intercept = np.around(intercept, decimals=3)
+
+        # Check if coef is a 2D array (multi-output case)
+        if len(y_train.columns) == 1 and len(coef.shape) > 1 and coef.shape[0] > 1:
+            # This case is: although there is only one target variable, coef is a 2D array (possibly the result of MultiOutputRegressor)
+            for idx in range(coef.shape[0]):
+                # Process each output separately
+                coef_single = coef[idx]
+                intercept_single = intercept[idx] if isinstance(intercept, np.ndarray) and intercept.size > 1 else intercept
+
+                # Make sure coef_single is a scalar
+                terms = []
+                for c, f in zip(coef_single, features_name):
+                    if isinstance(c, np.ndarray) and c.size > 0:
+                        c_val = c[0]
+                    else:
+                        c_val = c
+                    if c_val != 0:
+                        terms.append(("-" if c_val < 0 else "+") + " " + str(abs(c_val)) + f)
+                    else:
+                        terms.append("")
+
+                # Make sure coef_single[0] is a scalar
+                if isinstance(coef_single[0], np.ndarray) and coef_single[0].size > 0:
+                    coef_first_val = coef_single[0][0]
+                else:
+                    coef_first_val = coef_single[0]
+
+                terms_first = (terms[0][2:] if coef_first_val > 0 else terms[0]).replace(" ", "")
+                formula[f"y (output {idx+1}):"] = terms_first + " " + " ".join(terms[1:]) + (" - " if intercept_single < 0 else " + ") + str(abs(intercept_single))
+                print(f"y (output {idx+1}) = ", formula[f"y (output {idx+1}):"])
+        elif len(y_train.columns) == 1:
+            # Single output case, but ensure correct handling of possible array coefficients
+            coef_flat = np.ravel(coef)
+            if len(coef_flat) > 0:
+                coef = coef_flat
+
             # Check if intercept is a scalar
             if isinstance(intercept, np.ndarray):
-                intercept = np.around(intercept, decimals=3)[0]
+                intercept_flat = np.ravel(intercept)
+                if len(intercept_flat) > 0:
+                    intercept = intercept_flat[0]
+                else:
+                    intercept = 0
             else:
                 intercept = np.around(intercept, decimals=3)
 
-            terms = [("-" if c < 0 else "+") + " " + str(abs(c)) + f if c != 0 else "" for c, f in zip(coef, features_name)]
-            terms_first = (terms[0][2:] if coef[0] > 0 else terms[0]).replace(" ", "")
-            formula["y:"] = terms_first + " " + " ".join(terms[1:]) + (" - " if intercept < 0 else " + ") + str(abs(intercept))
-            print("y = ", formula["y:"])
+            # Process terms
+            terms = []
+            for c, f in zip(coef, features_name):
+                if isinstance(c, np.ndarray) and c.size > 0:
+                    c_val = c[0]
+                else:
+                    c_val = c
+                if c_val != 0:
+                    terms.append(("-" if c_val < 0 else "+") + " " + str(abs(c_val)) + f)
+                else:
+                    terms.append("")
 
-        else:  # Multiple targets
-            coef = np.around(coef, decimals=3)
-            intercept = np.around(intercept, decimals=3)
+            # Process terms_first
+            if len(coef) > 0:
+                if isinstance(coef[0], np.ndarray) and coef[0].size > 0:
+                    coef_first_val = coef[0][0]
+                else:
+                    coef_first_val = coef[0]
+
+                terms_first = (terms[0][2:] if coef_first_val > 0 else terms[0]).replace(" ", "")
+                formula["y:"] = terms_first + " " + " ".join(terms[1:]) + (" - " if intercept < 0 else " + ") + str(abs(intercept))
+                print("y = ", formula["y:"])
+        else:
+            # Multiple target variables situation
+            # Make sure coef and intercept are in a format suitable for iteration
+            if len(coef.shape) == 1:
+                # If coef is a 1D array, reshape it to a 2D array for iteration
+                coef = coef.reshape(1, -1)
+
+            if not isinstance(intercept, np.ndarray) or intercept.ndim == 0:
+                # If intercept is a scalar, convert it to an array for iteration
+                intercept = np.array([intercept] * len(coef))
 
             for idx, (coef_temp, intercept_temp) in enumerate(zip(coef, intercept)):
-                terms_temp = [("-" if c < 0 else "+") + " " + str(abs(c)) + f if c != 0 else "" for c, f in zip(coef_temp, features_name)]
-                terms_temp_first = (terms_temp[0][2:] if coef_temp[0] > 0 else terms_temp[0]).replace(" ", "")
-                formula["y (" + y_train.columns[idx] + ") = "] = terms_temp_first + " " + " ".join(terms_temp[1:]) + (" - " if intercept_temp < 0 else " + ") + str(abs(intercept_temp))
-                print("y (" + y_train.columns[idx] + ") = ", formula["y (" + y_train.columns[idx] + ") = "])
+                # Make sure we don't exceed the number of columns in y_train
+                if idx < len(y_train.columns):
+                    terms_temp = []
+                    for c, f in zip(coef_temp, features_name):
+                        if isinstance(c, np.ndarray) and c.size > 0:
+                            c_val = c[0]
+                        else:
+                            c_val = c
+                        if c_val != 0:
+                            terms_temp.append(("-" if c_val < 0 else "+") + " " + str(abs(c_val)) + f)
+                        else:
+                            terms_temp.append("")
+
+                    if len(coef_temp) > 0:
+                        if isinstance(coef_temp[0], np.ndarray) and coef_temp[0].size > 0:
+                            coef_temp_first_val = coef_temp[0][0]
+                        else:
+                            coef_temp_first_val = coef_temp[0]
+
+                        terms_temp_first = (terms_temp[0][2:] if coef_temp_first_val > 0 else terms_temp[0]).replace(" ", "")
+                        formula["y (" + y_train.columns[idx] + ") = "] = terms_temp_first + " " + " ".join(terms_temp[1:]) + (" - " if intercept_temp < 0 else " + ") + str(abs(intercept_temp))
+                        print("y (" + y_train.columns[idx] + ") = ", formula["y (" + y_train.columns[idx] + ") = "])
 
     elif regression_classification == "Classification":
         if coef.shape[0] == 1:  # Binary classification

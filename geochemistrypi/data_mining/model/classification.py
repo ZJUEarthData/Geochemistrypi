@@ -126,9 +126,32 @@ class ClassificationWorkflowBase(WorkflowBase):
     def auto_model(self) -> object:
         """Get AutoML trained model by FLAML framework."""
         if self.naming not in RAY_FLAML:
+            from sklearn.multioutput import MultiOutputRegressor
+
+            if isinstance(self.automl, MultiOutputRegressor):
+                return self.automl
             return self.automl.model.estimator
         else:
             return self.ray_best_model
+
+    @property
+    def auto_best_config(self) -> Dict:
+        """Get the best AutoML hyper-parameter configuration."""
+        if self.naming not in RAY_FLAML:
+            from sklearn.multioutput import MultiOutputRegressor
+
+            if isinstance(self.automl, MultiOutputRegressor):
+                estimators = getattr(self.automl, "estimators_", None)
+                if estimators:
+                    best_configs = [getattr(est, "best_config", None) for est in estimators]
+                    best_configs = [config for config in best_configs if config is not None]
+                    if len(best_configs) == 1:
+                        return best_configs[0]
+                    if best_configs:
+                        return {"best_config_per_output": best_configs}
+                return {}
+            return self.automl.best_config
+        return {}
 
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
