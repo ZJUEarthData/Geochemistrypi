@@ -38,14 +38,14 @@ def plot_2d_scatter_diagram(feature_data: pd.DataFrame, target_data: pd.DataFram
     """
     plt.figure(figsize=(14, 10))
 
-    # Support multiple Y columns: plot scatter plots for each target variable
+    # 支持多列Y：为每个目标变量绘制散点图
     if target_data.shape[1] == 1:
-        # Single Y column case
+        # 单列Y的情况
         plt.scatter(feature_data.values, target_data.values)
         plt.xlabel(feature_data.columns[0])
         plt.ylabel(target_data.columns[0])
     else:
-        # Multiple Y columns: plot subplots for each target variable
+        # 多列Y的情况：为每个目标变量绘制子图
         n_targets = target_data.shape[1]
         fig, axes = plt.subplots(1, n_targets, figsize=(5 * n_targets, 5))
         if n_targets == 1:
@@ -79,15 +79,15 @@ def plot_2d_line_diagram(feature_data: pd.DataFrame, target_data: pd.DataFrame, 
     """
     plt.figure(figsize=(14, 10))
 
-    # Support multiple Y columns: plot line graphs for each target variable
+    # 支持多列Y：为每个目标变量绘制线图
     if target_data.shape[1] == 1:
-        # Single Y column case
+        # 单列Y的情况
         plt.scatter(feature_data.values, target_data.values, label="Data Points")
         plt.plot(feature_data.values, y_test_predict.values, label="Regression Line")
         plt.xlabel(feature_data.columns[0])
         plt.ylabel(target_data.columns[0])
     else:
-        # Multiple Y columns: plot subplots for each target variable
+        # 多列Y的情况：为每个目标变量绘制子图
         n_targets = target_data.shape[1]
         fig, axes = plt.subplots(1, n_targets, figsize=(5 * n_targets, 5))
         if n_targets == 1:
@@ -125,14 +125,14 @@ def plot_3d_scatter_diagram(feature_data: pd.DataFrame, target_data: pd.DataFram
     fig = plt.figure(figsize=(14, 10))
     ax = Axes3D(fig)
 
-    # Support multiple Y columns: plot 3D scatter plots for each target variable
+    # 支持多列Y：为每个目标变量绘制3D散点图
     if target_data.shape[1] == 1:
-        # Single Y column case
+        # 单列Y的情况
         z = target_data.iloc[:, 0]
         ax.scatter(x, y, z)
         ax.set_zlabel(target_data.columns[0], fontdict={"size": 10, "color": "blue"})
     else:
-        # Multiple Y columns: plot different colors for each target variable
+        # 多列Y的情况：为每个目标变量绘制不同的颜色
         colors = ["red", "blue", "green", "yellow", "purple", "orange"]
         for i, target_col in enumerate(target_data.columns):
             z = target_data[target_col]
@@ -166,9 +166,9 @@ def plot_3d_surface_diagram(feature_data: pd.DataFrame, target_data: pd.DataFram
     fig = plt.figure(figsize=(14, 10))
     ax = Axes3D(fig)
 
-    # Support multiple Y columns: plot 3D surface plots for each target variable
+    # 支持多列Y：为每个目标变量绘制3D表面图
     if target_data.shape[1] == 1:
-        # Single Y column case
+        # 单列Y的情况
         z = target_data.iloc[:, 0]
         ax.scatter(x, y, z)
         # Create meshgrid for x and y
@@ -180,7 +180,7 @@ def plot_3d_surface_diagram(feature_data: pd.DataFrame, target_data: pd.DataFram
         ax.plot_surface(x_grid, y_grid, z_grid, alpha=0.3, color="red")
         ax.set_zlabel(target_data.columns[0], fontdict={"size": 10, "color": "blue"})
     else:
-        # Multiple Y columns: plot different colors for each target variable
+        # 多列Y的情况：为每个目标变量绘制不同的颜色
         colors = ["red", "blue", "green", "yellow", "purple", "orange"]
         for i, target_col in enumerate(target_data.columns):
             z = target_data[target_col]

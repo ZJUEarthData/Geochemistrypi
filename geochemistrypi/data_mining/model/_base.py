@@ -276,30 +276,8 @@ class WorkflowBase(metaclass=ABCMeta):
             The local path to save the hyper parameters.
         """
         hyper_parameters_str = json.dumps(hyper_parameters_dict, indent=4)
-        file_name = f"Hyper Parameters - {model_name}.json"
-        save_text(hyper_parameters_str, file_name, local_path)
-
-        # MLflow limits param value length (500 chars). For large hyper-parameter
-        # blobs (e.g. lists for multi-output), upload as an artifact and record
-        # a short pointer param instead of calling mlflow.log_params directly.
-        try:
-            if len(hyper_parameters_str) <= 500:
-                mlflow.log_params(hyper_parameters_dict)
-            else:
-                artifact_path = os.path.join(local_path, file_name)
-                if os.path.exists(artifact_path):
-                    mlflow.log_artifact(artifact_path)
-                    mlflow.log_param("hyper_parameters_artifact", file_name)
-                else:
-                    mlflow.log_param("hyper_parameters_saved", "true")
-        except Exception:
-            # Best-effort: ensure local file exists; do not raise from logging.
-            try:
-                artifact_path = os.path.join(local_path, file_name)
-                if os.path.exists(artifact_path):
-                    mlflow.log_param("hyper_parameters_artifact", file_name)
-            except Exception:
-                pass
+        save_text(hyper_parameters_str, f"Hyper Parameters - {model_name}", local_path)
+        mlflow.log_params(hyper_parameters_dict)
 
     @dispatch()
     def model_save(self) -> None:
@@ -347,12 +325,12 @@ class TreeWorkflowMixin:
         print(f"-----* {func_name} *-----")  # Feature Importance Diagram
         columns_name = X_train.columns
 
-        # Fix: Added support for MultiOutputRegressor objects
+        # 修复：添加对MultiOutputRegressor对象的支持
         if hasattr(trained_model, "estimators_"):
-            # If it's a MultiOutputRegressor, get the feature importance from each estimator and take the average
+            # 如果是MultiOutputRegressor，从每个估计器获取特征重要性并取平均值
             feature_importances = np.mean([est.feature_importances_ for est in trained_model.estimators_], axis=0)
         else:
-            # Otherwise, directly get the feature importances
+            # 否则直接获取特征重要性
             feature_importances = trained_model.feature_importances_
 
         data = plot_feature_importance(columns_name, feature_importances, image_config)
@@ -364,25 +342,25 @@ class TreeWorkflowMixin:
         """Drawing decision tree diagrams."""
         print(f"-----* {func_name} *-----")  # Single Tree Diagram
 
-        # Fix: Added support for MultiOutputRegressor objects
+        # 修复：为MultiOutputRegressor的每个输出单独绘制决策树
         if hasattr(trained_model, "estimators_"):
-            # If it's a MultiOutputRegressor, draw a separate decision tree for each internal estimator
+            # 如果是MultiOutputRegressor，为每个内部估计器绘制单独的决策树
             for i, estimator in enumerate(trained_model.estimators_):
-                # Create a unique function name for each output
+                # 为每个输出创建唯一的功能名称
                 output_func_name = f"{func_name} - Output {i+1}"
                 print(f"-----* {output_func_name} *-----")
                 plot_decision_tree(estimator, image_config)
 
-                # Save the decision tree for each output as a separate image
+                # 为每个输出的决策树保存单独的图
                 save_fig(f"{output_func_name} - {algorithm_name}", local_path, mlflow_path)
         else:
-            # Fix: Handle array type input: if it's an array with a single element, take the first element
+            # 处理数组类型输入：如果是数组且只有一个元素，则取第一个元素
             if hasattr(trained_model, "shape") and len(trained_model) == 1:
                 model_to_use = trained_model[0]
             else:
                 model_to_use = trained_model
 
-            # Use the processed model
+            # 使用处理后的模型
             plot_decision_tree(model_to_use, image_config)
             save_fig(f"{func_name} - {algorithm_name}", local_path, mlflow_path)
 

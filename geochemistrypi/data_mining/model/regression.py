@@ -66,19 +66,17 @@ class RegressionWorkflowBase(WorkflowBase):
         self.customized = False
         self.customized_name = None
         self.mode = "Regression"
-        # For multi-output AutoML, store per-target AutoML instances here
-        self.automls: Optional[List[AutoML]] = None
 
     def _get_model_coef_intercept(self):
-        """Get the model's coefficients and intercept, supports MultiOutputRegressor"""
+        """获取模型的系数和截距，支持MultiOutputRegressor"""
         from sklearn.multioutput import MultiOutputRegressor
 
         if isinstance(self.model, MultiOutputRegressor):
-            # For MultiOutputRegressor, get the coefficients from each estimator and take the average
+            # 对于MultiOutputRegressor，获取内部估计器的系数
             coef = np.array([estimator.coef_ for estimator in self.model.estimators_])
             intercept = np.array([estimator.intercept_ for estimator in self.model.estimators_])
         else:
-            # For single-output regressors, use the existing attributes
+            # 对于单输出回归器，直接使用原有属性
             coef = self.model.coef_
             intercept = self.model.intercept_
         return coef, intercept
@@ -86,11 +84,11 @@ class RegressionWorkflowBase(WorkflowBase):
     @dispatch(object, object)
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
         """Fit the model by Scikit-learn framework."""
-        # Support multiple Y columns: Use MultiOutputRegressor to wrap a single-output regressor
+        # 支持多列Y：使用MultiOutputRegressor包装单输出回归器
         if y is not None and y.shape[1] > 1:
             from sklearn.multioutput import MultiOutputRegressor
 
-            # If the model hasn’t been wrapped yet, wrap it.
+            # 如果模型还没有被包装，则包装它
             if not isinstance(self.model, MultiOutputRegressor):
                 self.model = MultiOutputRegressor(self.model)
         self.model.fit(X, y)
@@ -103,27 +101,16 @@ class RegressionWorkflowBase(WorkflowBase):
             self.automl = AutoML()
             if self.customized:  # When the model is not built-in in FLAML framwork, use FLAML customization.
                 self.automl.add_learner(learner_name=self.customized_name, learner_class=self.customization)
-            # Support multiple Y columns: Only convert to Series when Y is a single column, keep DataFrame format for multiple columns
+            # 支持多列Y：只有当Y是单列时才转换为Series，多列Y保持DataFrame格式
             if y.shape[1] == 1:  # FLAML's data format validation mechanism
                 y = y.squeeze()  # Convert a single dataFrame column into a series
-            # For multiple Y columns, FLAML does not support multi-output
-            # directly. Train an AutoML instance per target column instead
-            # of wrapping AutoML with sklearn's MultiOutputRegressor, which
-            # causes issues in cross-validation / parallel fits.
+            # 对于多列Y，FLAML不支持，我们需要使用scikit-learn的MultiOutputRegressor
             elif y.shape[1] > 1:
-                self.automls = []
-                # iterate over columns and train separate AutoML per target
-                for col in y.columns:
-                    am = AutoML()
-                    if self.customized:
-                        am.add_learner(learner_name=self.customized_name, learner_class=self.customization)
-                    target = y[col]
-                    # FLAML expects series for single-output
-                    am.fit(X_train=X, y_train=target.squeeze(), **self.settings)
-                    self.automls.append(am)
-            else:
-                # single-output AutoML
-                self.automl.fit(X_train=X, y_train=y, **self.settings)
+                from sklearn.multioutput import MultiOutputRegressor
+
+                # 为多列Y创建MultiOutputRegressor包装器
+                self.automl = MultiOutputRegressor(self.automl)
+            self.automl.fit(X_train=X, y_train=y, **self.settings)
         else:
             # When the model is not built-in in FLAML framework, use RAY + FLAML customization.
             self.ray_tune(
@@ -144,13 +131,6 @@ class RegressionWorkflowBase(WorkflowBase):
     def predict(self, X: pd.DataFrame, is_automl: bool = False) -> np.ndarray:
         """Perform classification on samples in X by FLAML framework and RAY framework."""
         if self.naming not in RAY_FLAML:
-            # If trained per-target AutoMLs exist, predict with each and
-            # concatenate columns; otherwise use single AutoML.
-            if getattr(self, "automls", None):
-                preds = [am.predict(X) for am in self.automls]
-                # each pred is (n_samples,) -> stack to (n_samples, n_targets)
-                y_predict = np.vstack(preds).T
-                return y_predict
             y_predict = self.automl.predict(X)
             return y_predict
         else:
@@ -161,29 +141,9 @@ class RegressionWorkflowBase(WorkflowBase):
     def auto_model(self) -> object:
         """Get AutoML trained model by FLAML framework and RAY framework."""
         if self.naming not in RAY_FLAML:
-            # If per-target AutoMLs were used, return the list; otherwise
-            # return the trained AutoML estimator
-            if getattr(self, "automls", None):
-                return self.automls
             return self.automl.model.estimator
         else:
             return self.ray_best_model
-
-    @property
-    def auto_best_config(self) -> Dict:
-        """Get the best AutoML hyper-parameter configuration."""
-        if self.naming not in RAY_FLAML:
-            # If trained per-target AutoMLs, collect their best_config
-            if getattr(self, "automls", None):
-                best_configs = [getattr(am, "best_config", None) for am in self.automls]
-                best_configs = [c for c in best_configs if c is not None]
-                if len(best_configs) == 1:
-                    return best_configs[0]
-                if best_configs:
-                    return {"best_config_per_output": best_configs}
-                return {}
-            return getattr(self.automl, "best_config", {})
-        return {}
 
     @property
     def settings(self) -> Dict:
@@ -488,7 +448,7 @@ class XGBoostRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             Verbosity of printing messages. Valid values are 0 (silent), 1 (warning), 2 (info), 3 (debug).
             Sometimes XGBoost tries to change configurations based on heuristics,
             which is displayed as warning message.
-            If there's unexpected behaviour, please try to increase value of verbosity.
+            If there’s unexpected behaviour, please try to increase value of verbosity.
 
         booster [default= gbtree ]
             Which booster to use. Can be gbtree, gblinear or dart;
@@ -500,7 +460,7 @@ class XGBoostRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             Choices: auto, exact, approx, hist, gpu_hist, this is a combination of commonly used updaters. For other updaters like refresh, set the parameter updater directly.
                 auto: Use heuristic to choose the fastest method.
                     For small dataset, exact greedy (exact) will be used.
-                    For larger dataset, approximate algorithm (approx) will be chosen. It's recommended to try hist and gpu_hist for higher performance with large dataset.
+                    For larger dataset, approximate algorithm (approx) will be chosen. It’s recommended to try hist and gpu_hist for higher performance with large dataset.
                       (gpu_hist)has support for external memory.
                     Because old behavior is always use exact greedy in single machine, user will get a message when approximate algorithm is chosen to notify this choice.
                 exact: Exact greedy algorithm. Enumerates all split candidates.
@@ -990,10 +950,7 @@ class DecisionTreeRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             @classmethod
             def search_space(cls, data_size, task):
                 space = {
-                    # "criterion": {"domain": tune.choice(["squared_error", "friedman_mse", "absolute_error", "poisson"])},
-                    # TODO: Handle the issue of 'poisson' not supporting negative values. This workaround excludes 'poisson' for now.
-                    # Future work: If required, implement a solution to support negative values for 'poisson' or handle them dynamically.
-                    "criterion": {"domain": tune.choice(["squared_error", "friedman_mse", "absolute_error"])},
+                    "criterion": {"domain": tune.choice(["squared_error", "friedman_mse", "absolute_error", "poisson"])},
                     "max_depth": {"domain": tune.randint(lower=2, upper=20), "init_value": 1, "low_cost_init_value": 1},
                     "min_samples_split": {
                         "domain": tune.randint(lower=2, upper=10),
@@ -1072,7 +1029,7 @@ class ExtraTreesRegression(TreeWorkflowMixin, RegressionWorkflowBase):
     def __init__(
         self,
         n_estimators: int = 100,
-        criterion: str = "squared_error",
+        criterion: str = "squared_error",  # 修改为squared_error
         max_depth: Optional[int] = None,
         min_samples_split: Union[int, float] = 2,
         min_samples_leaf: Union[int, float] = 1,
@@ -1811,10 +1768,7 @@ class SVMRegression(RegressionWorkflowBase):
             def search_space(cls, data_size, task):
                 space = {
                     "C": {"domain": tune.uniform(lower=1, upper=data_size[0]), "init_value": 1, "low_cost_init_value": 1},
-                    # "kernel": {"domain": tune.choice(["poly", "rbf", "sigmoid"])},
-                    # TODO: Exclude 'poly' kernel due to its slow search speed and negative impact on framework performance.
-                    # Future work: Reevaluate kernel options if performance requirements change or improvements are made to handle 'poly' more efficiently.
-                    "kernel": {"domain": tune.choice(["rbf", "sigmoid"])},
+                    "kernel": {"domain": tune.choice(["poly", "rbf", "sigmoid"])},
                     "gamma": {"domain": tune.uniform(lower=1e-5, upper=10), "init_value": 1e-1, "low_cost_init_value": 1e-1},
                     "degree": {"domain": tune.quniform(lower=1, upper=5, q=1), "init_value": 3, "low_cost_init_value": 3},
                     "coef0": {"domain": tune.uniform(lower=0, upper=1), "init_value": 0, "low_cost_init_value": 0},
@@ -2152,7 +2106,7 @@ class MLPRegression(RegressionWorkflowBase):
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        # Safety check: Check if the model has a get_params method and if the solver parameter exists
+        # 安全检查: 检查model是否有get_params方法，以及solver参数是否存在
         try:
             if hasattr(self.model, "get_params"):
                 params = self.model.get_params()
@@ -2165,13 +2119,13 @@ class MLPRegression(RegressionWorkflowBase):
                         func_name=MLPSpecialFunction.LOSS_CURVE_DIAGRAM.value,
                     )
         except Exception as e:
-            print(f"Warning: Unable to plot the loss curve - {str(e)}")
+            print(f"警告: 无法绘制损失曲线图 - {str(e)}")
 
     @dispatch(bool)
     def special_components(self, is_automl: bool, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        # Safety check: Check if the model has a get_params method and if the solver parameter exists
+        # 安全检查: 检查model是否有get_params方法，以及solver参数是否存在
         try:
             if hasattr(self.model, "get_params"):
                 params = self.model.get_params()
@@ -2184,7 +2138,7 @@ class MLPRegression(RegressionWorkflowBase):
                         func_name=MLPSpecialFunction.LOSS_CURVE_DIAGRAM.value,
                     )
         except Exception as e:
-            print(f"Warning: Unable to plot the loss curve - {str(e)}")
+            print(f"警告: 无法绘制损失曲线图 - {str(e)}")
 
 
 class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
@@ -2258,7 +2212,7 @@ class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
 
-        # Use a helper method to get the coefficients and intercept
+        # 使用辅助方法获取系数和截距
         coef, intercept = self._get_model_coef_intercept()
 
         self._show_formula(
@@ -3878,7 +3832,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
-        # Use a helper method to get the coefficients and intercept
+        # 使用辅助方法获取系数和截距
         coef, intercept = self._get_model_coef_intercept()
 
         self._show_formula(
@@ -4448,7 +4402,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
-        # Use a helper method to get the coefficients and intercept
+        # 使用辅助方法获取系数和截距
         coef, intercept = self._get_model_coef_intercept()
 
         self._show_formula(

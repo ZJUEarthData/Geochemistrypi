@@ -52,6 +52,7 @@ def dash_pipeline(requests_pathname_prefix: str = None) -> dash.Dash:
                 data=[],
                 page_size=10,
             ),
+            # 新增：回归功能界面
             html.H2(children="Part 2: Regression Analysis"),
             html.Div(
                 [
@@ -131,6 +132,7 @@ def dash_pipeline(requests_pathname_prefix: str = None) -> dash.Dash:
         data = df.to_dict("records")
         return columns, data
 
+    # 新增：更新变量选择下拉框
     @app.callback(
         [Output("x-variables-dropdown", "options"), Output("y-variables-dropdown", "options")],
         [Input("dataset-dropdown", "value")],
@@ -152,6 +154,7 @@ def dash_pipeline(requests_pathname_prefix: str = None) -> dash.Dash:
         options = [{"label": col, "value": col} for col in df.columns]
         return options, options
 
+    # 新增：运行回归分析
     @app.callback(
         Output("regression-results", "children"),
         [Input("run-regression-button", "n_clicks")],
@@ -163,7 +166,7 @@ def dash_pipeline(requests_pathname_prefix: str = None) -> dash.Dash:
             return "Please select dataset, X variables, Y variables, and model."
 
         try:
-            # Get data
+            # 获取数据
             df = pd.DataFrame()
             if selected_dataset == "user_data":
                 df = pd.read_excel(user_data_path)
@@ -176,27 +179,27 @@ def dash_pipeline(requests_pathname_prefix: str = None) -> dash.Dash:
             elif selected_dataset == "data_decomposition":
                 df = data_decomposition
 
-            # Prepare X and Y data
+            # 准备X和Y数据
             X = df[x_vars]
             y = df[y_vars]
 
-            # Check data
+            # 检查数据
             if X.empty or y.empty:
                 return "Error: Selected variables contain no data."
 
-            # Show data information
+            # 显示数据信息
             result_text = f"""
-            <h3>Regression Analysis Results</h3>
-            <p><strong>Model:</strong> {model_name}</p>
-            <p><strong>Number of X Variables:</strong> {len(x_vars)} ({', '.join(x_vars)})</p>
-            <p><strong>Number of Y Variables:</strong> {len(y_vars)} ({', '.join(y_vars)})</p>
-            <p><strong>Number of Samples:</strong> {len(X)}</p>
-            <p><strong>Support Multiple Y Columns:</strong> {'Yes' if len(y_vars) > 1 else 'No'}</p>
+            <h3>回归分析结果</h3>
+            <p><strong>模型:</strong> {model_name}</p>
+            <p><strong>X变量数量:</strong> {len(x_vars)} ({', '.join(x_vars)})</p>
+            <p><strong>Y变量数量:</strong> {len(y_vars)} ({', '.join(y_vars)})</p>
+            <p><strong>样本数量:</strong> {len(X)}</p>
+            <p><strong>支持多列Y:</strong> {'是' if len(y_vars) > 1 else '否'}</p>
             """
 
-            # Here you can add the actual regression analysis code
-            # Since environment variables and output paths need to be set, only basic information is shown here
-            result_text += "<p><em>Note: Complete regression analysis requires setting environment variables and output paths. Please use the CLI version for full analysis.</em></p>"
+            # 这里可以添加实际的回归分析代码
+            # 由于需要设置环境变量和输出路径，这里只显示基本信息
+            result_text += "<p><em>注意：完整的回归分析需要设置环境变量和输出路径。请使用CLI版本进行完整分析。</em></p>"
 
             return html.Div([html.Div(result_text, dangerouslySetInnerHTML={"__html": result_text})])
 

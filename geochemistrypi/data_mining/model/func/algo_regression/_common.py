@@ -97,33 +97,13 @@ def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.D
         The scores of cross-validation.
     """
 
-    scoring = ("neg_root_mean_squared_error", "neg_mean_absolute_error", "r2", "explained_variance")
-
-    # Support list of estimators for multi-output (trained per-target AutoMLs)
-    if isinstance(trained_model, (list, tuple)):
-        # For each estimator (per output), run cross_validate on its target column
-        per_output_results = []
-        for idx, est in enumerate(trained_model):
-            y_col = y_train.iloc[:, idx]
-            res = cross_validate(est, X_train, y_col, scoring=scoring, cv=cv_num)
-            per_output_results.append(res)
-
-        # Aggregate results across outputs by averaging per-fold scores
-        scores = {}
-        # keys like 'test_neg_mean_absolute_error', 'fit_time', etc.
-        keys = per_output_results[0].keys()
-        for key in keys:
-            # collect array of shape (n_outputs, n_folds)
-            arrs = [r[key] for r in per_output_results]
-            try:
-                stacked = np.vstack(arrs)
-                # average across outputs (axis=0 is across outputs -> take mean axis=0)
-                scores[key] = stacked.mean(axis=0)
-            except Exception:
-                # fallback: keep first output's values
-                scores[key] = per_output_results[0][key]
-    else:
-        scores = cross_validate(trained_model, X_train, y_train, scoring=scoring, cv=cv_num)
+    scores = cross_validate(
+        trained_model,
+        X_train,
+        y_train,
+        scoring=("neg_root_mean_squared_error", "neg_mean_absolute_error", "r2", "explained_variance"),
+        cv=cv_num,
+    )
     del scores["fit_time"]
     del scores["score_time"]
     # the keys follow the returns of cross_validate in scikit-learn
@@ -187,11 +167,11 @@ def plot_residuals(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, algorithm
         The residuals of the testing predict values and the testing target values.
     """
     residuals = y_test_predict.values - y_test.values
-    # Support multiple Y columns: create column names based on the actual number of columns
+    # 支持多列Y：根据实际列数创建列名
     if y_test.shape[1] == 1:
         residuals = pd.DataFrame(residuals, columns=["Residuals"])
     else:
-        # Create corresponding residual column names for multiple Y columns
+        # 为多列Y创建对应的残差列名
         residual_columns = [f"Residuals_{col}" for col in y_test.columns]
         residuals = pd.DataFrame(residuals, columns=residual_columns)
 

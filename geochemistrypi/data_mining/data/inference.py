@@ -81,9 +81,6 @@ def build_transform_pipeline(imputation_config: Dict, feature_scaling_config: Di
         The transform pipeline configuration and the transform pipeline object.
     """
     print("Build the transform pipeline according to the previous operations.")
-    if X_train.isnull().any().any():
-        print("Warning: X_train contains NaN values. Skipping feature selection step.")
-        feature_selection_config = {}
     # Aggregate transformer configuartion.
     transformer_config = {}
     transformer_config.update(imputation_config)
@@ -157,12 +154,12 @@ def model_inference(
         loaded_model = mlflow.sklearn.load_model(f"runs:/{mlflow.active_run().info.run_id}/{run.model_name}")
         inference_data_predicted_np = loaded_model.predict(inference_data_transformed)
 
-        # Supports multiple Y columns: generate column names based on the shape of the predictions
+        # 支持多列Y：根据预测结果的形状生成列名
         if y_columns is not None and len(y_columns) > 0:
-            # Use the original Y column names
+            # 使用原始Y的列名
             predicted_columns = [f"Predicted_{col}" for col in y_columns]
         else:
-            # Generate column names based on the shape of the predictions
+            # 根据预测结果的形状生成列名
             if inference_data_predicted_np.ndim == 1:
                 predicted_columns = ["Predicted Value"]
             else:
