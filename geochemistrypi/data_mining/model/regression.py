@@ -361,7 +361,7 @@ class PolynomialRegression(LinearWorkflowMixin, RegressionWorkflowBase):
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
-        # 使用_get_model_coef_intercept方法获取系数和截距
+        # Use the _get_model_coef_intercept method to get the coefficients and intercept
         coef, intercept = self._get_model_coef_intercept()
         self._show_formula(
             coef=coef,
@@ -2106,7 +2106,7 @@ class MLPRegression(RegressionWorkflowBase):
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        # 安全检查: 检查model是否有get_params方法，以及solver参数是否存在
+        # Safety check: Check if the model has a get_params method and if the solver parameter exists
         try:
             if hasattr(self.model, "get_params"):
                 params = self.model.get_params()
@@ -2119,13 +2119,13 @@ class MLPRegression(RegressionWorkflowBase):
                         func_name=MLPSpecialFunction.LOSS_CURVE_DIAGRAM.value,
                     )
         except Exception as e:
-            print(f"警告: 无法绘制损失曲线图 - {str(e)}")
+            print(f"Warning: Unable to plot loss curve diagram - {str(e)}")
 
     @dispatch(bool)
     def special_components(self, is_automl: bool, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by FLAML framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
-        # 安全检查: 检查model是否有get_params方法，以及solver参数是否存在
+        # Safety check: Check if the model has a get_params method and if the solver parameter exists
         try:
             if hasattr(self.model, "get_params"):
                 params = self.model.get_params()
@@ -2138,7 +2138,7 @@ class MLPRegression(RegressionWorkflowBase):
                         func_name=MLPSpecialFunction.LOSS_CURVE_DIAGRAM.value,
                     )
         except Exception as e:
-            print(f"警告: 无法绘制损失曲线图 - {str(e)}")
+            print(f"Warning: Unable to plot loss curve diagram - {str(e)}")
 
 
 class ClassicalLinearRegression(LinearWorkflowMixin, RegressionWorkflowBase):
@@ -3000,7 +3000,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
 
-        # 使用辅助方法获取系数和截距
+        # Use a helper method to get the coefficients and intercept
         coef, intercept = self._get_model_coef_intercept()
 
         self._show_formula(
@@ -3364,7 +3364,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH")
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
-        # 使用辅助方法获取系数和截距
+        # Use a helper method to get the coefficients and intercept
         coef, intercept = self._get_model_coef_intercept()
 
         self._show_formula(

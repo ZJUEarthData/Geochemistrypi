@@ -325,12 +325,12 @@ class TreeWorkflowMixin:
         print(f"-----* {func_name} *-----")  # Feature Importance Diagram
         columns_name = X_train.columns
 
-        # 修复：添加对MultiOutputRegressor对象的支持
+        # Fix: Added support for MultiOutputRegressor objects
         if hasattr(trained_model, "estimators_"):
-            # 如果是MultiOutputRegressor，从每个估计器获取特征重要性并取平均值
+            # If it's a MultiOutputRegressor, get the feature importance from each estimator and take the average
             feature_importances = np.mean([est.feature_importances_ for est in trained_model.estimators_], axis=0)
         else:
-            # 否则直接获取特征重要性
+            # Otherwise, directly get the feature importances
             feature_importances = trained_model.feature_importances_
 
         data = plot_feature_importance(columns_name, feature_importances, image_config)
@@ -342,25 +342,25 @@ class TreeWorkflowMixin:
         """Drawing decision tree diagrams."""
         print(f"-----* {func_name} *-----")  # Single Tree Diagram
 
-        # 修复：为MultiOutputRegressor的每个输出单独绘制决策树
+        # Fix: Plot decision tree for each output of MultiOutputRegressor
         if hasattr(trained_model, "estimators_"):
-            # 如果是MultiOutputRegressor，为每个内部估计器绘制单独的决策树
+            # If it's a MultiOutputRegressor, plot a separate decision tree for each internal estimator
             for i, estimator in enumerate(trained_model.estimators_):
-                # 为每个输出创建唯一的功能名称
+                # Create a unique function name for each output
                 output_func_name = f"{func_name} - Output {i+1}"
                 print(f"-----* {output_func_name} *-----")
                 plot_decision_tree(estimator, image_config)
 
-                # 为每个输出的决策树保存单独的图
+                # Save the decision tree for each output separately
                 save_fig(f"{output_func_name} - {algorithm_name}", local_path, mlflow_path)
         else:
-            # 处理数组类型输入：如果是数组且只有一个元素，则取第一个元素
+            # Fix: Handle array type input: if it's an array with a single element, take the first element
             if hasattr(trained_model, "shape") and len(trained_model) == 1:
                 model_to_use = trained_model[0]
             else:
                 model_to_use = trained_model
 
-            # 使用处理后的模型
+            # Use the processed model
             plot_decision_tree(model_to_use, image_config)
             save_fig(f"{func_name} - {algorithm_name}", local_path, mlflow_path)
 

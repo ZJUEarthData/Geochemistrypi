@@ -167,11 +167,11 @@ def plot_residuals(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, algorithm
         The residuals of the testing predict values and the testing target values.
     """
     residuals = y_test_predict.values - y_test.values
-    # 支持多列Y：根据实际列数创建列名
+    # Support multiple Y columns: create column names based on the actual number of columns
     if y_test.shape[1] == 1:
         residuals = pd.DataFrame(residuals, columns=["Residuals"])
     else:
-        # 为多列Y创建对应的残差列名
+        # Support multiple Y columns: create column names based on the actual number of columns
         residual_columns = [f"Residuals_{col}" for col in y_test.columns]
         residuals = pd.DataFrame(residuals, columns=residual_columns)
 

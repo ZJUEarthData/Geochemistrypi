@@ -30,7 +30,7 @@ def create_geopi_output_dir(output_path: str, experiment_name: str, run_name: st
     sub_run_name : str, default=None
         The name of the sub run.
     """
-    # 验证 output_path 是否为有效路径
+    # Check if output_path is a valid path
     if not os.path.exists(output_path):
         print(f"[yellow]Warning: output_path '{output_path}' does not exist. Creating it...[/yellow]")
         try:
@@ -186,7 +186,7 @@ def save_fig(fig_name: str, local_image_path: str, mlflow_artifact_image_path: s
     tight_layout : bool, default=True
         Automatically adjust subplot parameters to give specified padding.
     """
-    # 验证本地路径是否存在
+    # Check if local_image_path is a valid path
     if not os.path.exists(local_image_path):
         print(f"[yellow]Warning: local_image_path '{local_image_path}' does not exist. Creating it...[/yellow]")
         try:
@@ -212,13 +212,13 @@ def save_fig(fig_name: str, local_image_path: str, mlflow_artifact_image_path: s
 
     # MLflow logging with comprehensive error handling
     try:
-        # 检查 MLflow 是否正在运行
+        # Check if MLflow is running
         if mlflow.active_run() is None:
             print("[yellow]Warning: No active MLflow run. Skipping MLflow artifact logging.[/yellow]")
             return
 
         if mlflow_artifact_image_path:
-            # 验证 MLflow artifact 路径
+            # Validate MLflow artifact path
             if not mlflow_artifact_image_path.startswith("/") and not mlflow_artifact_image_path.startswith("."):
                 print(f"[yellow]Warning: MLflow artifact path '{mlflow_artifact_image_path}' is not absolute. Using as relative path.[/yellow]")
             try:
@@ -226,7 +226,7 @@ def save_fig(fig_name: str, local_image_path: str, mlflow_artifact_image_path: s
                 print(f"[green]Successfully logged '{fig_name}' to MLflow artifact path: {mlflow_artifact_image_path}[/green]")
             except Exception as e:
                 print(f"[yellow]Warning: Failed to log artifact to MLflow (artifact_path={mlflow_artifact_image_path}): {e}[/yellow]")
-                # 尝试不带 artifact_path 重新记录
+                # Try logging without artifact_path
                 try:
                     mlflow.log_artifact(full_path)
                     print(f"[green]Successfully logged '{fig_name}' to MLflow root artifacts.[/green]")
@@ -265,7 +265,7 @@ def save_data(df: pd.DataFrame, name_column: str, df_name: str, local_data_path:
     index : bool, default=False
         Whether to write the index.
     """
-    # 验证本地路径是否存在
+    # Check if local_data_path is a valid path
     if not os.path.exists(local_data_path):
         print(f"[yellow]Warning: local_data_path '{local_data_path}' does not exist. Creating it...[/yellow]")
         try:
@@ -327,7 +327,7 @@ def save_data_without_data_identifier(df: pd.DataFrame, df_name: str, local_data
     index : bool, default=False
         Whether to write the index.
     """
-    # 验证本地路径是否存在
+    # Check if local_data_path is a valid path
     if not os.path.exists(local_data_path):
         print(f"[yellow]Warning: local_data_path '{local_data_path}' does not exist. Creating it...[/yellow]")
         try:
@@ -380,7 +380,7 @@ def save_text(string: str, text_name: str, local_text_path: str, mlflow_artifact
     mlflow_artifact_text_path : str, default=None
         The path to store the text in mlflow.
     """
-    # 验证本地路径是否存在
+    # Check if local_text_path is a valid path
     if not os.path.exists(local_text_path):
         print(f"[yellow]Warning: local_text_path '{local_text_path}' does not exist. Creating it...[/yellow]")
         try:
@@ -425,7 +425,7 @@ def save_model(model: object, model_name: str, data_sample: pd.DataFrame, local_
     mlflow_artifact_model_path : str, default=None
         The path to store the model in mlflow.
     """
-    # 验证本地路径是否存在
+    # Check if local_model_path is a valid path
     if not os.path.exists(local_model_path):
         print(f"[yellow]Warning: local_model_path '{local_model_path}' does not exist. Creating it...[/yellow]")
         try:

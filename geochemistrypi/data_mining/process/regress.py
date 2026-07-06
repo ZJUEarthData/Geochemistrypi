@@ -214,18 +214,18 @@ class RegressionModelSelection(ModelSelectionBase):
         # Use Scikit-learn style API to process input data
         self.reg_workflow.fit(X_train, y_train)
         y_train_predict = self.reg_workflow.predict(X_train)
-        # 支持多列Y：确保预测结果的列数与原始Y的列数匹配
+        # Support multiple Y columns: Make sure the number of columns in the predicted results matches the number of columns in the original Y
         if y_train_predict.ndim == 1 and y_train.shape[1] > 1:
-            # 如果预测结果是1维但Y是多列，需要reshape
+            # If the predicted result is 1D but Y is multi-column, reshape it
             y_train_predict = y_train_predict.reshape(-1, y_train.shape[1])
         y_train_predict = self.reg_workflow.np2pd(y_train_predict, y_train.columns)
         y_train_predict = y_train_predict.dropna()
         y_train_predict = y_train_predict.reset_index(drop=True)
         self.reg_workflow.data_upload(y_train_predict=y_train_predict)
         y_test_predict = self.reg_workflow.predict(X_test)
-        # 支持多列Y：确保预测结果的列数与原始Y的列数匹配
+        # Support multiple Y columns: Make sure the number of columns in the predicted results matches the number of columns in the original Y
         if y_test_predict.ndim == 1 and y_test.shape[1] > 1:
-            # 如果预测结果是1维但Y是多列，需要reshape
+            # If the predicted result is 1D but Y is multi-column, reshape it
             y_test_predict = y_test_predict.reshape(-1, y_test.shape[1])
         y_test_predict = self.reg_workflow.np2pd(y_test_predict, y_test.columns)
         y_test_predict = y_test_predict.dropna()
@@ -308,18 +308,18 @@ class RegressionModelSelection(ModelSelectionBase):
         # Use Scikit-learn style API to process input data
         self.reg_workflow.fit(X_train, y_train, is_automl)
         y_train_predict = self.reg_workflow.predict(X_train, is_automl)
-        # 支持多列Y：确保预测结果的列数与原始Y的列数匹配
+        # Support multiple Y columns: Make sure the number of columns in the predicted results matches the number of columns in the original Y
         if y_train_predict.ndim == 1 and y_train.shape[1] > 1:
-            # 如果预测结果是1维但Y是多列，需要reshape
+            # If the predicted result is 1D but Y is multi-column, reshape it
             y_train_predict = y_train_predict.reshape(-1, y_train.shape[1])
         y_train_predict = self.reg_workflow.np2pd(y_train_predict, y_train.columns)
         y_train_predict = y_train_predict.dropna()
         y_train_predict = y_train_predict.reset_index(drop=True)
         self.reg_workflow.data_upload(y_train_predict=y_train_predict)
         y_test_predict = self.reg_workflow.predict(X_test, is_automl)
-        # 支持多列Y：确保预测结果的列数与原始Y的列数匹配
+        # Support multiple Y columns: Make sure the number of columns in the predicted results matches the number of columns in the original Y
         if y_test_predict.ndim == 1 and y_test.shape[1] > 1:
-            # 如果预测结果是1维但Y是多列，需要reshape
+            # If the predicted result is 1D but Y is multi-column, reshape it
             y_test_predict = y_test_predict.reshape(-1, y_test.shape[1])
         y_test_predict = self.reg_workflow.np2pd(y_test_predict, y_test.columns)
         y_test_predict = y_test_predict.dropna()

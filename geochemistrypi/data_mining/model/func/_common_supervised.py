@@ -25,10 +25,10 @@ def plot_decision_tree(trained_model: object, image_config: dict) -> None:
     fig, ax = plt.subplots(figsize=(image_config["width"], image_config["height"]), dpi=image_config["dpi"])
 
     # draw the main content
-    # 修复：处理node_ids参数为None的情况
+    # Fix: Handle cases where the node_ids parameter is None
     node_ids = image_config["node_ids"]
     if node_ids is None:
-        node_ids = False  # 设置默认值为False
+        node_ids = False  # Set the default value to False
 
     plot_tree(
         trained_model,
@@ -38,7 +38,7 @@ def plot_decision_tree(trained_model: object, image_config: dict) -> None:
         label=image_config["label"],
         filled=image_config["filled"],
         impurity=image_config["impurity"],
-        node_ids=node_ids,  # 使用处理后的值
+        node_ids=node_ids,  # Use the processed value
         proportion=image_config["proportion"],
         rounded=image_config["rounded"],
         precision=image_config["precision"],
@@ -181,15 +181,15 @@ def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: np.ndar
     formula = {}
 
     if regression_classification == "Regression":
-        # 首先确保coef是numpy数组
+        # First, make sure coef is a numpy array
         if not isinstance(coef, np.ndarray):
             try:
                 coef = np.array(coef)
             except (ValueError, TypeError):
-                # 如果转换失败，尝试将其展平为标量列表
+                # If conversion fails, try flattening it to a list of scalars
                 coef = np.array([c for c in coef])
 
-        # 同样确保intercept是合适的格式
+        # Also make sure the intercept is in the right format
         if isinstance(intercept, np.ndarray):
             intercept_flat = np.ravel(intercept)
             if len(intercept_flat) > 0:
@@ -199,15 +199,15 @@ def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: np.ndar
         else:
             intercept = np.around(intercept, decimals=3)
 
-        # 检查coef是否为二维数组（多输出情况）
+        # Check if coef is a 2D array (multi-output case)
         if len(y_train.columns) == 1 and len(coef.shape) > 1 and coef.shape[0] > 1:
-            # 这种情况是：虽然只有一个目标变量，但coef是二维数组（可能是MultiOutputRegressor的结果）
+            # This case is: although there is only one target variable, coef is a 2D array (possibly the result of MultiOutputRegressor)
             for idx in range(coef.shape[0]):
-                # 对每个输出单独处理
+                # Process each output separately
                 coef_single = coef[idx]
                 intercept_single = intercept[idx] if isinstance(intercept, np.ndarray) and intercept.size > 1 else intercept
 
-                # 确保coef_single是标量
+                # Make sure coef_single is a scalar
                 terms = []
                 for c, f in zip(coef_single, features_name):
                     if isinstance(c, np.ndarray) and c.size > 0:
@@ -219,7 +219,7 @@ def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: np.ndar
                     else:
                         terms.append("")
 
-                # 确保coef_single[0]是标量
+                # Make sure coef_single[0] is a scalar
                 if isinstance(coef_single[0], np.ndarray) and coef_single[0].size > 0:
                     coef_first_val = coef_single[0][0]
                 else:
@@ -229,12 +229,12 @@ def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: np.ndar
                 formula[f"y (output {idx+1}):"] = terms_first + " " + " ".join(terms[1:]) + (" - " if intercept_single < 0 else " + ") + str(abs(intercept_single))
                 print(f"y (output {idx+1}) = ", formula[f"y (output {idx+1}):"])
         elif len(y_train.columns) == 1:
-            # 单输出情况，但确保正确处理可能的数组系数
+            # Single output case, but ensure correct handling of potentially array coefficients
             coef_flat = np.ravel(coef)
             if len(coef_flat) > 0:
                 coef = coef_flat
 
-            # 检查intercept是否为标量
+            # Check if intercept is a scalar
             if isinstance(intercept, np.ndarray):
                 intercept_flat = np.ravel(intercept)
                 if len(intercept_flat) > 0:
@@ -244,7 +244,7 @@ def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: np.ndar
             else:
                 intercept = np.around(intercept, decimals=3)
 
-            # 处理terms
+            # Process terms
             terms = []
             for c, f in zip(coef, features_name):
                 if isinstance(c, np.ndarray) and c.size > 0:
@@ -256,7 +256,7 @@ def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: np.ndar
                 else:
                     terms.append("")
 
-            # 处理terms_first
+            # Process terms_first
             if len(coef) > 0:
                 if isinstance(coef[0], np.ndarray) and coef[0].size > 0:
                     coef_first_val = coef[0][0]
@@ -267,18 +267,18 @@ def show_formula(coef: np.ndarray, intercept: np.ndarray, features_name: np.ndar
                 formula["y:"] = terms_first + " " + " ".join(terms[1:]) + (" - " if intercept < 0 else " + ") + str(abs(intercept))
                 print("y = ", formula["y:"])
         else:
-            # 多目标变量情况
-            # 确保coef和intercept是适合迭代的格式
+            # Multiple target variables situation
+            # Make sure coef and intercept are in a format suitable for iteration
             if len(coef.shape) == 1:
-                # 如果coef是一维数组，转换为二维数组以便迭代
+                # If coef is a 1D array, reshape it to a 2D array for iteration
                 coef = coef.reshape(1, -1)
 
             if not isinstance(intercept, np.ndarray) or intercept.ndim == 0:
-                # 如果intercept是标量，转换为数组以便迭代
+                # If intercept is a scalar, reshape it to an array for iteration
                 intercept = np.array([intercept] * len(coef))
 
             for idx, (coef_temp, intercept_temp) in enumerate(zip(coef, intercept)):
-                # 确保不超出y_train的列数
+                # Make sure we don't exceed the number of columns in y_train
                 if idx < len(y_train.columns):
                     terms_temp = []
                     for c, f in zip(coef_temp, features_name):
