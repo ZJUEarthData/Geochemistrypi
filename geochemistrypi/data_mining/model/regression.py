@@ -68,15 +68,15 @@ class RegressionWorkflowBase(WorkflowBase):
         self.mode = "Regression"
 
     def _get_model_coef_intercept(self):
-        """获取模型的系数和截距，支持MultiOutputRegressor"""
+        """Get the model's coefficients and intercept, supports MultiOutputRegressor"""
         from sklearn.multioutput import MultiOutputRegressor
 
         if isinstance(self.model, MultiOutputRegressor):
-            # 对于MultiOutputRegressor，获取内部估计器的系数
+            # For MultiOutputRegressor, get the coefficients of the internal estimator
             coef = np.array([estimator.coef_ for estimator in self.model.estimators_])
             intercept = np.array([estimator.intercept_ for estimator in self.model.estimators_])
         else:
-            # 对于单输出回归器，直接使用原有属性
+            # For single-output regressors, directly use the existing attributes
             coef = self.model.coef_
             intercept = self.model.intercept_
         return coef, intercept
@@ -84,11 +84,11 @@ class RegressionWorkflowBase(WorkflowBase):
     @dispatch(object, object)
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
         """Fit the model by Scikit-learn framework."""
-        # 支持多列Y：使用MultiOutputRegressor包装单输出回归器
+        # Supports multiple Y columns: use MultiOutputRegressor to wrap single-output regressors
         if y is not None and y.shape[1] > 1:
             from sklearn.multioutput import MultiOutputRegressor
 
-            # 如果模型还没有被包装，则包装它
+            # If the model hasn’t been wrapped yet, wrap it.
             if not isinstance(self.model, MultiOutputRegressor):
                 self.model = MultiOutputRegressor(self.model)
         self.model.fit(X, y)
@@ -101,16 +101,16 @@ class RegressionWorkflowBase(WorkflowBase):
             self.automl = AutoML()
             if self.customized:  # When the model is not built-in in FLAML framwork, use FLAML customization.
                 self.automl.add_learner(learner_name=self.customized_name, learner_class=self.customization)
-            # 支持多列Y：只有当Y是单列时才转换为Series，多列Y保持DataFrame格式
+            # Supports multiple Y columns: only convert to Series when Y is a single column, keep DataFrame format for multiple Y columns
             if y.shape[1] == 1:  # FLAML's data format validation mechanism
                 y = y.squeeze()  # Convert a single dataFrame column into a series
-            # 对于多列Y，FLAML不支持，我们需要使用scikit-learn的MultiOutputRegressor
+            # For multiple Y columns, FLAML does not support, we need to use scikit-learn's MultiOutputRegressor
             elif y.shape[1] > 1:
                 from sklearn.multioutput import MultiOutputRegressor
 
-                # 为多列Y创建MultiOutputRegressor包装器
+                # Create a MultiOutputRegressor wrapper for multiple Y columns
                 self.automl = MultiOutputRegressor(self.automl)
-            self.automl.fit(X_train=X, y_train=y, **self.settings)
+            self.automl.fit(X, y, **self.settings)
         else:
             # When the model is not built-in in FLAML framework, use RAY + FLAML customization.
             self.ray_tune(
@@ -140,10 +140,33 @@ class RegressionWorkflowBase(WorkflowBase):
     @property
     def auto_model(self) -> object:
         """Get AutoML trained model by FLAML framework and RAY framework."""
+        from sklearn.multioutput import MultiOutputRegressor
+
         if self.naming not in RAY_FLAML:
+            if isinstance(self.automl, MultiOutputRegressor):
+                return self.automl
             return self.automl.model.estimator
         else:
             return self.ray_best_model
+
+    @property
+    def auto_best_config(self) -> Dict:
+        """Get the best AutoML hyper-parameter configuration."""
+        from sklearn.multioutput import MultiOutputRegressor
+
+        if self.naming not in RAY_FLAML:
+            if isinstance(self.automl, MultiOutputRegressor):
+                estimators = getattr(self.automl, "estimators_", None)
+                if estimators:
+                    best_configs = [getattr(est, "best_config", None) for est in estimators]
+                    best_configs = [config for config in best_configs if config is not None]
+                    if len(best_configs) == 1:
+                        return best_configs[0]
+                    if best_configs:
+                        return {"best_config_per_output": best_configs}
+                return {}
+            return self.automl.best_config
+        return {}
 
     @property
     def settings(self) -> Dict:

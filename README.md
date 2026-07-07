@@ -2,11 +2,32 @@
 <img src="https://github.com/ZJUEarthData/geochemistrypi/assets/47497750/6f970708-7811-40bb-8172-9b98563c7659" class="center"/>
 </p>
 <p align="center">
-<img src="https://img.shields.io/github/actions/workflow/status/ZJUEarthData/geochemistrypi/geochemistrypi.yml?logo=github">
-<img src="https://img.shields.io/github/license/ZJUEarthData/geochemistrypi">
-<img src="https://img.shields.io/github/v/release/ZJUEarthData/geochemistrypi?include_prereleases">
-<img src="https://static.pepy.tech/personalized-badge/geochemistrypi?period=total&units=international_system&left_color=grey&right_color=green&left_text=Downloads">
-<img src="https://img.shields.io/pypi/pyversions/geochemistrypi">
+  <!-- ===== MODIFIED SECTION START ===== -->
+  <!-- 1. NEW: GitHub Stars Badge with Link -->
+  <a href="https://github.com/ZJUEarthData/Geochemistrypi/stargazers" target="_blank">
+    <img src="https://img.shields.io/github/stars/ZJUEarthData/Geochemistrypi?style=social" alt="GitHub stars">
+  </a>
+  <!-- 2. Build Badge with Link -->
+  <a href="https://github.com/ZJUEarthData/Geochemistrypi/actions/workflows/geochemistrypi.yml" target="_blank">
+    <img src="https://img.shields.io/github/actions/workflow/status/ZJUEarthData/geochemistrypi/geochemistrypi.yml?logo=github" alt="Build status">
+  </a>
+  <!-- 3. License Badge with Link -->
+  <a href="https://github.com/ZJUEarthData/Geochemistrypi/blob/main/LICENSE" target="_blank">
+    <img src="https://img.shields.io/github/license/ZJUEarthData/geochemistrypi" alt="License">
+  </a>
+  <!-- 4. Release Badge with Link -->
+  <a href="https://github.com/ZJUEarthData/Geochemistrypi/releases" target="_blank">
+    <img src="https://img.shields.io/github/v/release/ZJUEarthData/geochemistrypi?include_prereleases" alt="Release">
+  </a>
+  <!-- 5. Downloads Badge with Link -->
+  <a href="https://pepy.tech/project/geochemistrypi" target="_blank">
+    <img src="https://static.pepy.tech/personalized-badge/geochemistrypi?period=total&units=international_system&left_color=grey&right_color=green&left_text=Downloads" alt="Downloads">
+  </a>
+  <!-- 6. Python Version Badge with Link -->
+  <a href="https://pypi.org/project/geochemistrypi/" target="_blank">
+    <img src="https://img.shields.io/pypi/pyversions/geochemistrypi" alt="Python versions">
+  </a>
+  <!-- ===== MODIFIED SECTION END ===== -->
 </p>
 
 ---

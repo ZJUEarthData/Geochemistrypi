@@ -275,9 +275,32 @@ class WorkflowBase(metaclass=ABCMeta):
         local_path : str
             The local path to save the hyper parameters.
         """
+        # 1. Always save the full dictionary to local file (no length limit)
         hyper_parameters_str = json.dumps(hyper_parameters_dict, indent=4)
         save_text(hyper_parameters_str, f"Hyper Parameters - {model_name}", local_path)
-        mlflow.log_params(hyper_parameters_dict)
+
+        # 2. Log to MLflow with length limit handling (500 characters per value)
+        for key, value in hyper_parameters_dict.items():
+            # Convert value to string
+            value_str = str(value)
+
+            # If the value is within the 500-character limit, log normally
+            if len(value_str) <= 500:
+                mlflow.log_param(key, value_str)
+            else:
+                # If the value is too long, try to split it into smaller chunks
+                if isinstance(value, list) and all(isinstance(item, dict) for item in value):
+                    # For best_config_per_output style lists, log each output's config separately
+                    for idx, item in enumerate(value):
+                        item_str = json.dumps(item)
+                        if len(item_str) <= 500:
+                            mlflow.log_param(f"{key}_output_{idx}", item_str)
+                        else:
+                            # If individual item is still too long, truncate
+                            mlflow.log_param(f"{key}_output_{idx}", item_str[:497] + "...")
+                else:
+                    # For other long values, log a reference to the local file
+                    mlflow.log_param(key, f"{key} (saved to local file - length: {len(value_str)})")
 
     @dispatch()
     def model_save(self) -> None:

@@ -330,7 +330,7 @@ class RegressionModelSelection(ModelSelectionBase):
         if self.reg_workflow.ray_best_model is not None:
             self.reg_workflow.save_hyper_parameters(self.reg_workflow.ray_best_model.get_params(), self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
         else:
-            self.reg_workflow.save_hyper_parameters(self.reg_workflow.automl.best_config, self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
+            self.reg_workflow.save_hyper_parameters(self.reg_workflow.auto_best_config, self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
 
         # Common components for every regression algorithm
         self.reg_workflow.common_components(is_automl)
