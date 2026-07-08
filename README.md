@@ -55,10 +55,10 @@
 - [🔄 Quick Update](#-quick-update)
 - [📁 Data Preparation](#-data-preparation)
 - [🏃 Running Examples](#-running-examples)
-- [🗺️ Roadmap](#-roadmap)
-- [🧠 Geochemistry π Mind Map](#-geochemistry--mind-map)
+- [🗺️ Roadmap](#️-roadmap)
+- [🧠 Geochemistry π Mind Map](#-geochemistry-π-mind-map)
 - [👥 Team Info](#-team-info)
-- [🤝 Join Us](#-join-us)
+- [🤝 Join Us](#-join-us-)
 - [📚 In-house Materials](#-in-house-materials)
 - [🎬 In-house Videos](#-in-house-videos)
 - [🙏 Contributors](#-contributors)
@@ -115,6 +115,20 @@ ZhangZhou J\*, He Can\*, Sun Jianhao, Zhao Jianming, Lyu Yang, Wang Shengxin, Zh
 
 📥 Download link: https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2023GC011324
 
+🔗 This project has been **mentioned** in the following articles:
+
+- [Xirui Qiao et al. (2026) - Machine learning thermobarometry: Methods, applications, and a benchmarking protocol - **Lithos**](https://www.sciencedirect.com/science/article/pii/S0024493726002665?via%3Dihub)
+- [Fangbin Liu et al. (2026) - Integrating multi-algorithm machine learning with zircon REE geochemistry to trace source-to-sink provenance in the Mekong River Basin - **Geomorphology**](https://www.sciencedirect.com/science/article/pii/S0169555X26001194?via%3Dihub)
+- [Jia-Min Lin et al. (2026) - An enhanced machine learning plagioclase-liquid hygrometer for magmatic H2O estimation across different tectonic settings - **GEOLOGICAL SOCIETY OF AMERICA BULLETIN**](https://pubs.geoscienceworld.org/gsa/gsabulletin/article/doi/10.1130/B38631.1/729054/An-enhanced-machine-learning-plagioclase-liquid)
+- [Maria-Emanuela Mihailov et al. (2026) - Hydro-Sedimentological Controls on Natural and Anthropogenic Radionuclide Distribution in the Western Black Sea Shelf - **Environments**](https://www.mdpi.com/2076-3298/13/4/184)
+- [Ying-Hui Gao et al. (2025) - A systematic evaluation of data preprocessing and model optimization for machine learning algorithms: Using sphalerite trace element data as an example - **Journal of Asian Earth Sciences**](https://www.sciencedirect.com/science/article/pii/S1367912025002433?via%3Dihub)
+- [Chufan Zhou et al. (2025) - Advances of machine learning in stable isotope geochemistry - **Journal of Analytical Atomic Spectrometry**](https://pubs.rsc.org/ja/article/40/12/3344/313940/Advances-of-machine-learning-in-stable-isotope)
+- [Chun-Tao Liu et al. (2025) - The sub-arc mantle has remained oxidized since the Neoproterozoic oxygenation event - **Nature Communications**](https://www.nature.com/articles/s41467-025-62821-8)
+- [Alessandro Musu et al. (2025) - Orange-Volcanoes: A new open and collaborative platform to perform data-driven investigations and machine learning analyses in petrology and volcanology - **Applied Computing and Geosciences**](https://www.nature.com/articles/s41467-025-62821-8)
+- [G. A. Shevchenko et al. (2025) - Applications of Data Science Methods in Petroleum Geochemistry: Current State - **Moscow University Geology Bulletin**](https://link.springer.com/article/10.3103/S0145875225700413)
+- [Lin Deng et al. (2025) - Automated machine learning for residential property valuation - **ENGINEERING APPLICATIONS OF ARTIFICIAL INTELLIGENCE**](https://webofscience.clarivate.cn/wos/woscc/full-record/WOS:001633342400006)
+- [Maurizio Petrelli et al. (2024) - Machine Learning in Petrology: State-of-the-Art and Future Perspectives - **JOURNAL OF PETROLOGY**](https://watermark02.silverchair.com/egae036.pdf?token=AQECAHi208BE49Ooan9kkhW_Ercy7Dm3ZL_9Cf3qfKAc485ysgAAA4MwggN_BgkqhkiG9w0BBwagggNwMIIDbAIBADCCA2UGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMlThym3WIFGRhP7zlAgEQgIIDNj90NL33udKqpylufPSnv1arXxA3F7eVO0mtrESEe3H9tDv7vlo-i0Mulz2ZQEp1xehwO5HSS8H_qvHW9LYEYOOR_G7iVHLMNWKknioOFjUXtxKmT6-tcpQzlLctcPkgckptOj0v5fK6dPs0elcTAyhlDNyXT-UAwIJfl9U__XLxb1BifS9wJpoX6BijOikdUz51bcF19PPo-Bp9Hg9fzBTUcw4Xevos3O_ZOkKE5esUeAavOWYJ2gLKo2l5oxaqaIEE_kOJejIO5J0zJqfDY7xRRe37FzzerHtwmSRM49yrEO2cSahx1knyQFtQOz2TULhGxrXyR-ez-S16jmq_7MnQ7noeqi4uGJHvmkxt_IiVodGICLicy2v9sOoAUV3IHZTUlG3fhj12Mnx8jLcersUWrMTLDoXmtWjRQl_r9A1NS9eWYPL5Z1Qk5IcJ06nqtCDV1y14x_qwvKej71uNtJ5DDXaeXSWJZ8q9NLkAj_b5MdWR6USJF9sgaJ_bZpow2X8BKqw2WKdMsL4CQkdaQ8r5-0oUi4pBB6owl7WvdUkGLaalchz-OZ7GUllByJZfPV28KG3QseZNwKPPdUgWIMK5DZEU9HujYdc9H05mFd8Zbc7itU0ozy1BC3rN00k05ysmYFk3OPgm9TThQs0mZ4vKYPWiVoMyLHtvIz3cwzPle7WHxbKUaJq1h9m_FzWPvwOWvgMTee9CCq153IFi2T9-cMQ4_nPfZikH7WVZFHcAXTtb_WYzzVLkINo0_rwGNaB44EQ5x_pxOUkH6wDhK-Rsd88S1RWLyC9ycA2ri_5rpfi_Oy3Jv1YCzE3lKNH1vqXIi0Y5js7ZmoIwxLAmbsWWWiGmjLRmpXEhluFfQD8kffsZeOowNGrwnAAZ8XzhOirZButcjB4Jsguxl8t_1GM8mQM7SQCxSkt_CQQJCsQb_NQcScZZtVhapo5s_3P23HMn-HfpyrKkBZ_DK4qfVQt1KqYHdFNpuk2EIxg5EWRfsro4OpXBzefotMnBWQmn1E9PcAs5QWzvZuPTKhV8AUWGvwDL7lmp6SDDdtMwyxH-DBuFnG8r2HLpQxK7mVGheErNPwHhAQ)
+
 ---
 
 ## 🏆 Recognition
@@ -141,6 +155,8 @@ Have an overview of how our software can accelerate your data-mining experiment.
 - MLflow UI user guide - Geochemistry π v0.5.0 [[Bilibili]](https://b23.tv/CW5Rjmo) | [[YouTube]](https://www.youtube.com/watch?v=Yu1nzNeLfRY)
 - Geochemistry π - Download and Run the Beta Version [[Bilibili]](https://www.bilibili.com/video/BV1UM4y1Q7Ju/?spm_id_from=333.999.0.0&vd_source=27944ab3b73a78970c1a52a5dcbb9140) | [[YouTube]](https://www.youtube.com/watch?v=EeVaJ3H7_AU&list=PLy8hNsI55lvh1UHjhVhqNUj3xPdV9sEiM&index=9)
 - Geochemistry π - Installation Guide via EXE File [[Bilibili]](https://www.bilibili.com/video/BV1YmFPe4ESQ/?spm_id_from=333.337.search-card.all.click) | [[YouTube]](https://www.youtube.com/watch?v=LW5Cngcal9Q)
+- Installing Geochemistry π in Pycharm [[Bilibili]](https://www.bilibili.com/video/BV1jr5Z6hEdZ/?spm_id_from=333.1387.collection.video_card.click)
+- Geochemistry π - full range [[Bilibili]](https://space.bilibili.com/616904352/lists/2188618?type=series)
 
 ---
 
@@ -179,6 +195,13 @@ The following screenshot shows the downloads by instruction and launching of our
 <p align="center">
   <img src="https://github.com/user-attachments/assets/4fa0e2e7-20ad-4548-ab6c-ca5f26ba0106" alt="Downloads and Launching on macOS" width="450" />
 </p>
+
+You might run into some issues during installation, please refer to:
+
+- [Geochemistry π - Possible Issues with pip Installation in China - Li Keran]( https://www.bilibili.com/video/BV1Gs4y1d7Cm/)
+- [Geochemistry π - How to Fix pip Installation Failures in China - Li Keran]( https://www.bilibili.com/video/BV1zg4y1j7bx/)
+- [Geochemistry π - Currently the Fastest Install Method in China — Installing from GitHub Using Requirements - Li Keran]( https://www.bilibili.com/video/BV1pM411V7iR/)
+- [Geochemistry π - Command Line Version Operation Demo Video](https://www.bilibili.com/video/BV1Tv4y1C79k/)
 
 ### 2. Download via EXE
 
@@ -256,7 +279,16 @@ The following are seven built-in data sets in our software stored on Google Driv
 
 ---
 
-## 🏃 Running Examples
+## 🏃 Running ExamplesS
+
+- [Data Preprocessing](https://geochemistrypi.readthedocs.io/en/latest/For%20User/Model%20Example/Data_Preprocessing/Data%20Preprocessing.html)
+- [Classfication](https://geochemistrypi.readthedocs.io/en/latest/For%20User/Model%20Example/Classification/classification.html)
+- [Regression](https://geochemistrypi.readthedocs.io/en/latest/For%20User/Model%20Example/Regression/Regression.html)
+- [Clustering](https://geochemistrypi.readthedocs.io/en/latest/For%20User/Model%20Example/Clustering/Clustering.html)
+- [Decomposition](https://geochemistrypi.readthedocs.io/en/latest/For%20User/Model%20Example/Decomposition/decomposition.html)
+- [Anomaly Detection](https://geochemistrypi.readthedocs.io/en/latest/For%20User/Model%20Example/Anomaly_Detection/anomaly_detection.html)
+- [Time Series](https://geochemistrypi.readthedocs.io/en/latest/For%20User/Model%20Example/Time_Series/time_series.html)
+- [Network Analysis](https://geochemistrypi.readthedocs.io/en/latest/For%20User/Model%20Example/Network_Analysis/Network%20Analysis.html)
 
 **How to run:** After successfully downloading, run the instructions as the following examples shown on **command line / Jupyter Notebook / Google Colab**.
 
@@ -440,15 +472,18 @@ The whole package is under construction and the documentation is progressively e
 
 | Name | Role | Contact |
 |------|------|---------|
+| [Prof. ZhangZhou (Zhejiang University, China)](https://person.zju.edu.cn/en/zhangzhou) | Project Manager | zhangzhou333@zju.edu.cn |
 | Can He (Sany, National University of Singapore, Singapore) | Project Lead | sanyhew1097618435@163.com |
 | Jianming Zhao (Jamie, Zhejiang University, China) | Technical Group Head | jmzhao29@gmail.com |
 | Yongkang Chan (Kill-virus, Lanzhou University, China) | Product Group Head | kk1361207571@163.com |
 | Yang Lyu (Daisy, Zhejiang University, China) | Cloud Product Lead | lyuyang1007@zju.edu.cn |
 | Jianhao Sun (Jin, Nanjing University, China) | Project Development Lead | sjh20171502@gmail.com |
 | Chufan Zhou (Yoko, Institute of Geochemistry, Chinese Academy of Sciences; University of Chinese Academy of Sciences, China) | Chemical Modeling Lead | 1176733817@qq.com |
+| Yunzhou Han (China University of Geosciences Beijing, China) | Multiple output functions Lead | 249308332@qq.com |
 
 ### Technical Group
 
+- [Prof. ZhangZhou (Zhejiang University, China)](https://person.zju.edu.cn/en/zhangzhou)
 - Jianhao Sun (Jin, Nanjing University, China)
 - Mengying Ye (Mary, Jilin University, China)
 - Chengtu Li (Trenki, Henan Polytechnic University, Beijing, China)
@@ -458,9 +493,12 @@ The whole package is under construction and the documentation is progressively e
 - Yunzhou Han (China University of Geosciences Beijing, China)
 - Feiyu Shi (China University of Geosciences Beijing, China)
 - Wenxuan Xia (China University of Geosciences Beijing, China)
+- Hanbing Gao (China University of Geosciences, Wuhan, China)
+- Dongmei Shan (Chang'an University, China)
 
 ### Product Group
 
+- [Prof. ZhangZhou (Zhejiang University, China)](https://person.zju.edu.cn/en/zhangzhou)
 - Zhelan Lin (Lan, Fuzhou University, China)
 - ShuYi Li (Communication University Of China, Beijing, China)
 - Junbo Wang (China University of Geosciences, Beijing, China)
@@ -469,7 +507,8 @@ The whole package is under construction and the documentation is progressively e
 - Yating Dong (Yetta, Dongguan University of Technology, China)
 - Bailun Jiang (EPSI / Lille University, France)
 - Chufan Zhou (Yoko, Institute of Geochemistry, Chinese Academy of Sciences; University of Chinese Academy of Sciences, China)
-
+- Lianfeng Zhou (Yangtze University,China)
+- Lingping Zhan (Chang'an University, China)
 ---
 
 ## 🤝 Join Us :)
@@ -498,11 +537,14 @@ The whole package is under construction and the documentation is progressively e
 
 Even if you are not familiar with topics above, but if you are interested in and have plenty of time to do it. That's enough. We have a full-developed training system to help you, as a newbie of data mining or Python developer, learn steps by steps with seniors until you can make a significant contribution to our project.
 
-**More details about the project?** Please refer to:
-- English Page: https://person.zju.edu.cn/en/zhangzhou
-- Chinese Page: https://person.zju.edu.cn/zhangzhou#0
+**🔗 More details about the project and Prof.Zhangzhou?** Please refer to:
+- [**English Page**](https://person.zju.edu.cn/en/zhangzhou)
+- [**Chinese Page**](https://person.zju.edu.cn/zhangzhou#0)
+- [**ResearchGate**](https://www.researchgate.net/profile/J-Zhangzhou-2?ev=hdr_xprf)
+- [**Bilibili**](https://space.bilibili.com/616904352?spm_id_from=333.788.b_765f7570696e666f.2)
+- [![ORCID](https://img.shields.io/badge/ORCID-0000--0003--0107--0548-brightgreen?logo=orcid)](https://orcid.org/0000-0003-0107-0548)
 
-**Do you want to contribute to this open-source program?** Contact with your CV: sanyhew1097618435@163.com
+**Do you want to contribute to this open-source program?** Contact with your CV: zhangzhou333@zju.edu.cn, sanyhew1097618435@163.com
 
 ---
 
@@ -532,6 +574,7 @@ Technical record videos are on Bilibili and Youtube synchronously while other me
 5. [How to use Github-Desktop in conflict resolution - Qiuhao Zhao (Brad)](https://www.youtube.com/watch?v=KT1g5JpuUVI&list=PLy8hNsI55lvh1UHjhVhqNUj3xPdV9sEiM)
 6. [Virtual Environment &amp; Packages On Windows - Jianming Zhao (Jamie)](https://www.youtube.com/watch?v=e4VqSBuNp_o&list=PLy8hNsI55lvh1UHjhVhqNUj3xPdV9sEiM&index=2)
 7. [Git Workflow &amp; Coordinating Synchronization - Jianming Zhao (Jamie)](https://www.bilibili.com/video/BV1Sa4y1f74k?spm_id_from=333.999.0.0&vd_source=9adcf2c5fdeffe1d11c89d441ef598ba)
+8. [Geochemistry π framework analysis - Jianhao Sun (Jin)](https://www.bilibili.com/video/BV1GTUMBhEo6/?spm_id_from=333.1387.collection.video_card.click&vd_source=cb3969d68c6d244384e336ba1783ea14)
 
 ---
 

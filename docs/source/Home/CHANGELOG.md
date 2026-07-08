@@ -10,6 +10,102 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 + MLOps core of continuous training in web interface
 + More new algorithms and new processing techniques
 
+## [0.9.0] - Trailer
+
++ [Chemical Modeling function](https://www.bilibili.com/video/BV1JgmcBHEYy/?spm_id_from=333.1387.collection.video_card.click&vd_source=cb3969d68c6d244384e336ba1783ea14)
++ [Network Analysis](https://geochemistrypi.readthedocs.io/en/latest/For%20User/Model%20Example/Network_Analysis/Network%20Analysis.html)
+
+## [0.8.0] - 2026-07-11
+
+### Added
+
++ **Multi-output Regression**
+  + Support for multiple target variables (multiple X → multiple Y)
+  + Integrated with FLAML AutoML for automatic hyperparameter optimization
+  + Example: simultaneously predict TI(PPM), V(PPM), CR(PPM), NI(PPM) from major elements
+  
++ **Multi-output Classification** (Experimental)
+  + Support for multiple target labels (multiple X → multiple Y)
+  + XGBoost native multi-strategy support
+  + MultiOutputClassifier wrapper for FLAML AutoML
+
++ **OPTICS Clustering Algorithm**
+  + Density-based clustering algorithm (Ordering Points To Identify the Clustering Structure)
+  + No need to pre-specify eps parameter
+  + Detects clusters of varying densities
+  + Suitable for complex geochemical spatial data analysis
+
++ **Automated Clustering Evaluation**
+  + One-click output of clustering results for K=2 to K=10
+  + Automatic Silhouette score calculation for each K value
+  + Silhouette score visualization for each K value
+  + Helps users quickly identify optimal number of clusters
+
++ **Time Series Analysis Module**
+  + Independent time series analysis module
+  + Customizable bin width and bootstrap iterations
+  + Subaerial proportion calculation and visualization
+  + Bootstrap resampling for uncertainty quantification
+  + Successful reproduction of Liu et al. (2024) results
+
++ **New Built-in Dataset**
+  + `Data_Time_Series.xlsx` for time series analysis demonstration
+
++ **Documentation**
+  + Time Series user guide and tutorial
+  + Updated README with project statistics badges
+  + Added Star History chart to README
+
+### Changed
+
++ **Improved Multi-output Support**
+  + Feature selection (GenericUnivariateSelect/SelectKBest) now automatically skipped for multi-output tasks
+  + MLflow parameter logging optimized for multi-output hyperparameters
+  + Visualization functions now support multi-output outputs (each target gets separate plots)
+
++ **Dependency Updates**
+  + Basemap version pinned to 1.3.8 for compatibility
+
++ **Documentation**
+  + README visual enhancements with badges and structured tables
+  + Added Data_Time_Series.xlsx to built-in dataset table
+
+### Fixed
+
++ **Multi-output Regression**
+  + Fixed `fit()` call in `MultiOutputRegressor` (positional arguments X, y instead of keyword arguments X_train, y_train)
+  + Fixed MLflow parameter length limit (500 chars) by splitting long hyperparameters
+  + Fixed LightGBM compatibility issues in multi-output tasks
+
++ **Multi-output Classification**
+  + Fixed `fit()` call in `MultiOutputClassifier` (positional arguments X, y)
+  + Added XGBoost `multi_strategy` parameter support
+  + Fixed label customization for multi-output scenarios
+
++ **General**
+  + Fixed Python 3.9 type annotation compatibility (`dict | None` → `Optional[dict]`)
+  + Fixed `silhouette_score` import in clustering module
+  + Resolved application data null value problem (PR #426)
+  + Fixed SVM and Decision Tree AutoML runtime issues (PR #429)
+  + Resolved GenericUnivariateSelect error in feature selection when data contains incomplete values
+
+
+
+## 🎯 Highlights
+
+| Feature | Description |
+|------|------|
+| **Multi-output Regression** | Predict multiple continuous target variables at the same time |
+| **Multi-output Classification** | Predict multiple class labels at the same time (experimental) |
+| **OPTICS Clustering** | Density-based clustering without needing a preset eps parameter |
+| **Automatic Clustering Evaluation** | One-click output of Silhouette scores for K=2~10 |
+| **Time Series Analysis** | Independent module, supports Bootstrap uncertainty quantification |
+
+### 📌 Version Compatibility
+
+- **Python**: 3.8, 3.9, 3.10
+- **macOS**: ✅ Tested and works
+- **Windows**: ✅ Tested and works
 
 ## [0.7.0] - 2025-01-27
 
@@ -210,13 +306,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 
 
-[ unreleased ]: https://github.com/ZJUEarthData/geochemistrypi
-[ 0.7.0 ]: https://github.com/ZJUEarthData/Geochemistrypi/compare/v0.6.1...v0.7.0
-[ 0.6.1 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.6.0...v0.6.1
-[ 0.6.0 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.5.0...v0.6.0
-[ 0.5.0 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.4.0...v0.5.0
-[ 0.4.0 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.3.0...v0.4.0
-[ 0.3.0 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.2.1...v0.3.0
-[ 0.2.1 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.2.0...v0.2.1
-[ 0.2.0 ]: https://github.com/ZJUEarthData/geochemistrypi/compare/v0.1.0...v0.2.0
-[ 0.1.0 ]: https://github.com/ZJUEarthData/geochemistrypi/releases/tag/v0.1.0
++ [ unreleased ](https://github.com/ZJUEarthData/geochemistrypi)
++ [ 0.8.0 ](https://github.com/ZJUEarthData/Geochemistrypi/compare/v0.7.0...v0.8.0)
++ [ 0.7.0 ](https://github.com/ZJUEarthData/Geochemistrypi/compare/v0.6.1...v0.7.0)
++ [ 0.6.1 ](https://github.com/ZJUEarthData/geochemistrypi/compare/v0.6.0...v0.6.1)
++ [ 0.6.0 ](https://github.com/ZJUEarthData/geochemistrypi/compare/v0.5.0...v0.6.0)
++ [ 0.5.0 ](https://github.com/ZJUEarthData/geochemistrypi/compare/v0.4.0...v0.5.0)
++ [ 0.4.0 ](https://github.com/ZJUEarthData/geochemistrypi/compare/v0.3.0...v0.4.0)
++ [ 0.3.0 ](https://github.com/ZJUEarthData/geochemistrypi/compare/v0.2.1...v0.3.0)
++ [ 0.2.1 ](https://github.com/ZJUEarthData/geochemistrypi/compare/v0.2.0...v0.2.1)
++ [ 0.2.0 ](https://github.com/ZJUEarthData/geochemistrypi/compare/v0.1.0...v0.2.0)
++ [ 0.1.0 ](https://github.com/ZJUEarthData/geochemistrypi/releases/tag/v0.1.0)
