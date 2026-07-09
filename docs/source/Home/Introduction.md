@@ -512,6 +512,7 @@ The whole package is under construction and the documentation is progressively e
 - Chufan Zhou (Yoko, Institute of Geochemistry, Chinese Academy of Sciences; University of Chinese Academy of Sciences, China)
 - Lianfeng Zhou (Yangtze University,China)
 - Lingping Zhan (Chang'an University, China)
+- Zixuan Zhu (Institute of Geochemistry, Chinese Academy of Sciences; University of Chinese Academy of Sciences, China)
 ---
 
 ## 🤝 Join Us :)
