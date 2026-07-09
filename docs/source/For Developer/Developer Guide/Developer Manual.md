@@ -163,7 +163,7 @@ The following are four built-in data set in our software stored on Google Drive,
 
 + [Data_Decomposition.xlsx (International - Google drive)](https://docs.google.com/spreadsheets/d/1kix82qj5--vhnm8-KhuUBH9dqYH6zcY8/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true)
 + [Data_Decomposition.xlsx (China - Tencent Docs)](https://docs.qq.com/document/DQ29oZ0lhUGtZUmdN?&u=6868f96d4a384b309036e04e637e367a)
-+ [Data_AnomalyDetection.xlsx (International - Google drive)](https://docs.google.com/spreadsheets/d/1NqTQZCkv74Sn_iOJOKRc-QnJzpaWmnzC_lET_0ZreiQ/edit?usp=sharing) 
++ [Data_AnomalyDetection.xlsx (International - Google drive)](https://docs.google.com/spreadsheets/d/1NqTQZCkv74Sn_iOJOKRc-QnJzpaWmnzC_lET_0ZreiQ/edit?usp=sharing)
 + [Data_AnomalyDetection.xlsx (China - Tencent Docs)](https://docs.qq.com/document/DQ2hqQ2N2ZGlOUWlT)
 + [Data_Time_Series.xlsx (China - Tencent Docs)](https://docs.qq.com/sheet/DTGJURWdBeHd0TFhR?u=6868f96d4a384b309036e04e637e367a&tab=000001)
 
@@ -479,4 +479,3 @@ However, considering the tradeoff of time and cost, it is likely that we are una
 + Can He (Email: sanyhew1097618435@163.com) with the title as "Advice: Geochemistry Pi".
 
 + ZJU Earth Data: zhangzhou333@zju.edu.cn
-

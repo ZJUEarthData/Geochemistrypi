@@ -132,8 +132,8 @@ Next, you will be asked to select the data range for analysis:
 ```python
 Select the data range you want to process.
 Input format:
-Format 1: "[**, **]; **; [**, **]", such as "[1, 3]; 7; [10, 13]" --> you want to deal with the columns 1, 2, 3, 7, 10, 11, 12, 13 
-Format 2: "**", such as "7" --> you want to deal with the columns 7 
+Format 1: "[**, **]; **; [**, **]", such as "[1, 3]; 7; [10, 13]" --> you want to deal with the columns 1, 2, 3, 7, 10, 11, 12, 13
+Format 2: "**", such as "7" --> you want to deal with the columns 7
 @input: [6,14]
 ```
 
@@ -184,8 +184,8 @@ The software will then display basic statistical information and generate correl
 <class 'pandas.core.frame.DataFrame'>
 RangeIndex: 22640 entries, 0 to 22639
 Data columns (total 9 columns):
- #   Column                                     Non-Null Count  Dtype  
----  ------                                     --------------  -----  
+ #   Column                                     Non-Null Count  Dtype
+---  ------                                     --------------  -----
  0   LATITUDE                                   22640 non-null  float64
  1   LONGITUDE                                  22640 non-null  float64
  2   MIN_AGE                                    22623 non-null  float64
@@ -258,7 +258,7 @@ Do you want to deal with the missing values?
 
 ```python
 -*-*- Strategy for Missing Values -*-*-
-1 - Drop Rows with Missing Values 
+1 - Drop Rows with Missing Values
 2 - Impute Missing Values
 Notice: Drop the rows with missing values may lead to a significant loss of data if too many features are chosen.
 Which strategy do you want to apply?
@@ -384,7 +384,7 @@ After configuring the parameters, the software will compute the time series anal
 Using bin width = 100.0 Ma, bootstrap iterations = 100, fit = No
 Start computing time series...
 Time series outputs saved under C:\Users\1\Desktop\geopi_output\time series\3\artifacts
-Saved files: C:\Users\1\Desktop\geopi_output\time series\3\artifacts\Subaerial_proportion_100Ma_boot100.pdf and C:\Users\1\Desktop\geopi_output\time 
+Saved files: C:\Users\1\Desktop\geopi_output\time series\3\artifacts\Subaerial_proportion_100Ma_boot100.pdf and C:\Users\1\Desktop\geopi_output\time
 series\3\artifacts\Subaerial_proportion_100Ma_boot100.csv
 (Press Enter key to move forward)
 ```
