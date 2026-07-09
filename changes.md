@@ -65,16 +65,16 @@ CUSTOMIZE_LABEL_STRATEGY = [
 
 这四种方式分别对应：
 
-1. **Keep Original Labels and Encode**  
+1. **Keep Original Labels and Encode**
    保留原始标签含义，只是把它们编码成模型可训练的整数。
 
-2. **Map Existing Labels to Custom Labels**  
+2. **Map Existing Labels to Custom Labels**
    用户手动把已有标签映射成新标签，比如把多个岩性类别合并成更大的类别。
 
-3. **Numeric Interval Bins**  
+3. **Numeric Interval Bins**
    对数值型 Y 按区间分箱，例如把 SiO2 按边界分成 low、middle、high。
 
-4. **Quantile Bins**  
+4. **Quantile Bins**
    对数值型 Y 按分位数自动分箱，例如用户输入 3，就自动分成 3 类。
 
 这样 CLI 里用户可以很清楚地知道自己是在用哪种方式定义分类标签。
@@ -362,7 +362,7 @@ save_skipped_binary_plot_notice(...)
 
 ## 14. 保存 decoded prediction
 
-修改文件：`geochemistrypi/data_mining/process/classify.py`  
+修改文件：`geochemistrypi/data_mining/process/classify.py`
 新增文件：`geochemistrypi/data_mining/model/func/algo_classification/_traceability.py`
 
 模型训练时实际输出的是整数编码，比如：
@@ -392,7 +392,7 @@ Y Test Predict Decoded
 
 ## 15. 保存 train/test 类别数量和指标配置
 
-修改文件：`geochemistrypi/data_mining/process/classify.py`  
+修改文件：`geochemistrypi/data_mining/process/classify.py`
 新增文件：`geochemistrypi/data_mining/model/func/algo_classification/_traceability.py`
 
 训练结束后会保存：

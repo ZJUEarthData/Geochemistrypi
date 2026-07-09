@@ -12,9 +12,9 @@ from rich.prompt import Confirm, Prompt
 from .constants import (
     ANOMALYDETECTION_MODELS,
     BUILT_IN_DATASET_PATH,
+    CALCULATION_METHOD_OPTION,
     CLASSIFICATION_MODELS,
     CLASSIFICATION_MODELS_WITH_MISSING_VALUES,
-    CALCULATION_METHOD_OPTION,
     CLUSTERING_MODELS,
     CLUSTERING_MODELS_WITH_MISSING_VALUES,
     DECOMPOSITION_MODELS,
@@ -60,19 +60,7 @@ from .process.cluster import ClusteringModelSelection
 from .process.decompose import DecompositionModelSelection
 from .process.detect import AnomalyDetectionModelSelection
 from .process.regress import RegressionModelSelection
-from .utils.base import (
-    check_package,
-    clear_output,
-    copy_files,
-    copy_files_from_source_dir_to_dest_dir,
-    create_geopi_output_dir,
-    get_os,
-    install_package,
-    list_excel_files,
-    log,
-    save_data,
-    show_warning,
-)
+from .utils.base import clear_output, copy_files, copy_files_from_source_dir_to_dest_dir, create_geopi_output_dir, get_os, list_excel_files, log, save_data, show_warning
 from .utils.mlflow_utils import retrieve_previous_experiment_id
 
 
@@ -211,22 +199,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     with console.status("[bold green]Denpendency Checking...[/bold green]", spinner="dots"):
         sleep(0.75)
     my_os = get_os()
-    # Check the dependency of the basemap or cartopy to project the data on the world map later.
-    if my_os == "Windows" or my_os == "Linux":
-        if not check_package("basemap"):
-            print("[bold red]Downloading Basemap...[/bold red]")
-            install_package("basemap")
-            print("[bold green]Successfully downloading![/bold green]")
-            print("[bold green]Download happens only once![/bold green]")
-            clear_output()
-    elif my_os == "macOS":
-        if not check_package("cartopy"):
-            print("[bold red]Downloading Cartopy...[/bold red]")
-            install_package("cartopy")
-            print("[bold green]Successfully downloading![/bold green]")
-            print("[bold green]Downloading happens only once![/bold green]")
-            clear_output()
-    else:
+    if my_os not in ["Windows", "Linux", "macOS"]:
         print("[bold red]Unsupported Operating System![/bold red]")
         print("[bold red]Please use Windows, Linux or macOS.[/bold red]")
         exit(1)

@@ -94,10 +94,16 @@ def plot_confusion_matrix(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, tr
     cm : np.ndarray
         The confusion matrix.
     """
-    cm = confusion_matrix(y_test, y_test_predict)
+    y_test_series = pd.Series(np.ravel(y_test))
+    y_test_predict_series = pd.Series(np.ravel(y_test_predict))
+    labels = getattr(trained_model, "classes_", None)
+    if labels is None:
+        labels = pd.unique(pd.concat([y_test_series, y_test_predict_series], ignore_index=True))
+    labels = list(labels)
+    cm = confusion_matrix(y_test_series, y_test_predict_series, labels=labels)
     print(cm)
     plt.figure()
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=trained_model.classes_)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels)
     disp.plot()
     return cm
 

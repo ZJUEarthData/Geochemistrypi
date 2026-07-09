@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-from functools import wraps
 import inspect
 import os
 
 # import platform
 import subprocess
 import threading
+from functools import wraps
 
 import click
 import typer

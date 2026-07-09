@@ -1,3 +1,4 @@
+import math
 import os
 import sys
 import time
@@ -344,6 +345,13 @@ def data_split(X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], names: pd.Dat
     stratify_values = None
     if stratify is not None:
         stratify_values = stratify.squeeze() if isinstance(stratify, (pd.DataFrame, pd.Series)) else stratify
+        class_count = int(pd.Series(stratify_values).nunique())
+        if class_count > 0:
+            requested_test_samples = math.ceil(len(X) * test_size) if isinstance(test_size, float) else int(test_size)
+            min_test_samples = max(requested_test_samples, class_count)
+            max_test_samples = len(X) - class_count
+            if requested_test_samples < class_count <= max_test_samples:
+                test_size = min_test_samples
     X_train, X_test, y_train, y_test, name_train, name_test = train_test_split(
         X,
         y,

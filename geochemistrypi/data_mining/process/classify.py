@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 import os
+from typing import Any, Dict, Optional
+
 import pandas as pd
 from multipledispatch import dispatch
+
 from ..constants import MLFLOW_ARTIFACT_DATA_PATH
 from ..model.classification import (
     AdaBoostClassification,
@@ -17,11 +20,7 @@ from ..model.classification import (
     SVMClassification,
     XGBoostClassification,
 )
-from ..model.func.algo_classification._traceability import (
-    save_class_counts,
-    save_decoded_predictions,
-    save_target_transform_configuration,
-)
+from ..model.func.algo_classification._traceability import save_class_counts, save_decoded_predictions, save_target_transform_configuration
 from ._base import ModelSelectionBase
 
 
@@ -31,10 +30,10 @@ class ClassificationModelSelection(ModelSelectionBase):
     def __init__(
         self,
         model_name: str,
-        transformer_config: dict | None = None,
-        label_config: dict | None = None,
+        transformer_config: Optional[Dict[str, Any]] = None,
+        label_config: Optional[Dict[str, Any]] = None,
         labels_already_customized: bool = False,
-        metric_average: str | None = None,
+        metric_average: Optional[str] = None,
     ) -> None:
         self.model_name = model_name
         self.clf_workflow = ClassificationWorkflowBase()
@@ -72,8 +71,12 @@ class ClassificationModelSelection(ModelSelectionBase):
             label_mapping = self.transformer_config.get("label_mapping")
             interactive = self.transformer_config.get("interactive", False)
             result = self.clf_workflow.customize_label(
-                y, y_train, y_test,
-                name_all, name_train, name_test,
+                y,
+                y_train,
+                y_test,
+                name_all,
+                name_train,
+                name_test,
                 local_path,
                 mlflow_path,
                 label_mapping=label_mapping,
@@ -82,7 +85,6 @@ class ClassificationModelSelection(ModelSelectionBase):
             )
             y, y_train, y_test, self.label_config = result
 
-        sample_balance_config = {}
         if self.model_name == "Support Vector Machine":
             hyper_parameters = SVMClassification.manual_hyper_parameters()
             self.clf_workflow = SVMClassification(
@@ -212,7 +214,7 @@ class ClassificationModelSelection(ModelSelectionBase):
         y_train_predict = y_train_predict.dropna()
         y_train_predict = y_train_predict.reset_index(drop=True)
         self.clf_workflow.data_upload(y_train_predict=y_train_predict)
-        
+
         y_test_predict = self.clf_workflow.predict(X_test)
         y_test_predict = self.clf_workflow.np2pd(y_test_predict, y_test.columns)
         y_test_predict = y_test_predict.dropna()
@@ -222,7 +224,7 @@ class ClassificationModelSelection(ModelSelectionBase):
         save_param_path = os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH") or "./output"
         os.makedirs(save_param_path, exist_ok=True)
         self.clf_workflow.save_hyper_parameters(hyper_parameters, self.model_name, save_param_path)
-        
+
         save_target_transform_configuration(self.label_config, self.metric_average, local_path, mlflow_path)
         save_class_counts(y_train, y_test, local_path, mlflow_path)
         self.clf_workflow.common_components()
@@ -260,8 +262,12 @@ class ClassificationModelSelection(ModelSelectionBase):
             label_mapping = self.transformer_config.get("label_mapping")
             interactive = self.transformer_config.get("interactive", False)
             result = self.clf_workflow.customize_label(
-                y, y_train, y_test,
-                name_all, name_train, name_test,
+                y,
+                y_train,
+                y_test,
+                name_all,
+                name_train,
+                name_test,
                 local_path,
                 mlflow_path,
                 label_mapping=label_mapping,
@@ -269,7 +275,6 @@ class ClassificationModelSelection(ModelSelectionBase):
                 return_config=True,
             )
             y, y_train, y_test, self.label_config = result
-        sample_balance_config = {}
         if self.model_name == "Support Vector Machine":
             self.clf_workflow = SVMClassification()
         elif self.model_name == "Decision Tree":
@@ -298,13 +303,13 @@ class ClassificationModelSelection(ModelSelectionBase):
 
         # Use Scikit-learn style API to process input data
         self.clf_workflow.fit(X_train, y_train, is_automl)
-        
+
         y_train_predict = self.clf_workflow.predict(X_train, is_automl)
         y_train_predict = self.clf_workflow.np2pd(y_train_predict, y_train.columns)
         y_train_predict = y_train_predict.dropna()
         y_train_predict = y_train_predict.reset_index(drop=True)
         self.clf_workflow.data_upload(y_train_predict=y_train_predict)
-        
+
         y_test_predict = self.clf_workflow.predict(X_test, is_automl)
         y_test_predict = self.clf_workflow.np2pd(y_test_predict, y_test.columns)
         y_test_predict = y_test_predict.dropna()

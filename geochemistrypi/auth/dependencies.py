@@ -1,8 +1,8 @@
-from database import get_db
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
+from ..database import get_db
 from .schemas import User
 from .service import get_user_by_email
 from .utils import decode_access_token

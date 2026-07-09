@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import json
-import os
 from typing import Optional
 
 import pandas as pd

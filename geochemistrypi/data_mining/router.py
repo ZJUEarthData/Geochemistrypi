@@ -1,28 +1,55 @@
-# geochemistrypi/data_mining/router.py
-import os
 import io
-from typing import List
+import math
+import os
+from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sklearn.model_selection import train_test_split
 
-from auth.dependencies import get_current_active_user
-from database import get_db
-
-from .service import (
-    read_all_datasets,
-    read_basic_datasets_info,
-    read_dataset,
-    remove_dataset,
-    upload_dataset,
-)
-from .schemas import Dataset as DatasetOut, BasicDatasetInfo, ClassificationRunRequest
+from ..auth.dependencies import get_current_active_user
+from ..database import get_db
+from .model.classification import ClassificationWorkflowBase
+from .process.classify import ClassificationModelSelection
+from .schemas import BasicDatasetInfo, ClassificationRunRequest
+from .schemas import Dataset as DatasetOut
+from .service import read_all_datasets, read_basic_datasets_info, read_dataset, remove_dataset, upload_dataset
 from .sql_models import Dataset as DatasetModel
-from .process.classify import ClassificationModelSelection 
 
 CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 FAKE_DATABASE_DIR = os.path.join(CURRENT_DIR, "fake_database")
+DEFAULT_CLASSIFICATION_TEST_RATIO = 0.2
+
+
+def _resolve_api_metric_average(metric_average: Optional[str], class_count: int) -> Optional[str]:
+    if metric_average is not None:
+        return metric_average
+    if class_count > 2:
+        return "weighted"
+    return None
+
+
+def _encode_target_for_split(y: pd.DataFrame, label_mapping: Optional[Dict[str, Any]]) -> Tuple[pd.Series, int]:
+    if label_mapping:
+        y_encoded, label_config = ClassificationWorkflowBase.customize_label(y, label_mapping=label_mapping, interactive=False, return_config=True)
+        return y_encoded.iloc[:, 0], int(label_config["num_classes"])
+    return y.iloc[:, 0], int(y.iloc[:, 0].nunique())
+
+
+def _build_classification_split_parameters(y: pd.DataFrame, label_mapping: Optional[Dict[str, Any]] = None, default_test_ratio: float = DEFAULT_CLASSIFICATION_TEST_RATIO) -> Dict[str, Any]:
+    stratify_source, class_count = _encode_target_for_split(y, label_mapping)
+    class_counts = stratify_source.value_counts()
+    if class_counts.empty or class_counts.min() < 2:
+        return {"stratify_target": None, "test_size": default_test_ratio, "class_count": class_count}
+
+    n_samples = len(stratify_source)
+    min_test_samples = max(math.ceil(n_samples * default_test_ratio), class_count)
+    max_test_samples = n_samples - class_count
+    test_size = min(min_test_samples, max_test_samples)
+    if test_size < class_count:
+        return {"stratify_target": None, "test_size": default_test_ratio, "class_count": class_count}
+    return {"stratify_target": stratify_source, "test_size": test_size, "class_count": class_count}
+
 
 router = APIRouter(
     prefix="/data-mining",
@@ -72,50 +99,59 @@ async def post_dataset(
 async def run_classification_pipeline(
     request: ClassificationRunRequest,
     current_user=Depends(get_current_active_user),
-    db=Depends(get_db)
+    db=Depends(get_db),
 ):
     db_dataset = read_dataset(db=db, user_id=current_user.id, dataset_id=request.dataset_id)
     if not db_dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
-        
+
     try:
         df = pd.read_json(io.StringIO(db_dataset.json_data), orient="records")
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to load dataset data: {e}")
-        
+
     if request.target_column not in df.columns:
         raise HTTPException(status_code=400, detail=f"Target column '{request.target_column}' not found in dataset")
-        
+
     X = df.drop(columns=[request.target_column])
     y = df[[request.target_column]]
-    
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    
+
+    label_mapping = request.label_mapping.dict(exclude_none=True) if request.label_mapping else None
+    try:
+        split_parameters = _build_classification_split_parameters(y, label_mapping=label_mapping)
+        X_train, X_test, y_train, y_test = train_test_split(
+            X,
+            y,
+            test_size=split_parameters["test_size"],
+            random_state=42,
+            stratify=split_parameters["stratify_target"],
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Failed to split classification data: {e}")
+
     name_all = pd.Series(df.index, name="Sample ID")
     name_train = pd.Series(X_train.index, name="Sample ID")
     name_test = pd.Series(X_test.index, name="Sample ID")
-    
+
     transformer_config = {
         "interactive": False,
-        "label_mapping": request.label_mapping.dict(exclude_none=True) if request.label_mapping else None
+        "label_mapping": label_mapping,
     }
-    
+    metric_average = _resolve_api_metric_average(request.metric_average, split_parameters["class_count"])
+
     model_selector = ClassificationModelSelection(
         model_name=request.model_name,
-        transformer_config=transformer_config
+        transformer_config=transformer_config,
+        metric_average=metric_average,
     )
-    
+
     try:
-        model_selector.activate(
-            X, y, 
-            X_train, X_test, 
-            y_train, y_test, 
-            name_train, name_test, name_all
-        )
+        model_selector.activate(X, y, X_train, X_test, y_train, y_test, name_train, name_test, name_all)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Pipeline execution failed: {str(e)}")
-        
+
     return {"message": "Classification pipeline executed successfully!", "status": "success"}
+
 
 @router.delete("/delete-dataset", response_model=DatasetOut)
 async def delete_dataset(
@@ -156,6 +192,8 @@ async def get_dataset(
     if not obj:
         raise HTTPException(status_code=404, detail="Dataset not found")
     return obj
+
+
 @router.get("/get-all-dataset-open", response_model=List[DatasetOut], tags=["data-mining"])
 def get_all_datasets_open(db=Depends(get_db)):
     return db.query(DatasetModel).order_by(DatasetModel.sequence).all()

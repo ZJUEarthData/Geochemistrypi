@@ -2,6 +2,7 @@
 import json
 import os
 from typing import Any, Callable, Dict, List, Literal, Optional, Sequence, Tuple, Union
+
 import mlflow
 import numpy as np
 import pandas as pd
@@ -23,17 +24,7 @@ from ..plot.statistic_plot import basic_statistic
 from ..utils.base import clear_output, save_data, save_data_without_data_identifier, save_fig, save_text
 from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
 from .func.algo_classification._adaboost import adaboost_manual_hyper_parameters
-from .func.algo_classification._common import (
-    cross_validation,
-    plot_2d_decision_boundary,
-    plot_confusion_matrix,
-    plot_precision_recall,
-    plot_precision_recall_threshold,
-    plot_ROC,
-    resampler,
-    reset_label,
-    score,
-)
+from .func.algo_classification._common import cross_validation, plot_2d_decision_boundary, plot_confusion_matrix, plot_precision_recall, plot_precision_recall_threshold, plot_ROC, resampler, score
 from .func.algo_classification._decision_tree import decision_tree_manual_hyper_parameters
 from .func.algo_classification._enum import (
     AdaBoostSpecialFunction,
@@ -55,8 +46,8 @@ from .func.algo_classification._multi_layer_perceptron import multi_layer_percep
 from .func.algo_classification._rf import random_forest_manual_hyper_parameters
 from .func.algo_classification._sgd_classification import sgd_classificaiton_manual_hyper_parameters
 from .func.algo_classification._svc import svc_manual_hyper_parameters
-from .func.algo_classification._xgboost import xgboost_manual_hyper_parameters
 from .func.algo_classification._traceability import save_metric_configuration, save_skipped_binary_plot_notice
+from .func.algo_classification._xgboost import xgboost_manual_hyper_parameters
 
 
 class ClassificationWorkflowBase(WorkflowBase):
@@ -172,10 +163,34 @@ class ClassificationWorkflowBase(WorkflowBase):
         print(f"-----* {graph_name} *-----")
         data = plot_confusion_matrix(y_test, y_test_predict, trained_model)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
-        index = [f"true_{i}" for i in range(int(y_test.nunique().values))]
-        columns = [f"pred_{i}" for i in range(int(y_test.nunique().values))]
+        labels = getattr(trained_model, "classes_", None)
+        if labels is None or len(labels) != data.shape[0]:
+            labels = pd.unique(pd.concat([pd.Series(np.ravel(y_test)), pd.Series(np.ravel(y_test_predict))], ignore_index=True))
+        if len(labels) != data.shape[0]:
+            labels = range(data.shape[0])
+        index = [f"true_{label}" for label in labels]
+        columns = [f"pred_{label}" for label in labels]
         data = pd.DataFrame(data, columns=columns, index=index)
         save_data(data, name_column, f"{graph_name} - {algorithm_name}", local_path, mlflow_path, True)
+
+    @staticmethod
+    def _count_unique_labels(y_values: Optional[pd.DataFrame]) -> Optional[int]:
+        if y_values is None:
+            return None
+        labels = pd.Series(np.ravel(y_values)).dropna()
+        if labels.empty:
+            return None
+        return int(labels.nunique())
+
+    @classmethod
+    def _get_total_class_count(cls, label_config: Optional[Dict[str, Any]] = None) -> int:
+        if label_config and label_config.get("num_classes") is not None:
+            return int(label_config["num_classes"])
+        for y_values in (getattr(cls, "y", None), getattr(cls, "y_train", None), getattr(cls, "y_test", None)):
+            class_count = cls._count_unique_labels(y_values)
+            if class_count is not None:
+                return class_count
+        return 0
 
     @staticmethod
     def _plot_precision_recall(X_test: pd.DataFrame, y_test: pd.DataFrame, name_column: str, trained_model: object, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
@@ -335,10 +350,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             if not local_path:
                 return
             os.makedirs(local_path, exist_ok=True)
-            mapping_rows = [
-                {"custom_label": label, "encoded_label": code}
-                for label, code in config["custom_label_to_code"].items()
-            ]
+            mapping_rows = [{"custom_label": label, "encoded_label": code} for label, code in config["custom_label_to_code"].items()]
             mapping_df = pd.DataFrame(mapping_rows)
             counts_df = pd.DataFrame(list(config["class_counts"].items()), columns=["custom_label", "count"])
             save_data(y_original, name_column1, "Y Raw Before Customizing Label", local_path, mlflow_path)
@@ -484,7 +496,6 @@ class ClassificationWorkflowBase(WorkflowBase):
             return y_encoded, config
         return y_encoded
 
-
     @dispatch()
     def common_components(self) -> None:
         """Invoke all common application functions for classification algorithms by Scikit-learn framework."""
@@ -527,7 +538,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
-        class_count = int(ClassificationWorkflowBase.y_test.nunique().values)
+        class_count = self._get_total_class_count(getattr(self, "label_config", None))
         if class_count == 2:
             self._plot_precision_recall(
                 X_test=ClassificationWorkflowBase.X_test,
@@ -628,7 +639,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
-        class_count = int(ClassificationWorkflowBase.y_test.nunique().values)
+        class_count = self._get_total_class_count(getattr(self, "label_config", None))
         if class_count == 2:
             self._plot_precision_recall(
                 X_test=ClassificationWorkflowBase.X_test,
@@ -880,7 +891,7 @@ class SVMClassification(ClassificationWorkflowBase):
         from sklearn.svm import SVC
 
         class MySVMClassification(SKLearnEstimator):
-            def __init__(self, task="binary", n_jobs=None, **config):
+            def __init__(self, task="classification", n_jobs=None, **config):
                 super().__init__(task, **config)
                 if task in CLASSIFICATION:
                     self.estimator_class = SVC
@@ -1132,7 +1143,7 @@ class DecisionTreeClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         from sklearn.tree import DecisionTreeClassifier
 
         class MyDTClassification(SKLearnEstimator):
-            def __init__(self, task="binary", n_jobs=None, **config):
+            def __init__(self, task="classification", n_jobs=None, **config):
                 super().__init__(task, **config)
                 if task in CLASSIFICATION:
                     self.estimator_class = DecisionTreeClassifier
@@ -3880,7 +3891,7 @@ class SGDClassification(LinearWorkflowMixin, ClassificationWorkflowBase):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
         self._show_formula(
-            coef=[self.model.coef_],
+            coef=self.model.coef_,
             intercept=self.model.intercept_,
             features_name=SGDClassification.X_train.columns,
             regression_classification="Classification",

@@ -1,4 +1,5 @@
 import os
+
 import uvicorn
 from auth import router as auth_router
 from auth import sql_models as auth_models
@@ -27,9 +28,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/", tags=["root"])
 async def read_root():
     return {"message": "Welcome to Geochemistry Pi!"}
+
 
 def custom_openapi():
     if app.openapi_schema:
@@ -42,6 +45,7 @@ def custom_openapi():
     )
     app.openapi_schema = openapi_schema
     return app.openapi_schema
+
 
 app.openapi = custom_openapi
 
