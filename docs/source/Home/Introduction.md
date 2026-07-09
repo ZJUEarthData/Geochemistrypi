@@ -282,7 +282,7 @@ The following are seven built-in data sets in our software stored on Google Driv
 
 ---
 
-## 🏃 Running ExamplesS
+## 🏃 Running Examples
 
 - [Data Preprocessing](https://geochemistrypi.readthedocs.io/en/latest/For%20User/Model%20Example/Data_Preprocessing/Data%20Preprocessing.html)
 - [Classfication](https://geochemistrypi.readthedocs.io/en/latest/For%20User/Model%20Example/Classification/classification.html)

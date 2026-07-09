@@ -105,6 +105,9 @@ After pressing the Enter key, the program propts the following options to let yo
 
 4 - Data For Dimensional Reduction
 
+5 - Data For Anomaly Detection
+
+6 - Data For Time Series
 (User) ➜ @Number: 2
 
 ```
@@ -188,6 +191,10 @@ Then, we choose *_2 - Data For Classification_* as our ***\*Built-in Application
 3 - Data For Clustering
 
 4 - Data For Dimensional Reduction
+
+5 - Data For Anomaly Detection
+
+6 - Data For Time Series
 
 (User) ➜ @Number: 2
 
@@ -905,6 +912,9 @@ We select **2 - Classification** as our model:
 
 4 - Dimensional Reduction
 
+5 - Anomaly Detection
+
+6 - Time Series
 (Model) ➜ @Number: 2
 
 (Press Enter key to move forward.)
