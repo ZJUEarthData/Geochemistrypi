@@ -55,11 +55,11 @@
 						const option = step.options[input];
 						if (option) {
 							option.message.forEach(line => terminal.writeln(line));
-							
+
 							if (option.nextStep !== null) {
 								currentStep = option.nextStep - 1;
 								displayStep(currentStep);
-								console.log(`Current step: ${currentStep}, Next step: ${step.nextStep}`); 
+								console.log(`Current step: ${currentStep}, Next step: ${step.nextStep}`);
 							} else {
 								terminal.writeln("Workflow complete.");
 							}
@@ -70,9 +70,9 @@
 					} else if (step.validate) {
 						if (validateInput(input, step.validate)) {
 							terminal.writeln(`\n${step.message}`);
-							
-							console.log(`Current step: ${currentStep}, Next step: ${step.nextStep}`); 
-							
+
+							console.log(`Current step: ${currentStep}, Next step: ${step.nextStep}`);
+
 							currentStep = step.nextStep - 1;
 							displayStep(currentStep);
 						} else {
