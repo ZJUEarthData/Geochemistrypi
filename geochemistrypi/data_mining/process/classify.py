@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+from typing import Any, Dict, Optional
 
 import pandas as pd
 from multipledispatch import dispatch
@@ -19,16 +20,31 @@ from ..model.classification import (
     SVMClassification,
     XGBoostClassification,
 )
+from ..model.func.algo_classification._traceability import save_class_counts, save_decoded_predictions, save_target_transform_configuration
 from ._base import ModelSelectionBase
 
 
 class ClassificationModelSelection(ModelSelectionBase):
     """Simulate the normal way of training classification algorithms."""
 
-    def __init__(self, model_name: str) -> None:
+    def __init__(
+        self,
+        model_name: str,
+        transformer_config: Optional[Dict[str, Any]] = None,
+        label_config: Optional[Dict[str, Any]] = None,
+        labels_already_customized: bool = False,
+        metric_average: Optional[str] = None,
+    ) -> None:
         self.model_name = model_name
         self.clf_workflow = ClassificationWorkflowBase()
-        self.transformer_config = {}
+        self.transformer_config = transformer_config or {}
+        self.label_config = label_config
+        self.labels_already_customized = labels_already_customized
+        self.metric_average = metric_average
+
+    def _attach_label_config(self) -> None:
+        self.clf_workflow.label_config = self.label_config
+        self.clf_workflow.metric_average = self.metric_average
 
     @dispatch(object, object, object, object, object, object, object, object, object)
     def activate(
@@ -44,17 +60,31 @@ class ClassificationModelSelection(ModelSelectionBase):
         name_all: pd.Series,
     ) -> None:
         """Train by Scikit-learn framework."""
+        local_path = os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH") or "./output"
+        mlflow_path = MLFLOW_ARTIFACT_DATA_PATH or "./mlflow_output"
+        os.makedirs(local_path, exist_ok=True)
+        os.makedirs(mlflow_path, exist_ok=True)
 
-        # Load the required data into the base class's attributes
         self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test, name_train=name_train, name_test=name_test, name_all=name_all)
 
-        # Customize label
-        y, y_train, y_test = self.clf_workflow.customize_label(y, y_train, y_test, name_all, name_train, name_test, os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH)
+        if not self.labels_already_customized:
+            label_mapping = self.transformer_config.get("label_mapping")
+            interactive = self.transformer_config.get("interactive", False)
+            result = self.clf_workflow.customize_label(
+                y,
+                y_train,
+                y_test,
+                name_all,
+                name_train,
+                name_test,
+                local_path,
+                mlflow_path,
+                label_mapping=label_mapping,
+                interactive=interactive,
+                return_config=True,
+            )
+            y, y_train, y_test, self.label_config = result
 
-        # Sample balance
-        sample_balance_config, X_train, y_train = self.clf_workflow.sample_balance(X_train, y_train, name_train, os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH)
-
-        # Model option
         if self.model_name == "Support Vector Machine":
             hyper_parameters = SVMClassification.manual_hyper_parameters()
             self.clf_workflow = SVMClassification(
@@ -175,36 +205,34 @@ class ClassificationModelSelection(ModelSelectionBase):
                 validation_fraction=hyper_parameters["validation_fraction"],
                 n_iter_no_change=hyper_parameters["n_iter_no_change"],
             )
-        # Display what application functions the algorithm will provide
-        self.clf_workflow.show_info()
 
-        # Use Scikit-learn style API to process input data
+        self._attach_label_config()
+        self.clf_workflow.show_info()
         self.clf_workflow.fit(X_train, y_train)
         y_train_predict = self.clf_workflow.predict(X_train)
         y_train_predict = self.clf_workflow.np2pd(y_train_predict, y_train.columns)
         y_train_predict = y_train_predict.dropna()
         y_train_predict = y_train_predict.reset_index(drop=True)
         self.clf_workflow.data_upload(y_train_predict=y_train_predict)
+
         y_test_predict = self.clf_workflow.predict(X_test)
         y_test_predict = self.clf_workflow.np2pd(y_test_predict, y_test.columns)
         y_test_predict = y_test_predict.dropna()
         y_test_predict = y_test_predict.reset_index(drop=True)
         self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test, y_test_predict=y_test_predict)
 
-        # Save the model hyper-parameters
-        self.clf_workflow.save_hyper_parameters(hyper_parameters, self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
+        save_param_path = os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH") or "./output"
+        os.makedirs(save_param_path, exist_ok=True)
+        self.clf_workflow.save_hyper_parameters(hyper_parameters, self.model_name, save_param_path)
 
-        # Common components for every classification algorithm
+        save_target_transform_configuration(self.label_config, self.metric_average, local_path, mlflow_path)
+        save_class_counts(y_train, y_test, local_path, mlflow_path)
         self.clf_workflow.common_components()
-
-        # Special components of different algorithms
         self.clf_workflow.special_components()
-
-        # Save the prediction result
-        self.clf_workflow.data_save(y_train_predict, name_train, "Y Train Predict", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Model Train Prediction")
-        self.clf_workflow.data_save(y_test_predict, name_test, "Y Test Predict", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Model Test Prediction")
-
-        # Save the trained model
+        self.clf_workflow.data_save(y_train_predict, name_train, "Y Train Predict", local_path, mlflow_path, "Model Train Prediction")
+        self.clf_workflow.data_save(y_test_predict, name_test, "Y Test Predict", local_path, mlflow_path, "Model Test Prediction")
+        save_decoded_predictions(y_train_predict, name_train, self.label_config, "Y Train Predict Decoded", local_path, mlflow_path)
+        save_decoded_predictions(y_test_predict, name_test, self.label_config, "Y Test Predict Decoded", local_path, mlflow_path)
         self.clf_workflow.model_save()
 
     @dispatch(object, object, object, object, object, object, object, object, object, bool)
@@ -222,16 +250,31 @@ class ClassificationModelSelection(ModelSelectionBase):
         is_automl: bool,
     ) -> None:
         """Train by FLAML framework + RAY framework."""
+        local_path = os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH") or "./output"
+        mlflow_path = MLFLOW_ARTIFACT_DATA_PATH or "./mlflow_output"
+        os.makedirs(local_path, exist_ok=True)
+        os.makedirs(mlflow_path, exist_ok=True)
 
         self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test, name_train=name_train, name_test=name_test, name_all=name_all)
 
         # Customize label
-        y, y_train, y_test = self.clf_workflow.customize_label(y, y_train, y_test, name_all, name_train, name_test, os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH)
-
-        # Sample balance
-        sample_balance_config, X_train, y_train = self.clf_workflow.sample_balance(X_train, y_train, name_train, os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH)
-
-        # Model option
+        if not self.labels_already_customized:
+            label_mapping = self.transformer_config.get("label_mapping")
+            interactive = self.transformer_config.get("interactive", False)
+            result = self.clf_workflow.customize_label(
+                y,
+                y_train,
+                y_test,
+                name_all,
+                name_train,
+                name_test,
+                local_path,
+                mlflow_path,
+                label_mapping=label_mapping,
+                interactive=interactive,
+                return_config=True,
+            )
+            y, y_train, y_test, self.label_config = result
         if self.model_name == "Support Vector Machine":
             self.clf_workflow = SVMClassification()
         elif self.model_name == "Decision Tree":
@@ -255,36 +298,37 @@ class ClassificationModelSelection(ModelSelectionBase):
         elif self.model_name == "Stochastic Gradient Descent":
             self.clf_workflow = SGDClassification()
 
+        self._attach_label_config()
         self.clf_workflow.show_info()
 
         # Use Scikit-learn style API to process input data
         self.clf_workflow.fit(X_train, y_train, is_automl)
+
         y_train_predict = self.clf_workflow.predict(X_train, is_automl)
         y_train_predict = self.clf_workflow.np2pd(y_train_predict, y_train.columns)
         y_train_predict = y_train_predict.dropna()
         y_train_predict = y_train_predict.reset_index(drop=True)
         self.clf_workflow.data_upload(y_train_predict=y_train_predict)
+
         y_test_predict = self.clf_workflow.predict(X_test, is_automl)
         y_test_predict = self.clf_workflow.np2pd(y_test_predict, y_test.columns)
         y_test_predict = y_test_predict.dropna()
         y_test_predict = y_test_predict.reset_index(drop=True)
         self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test, y_test_predict=y_test_predict)
 
-        # Save the model hyper-parameters
+        save_param_path = os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH") or "./output"
+        os.makedirs(save_param_path, exist_ok=True)
         if self.clf_workflow.ray_best_model is not None:
-            self.clf_workflow.save_hyper_parameters(self.clf_workflow.ray_best_model.get_params(), self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
+            self.clf_workflow.save_hyper_parameters(self.clf_workflow.ray_best_model.get_params(), self.model_name, save_param_path)
         else:
-            self.clf_workflow.save_hyper_parameters(self.clf_workflow.auto_best_config, self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
+            self.clf_workflow.save_hyper_parameters(self.clf_workflow.automl.best_config, self.model_name, save_param_path)
 
-        # Common components for every classification algorithm
+        save_target_transform_configuration(self.label_config, self.metric_average, local_path, mlflow_path)
+        save_class_counts(y_train, y_test, local_path, mlflow_path)
         self.clf_workflow.common_components(is_automl)
-
-        # Special components of different algorithms
         self.clf_workflow.special_components(is_automl)
-
-        # Save the prediction result
-        self.clf_workflow.data_save(y_train_predict, name_train, "Y Train Predict", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Model Train Prediction")
-        self.clf_workflow.data_save(y_test_predict, name_test, "Y Test Predict", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Model Test Prediction")
-
-        # Save the trained model
+        self.clf_workflow.data_save(y_train_predict, name_train, "Y Train Predict", local_path, mlflow_path, "Model Train Prediction")
+        self.clf_workflow.data_save(y_test_predict, name_test, "Y Test Predict", local_path, mlflow_path, "Model Test Prediction")
+        save_decoded_predictions(y_train_predict, name_train, self.label_config, "Y Train Predict Decoded", local_path, mlflow_path)
+        save_decoded_predictions(y_test_predict, name_test, self.label_config, "Y Test Predict Decoded", local_path, mlflow_path)
         self.clf_workflow.model_save(is_automl)
