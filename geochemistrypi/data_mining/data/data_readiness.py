@@ -46,6 +46,8 @@ def read_data(file_path: Optional[str] = None, is_own_data: int = 2, prefix: Opt
             data = pd.read_excel(data_path, engine="openpyxl")
         elif data_path.endswith(".csv"):
             data = pd.read_csv(data_path)
+        else:
+            raise ValueError(f"Unsupported data file type for path: {data_path}")
         return data
     except ImportError as err:
         print(err)
@@ -61,7 +63,7 @@ def read_data(file_path: Optional[str] = None, is_own_data: int = 2, prefix: Opt
         raise err
     except Exception:
         print(f"[red]Unexpected error: {sys.exc_info()[0]} - check the last line of Traceback about the error information[red]")
-        raise Exception
+        raise
 
 
 def basic_info(data: pd.DataFrame) -> None:
