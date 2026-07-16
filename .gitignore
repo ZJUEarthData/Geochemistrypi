@@ -41,8 +41,6 @@ venv_geo
 /Lib/
 /Scripts/
 
-# Local Code scratch files
-.codebase-memory/
 
 # Ignore text files for the report
 report.txt
