@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from data_mining.cli_pipeline import cli_pipeline
-from data_mining.enum import DataSource
+
+from geochemistrypi.data_mining.enum_ import DataSource
 
 """
 Used for internal testing, run in debug mode in IDE to inspect the pipeline

@@ -100,7 +100,7 @@ class DecompositionWorkflowBase(WorkflowBase):
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
-            graph_name=DecompositionCommonFunction.DECOMPOSITION_TWO_DIMENSIONAL_DIAGRAM.value,
+            graph_name=DecompositionCommonFunction.DECOMPOSITION_TWO_DIMENSIONAL.value,
         )
         self._plot_heatmap(
             data=self.X,

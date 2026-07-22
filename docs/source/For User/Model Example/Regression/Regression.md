@@ -24,6 +24,8 @@ By running this line of command, the following output should show up on your scr
 2 - Data For Classification
 3 - Data For Clustering
 4 - Data For Dimensional Reduction
+5 - Data For Anomaly Detection
+6 - Data For Time Series
 (User) ➜ @Number: 1
 ```
 
@@ -432,6 +434,8 @@ After building the feature, we can choose the mode to process data, in this doc,
 2 - Classification
 3 - Clustering
 4 - Dimensional Reduction
+5 - Anomaly Detection
+6 - Time Series
 (Model) ➜ @Number: 1
 ```
 

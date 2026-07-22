@@ -84,18 +84,34 @@ def plot_logistic_importance(columns_name: np.ndarray, trained_model: object) ->
 
     https://scikit-learn.org/stable/modules/linear_model.html/logistic-regression
     """
-    for feature_name, score in zip(list(columns_name), trained_model.coef_.flatten()):
-        print(feature_name, ":", score)
+    columns_name = list(columns_name)
+    coefficients = np.asarray(trained_model.coef_)
+    if coefficients.ndim == 1:
+        coefficients = coefficients.reshape(1, -1)
+    if coefficients.shape[1] != len(columns_name):
+        raise ValueError("The number of logistic regression coefficients does not match the number of feature columns.")
 
-    # feature importance map ranked by coefficient
-    coef_lr = pd.DataFrame({"var": columns_name, "coef": trained_model.coef_.flatten()})
-    index_sort = np.abs(coef_lr["coef"]).sort_values().index
-    coef_lr_sort = coef_lr.loc[index_sort, :]
+    if coefficients.shape[0] == 1:
+        for feature_name, score in zip(columns_name, coefficients[0]):
+            print(feature_name, ":", score)
+        coef_lr = pd.DataFrame({"var": columns_name, "coef": coefficients[0]})
+        coef_lr_sort = coef_lr.assign(abs_coef=lambda data: np.abs(data["coef"])).sort_values("abs_coef").drop(columns=["abs_coef"])
+        y_labels = coef_lr_sort["var"]
+    else:
+        class_labels = getattr(trained_model, "classes_", np.arange(coefficients.shape[0]))
+        if len(class_labels) != coefficients.shape[0]:
+            class_labels = np.arange(coefficients.shape[0])
+        records = []
+        for class_label, class_coefficients in zip(class_labels, coefficients):
+            for feature_name, score in zip(columns_name, class_coefficients):
+                print(f"class {class_label} - {feature_name}", ":", score)
+                records.append({"class_label": class_label, "var": feature_name, "coef": score, "abs_coef": abs(score)})
+        coef_lr_sort = pd.DataFrame(records).sort_values("abs_coef")
+        y_labels = coef_lr_sort["class_label"].astype(str) + " | " + coef_lr_sort["var"].astype(str)
 
     # Horizontal column chart plot
     fig, ax = plt.subplots(figsize=(14, 8))
-    x, y = coef_lr_sort["var"], coef_lr_sort["coef"]
-    rects = plt.barh(x, y, color="dodgerblue")
+    rects = plt.barh(y_labels, coef_lr_sort["coef"], color="dodgerblue")
     plt.grid(linestyle="-.", axis="y", alpha=0.4)
     plt.tight_layout()
 

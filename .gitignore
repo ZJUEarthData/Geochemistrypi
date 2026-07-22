@@ -23,6 +23,14 @@
 # Pycharm
 .idea
 
+# VSCode
+.vscode/
+
+# Local development environments
+.conda/
+Lib/
+Scripts/
+
 # Bytecode
 __pycache__
 *.pyc
@@ -37,6 +45,8 @@ venv_geo
 # Ignore text files for the report
 report.txt
 output.txt
+changes.md
+multiclass_cli_test.csv
 
 # Web Dependency
 node_modules

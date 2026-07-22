@@ -20,9 +20,16 @@ SECTION = ["User", "Data", "Model", "Plot"]
 
 OPTION = ["Yes", "No"]
 DATA_OPTION = ["Own Data", "Testing Data (Built-in)"]
-TEST_DATA_OPTION = ["Data For Regression", "Data For Classification", "Data For Clustering", "Data For Dimensional Reduction", "Data For Anomaly Detection"]
-MODE_OPTION = ["Regression", "Classification", "Clustering", "Dimensional Reduction", "Anomaly Detection"]
-MODE_OPTION_WITH_MISSING_VALUES = ["Regression", "Classification", "Clustering"]
+TEST_DATA_OPTION = [
+    "Data For Regression",
+    "Data For Classification",
+    "Data For Clustering",
+    "Data For Dimensional Reduction",
+    "Data For Anomaly Detection",
+    "Data For Time Series",
+]
+MODE_OPTION = ["Regression", "Classification", "Clustering", "Dimensional Reduction", "Anomaly Detection", "Time Series"]
+MODE_OPTION_WITH_MISSING_VALUES = ["Regression", "Classification", "Clustering", "Time Series"]
 
 # The model provided to use
 REGRESSION_MODELS = [
@@ -96,7 +103,12 @@ FEATURE_SCALING_STRATEGY = ["Min-max Scaling", "Standardization", "Mean Normaliz
 
 SAMPLE_BALANCE_STRATEGY = ["Over Sampling", "Under Sampling", "Oversampling and Undersampling"]
 
-CUSTOMIZE_LABEL_STRATEGY = ["Automatic Coding", "Custom Numeric Labels", "Custom Non-numeric Labels"]
+CUSTOMIZE_LABEL_STRATEGY = [
+    "Keep Original Labels and Encode",
+    "Map Existing Labels to Custom Labels",
+    "Numeric Interval Bins",
+    "Quantile Bins",
+]
 
 FEATURE_SELECTION_STRATEGY = ["Generic Univariate Select", "Select K Best"]
 
