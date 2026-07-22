@@ -461,7 +461,7 @@ The whole package is under construction and the documentation is progressively e
 
 ## 🧠 Geochemistry π Mind Map
 
-[→ Click here for more details](https://docs.qq.com/mind/DZnhoa2NPamFYZHR6?u=40ac0718eb494b008b2f072197ea95db)
+[→ Click here for more details](https://docs.qq.com/mind/DZnhoa2NPamFYZHR6?u=40ac0718eb494b008b2f072197ea95db&subId=BB08J2&mode=mind)
 
 <p align="center">
   <img src="https://github.com/ZJUEarthData/geochemistrypi/assets/97781484/e77b1f11-41ab-4354-9064-6d62cc1bf1e4" alt="Geochemistry π Mind Map" />
@@ -497,7 +497,8 @@ The whole package is under construction and the documentation is progressively e
 - Feiyu Shi (China University of Geosciences Beijing, China)
 - Wenxuan Xia (China University of Geosciences Beijing, China)
 - Hanbing Gao (China University of Geosciences, Wuhan, China)
-- Dongmei Shan (Chang'an University, China)
+- Yuanhang Wang (Hangzhou Dianzi University, China)
+- Zhenghao Qu (Yunnan University, China)
 
 ### Product Group
 
