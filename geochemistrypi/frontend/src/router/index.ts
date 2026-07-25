@@ -8,7 +8,13 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: HomeView
-    },{
+    },
+    {
+      path: '/online',
+      name: 'online',
+      component: () => import('../views/online/online-page.vue')
+    },
+    {
       path: '/guide',
       name: 'guide',
       component: () => import('../views/guide/guide-index.vue')
@@ -17,8 +23,8 @@ const router = createRouter({
       path: '/guide-view',
       name: 'guideView',
       component: () => import('../views/guide-view/guide-page.vue'),
-      meta:{
-        noNav:true
+      meta: {
+        noNav: true
       }
     }
   ]

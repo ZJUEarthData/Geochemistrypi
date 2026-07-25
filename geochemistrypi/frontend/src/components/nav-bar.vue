@@ -6,6 +6,7 @@ import { RouterLink } from 'vue-router'
   <nav class="nav-bar">
     <RouterLink class="logo" to="/"><img src="@/assets/imgs/logo.png" /></RouterLink>
     <div class="nav-link">
+      <RouterLink to="/online"><span class="link-start">Online calculation</span></RouterLink>
       <a href="https://github.com/ZJUEarthData/geochemistrypi/" target="_blank"><i class="el-icon"
           style="font-size:32px;vertical-align: middle; margin-right: 8px;" data-v-72eabb9c=""><!--[--><svg
             preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24" width="1.2em" height="1.2em" data-v-72eabb9c="">
@@ -14,10 +15,10 @@ import { RouterLink } from 'vue-router'
             </path>
           </svg><!--]--></i>Github</a>
       <a href="https://geochemistrypi.readthedocs.io/en/latest/" target="_blank">Docs</a>
-      <RouterLink to="/guide">About us </RouterLink>
+      <RouterLink to="/guide">About us</RouterLink>
       <!-- <RouterLink to="/"><span class="link-start">Get started</span></RouterLink>
       <RouterLink to="/">Sign in</RouterLink> -->
-      <RouterLink to="/" style="margin-left: 60px;"><svg width="30" height="30" viewBox="0 0 30 30" fill="none"
+      <RouterLink to="/"><svg width="30" height="30" viewBox="0 0 30 30" fill="none"
           xmlns="http://www.w3.org/2000/svg">
           <path
             d="M27.6667 30L17.1667 19.5C16.3333 20.1667 15.375 20.6944 14.2917 21.0833C13.2083 21.4722 12.0556 21.6667 10.8333 21.6667C7.80556 21.6667 5.24306 20.6181 3.14583 18.5208C1.04861 16.4236 0 13.8611 0 10.8333C0 7.80556 1.04861 5.24306 3.14583 3.14583C5.24306 1.04861 7.80556 0 10.8333 0C13.8611 0 16.4236 1.04861 18.5208 3.14583C20.6181 5.24306 21.6667 7.80556 21.6667 10.8333C21.6667 12.0556 21.4722 13.2083 21.0833 14.2917C20.6944 15.375 20.1667 16.3333 19.5 17.1667L30 27.6667L27.6667 30ZM10.8333 18.3333C12.9167 18.3333 14.6875 17.6042 16.1458 16.1458C17.6042 14.6875 18.3333 12.9167 18.3333 10.8333C18.3333 8.75 17.6042 6.97917 16.1458 5.52083C14.6875 4.0625 12.9167 3.33333 10.8333 3.33333C8.75 3.33333 6.97917 4.0625 5.52083 5.52083C4.0625 6.97917 3.33333 8.75 3.33333 10.8333C3.33333 12.9167 4.0625 14.6875 5.52083 16.1458C6.97917 17.6042 8.75 18.3333 10.8333 18.3333Z"
