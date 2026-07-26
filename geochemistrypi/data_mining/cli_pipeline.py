@@ -50,7 +50,7 @@ from .data.data_readiness import (
 from .data.feature_engineering import FeatureConstructor
 from .data.imputation import imputer
 from .data.inference import build_transform_pipeline, model_inference
-from .data.preprocessing import feature_scaler, feature_selector
+from .data.preprocessing import feature_scaler, fit_supervised_preprocessor
 from .data.statistic import monte_carlo_simulator
 from .enum_ import DataSource
 from .plot.map_plot import process_world_map
@@ -581,16 +581,10 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
             print("Which strategy do you want to apply?")
             num2option(FEATURE_SCALING_STRATEGY)
             feature_scaling_num = limit_num_input(FEATURE_SCALING_STRATEGY, SECTION[1], num_input)
-            feature_scaling_config, X_scaled_np = feature_scaler(X, FEATURE_SCALING_STRATEGY, feature_scaling_num - 1)
-            X = np2pd(X_scaled_np, X.columns)
-            del X_scaled_np
-            print("Data Set After Scaling:")
-            print(X)
-            print("Basic Statistical Information: ")
-            basic_statistic(X)
-            save_data(X, name_all, "X With Scaling", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+            feature_scaling_method = FEATURE_SCALING_STRATEGY[feature_scaling_num - 1]
+            print("Feature scaling is configured and will be fitted after the train/test split.")
         else:
-            feature_scaling_config = {}
+            feature_scaling_method = None
         clear_output()
 
         # <--- Feature Selection --->
@@ -601,12 +595,16 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
             print("Which strategy do you want to apply?")
             num2option(FEATURE_SELECTION_STRATEGY)
             feature_selection_num = limit_num_input(FEATURE_SELECTION_STRATEGY, SECTION[1], num_input)
-            feature_selection_config, X = feature_selector(X, y, mode_num, FEATURE_SELECTION_STRATEGY, feature_selection_num - 1)
-            print("--Selected Features-")
+            feature_selection_method = FEATURE_SELECTION_STRATEGY[feature_selection_num - 1]
+            print("-- Original Features --")
             show_data_columns(X.columns)
-            save_data(X, name_all, "X After Feature Selection", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+            features_num = len(X.columns)
+            print(f"The original number of features is {features_num}, and your input must not exceed {features_num}.")
+            features_to_retain = int(input("Please enter the number of features to retain.\n" "@input: "))
+            print("Feature selection is configured and will be fitted after the train/test split.")
         else:
-            feature_selection_config = {}
+            feature_selection_method = None
+            features_to_retain = None
         clear_output()
 
         # Create training data and testing data
@@ -621,6 +619,25 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
                 raise ValueError(f"Each classification class must have at least 2 samples for stratified splitting. Too-small classes: {too_small}")
             stratify_target = y.iloc[:, 0]
         train_test_data = data_split(X, y, process_name_column, test_ratio, stratify=stratify_target)
+        X_train_for_pipeline = train_test_data["X Train"].copy()
+        supervised_preprocessor = fit_supervised_preprocessor(
+            X_train_for_pipeline,
+            train_test_data["Y Train"],
+            task="regression" if mode_num == 1 else "classification",
+            scaling_method=feature_scaling_method,
+            selection_method=feature_selection_method,
+            features_to_retain=features_to_retain,
+        )
+        feature_scaling_config = supervised_preprocessor.feature_scaling_config
+        feature_selection_config = supervised_preprocessor.feature_selection_config
+        train_test_data["X Train"] = supervised_preprocessor.transform(train_test_data["X Train"])
+        train_test_data["X Test"] = supervised_preprocessor.transform(train_test_data["X Test"])
+        X = supervised_preprocessor.transform(X)
+        if supervised_preprocessor.pipeline is not None:
+            print("Supervised preprocessing was fitted on the training set only.")
+            print("-- Prepared Features --")
+            show_data_columns(X.columns)
+            save_data(X, name_all, "X With Training-Fitted Preprocessing", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
         for key, value in train_test_data.items():
             if key in ["Name Train", "Name Test"]:
                 continue
@@ -666,6 +683,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         feature_selection_config = {}
         # Create training data without data split because it is unsupervised learning
         X_train = X
+        X_train_for_pipeline = X_train
         y, X_test, y_train, y_test, name_train, name_test = None, None, None, None, None, None
         name_all = process_name_column
     # <--- Model Selection --->
@@ -723,7 +741,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     if mode_num == 1 or mode_num == 2:
         print("[bold green]-*-*- Feature Engineering on Application Data -*-*-[/bold green]")
         is_inference = True
-        selected_columns = X_train.columns
+        selected_columns = X_train_for_pipeline.columns
         if inference_data is not None:
             if feature_engineering_config:
                 # If inference_data is not None and feature_engineering_config is not {}, then apply feature engineering with the same operation to the input data.
@@ -776,7 +794,14 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         # Construct the transform pipeline using sklearn.pipeline.make_pipeline method.
         logger.debug("Transform Pipeline")
         print("[bold green]-*-*- Transform Pipeline Construction -*-*-[/bold green]")
-        transformer_config, transform_pipeline = build_transform_pipeline(imputation_config, feature_scaling_config, feature_selection_config, run, X_train, y_train)
+        transformer_config, transform_pipeline = build_transform_pipeline(
+            imputation_config,
+            feature_scaling_config,
+            feature_selection_config,
+            run,
+            X_train_for_pipeline,
+            y_train,
+        )
         clear_output()
 
         # <--- Model Inference --->
@@ -837,7 +862,14 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
                 # Construct the transform pipeline using sklearn.pipeline.make_pipeline method.
                 logger.debug("Transform Pipeline")
                 print("[bold green]-*-*- Transform Pipeline Construction -*-*-[/bold green]")
-                transformer_config, transform_pipeline = build_transform_pipeline(imputation_config, feature_scaling_config, feature_selection_config, run, X_train, y_train)
+                transformer_config, transform_pipeline = build_transform_pipeline(
+                    imputation_config,
+                    feature_scaling_config,
+                    feature_selection_config,
+                    run,
+                    X_train_for_pipeline,
+                    y_train,
+                )
 
                 # <--- Model Inference --->
                 # If the user provides the inference data, then run the model inference.
