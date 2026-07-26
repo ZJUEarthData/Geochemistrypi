@@ -24,10 +24,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements/production.txt
-          python -m pip install ".[test]" pre-commit
+          python -m pip wheel . --no-deps --wheel-dir wheelhouse
+          python -c "import glob, zipfile; wheel = glob.glob('wheelhouse/geochemistrypi-*.whl')[0]; names = zipfile.ZipFile(wheel).namelist(); packaged_tests = [name for name in names if name.startswith('geochemistrypi/data_mining/tests/')]; assert not packaged_tests, f'Test modules must not be shipped in the production wheel: {packaged_tests}'"
+          python -m pip install wheelhouse/geochemistrypi-*.whl "pytest>=7,<9" pre-commit
       - name: Run pre-commit hooks
         run: pre-commit run --all-files
       - name: Run tests without database configuration
         env:
           SQLALCHEMY_DATABASE_URL: ""
-        run: pytest
+        run: python -m pytest
