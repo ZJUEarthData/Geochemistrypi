@@ -26,6 +26,9 @@
 # Local editors
 .vscode/
 
+# Local Agent/codebase-memory index
+/.codebase-memory/
+
 # Bytecode
 __pycache__
 *.pyc

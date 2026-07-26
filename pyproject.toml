@@ -64,7 +64,20 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
-    "pytest"
+    "pytest>=7,<9"
+]
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests",
+    "geochemistrypi/data_mining/tests",
+]
+addopts = "-ra"
+markers = [
+    "characterization: freezes observable legacy behavior without claiming scientific correctness",
+    "scientific: verifies scientific correctness and reproducibility invariants",
+    "integration: verifies boundaries between components and environments",
+    "mcp: verifies MCP protocol and tool behavior",
 ]
 
 [project.urls]
