@@ -10,18 +10,7 @@ from typing import Any, Dict, Mapping, Optional, Tuple
 
 from geochemistrypi_contracts import ArtifactRef
 
-from ._validation import (
-    json_mapping,
-    nonempty_string,
-    optional_string,
-    portable_relative_path,
-    require_fields,
-    revision,
-    run_id,
-    sha256,
-    string_tuple,
-    utc_timestamp,
-)
+from ._validation import json_mapping, nonempty_string, optional_string, portable_relative_path, require_fields, revision, run_id, sha256, string_tuple, utc_timestamp
 
 RECORD_FORMAT_VERSION = "1.0"
 
@@ -66,20 +55,12 @@ class ManifestRecord:
 
     def __post_init__(self) -> None:
         if self.format_version != RECORD_FORMAT_VERSION:
-            raise ValueError(
-                f"format_version must be {RECORD_FORMAT_VERSION!r}."
-            )
+            raise ValueError(f"format_version must be {RECORD_FORMAT_VERSION!r}.")
         object.__setattr__(self, "run_id", run_id(self.run_id))
         object.__setattr__(self, "revision", revision(self.revision))
-        object.__setattr__(
-            self, "created_at", utc_timestamp(self.created_at, "created_at")
-        )
-        object.__setattr__(
-            self, "updated_at", utc_timestamp(self.updated_at, "updated_at")
-        )
-        object.__setattr__(
-            self, "request_sha256", sha256(self.request_sha256, "request_sha256")
-        )
+        object.__setattr__(self, "created_at", utc_timestamp(self.created_at, "created_at"))
+        object.__setattr__(self, "updated_at", utc_timestamp(self.updated_at, "updated_at"))
+        object.__setattr__(self, "request_sha256", sha256(self.request_sha256, "request_sha256"))
         object.__setattr__(
             self,
             "contract_version",
@@ -105,11 +86,7 @@ class ManifestRecord:
             "provenance_path",
             portable_relative_path(self.provenance_path, "provenance_path"),
         )
-        normalized_result = (
-            None
-            if self.result_path is None
-            else portable_relative_path(self.result_path, "result_path")
-        )
+        normalized_result = None if self.result_path is None else portable_relative_path(self.result_path, "result_path")
         object.__setattr__(self, "result_path", normalized_result)
         if not isinstance(self.artifacts, (tuple, list)):
             raise TypeError("artifacts must be a tuple or list.")
@@ -177,9 +154,7 @@ class ManifestRecord:
             },
             label="ManifestRecord",
         )
-        fields["artifacts"] = tuple(
-            ArtifactRef.from_dict(item) for item in fields["artifacts"]
-        )
+        fields["artifacts"] = tuple(ArtifactRef.from_dict(item) for item in fields["artifacts"])
         return cls(**fields)
 
 
@@ -206,17 +181,11 @@ class ProvenanceRecord:
 
     def __post_init__(self) -> None:
         if self.format_version != RECORD_FORMAT_VERSION:
-            raise ValueError(
-                f"format_version must be {RECORD_FORMAT_VERSION!r}."
-            )
+            raise ValueError(f"format_version must be {RECORD_FORMAT_VERSION!r}.")
         object.__setattr__(self, "run_id", run_id(self.run_id))
         object.__setattr__(self, "revision", revision(self.revision))
-        object.__setattr__(
-            self, "created_at", utc_timestamp(self.created_at, "created_at")
-        )
-        object.__setattr__(
-            self, "updated_at", utc_timestamp(self.updated_at, "updated_at")
-        )
+        object.__setattr__(self, "created_at", utc_timestamp(self.created_at, "created_at"))
+        object.__setattr__(self, "updated_at", utc_timestamp(self.updated_at, "updated_at"))
         string_limits = {
             "contract_version": 64,
             "request_schema_id": 1024,
@@ -240,16 +209,8 @@ class ProvenanceRecord:
             "request_schema_sha256",
             sha256(self.request_schema_sha256, "request_schema_sha256"),
         )
-        dependency_versions = json_mapping(
-            self.dependency_versions, "dependency_versions", max_bytes=128 * 1024
-        )
-        if not all(
-            isinstance(name, str)
-            and name
-            and isinstance(version, str)
-            and version
-            for name, version in dependency_versions.items()
-        ):
+        dependency_versions = json_mapping(self.dependency_versions, "dependency_versions", max_bytes=128 * 1024)
+        if not all(isinstance(name, str) and name and isinstance(version, str) and version for name, version in dependency_versions.items()):
             raise ValueError("dependency_versions must map names to version strings.")
         object.__setattr__(self, "dependency_versions", dependency_versions)
         object.__setattr__(

@@ -6,14 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, Mapping, Optional
 
-from ._validation import (
-    identifier,
-    optional_string,
-    require_fields,
-    revision,
-    run_id,
-    utc_timestamp,
-)
+from ._validation import identifier, optional_string, require_fields, revision, run_id, utc_timestamp
 from .exceptions import InvalidStateTransitionError
 
 RECORD_FORMAT_VERSION = "1.0"
@@ -50,11 +43,7 @@ class StatusWriter:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "owner", StatusOwner(self.owner))
-        normalized_id = (
-            None
-            if self.owner_id is None
-            else identifier(self.owner_id, "owner_id")
-        )
+        normalized_id = None if self.owner_id is None else identifier(self.owner_id, "owner_id")
         if self.owner is StatusOwner.WORKER and normalized_id is None:
             raise ValueError("A worker status writer requires owner_id.")
         if self.owner is not StatusOwner.WORKER and normalized_id is not None:
@@ -77,9 +66,7 @@ class StatusRecord:
 
     def __post_init__(self) -> None:
         if self.format_version != RECORD_FORMAT_VERSION:
-            raise ValueError(
-                f"format_version must be {RECORD_FORMAT_VERSION!r}."
-            )
+            raise ValueError(f"format_version must be {RECORD_FORMAT_VERSION!r}.")
         object.__setattr__(self, "run_id", run_id(self.run_id))
         object.__setattr__(self, "state", RunState(self.state))
         object.__setattr__(self, "revision", revision(self.revision))
@@ -89,11 +76,7 @@ class StatusRecord:
             utc_timestamp(self.updated_at, "updated_at"),
         )
         object.__setattr__(self, "owner", StatusOwner(self.owner))
-        normalized_owner_id = (
-            None
-            if self.owner_id is None
-            else identifier(self.owner_id, "owner_id")
-        )
+        normalized_owner_id = None if self.owner_id is None else identifier(self.owner_id, "owner_id")
         if self.owner is StatusOwner.WORKER and normalized_owner_id is None:
             raise ValueError("Worker-owned status requires owner_id.")
         if self.owner is not StatusOwner.WORKER and normalized_owner_id is not None:
@@ -152,29 +135,19 @@ class ControlRecord:
 
     def __post_init__(self) -> None:
         if self.format_version != RECORD_FORMAT_VERSION:
-            raise ValueError(
-                f"format_version must be {RECORD_FORMAT_VERSION!r}."
-            )
+            raise ValueError(f"format_version must be {RECORD_FORMAT_VERSION!r}.")
         object.__setattr__(self, "run_id", run_id(self.run_id))
         object.__setattr__(self, "revision", revision(self.revision))
         if not isinstance(self.cancel_requested, bool):
             raise TypeError("cancel_requested must be a boolean.")
-        timestamp = (
-            None
-            if self.requested_at is None
-            else utc_timestamp(self.requested_at, "requested_at")
-        )
+        timestamp = None if self.requested_at is None else utc_timestamp(self.requested_at, "requested_at")
         requester = optional_string(self.requested_by, "requested_by", 128)
         reason = optional_string(self.reason, "reason", 1000)
         if self.cancel_requested:
             if timestamp is None or requester is None:
-                raise ValueError(
-                    "A cancellation request requires requested_at and requested_by."
-                )
+                raise ValueError("A cancellation request requires requested_at and requested_by.")
         elif any(item is not None for item in (timestamp, requester, reason)):
-            raise ValueError(
-                "An inactive control record cannot contain cancellation details."
-            )
+            raise ValueError("An inactive control record cannot contain cancellation details.")
         object.__setattr__(self, "requested_at", timestamp)
         object.__setattr__(self, "requested_by", requester)
         object.__setattr__(self, "reason", reason)
@@ -210,15 +183,9 @@ class ControlRecord:
 
 ALLOWED_TRANSITIONS = {
     RunState.QUEUED: frozenset({RunState.VALIDATING, RunState.FAILED}),
-    RunState.VALIDATING: frozenset(
-        {RunState.RUNNING, RunState.CANCEL_REQUESTED, RunState.FAILED}
-    ),
-    RunState.RUNNING: frozenset(
-        {RunState.COMPLETED, RunState.CANCEL_REQUESTED, RunState.FAILED}
-    ),
-    RunState.CANCEL_REQUESTED: frozenset(
-        {RunState.CANCELLED, RunState.FAILED}
-    ),
+    RunState.VALIDATING: frozenset({RunState.RUNNING, RunState.CANCEL_REQUESTED, RunState.FAILED}),
+    RunState.RUNNING: frozenset({RunState.COMPLETED, RunState.CANCEL_REQUESTED, RunState.FAILED}),
+    RunState.CANCEL_REQUESTED: frozenset({RunState.CANCELLED, RunState.FAILED}),
     RunState.COMPLETED: frozenset(),
     RunState.CANCELLED: frozenset(),
     RunState.FAILED: frozenset(),
@@ -242,7 +209,4 @@ def validate_transition(current: RunState, target: RunState) -> None:
     current_state = RunState(current)
     target_state = RunState(target)
     if target_state not in ALLOWED_TRANSITIONS[current_state]:
-        raise InvalidStateTransitionError(
-            f"Cannot transition run status from {current_state.value!r} "
-            f"to {target_state.value!r}."
-        )
+        raise InvalidStateTransitionError(f"Cannot transition run status from {current_state.value!r} " f"to {target_state.value!r}.")

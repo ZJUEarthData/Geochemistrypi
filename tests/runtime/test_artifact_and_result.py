@@ -1,20 +1,8 @@
 from pathlib import Path
 
 import pytest
-from geochemistrypi_contracts import (
-    CONTRACT_VERSION,
-    ClassificationExperimentSpec,
-    ExperimentResult,
-    RunStatus,
-)
-
-from geochemistrypi_runtime import (
-    ArtifactIntegrityError,
-    ProvenanceSection,
-    RevisionConflictError,
-    RunContext,
-    UnsafePathError,
-)
+from geochemistrypi_contracts import CONTRACT_VERSION, ClassificationExperimentSpec, ExperimentResult, RunStatus
+from geochemistrypi_runtime import ArtifactIntegrityError, ProvenanceSection, RevisionConflictError, RunContext, UnsafePathError
 
 
 def _context(

@@ -81,9 +81,7 @@ def sha256(value: Any, label: str) -> str:
 
 
 def utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace(
-        "+00:00", "Z"
-    )
+    return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
 def utc_timestamp(value: Any, label: str) -> str:
@@ -102,11 +100,7 @@ def portable_relative_path(value: Any, label: str) -> str:
     if "\\" in normalized:
         raise ValueError(f"{label} must use forward slashes.")
     path = PurePosixPath(normalized)
-    if (
-        path.is_absolute()
-        or path.as_posix() != normalized
-        or any(part in {"", ".", ".."} for part in path.parts)
-    ):
+    if path.is_absolute() or path.as_posix() != normalized or any(part in {"", ".", ".."} for part in path.parts):
         raise ValueError(f"{label} must be a safe portable relative path.")
     return path.as_posix()
 
@@ -122,9 +116,7 @@ def string_tuple(
         raise TypeError(f"{label} must be a sequence of strings.")
     if len(value) > max_items:
         raise ValueError(f"{label} must have at most {max_items} items.")
-    return tuple(
-        nonempty_string(item, f"{label} item", max_length) for item in value
-    )
+    return tuple(nonempty_string(item, f"{label} item", max_length) for item in value)
 
 
 def json_mapping(

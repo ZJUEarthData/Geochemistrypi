@@ -14,34 +14,11 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Dict, Iterator, Mapping, Optional, Tuple, Type, TypeVar
 
 from filelock import FileLock, Timeout
-from geochemistrypi_contracts import (
-    CONTRACT_VERSION,
-    ArtifactRef,
-    ClassificationExperimentSpec,
-    ExperimentResult,
-    SchemaName,
-    schema_id,
-    schema_sha256,
-)
+from geochemistrypi_contracts import CONTRACT_VERSION, ArtifactRef, ClassificationExperimentSpec, ExperimentResult, SchemaName, schema_id, schema_sha256
 
-from ._validation import (
-    RUN_ID_PATTERN,
-    json_mapping,
-    nonempty_string,
-    portable_relative_path,
-    sha256,
-    utc_now,
-)
+from ._validation import RUN_ID_PATTERN, json_mapping, nonempty_string, portable_relative_path, sha256, utc_now
 from ._version import __version__
-from .atomic import (
-    DEFAULT_MAX_JSON_BYTES,
-    atomic_write_bytes,
-    atomic_write_json,
-    canonical_json_bytes,
-    read_json_object,
-    sha256_bytes,
-    sha256_file,
-)
+from .atomic import DEFAULT_MAX_JSON_BYTES, atomic_write_bytes, atomic_write_json, canonical_json_bytes, read_json_object, sha256_bytes, sha256_file
 from .exceptions import (
     ArtifactIntegrityError,
     CorruptedRecordError,
@@ -55,15 +32,7 @@ from .exceptions import (
     UnsafePathError,
 )
 from .records import ManifestRecord, ProvenanceRecord, ProvenanceSection
-from .state import (
-    ACTIVE_STATES,
-    ControlRecord,
-    RunState,
-    StatusOwner,
-    StatusRecord,
-    StatusWriter,
-    validate_transition,
-)
+from .state import ACTIVE_STATES, ControlRecord, RunState, StatusOwner, StatusRecord, StatusWriter, validate_transition
 
 _RecordT = TypeVar("_RecordT")
 
@@ -93,15 +62,8 @@ def _is_within(path: Path, parent: Path) -> bool:
 
 
 def _validated_run_id(value: str) -> str:
-    if (
-        not isinstance(value, str)
-        or not RUN_ID_PATTERN.fullmatch(value)
-        or value in {".", ".."}
-    ):
-        raise InvalidRunIdError(
-            "run_id must start with a letter or digit and contain only letters, "
-            "digits, dots, underscores, or hyphens (maximum 128 characters)."
-        )
+    if not isinstance(value, str) or not RUN_ID_PATTERN.fullmatch(value) or value in {".", ".."}:
+        raise InvalidRunIdError("run_id must start with a letter or digit and contain only letters, " "digits, dots, underscores, or hyphens (maximum 128 characters).")
     return value
 
 
@@ -161,9 +123,7 @@ class RunContext:
         try:
             with create_lock:
                 if final_path.exists() or final_path.is_symlink():
-                    raise RunAlreadyExistsError(
-                        f"Run already exists: {chosen_run_id}"
-                    )
+                    raise RunAlreadyExistsError(f"Run already exists: {chosen_run_id}")
                 staging_path.mkdir(mode=0o700)
                 try:
                     context._initialize_staging(
@@ -172,18 +132,14 @@ class RunContext:
                         git_commit=git_commit,
                     )
                     if final_path.exists() or final_path.is_symlink():
-                        raise RunAlreadyExistsError(
-                            f"Run already exists: {chosen_run_id}"
-                        )
+                        raise RunAlreadyExistsError(f"Run already exists: {chosen_run_id}")
                     os.rename(str(staging_path), str(final_path))
                 except Exception:
                     if staging_path.exists() and staging_path.parent == root:
                         shutil.rmtree(staging_path)
                     raise
         except Timeout as exc:
-            raise RuntimeLockTimeout(
-                f"Timed out while creating run {chosen_run_id!r}."
-            ) from exc
+            raise RuntimeLockTimeout(f"Timed out while creating run {chosen_run_id!r}.") from exc
         return context
 
     @classmethod
@@ -209,9 +165,7 @@ class RunContext:
         root.mkdir(parents=True, exist_ok=True)
         root_stat = root.lstat()
         if stat.S_ISLNK(root_stat.st_mode) or not stat.S_ISDIR(root_stat.st_mode):
-            raise UnsafePathError(
-                "runs_root must be a real directory, not a symbolic link."
-            )
+            raise UnsafePathError("runs_root must be a real directory, not a symbolic link.")
         return root.resolve(strict=True)
 
     def _initialize_staging(
@@ -264,9 +218,7 @@ class RunContext:
             runtime_version=__version__,
             dependency_versions={
                 "filelock": _package_version("filelock", "unknown"),
-                "geochemistrypi-contracts": _package_version(
-                    "geochemistrypi-contracts", "0.1.0"
-                ),
+                "geochemistrypi-contracts": _package_version("geochemistrypi-contracts", "0.1.0"),
                 "geochemistrypi-runtime": __version__,
             },
             git_commit=git_commit,
@@ -304,19 +256,11 @@ class RunContext:
             try:
                 directory_stat = directory.lstat()
             except FileNotFoundError as exc:
-                raise CorruptedRecordError(
-                    f"Run directory is missing {directory_name}/."
-                ) from exc
-            if stat.S_ISLNK(directory_stat.st_mode) or not stat.S_ISDIR(
-                directory_stat.st_mode
-            ):
-                raise UnsafePathError(
-                    f"Run member {directory_name}/ must be a real directory."
-                )
+                raise CorruptedRecordError(f"Run directory is missing {directory_name}/.") from exc
+            if stat.S_ISLNK(directory_stat.st_mode) or not stat.S_ISDIR(directory_stat.st_mode):
+                raise UnsafePathError(f"Run member {directory_name}/ must be a real directory.")
             if not _is_within(directory.resolve(strict=True), resolved):
-                raise UnsafePathError(
-                    f"Run member {directory_name}/ escaped the run directory."
-                )
+                raise UnsafePathError(f"Run member {directory_name}/ escaped the run directory.")
 
     @contextmanager
     def _locked(self, record_name: str) -> Iterator[None]:
@@ -329,10 +273,7 @@ class RunContext:
             with lock:
                 yield
         except Timeout as exc:
-            raise RuntimeLockTimeout(
-                f"Timed out waiting for {record_name!r} lock "
-                f"for run {self.run_id!r}."
-            ) from exc
+            raise RuntimeLockTimeout(f"Timed out waiting for {record_name!r} lock " f"for run {self.run_id!r}.") from exc
 
     def _read_record(
         self,
@@ -344,13 +285,9 @@ class RunContext:
         except CorruptedRecordError:
             raise
         except (KeyError, TypeError, ValueError) as exc:
-            raise CorruptedRecordError(
-                f"Record {filename} does not match its runtime format."
-            ) from exc
+            raise CorruptedRecordError(f"Record {filename} does not match its runtime format.") from exc
         if getattr(record, "run_id", None) != self.run_id:
-            raise CorruptedRecordError(
-                f"Record {filename} belongs to a different run."
-            )
+            raise CorruptedRecordError(f"Record {filename} belongs to a different run.")
         return record
 
     def read_request(self) -> ClassificationExperimentSpec:
@@ -361,19 +298,13 @@ class RunContext:
         hash_path = self.path / _REQUEST_HASH_FILE
         try:
             hash_stat = hash_path.lstat()
-            if stat.S_ISLNK(hash_stat.st_mode) or not stat.S_ISREG(
-                hash_stat.st_mode
-            ):
-                raise CorruptedRecordError(
-                    "request.sha256 must be a regular file."
-                )
+            if stat.S_ISLNK(hash_stat.st_mode) or not stat.S_ISREG(hash_stat.st_mode):
+                raise CorruptedRecordError("request.sha256 must be a regular file.")
             if hash_stat.st_size > 128:
                 raise CorruptedRecordError("request.sha256 is unexpectedly large.")
             request_stat = request_path.lstat()
             if request_stat.st_size > DEFAULT_MAX_JSON_BYTES:
-                raise CorruptedRecordError(
-                    "request.json exceeds the runtime JSON safety limit."
-                )
+                raise CorruptedRecordError("request.json exceeds the runtime JSON safety limit.")
             expected_digest = sha256(
                 hash_path.read_text(encoding="ascii").strip(),
                 "request.sha256",
@@ -382,28 +313,20 @@ class RunContext:
         except (OSError, UnicodeError, ValueError) as exc:
             raise CorruptedRecordError("request.sha256 is invalid.") from exc
         if actual_digest != expected_digest:
-            raise CorruptedRecordError(
-                "request.json no longer matches request.sha256."
-            )
+            raise CorruptedRecordError("request.json no longer matches request.sha256.")
         try:
-            request = ClassificationExperimentSpec.from_dict(
-                read_json_object(request_path)
-            )
+            request = ClassificationExperimentSpec.from_dict(read_json_object(request_path))
         except CorruptedRecordError:
             raise
         except (KeyError, TypeError, ValueError) as exc:
-            raise CorruptedRecordError(
-                "request.json does not match the classification contract."
-            ) from exc
+            raise CorruptedRecordError("request.json does not match the classification contract.") from exc
         return request
 
     def request_sha256(self) -> str:
         """Return the verified request digest."""
 
         self.read_request()
-        return (self.path / _REQUEST_HASH_FILE).read_text(
-            encoding="ascii"
-        ).strip()
+        return (self.path / _REQUEST_HASH_FILE).read_text(encoding="ascii").strip()
 
     def read_status(self) -> StatusRecord:
         return self._read_record(_STATUS_FILE, StatusRecord)
@@ -424,10 +347,7 @@ class RunContext:
         with self._locked("status"):
             current = self.read_status()
             if current.revision != expected_revision:
-                raise RevisionConflictError(
-                    f"Expected status revision {expected_revision}, "
-                    f"found {current.revision}."
-                )
+                raise RevisionConflictError(f"Expected status revision {expected_revision}, " f"found {current.revision}.")
             validate_transition(current.state, target_state)
             self._authorize_status_writer(current, target_state, writer)
             updated = StatusRecord(
@@ -449,34 +369,16 @@ class RunContext:
         writer: StatusWriter,
     ) -> None:
         if current.owner is StatusOwner.RUN_MANAGER:
-            if (
-                current.state is RunState.QUEUED
-                and target is RunState.VALIDATING
-                and writer.owner is StatusOwner.WORKER
-            ):
+            if current.state is RunState.QUEUED and target is RunState.VALIDATING and writer.owner is StatusOwner.WORKER:
                 return
-            if (
-                current.state is RunState.QUEUED
-                and target is RunState.FAILED
-                and writer.owner is StatusOwner.RUN_MANAGER
-            ):
+            if current.state is RunState.QUEUED and target is RunState.FAILED and writer.owner is StatusOwner.RUN_MANAGER:
                 return
-            raise StatusOwnershipError(
-                "The run manager may only fail a queued run; a worker must "
-                "claim queued work by entering validating."
-            )
+            raise StatusOwnershipError("The run manager may only fail a queued run; a worker must " "claim queued work by entering validating.")
         if current.owner is StatusOwner.WORKER:
-            if (
-                writer.owner is StatusOwner.WORKER
-                and writer.owner_id == current.owner_id
-            ):
+            if writer.owner is StatusOwner.WORKER and writer.owner_id == current.owner_id:
                 return
-            raise StatusOwnershipError(
-                "Only the worker that owns this status may update it."
-            )
-        raise StatusOwnershipError(
-            "Recovery-owned status cannot be changed through normal transitions."
-        )
+            raise StatusOwnershipError("Only the worker that owns this status may update it.")
+        raise StatusOwnershipError("Recovery-owned status cannot be changed through normal transitions.")
 
     def repair_orphaned(
         self,
@@ -488,23 +390,13 @@ class RunContext:
         """Mark lost worker-owned active work as orphaned."""
 
         if not worker_confirmed_stopped:
-            raise StatusOwnershipError(
-                "Orphan repair requires confirmation that the worker stopped."
-            )
+            raise StatusOwnershipError("Orphan repair requires confirmation that the worker stopped.")
         with self._locked("status"):
             current = self.read_status()
             if current.revision != expected_revision:
-                raise RevisionConflictError(
-                    f"Expected status revision {expected_revision}, "
-                    f"found {current.revision}."
-                )
-            if (
-                current.owner is not StatusOwner.WORKER
-                or current.state not in ACTIVE_STATES
-            ):
-                raise InvalidStateTransitionError(
-                    "Only active worker-owned status can become orphaned."
-                )
+                raise RevisionConflictError(f"Expected status revision {expected_revision}, " f"found {current.revision}.")
+            if current.owner is not StatusOwner.WORKER or current.state not in ACTIVE_STATES:
+                raise InvalidStateTransitionError("Only active worker-owned status can become orphaned.")
             repaired = StatusRecord(
                 run_id=self.run_id,
                 state=RunState.ORPHANED,
@@ -525,19 +417,13 @@ class RunContext:
         """Archive status evidence, then publish an explicit corrupted state."""
 
         if not worker_confirmed_stopped:
-            raise StatusOwnershipError(
-                "Corruption repair requires confirmation that the worker stopped."
-            )
+            raise StatusOwnershipError("Corruption repair requires confirmation that the worker stopped.")
         normalized_detail = nonempty_string(detail, "detail", 2000)
         with self._locked("status"):
             status_path = self.path / _STATUS_FILE
             evidence_payload = self._status_evidence(status_path)
             timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
-            evidence_path = (
-                self.path
-                / "errors"
-                / f"status.corrupted.{timestamp}-{secrets.token_hex(4)}.bin"
-            )
+            evidence_path = self.path / "errors" / f"status.corrupted.{timestamp}-{secrets.token_hex(4)}.bin"
             atomic_write_bytes(evidence_path, evidence_payload)
             try:
                 current = self.read_status()
@@ -568,11 +454,7 @@ class RunContext:
         payload = status_path.read_bytes()
         if len(payload) <= _MAX_STATUS_EVIDENCE_BYTES:
             return payload
-        marker = (
-            b"\n[truncated by geochemistrypi-runtime after "
-            + str(_MAX_STATUS_EVIDENCE_BYTES).encode("ascii")
-            + b" bytes]\n"
-        )
+        marker = b"\n[truncated by geochemistrypi-runtime after " + str(_MAX_STATUS_EVIDENCE_BYTES).encode("ascii") + b" bytes]\n"
         return payload[:_MAX_STATUS_EVIDENCE_BYTES] + marker
 
     def read_control(self) -> ControlRecord:
@@ -588,23 +470,13 @@ class RunContext:
         """Persist an idempotent cancellation request without changing status."""
 
         requester = nonempty_string(requested_by, "requested_by", 128)
-        normalized_reason = (
-            None
-            if reason is None
-            else nonempty_string(reason, "reason", 1000)
-        )
+        normalized_reason = None if reason is None else nonempty_string(reason, "reason", 1000)
         with self._locked("control"):
             current = self.read_control()
             if current.cancel_requested:
                 return current
-            if (
-                expected_revision is not None
-                and current.revision != expected_revision
-            ):
-                raise RevisionConflictError(
-                    f"Expected control revision {expected_revision}, "
-                    f"found {current.revision}."
-                )
+            if expected_revision is not None and current.revision != expected_revision:
+                raise RevisionConflictError(f"Expected control revision {expected_revision}, " f"found {current.revision}.")
             updated = ControlRecord(
                 run_id=self.run_id,
                 revision=current.revision + 1,
@@ -637,23 +509,14 @@ class RunContext:
         with self._locked("provenance"):
             current = self.read_provenance()
             if current.revision != expected_revision:
-                raise RevisionConflictError(
-                    f"Expected provenance revision {expected_revision}, "
-                    f"found {current.revision}."
-                )
+                raise RevisionConflictError(f"Expected provenance revision {expected_revision}, " f"found {current.revision}.")
             sections: Dict[str, Mapping[str, Any]] = dict(current.sections)
             sections[section_name] = normalized_details
             updated = replace(
                 current,
                 revision=current.revision + 1,
                 updated_at=utc_now(),
-                engine_version=(
-                    current.engine_version
-                    if engine_version is None
-                    else nonempty_string(
-                        engine_version, "engine_version", 128
-                    )
-                ),
+                engine_version=(current.engine_version if engine_version is None else nonempty_string(engine_version, "engine_version", 128)),
                 sections=sections,
             )
             atomic_write_json(self.path / _PROVENANCE_FILE, updated.to_dict())
@@ -670,44 +533,23 @@ class RunContext:
     ) -> ArtifactRef:
         """Hash and register a completed artifact contained by artifacts/."""
 
-        portable_path = portable_relative_path(
-            relative_path, "artifact.relative_path"
-        )
-        if (
-            PurePosixPath(portable_path).parts[0] != "artifacts"
-            or len(PurePosixPath(portable_path).parts) < 2
-        ):
-            raise UnsafePathError(
-                "Artifacts must use a path below the run's artifacts/ directory."
-            )
+        portable_path = portable_relative_path(relative_path, "artifact.relative_path")
+        if PurePosixPath(portable_path).parts[0] != "artifacts" or len(PurePosixPath(portable_path).parts) < 2:
+            raise UnsafePathError("Artifacts must use a path below the run's artifacts/ directory.")
         with self._locked("manifest"):
             current = self.read_manifest()
             if current.revision != expected_manifest_revision:
-                raise RevisionConflictError(
-                    f"Expected manifest revision {expected_manifest_revision}, "
-                    f"found {current.revision}."
-                )
-            if any(
-                artifact.artifact_id == artifact_id
-                for artifact in current.artifacts
-            ):
+                raise RevisionConflictError(f"Expected manifest revision {expected_manifest_revision}, " f"found {current.revision}.")
+            if any(artifact.artifact_id == artifact_id for artifact in current.artifacts):
                 raise ValueError(f"Duplicate artifact_id: {artifact_id!r}")
-            if any(
-                artifact.relative_path == portable_path
-                for artifact in current.artifacts
-            ):
+            if any(artifact.relative_path == portable_path for artifact in current.artifacts):
                 raise ValueError(f"Artifact path is already registered: {portable_path}")
             artifact_path = self._resolve_artifact_path(portable_path)
             before = artifact_path.stat()
             digest = sha256_file(artifact_path)
             after = artifact_path.stat()
-            if (
-                before.st_size != after.st_size
-                or before.st_mtime_ns != after.st_mtime_ns
-            ):
-                raise ArtifactIntegrityError(
-                    "Artifact changed while its digest was being calculated."
-                )
+            if before.st_size != after.st_size or before.st_mtime_ns != after.st_mtime_ns:
+                raise ArtifactIntegrityError("Artifact changed while its digest was being calculated.")
             artifact = ArtifactRef(
                 artifact_id=artifact_id,
                 role=role,
@@ -730,11 +572,7 @@ class RunContext:
 
         manifest = self.read_manifest()
         artifact = next(
-            (
-                item
-                for item in manifest.artifacts
-                if item.artifact_id == artifact_id
-            ),
+            (item for item in manifest.artifacts if item.artifact_id == artifact_id),
             None,
         )
         if artifact is None:
@@ -744,9 +582,7 @@ class RunContext:
         return path
 
     def _resolve_artifact_path(self, relative_path: str) -> Path:
-        portable_path = portable_relative_path(
-            relative_path, "artifact.relative_path"
-        )
+        portable_path = portable_relative_path(relative_path, "artifact.relative_path")
         parts = PurePosixPath(portable_path).parts
         if not parts or parts[0] != "artifacts":
             raise UnsafePathError("Artifact path must be below artifacts/.")
@@ -754,12 +590,8 @@ class RunContext:
         try:
             candidate_stat = candidate.lstat()
         except FileNotFoundError as exc:
-            raise ArtifactIntegrityError(
-                f"Artifact file is missing: {portable_path}"
-            ) from exc
-        if stat.S_ISLNK(candidate_stat.st_mode) or not stat.S_ISREG(
-            candidate_stat.st_mode
-        ):
+            raise ArtifactIntegrityError(f"Artifact file is missing: {portable_path}") from exc
+        if stat.S_ISLNK(candidate_stat.st_mode) or not stat.S_ISREG(candidate_stat.st_mode):
             raise UnsafePathError("Artifact must be a regular, non-link file.")
         run_path = self.path.resolve(strict=True)
         resolved = candidate.resolve(strict=True)
@@ -778,15 +610,10 @@ class RunContext:
     def _verify_artifact_record(artifact: ArtifactRef, path: Path) -> None:
         actual_size = path.stat().st_size
         if actual_size != artifact.size_bytes:
-            raise ArtifactIntegrityError(
-                f"Artifact {artifact.artifact_id!r} size changed: "
-                f"expected {artifact.size_bytes}, found {actual_size}."
-            )
+            raise ArtifactIntegrityError(f"Artifact {artifact.artifact_id!r} size changed: " f"expected {artifact.size_bytes}, found {actual_size}.")
         actual_digest = sha256_file(path)
         if actual_digest != artifact.sha256:
-            raise ArtifactIntegrityError(
-                f"Artifact {artifact.artifact_id!r} SHA-256 changed."
-            )
+            raise ArtifactIntegrityError(f"Artifact {artifact.artifact_id!r} SHA-256 changed.")
 
     def write_result(
         self,
@@ -811,32 +638,20 @@ class RunContext:
         with self._locked("manifest"):
             current = self.read_manifest()
             if current.revision != expected_manifest_revision:
-                raise RevisionConflictError(
-                    f"Expected manifest revision {expected_manifest_revision}, "
-                    f"found {current.revision}."
-                )
-            artifacts_by_id = {
-                artifact.artifact_id: artifact for artifact in current.artifacts
-            }
+                raise RevisionConflictError(f"Expected manifest revision {expected_manifest_revision}, " f"found {current.revision}.")
+            artifacts_by_id = {artifact.artifact_id: artifact for artifact in current.artifacts}
             for artifact in result.artifacts:
                 recorded = artifacts_by_id.get(artifact.artifact_id)
                 if recorded is None or recorded.to_dict() != artifact.to_dict():
-                    raise ArtifactIntegrityError(
-                        f"Result artifact {artifact.artifact_id!r} is not "
-                        "identical to the manifest record."
-                    )
-                artifact_path = self._resolve_artifact_path(
-                    artifact.relative_path
-                )
+                    raise ArtifactIntegrityError(f"Result artifact {artifact.artifact_id!r} is not " "identical to the manifest record.")
+                artifact_path = self._resolve_artifact_path(artifact.relative_path)
                 self._verify_artifact_record(artifact, artifact_path)
 
             result_path = self.path / _RESULT_FILE
             result_payload = canonical_json_bytes(result.to_dict())
             if result_path.exists():
                 if result_path.is_symlink() or result_path.read_bytes() != result_payload:
-                    raise RevisionConflictError(
-                        "A different result.json already exists for this run."
-                    )
+                    raise RevisionConflictError("A different result.json already exists for this run.")
                 if current.result_path == _RESULT_FILE:
                     return result
             else:
@@ -856,32 +671,20 @@ class RunContext:
 
         manifest = self.read_manifest()
         if manifest.result_path != _RESULT_FILE:
-            raise CorruptedRecordError(
-                "manifest.json does not declare a completed result."
-            )
+            raise CorruptedRecordError("manifest.json does not declare a completed result.")
         try:
-            result = ExperimentResult.from_dict(
-                read_json_object(self.path / _RESULT_FILE)
-            )
+            result = ExperimentResult.from_dict(read_json_object(self.path / _RESULT_FILE))
         except CorruptedRecordError:
             raise
         except (KeyError, TypeError, ValueError) as exc:
-            raise CorruptedRecordError(
-                "result.json does not match the experiment result contract."
-            ) from exc
+            raise CorruptedRecordError("result.json does not match the experiment result contract.") from exc
         if result.run_id != self.run_id:
             raise CorruptedRecordError("result.json belongs to a different run.")
         if result.request_hash != manifest.request_sha256:
-            raise CorruptedRecordError(
-                "result.json does not match the manifest request digest."
-            )
-        manifest_artifacts = {
-            artifact.artifact_id: artifact for artifact in manifest.artifacts
-        }
+            raise CorruptedRecordError("result.json does not match the manifest request digest.")
+        manifest_artifacts = {artifact.artifact_id: artifact for artifact in manifest.artifacts}
         for artifact in result.artifacts:
             recorded = manifest_artifacts.get(artifact.artifact_id)
             if recorded is None or recorded.to_dict() != artifact.to_dict():
-                raise CorruptedRecordError(
-                    "result.json contains an artifact absent from manifest.json."
-                )
+                raise CorruptedRecordError("result.json contains an artifact absent from manifest.json.")
         return result

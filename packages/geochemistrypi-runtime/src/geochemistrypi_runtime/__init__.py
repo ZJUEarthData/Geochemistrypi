@@ -16,15 +16,7 @@ from .exceptions import (
     UnsafePathError,
 )
 from .records import ManifestRecord, ProvenanceRecord, ProvenanceSection
-from .state import (
-    ACTIVE_STATES,
-    ALLOWED_TRANSITIONS,
-    ControlRecord,
-    RunState,
-    StatusOwner,
-    StatusRecord,
-    StatusWriter,
-)
+from .state import ACTIVE_STATES, ALLOWED_TRANSITIONS, ControlRecord, RunState, StatusOwner, StatusRecord, StatusWriter
 
 __all__ = [
     "ACTIVE_STATES",

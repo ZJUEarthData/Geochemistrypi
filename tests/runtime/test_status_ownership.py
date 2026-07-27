@@ -4,17 +4,7 @@ from threading import Barrier
 
 import pytest
 from geochemistrypi_contracts import ClassificationExperimentSpec
-
-from geochemistrypi_runtime import (
-    CorruptedRecordError,
-    InvalidStateTransitionError,
-    RevisionConflictError,
-    RunContext,
-    RunState,
-    StatusOwner,
-    StatusOwnershipError,
-    StatusWriter,
-)
+from geochemistrypi_runtime import CorruptedRecordError, InvalidStateTransitionError, RevisionConflictError, RunContext, RunState, StatusOwner, StatusOwnershipError, StatusWriter
 
 
 def _context(

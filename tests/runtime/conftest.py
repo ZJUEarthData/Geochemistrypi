@@ -3,10 +3,7 @@
 from pathlib import Path
 
 import pytest
-from geochemistrypi_contracts import (
-    CONTRACT_VERSION,
-    ClassificationExperimentSpec,
-)
+from geochemistrypi_contracts import CONTRACT_VERSION, ClassificationExperimentSpec
 
 
 @pytest.fixture

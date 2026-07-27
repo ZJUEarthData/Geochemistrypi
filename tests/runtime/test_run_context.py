@@ -1,25 +1,10 @@
 import json
 from pathlib import Path
 
-import pytest
-from geochemistrypi_contracts import (
-    CONTRACT_VERSION,
-    ClassificationExperimentSpec,
-    SchemaName,
-    schema_id,
-    schema_sha256,
-)
-
 import geochemistrypi_runtime.context as context_module
-from geochemistrypi_runtime import (
-    CorruptedRecordError,
-    RunAlreadyExistsError,
-    RunContext,
-    RunNotFoundError,
-    RunState,
-    StatusOwner,
-    UnsafePathError,
-)
+import pytest
+from geochemistrypi_contracts import CONTRACT_VERSION, ClassificationExperimentSpec, SchemaName, schema_id, schema_sha256
+from geochemistrypi_runtime import CorruptedRecordError, RunAlreadyExistsError, RunContext, RunNotFoundError, RunState, StatusOwner, UnsafePathError
 from geochemistrypi_runtime.atomic import canonical_json_bytes, sha256_bytes
 
 
@@ -65,12 +50,8 @@ def test_create_publishes_complete_verified_run_directory(
     manifest = context.read_manifest()
     assert manifest.request_sha256 == context.request_sha256()
     assert manifest.contract_version == CONTRACT_VERSION
-    assert manifest.request_schema_id == schema_id(
-        SchemaName.CLASSIFICATION_EXPERIMENT_SPEC
-    )
-    assert manifest.request_schema_sha256 == schema_sha256(
-        SchemaName.CLASSIFICATION_EXPERIMENT_SPEC
-    )
+    assert manifest.request_schema_id == schema_id(SchemaName.CLASSIFICATION_EXPERIMENT_SPEC)
+    assert manifest.request_schema_sha256 == schema_sha256(SchemaName.CLASSIFICATION_EXPERIMENT_SPEC)
     assert manifest.result_path is None
     assert manifest.artifacts == ()
 

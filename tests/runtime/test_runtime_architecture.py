@@ -2,14 +2,7 @@ import ast
 import re
 from pathlib import Path
 
-
-RUNTIME_SOURCE = (
-    Path(__file__).resolve().parents[2]
-    / "packages"
-    / "geochemistrypi-runtime"
-    / "src"
-    / "geochemistrypi_runtime"
-)
+RUNTIME_SOURCE = Path(__file__).resolve().parents[2] / "packages" / "geochemistrypi-runtime" / "src" / "geochemistrypi_runtime"
 
 FORBIDDEN_IMPORT_ROOTS = {
     "data_mining",
@@ -35,9 +28,7 @@ def test_runtime_does_not_import_engine_or_service_frameworks() -> None:
             for imported_name in imported_names:
                 root = imported_name.split(".", 1)[0]
                 if root in FORBIDDEN_IMPORT_ROOTS:
-                    violations.append(
-                        f"{source_path.name}:{node.lineno} imports {imported_name}"
-                    )
+                    violations.append(f"{source_path.name}:{node.lineno} imports {imported_name}")
 
     assert violations == []
 

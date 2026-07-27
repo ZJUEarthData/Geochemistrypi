@@ -96,9 +96,7 @@ def read_json_object(
     if stat.S_ISLNK(file_stat.st_mode) or not stat.S_ISREG(file_stat.st_mode):
         raise CorruptedRecordError(f"Record must be a regular file: {path.name}")
     if file_stat.st_size > max_bytes:
-        raise CorruptedRecordError(
-            f"Record {path.name} exceeds the {max_bytes}-byte safety limit."
-        )
+        raise CorruptedRecordError(f"Record {path.name} exceeds the {max_bytes}-byte safety limit.")
     try:
         raw = path.read_bytes()
         value = json.loads(raw.decode("utf-8"))
