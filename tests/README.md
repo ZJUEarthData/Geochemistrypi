@@ -12,6 +12,9 @@ correctness evidence.
 - `contracts/`: verifies v1 JSON Schema validity, dependency-free engine
   dataclass round trips, strict rejection behavior, and installed wheel
   resources.
+- `runtime/`: verifies atomic run creation, request integrity, status ownership,
+  cancellation control, crash recovery evidence, artifact hashes, provenance,
+  package boundaries, and the installed Runtime wheel.
 - `mcp/`: verifies MCP protocol behavior. This directory is intentionally empty
   until the MCP package is introduced.
 

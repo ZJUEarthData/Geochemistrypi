@@ -72,6 +72,7 @@ dependencies = [
 test = [
     "pytest>=7,<9",
     "jsonschema>=4.20,<5",
+    "filelock>=3.13,<4",
 ]
 
 [tool.pytest.ini_options]
@@ -81,6 +82,7 @@ testpaths = [
 ]
 pythonpath = [
     "packages/geochemistrypi-contracts/src",
+    "packages/geochemistrypi-runtime/src",
 ]
 addopts = "-ra"
 markers = [
