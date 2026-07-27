@@ -9,6 +9,9 @@ correctness evidence.
   reproducibility against independent expectations.
 - `integration/`: verifies boundaries between configuration, API modules,
   workers, runtime storage, and later package boundaries.
+- `contracts/`: verifies v1 JSON Schema validity, dependency-free engine
+  dataclass round trips, strict rejection behavior, and installed wheel
+  resources.
 - `mcp/`: verifies MCP protocol behavior. This directory is intentionally empty
   until the MCP package is introduced.
 

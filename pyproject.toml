@@ -70,13 +70,17 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
-    "pytest>=7,<9"
+    "pytest>=7,<9",
+    "jsonschema>=4.20,<5",
 ]
 
 [tool.pytest.ini_options]
 testpaths = [
     "tests",
     "geochemistrypi/data_mining/tests",
+]
+pythonpath = [
+    "packages/geochemistrypi-contracts/src",
 ]
 addopts = "-ra"
 markers = [

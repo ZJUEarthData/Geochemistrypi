@@ -1,0 +1,185 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.geochemistrypi.org/contracts/v1/dataset-ref.schema.json",
+  "x-contract-version": "1.0",
+  "title": "DatasetRef",
+  "description": "A reproducible reference to a supported local tabular dataset.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "path",
+    "format",
+    "id_column",
+    "snapshot_policy"
+  ],
+  "properties": {
+    "kind": {
+      "const": "local_file",
+      "description": "The v1 dataset location kind."
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "description": "A local CSV or XLSX path. Runtime path-policy validation is performed separately."
+    },
+    "format": {
+      "type": "string",
+      "enum": [
+        "csv",
+        "xlsx"
+      ]
+    },
+    "id_column": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "maxLength": 256,
+      "default": null,
+      "description": "A stable sample identifier column, or null when no identifier is available."
+    },
+    "read_options": {
+      "$ref": "#/$defs/readOptions",
+      "default": {
+        "encoding": "utf-8",
+        "delimiter": ",",
+        "sheet_name": null,
+        "header_row": 0,
+        "na_values": []
+      }
+    },
+    "expected_sha256": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9a-f]{64}$",
+      "default": null,
+      "description": "Optional lowercase SHA-256 of the input file bytes."
+    },
+    "snapshot_policy": {
+      "type": "string",
+      "enum": [
+        "copy",
+        "reference"
+      ],
+      "default": "copy"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "format": {
+            "const": "csv"
+          }
+        },
+        "required": [
+          "format"
+        ]
+      },
+      "then": {
+        "properties": {
+          "path": {
+            "pattern": "\\.[cC][sS][vV]$"
+          },
+          "read_options": {
+            "properties": {
+              "sheet_name": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "format": {
+            "const": "xlsx"
+          }
+        },
+        "required": [
+          "format"
+        ]
+      },
+      "then": {
+        "properties": {
+          "path": {
+            "pattern": "\\.[xX][lL][sS][xX]$"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "readOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "encoding": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 64,
+          "default": "utf-8"
+        },
+        "delimiter": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 1,
+          "default": ","
+        },
+        "sheet_name": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "header_row": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": 0
+        },
+        "na_values": {
+          "type": "array",
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "default": []
+        }
+      }
+    }
+  }
+}

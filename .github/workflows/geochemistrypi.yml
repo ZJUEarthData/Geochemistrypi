@@ -25,8 +25,9 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements/production.txt
           python -m pip wheel . --no-deps --wheel-dir wheelhouse
-          python -c "import glob, zipfile; wheel = glob.glob('wheelhouse/geochemistrypi-*.whl')[0]; names = zipfile.ZipFile(wheel).namelist(); packaged_tests = [name for name in names if name.startswith('geochemistrypi/data_mining/tests/')]; assert not packaged_tests, f'Test modules must not be shipped in the production wheel: {packaged_tests}'"
-          python -m pip install wheelhouse/geochemistrypi-*.whl "pytest>=7,<9" pre-commit
+          python -m pip wheel packages/geochemistrypi-contracts --no-deps --wheel-dir wheelhouse
+          python -c "import glob, zipfile; engine_wheel = glob.glob('wheelhouse/geochemistrypi-*.whl')[0]; engine_names = zipfile.ZipFile(engine_wheel).namelist(); packaged_tests = [name for name in engine_names if name.startswith('geochemistrypi/data_mining/tests/')]; assert not packaged_tests, f'Test modules must not be shipped in the production wheel: {packaged_tests}'; contracts_wheel = glob.glob('wheelhouse/geochemistrypi_contracts-*.whl')[0]; contract_names = set(zipfile.ZipFile(contracts_wheel).namelist()); expected_schemas = {'geochemistrypi_contracts/schemas/v1/dataset-ref.schema.json', 'geochemistrypi_contracts/schemas/v1/classification-experiment-spec.schema.json', 'geochemistrypi_contracts/schemas/v1/experiment-result.schema.json', 'geochemistrypi_contracts/schemas/v1/error-response.schema.json'}; assert expected_schemas <= contract_names, f'Contracts wheel is missing schemas: {sorted(expected_schemas - contract_names)}'"
+          python -m pip install wheelhouse/geochemistrypi_contracts-*.whl wheelhouse/geochemistrypi-*.whl "pytest>=7,<9" "jsonschema>=4.20,<5" pre-commit
       - name: Run pre-commit hooks
         run: pre-commit run --all-files
       - name: Run tests without database configuration
