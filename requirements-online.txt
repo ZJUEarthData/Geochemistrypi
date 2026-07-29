@@ -4,3 +4,6 @@ python-multipart==0.0.32
 pandas==3.0.1
 openpyxl==3.1.5
 rich==15.0.0
+scipy==1.17.0
+scikit-learn==1.7.2
+joblib==1.5.3

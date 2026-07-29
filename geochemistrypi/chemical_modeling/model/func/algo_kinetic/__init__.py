@@ -59,14 +59,23 @@ def run(method: str, element: str, input_path: str, out_dir: str, **kwargs):
         from .adsorption_kinetics import pseudo_first_order, pseudo_second_order
 
         df = pd.read_excel(input_path)
-        # 支持两种模型，优先用参数model指定，否则默认伪一级
-        model = kwargs.get("model", "first")
-        if model == "first":
-            df["q_t"] = df.apply(lambda row: pseudo_first_order(row["qe"], row["k1"], row["t"]), axis=1)
+        default_model = str(kwargs.get("model", "first")).lower()
+
+        def calculate(row):
+            model = str(row.get("model", default_model)).strip().lower()
+            if model == "first":
+                return pseudo_first_order(row["qe"], row["k"], row["t"])
+            if model == "second":
+                return pseudo_second_order(row["qe"], row["k"], row["t"])
+            raise ValueError("Column 'model' must contain either 'first' or 'second'")
+
+        if "model" not in df.columns:
+            df["model"] = default_model
         else:
-            df["q_t"] = df.apply(lambda row: pseudo_second_order(row["qe"], row["k2"], row["t"]), axis=1)
+            df["model"] = df["model"].astype(str).str.strip().str.lower()
+        df["q_t"] = df.apply(calculate, axis=1)
         os.makedirs(out_dir, exist_ok=True)
-        out_path = os.path.join(out_dir, f"adsorption_{model}_results.xlsx")
+        out_path = os.path.join(out_dir, "adsorption_kinetics_results.xlsx")
         df.to_excel(out_path, index=False)
         return {"status": "success", "out_path": out_path}
     else:

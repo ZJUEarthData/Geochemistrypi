@@ -1,6 +1,6 @@
 """Response models for the Online API."""
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -56,3 +56,213 @@ class RunResponse(BaseModel):
     status: str
     message: str
     artifacts: list[ArtifactResponse]
+
+
+class DataMiningFeatureItem(BaseModel):
+    name: str
+    description: str
+    status: Literal["verified", "testing"]
+    status_message: str
+    input_formats: list[str] = Field(default_factory=list)
+    outputs: list[str] = Field(default_factory=list)
+
+
+class DataMiningCatalogResponse(BaseModel):
+    features: list[DataMiningFeatureItem]
+
+
+class DatasetProfileSummary(BaseModel):
+    rows: int
+    columns: int
+    total_cells: int
+    missing_cells: int
+    missing_rate: float
+    duplicate_rows: int
+    numeric_columns: int
+    text_columns: int
+    datetime_columns: int
+    boolean_columns: int
+    infinite_cells: int
+    memory_bytes: int
+
+
+class ColumnProfileItem(BaseModel):
+    name: str
+    data_type: Literal["number", "text", "datetime", "boolean"]
+    pandas_dtype: str
+    non_null: int
+    missing: int
+    missing_rate: float
+    unique: int
+    minimum: float | str | None = None
+    maximum: float | str | None = None
+    mean: float | None = None
+    standard_deviation: float | None = None
+    sample_values: list[Any] = Field(default_factory=list)
+
+
+class DatasetProfileResponse(BaseModel):
+    job_id: str
+    status: str
+    message: str
+    source_filename: str
+    summary: DatasetProfileSummary
+    columns: list[ColumnProfileItem]
+    preview: list[dict[str, Any]]
+    warnings: list[str] = Field(default_factory=list)
+    artifacts: list[ArtifactResponse] = Field(default_factory=list)
+
+
+class DataPreprocessingSummary(BaseModel):
+    original_rows: int
+    original_columns: int
+    processed_rows: int
+    processed_columns: int
+    removed_rows: int
+    removed_columns: int
+    original_missing_cells: int
+    processed_missing_cells: int
+    filled_cells: int
+
+
+class DataPreprocessingResponse(BaseModel):
+    job_id: str
+    status: str
+    message: str
+    source_filename: str
+    selected_columns: list[str]
+    missing_strategy: Literal[
+        "keep",
+        "drop_rows",
+        "fill_mean",
+        "fill_median",
+        "fill_mode",
+    ]
+    summary: DataPreprocessingSummary
+    preview: list[dict[str, Any]]
+    warnings: list[str] = Field(default_factory=list)
+    artifacts: list[ArtifactResponse] = Field(default_factory=list)
+
+
+class RegressionSummary(BaseModel):
+    original_rows: int
+    usable_rows: int
+    dropped_rows: int
+    train_rows: int
+    test_rows: int
+    feature_count: int
+
+
+class RegressionMetrics(BaseModel):
+    r2: float | None
+    mean_absolute_error: float
+    root_mean_squared_error: float
+
+
+class RegressionCoefficientItem(BaseModel):
+    feature: str
+    coefficient: float
+
+
+class RegressionResponse(BaseModel):
+    job_id: str
+    status: str
+    message: str
+    source_filename: str
+    model: Literal["linear_regression"]
+    target_column: str
+    feature_columns: list[str]
+    test_size: float
+    random_state: int
+    summary: RegressionSummary
+    metrics: RegressionMetrics
+    intercept: float
+    coefficients: list[RegressionCoefficientItem]
+    equation: str
+    preview: list[dict[str, Any]]
+    warnings: list[str] = Field(default_factory=list)
+    artifacts: list[ArtifactResponse] = Field(default_factory=list)
+
+
+class ClassificationSummary(BaseModel):
+    original_rows: int
+    usable_rows: int
+    dropped_rows: int
+    train_rows: int
+    test_rows: int
+    feature_count: int
+    class_count: int
+
+
+class ClassificationMetrics(BaseModel):
+    accuracy: float
+    precision_macro: float
+    recall_macro: float
+    f1_macro: float
+
+
+class ClassificationConfusionItem(BaseModel):
+    actual_class: str
+    predicted_class: str
+    count: int
+
+
+class ClassificationResponse(BaseModel):
+    job_id: str
+    status: str
+    message: str
+    source_filename: str
+    model: Literal["logistic_regression"]
+    target_column: str
+    feature_columns: list[str]
+    test_size: float
+    random_state: int
+    classes: list[str]
+    summary: ClassificationSummary
+    metrics: ClassificationMetrics
+    confusion_matrix: list[ClassificationConfusionItem]
+    preview: list[dict[str, Any]]
+    warnings: list[str] = Field(default_factory=list)
+    artifacts: list[ArtifactResponse] = Field(default_factory=list)
+
+
+class ClusteringSummary(BaseModel):
+    original_rows: int
+    usable_rows: int
+    dropped_rows: int
+    feature_count: int
+    cluster_count: int
+
+
+class ClusteringMetrics(BaseModel):
+    silhouette_score: float
+    davies_bouldin_score: float
+    calinski_harabasz_score: float
+
+
+class ClusterSizeItem(BaseModel):
+    cluster: int
+    rows: int
+
+
+class ClusterCenterItem(BaseModel):
+    cluster: int
+    values: dict[str, float]
+
+
+class ClusteringResponse(BaseModel):
+    job_id: str
+    status: str
+    message: str
+    source_filename: str
+    model: Literal["kmeans"]
+    feature_columns: list[str]
+    cluster_count: int
+    random_state: int
+    summary: ClusteringSummary
+    metrics: ClusteringMetrics
+    cluster_sizes: list[ClusterSizeItem]
+    cluster_centers: list[ClusterCenterItem]
+    preview: list[dict[str, Any]]
+    warnings: list[str] = Field(default_factory=list)
+    artifacts: list[ArtifactResponse] = Field(default_factory=list)

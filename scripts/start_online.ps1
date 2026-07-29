@@ -16,45 +16,161 @@ $frontendUrl = 'http://127.0.0.1:5173/online'
 
 New-Item -ItemType Directory -Force -Path $logsRoot | Out-Null
 
-function Resolve-BootstrapPython {
+function Refresh-OnlineProcessPath {
+    $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+    $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    $pathParts = @($machinePath, $userPath, $env:Path) | Where-Object { $_ }
+    $env:Path = $pathParts -join ';'
+}
+
+function Install-OnlineTool([string]$packageId, [string]$displayName) {
+    $wingetCommand = Get-Command winget -ErrorAction SilentlyContinue
+    if (-not $wingetCommand) {
+        throw (
+            "$displayName is required, but WinGet is unavailable. " +
+            'Install Microsoft App Installer/WinGet, or install the tool manually, then run this script again.'
+        )
+    }
+
+    Write-Host "$displayName was not found. Installing it with WinGet..." -ForegroundColor Yellow
+    $arguments = @(
+        'install',
+        '--id', $packageId,
+        '--exact',
+        '--source', 'winget',
+        '--silent',
+        '--accept-package-agreements',
+        '--accept-source-agreements',
+        '--disable-interactivity'
+    )
+    & $wingetCommand.Source @arguments | Out-Host
+    $installExitCode = $LASTEXITCODE
+    if ($installExitCode -ne 0) {
+        throw (
+            "$displayName installation failed with WinGet exit code $installExitCode. " +
+            'Windows may require administrator approval or a manual installation.'
+        )
+    }
+
+    Refresh-OnlineProcessPath
+}
+
+function Get-CompatiblePythonPath {
+    $candidates = @()
     $pythonCommand = Get-Command python -ErrorAction SilentlyContinue
     if ($pythonCommand) {
-        return $pythonCommand.Source
+        $candidates += $pythonCommand.Source
+    }
+    $candidates += @(
+        (Join-Path $env:LOCALAPPDATA 'Programs\Python\Python312\python.exe'),
+        (Join-Path $env:ProgramFiles 'Python312\python.exe')
+    )
+
+    foreach ($candidate in ($candidates | Select-Object -Unique)) {
+        if (-not $candidate -or -not (Test-Path -LiteralPath $candidate)) {
+            continue
+        }
+        $details = & $candidate -c 'import sys; print(f"{sys.executable}|{sys.version_info.major}|{sys.version_info.minor}")' 2>$null
+        if ($LASTEXITCODE -ne 0 -or -not $details) {
+            continue
+        }
+        $parts = "$details".Trim().Split('|')
+        if ($parts.Count -eq 3 -and ([int]$parts[1] -gt 3 -or ([int]$parts[1] -eq 3 -and [int]$parts[2] -ge 11))) {
+            return $parts[0]
+        }
     }
 
     $launcherCommand = Get-Command py -ErrorAction SilentlyContinue
     if ($launcherCommand) {
-        return $launcherCommand.Source
+        $details = & $launcherCommand.Source -3 -c 'import sys; print(f"{sys.executable}|{sys.version_info.major}|{sys.version_info.minor}")' 2>$null
+        if ($LASTEXITCODE -eq 0 -and $details) {
+            $parts = "$details".Trim().Split('|')
+            if ($parts.Count -eq 3 -and ([int]$parts[1] -gt 3 -or ([int]$parts[1] -eq 3 -and [int]$parts[2] -ge 11))) {
+                return $parts[0]
+            }
+        }
     }
 
-    throw 'Python was not found. Install Python 3.11 or newer and run this script again.'
+    return $null
+}
+
+function Resolve-BootstrapPython {
+    $pythonPath = Get-CompatiblePythonPath
+    if (-not $pythonPath) {
+        if ($SkipInstall) {
+            throw 'Python 3.11 or newer was not found and -SkipInstall prevents automatic installation.'
+        }
+        Install-OnlineTool 'Python.Python.3.12' 'Python 3.12'
+        $pythonPath = Get-CompatiblePythonPath
+    }
+
+    if (-not $pythonPath) {
+        throw 'Python installation completed, but Python 3.11 or newer could not be detected. Restart Windows and try again.'
+    }
+
+    $pythonVersion = & $pythonPath -c 'import platform; print(platform.python_version())'
+    Write-Host "Python $pythonVersion detected: $pythonPath"
+    return $pythonPath
+}
+
+function Get-CompatibleNodePath {
+    $candidates = @()
+    $nodeCommand = Get-Command node -ErrorAction SilentlyContinue
+    if ($nodeCommand) {
+        $candidates += $nodeCommand.Source
+    }
+    $userProfilePath = [Environment]::GetFolderPath('UserProfile')
+    $candidates += @(
+        (Join-Path $userProfilePath '.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe'),
+        (Join-Path $env:ProgramFiles 'nodejs\node.exe'),
+        (Join-Path $env:LOCALAPPDATA 'Programs\nodejs\node.exe')
+    )
+
+    foreach ($candidate in ($candidates | Select-Object -Unique)) {
+        if (-not $candidate -or -not (Test-Path -LiteralPath $candidate)) {
+            continue
+        }
+        $versionText = & $candidate --version 2>$null
+        if ($LASTEXITCODE -ne 0 -or -not $versionText) {
+            continue
+        }
+        $majorVersion = 0
+        if ([int]::TryParse("$versionText".Trim().TrimStart('v').Split('.')[0], [ref]$majorVersion) -and $majorVersion -ge 20) {
+            return $candidate
+        }
+    }
+
+    return $null
 }
 
 function Resolve-OnlineNode {
-    $nodeCommand = Get-Command node -ErrorAction SilentlyContinue
-    if ($nodeCommand) {
-        return $nodeCommand.Source
+    $nodePath = Get-CompatibleNodePath
+    if (-not $nodePath) {
+        if ($SkipInstall) {
+            throw 'Node.js 20 or newer was not found and -SkipInstall prevents automatic installation.'
+        }
+        Install-OnlineTool 'OpenJS.NodeJS.LTS' 'Node.js LTS'
+        $nodePath = Get-CompatibleNodePath
     }
 
-    $userProfilePath = [Environment]::GetFolderPath('UserProfile')
-    $bundledNode = Join-Path $userProfilePath '.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe'
-    if (Test-Path -LiteralPath $bundledNode) {
-        return $bundledNode
+    if (-not $nodePath) {
+        throw 'Node.js installation completed, but Node.js 20 or newer could not be detected. Restart Windows and try again.'
     }
 
-    throw 'Node.js was not found. Install Node.js 20 or newer and run this script again.'
+    $nodeVersion = & $nodePath --version
+    Write-Host "Node.js $nodeVersion detected: $nodePath"
+    return $nodePath
 }
 
 function Install-FrontendDependencies([string]$nodeExecutable) {
-    $pnpmCommand = Get-Command pnpm -ErrorAction SilentlyContinue
-    $userProfilePath = [Environment]::GetFolderPath('UserProfile')
-    $bundledPnpm = Join-Path $userProfilePath '.cache\codex-runtimes\codex-primary-runtime\dependencies\bin\fallback\pnpm.cmd'
-    $npmCommand = Get-Command npm -ErrorAction SilentlyContinue
-
     $nodeDirectory = Split-Path -Parent $nodeExecutable
     $originalProcessPath = $env:Path
     try {
         $env:Path = "$nodeDirectory;$originalProcessPath"
+        $pnpmCommand = Get-Command pnpm -ErrorAction SilentlyContinue
+        $userProfilePath = [Environment]::GetFolderPath('UserProfile')
+        $bundledPnpm = Join-Path $userProfilePath '.cache\codex-runtimes\codex-primary-runtime\dependencies\bin\fallback\pnpm.cmd'
+        $npmCommand = Get-Command npm -ErrorAction SilentlyContinue
         if ($pnpmCommand) {
             & $pnpmCommand.Source install
         }
@@ -127,18 +243,17 @@ if (-not (Test-Path -LiteralPath $venvPython)) {
 
     $bootstrapPython = Resolve-BootstrapPython
     Write-Host 'Creating the Online Python environment...'
-    if ([IO.Path]::GetFileNameWithoutExtension($bootstrapPython) -eq 'py') {
-        & $bootstrapPython -3 -m venv $venvPython.Replace('\Scripts\python.exe', '')
-    }
-    else {
-        & $bootstrapPython -m venv $venvPython.Replace('\Scripts\python.exe', '')
-    }
+    & $bootstrapPython -m venv $venvPython.Replace('\Scripts\python.exe', '')
     if ($LASTEXITCODE -ne 0) {
         throw "Python environment creation failed with exit code $LASTEXITCODE."
     }
 }
+else {
+    $onlinePythonVersion = & $venvPython -c 'import platform; print(platform.python_version())'
+    Write-Host "Existing Online Python environment detected: $onlinePythonVersion"
+}
 
-& $venvPython -c 'import fastapi, uvicorn, pandas, openpyxl, multipart, rich' 2>$null
+& $venvPython -c 'import fastapi, uvicorn, pandas, openpyxl, multipart, rich, scipy, sklearn, joblib' 2>$null
 $runtimeImportsReady = $LASTEXITCODE -eq 0
 if (-not $runtimeImportsReady) {
     if ($SkipInstall) {

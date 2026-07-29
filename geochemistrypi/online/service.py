@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 import sys
 from io import BytesIO
@@ -168,9 +169,18 @@ class OnlineService:
     @staticmethod
     def _validate_workbook(task: str, method: str, content: bytes) -> None:
         try:
-            dataframe = pd.read_excel(BytesIO(content))
+            sheet_name: int | str = (
+                "3程序处理_输入常数"
+                if task == "algo_fractionation" and method == "double_spike"
+                else 0
+            )
+            dataframe = pd.read_excel(BytesIO(content), sheet_name=sheet_name)
             columns = [str(column) for column in dataframe.columns]
         except Exception as exc:
+            if task == "algo_fractionation" and method == "double_spike":
+                raise InvalidDatasetError(
+                    "Mo double-spike requires worksheet '3程序处理_输入常数'"
+                ) from exc
             raise InvalidDatasetError("The uploaded file is not a readable .xlsx workbook") from exc
 
         metadata = get_method_metadata(task, method)
@@ -183,10 +193,18 @@ class OnlineService:
             raise InvalidDatasetError("The Excel workbook contains no data rows")
 
         for column in metadata.input_columns:
-            if column.name not in dataframe.columns or column.data_type not in {"number", "integer"}:
+            if column.name not in dataframe.columns:
                 continue
 
             values = dataframe[column.name]
+            if column.data_type == "string":
+                if values.isna().any() or not values.map(lambda value: bool(str(value).strip())).all():
+                    raise InvalidDatasetError(
+                        f"Column '{column.name}' must contain non-empty text values"
+                    )
+                continue
+            if column.data_type not in {"number", "integer"}:
+                continue
             if values.isna().any() or not pd.api.types.is_numeric_dtype(values):
                 raise InvalidDatasetError(
                     f"Column '{column.name}' must contain numeric values without empty cells"
@@ -203,6 +221,228 @@ class OnlineService:
                 relation = "greater than" if column.exclusive_minimum else "greater than or equal to"
                 raise InvalidDatasetError(
                     f"Column '{column.name}' values must be {relation} {column.minimum:g}"
+                )
+
+        if task == "algo_equilibrium" and method == "mass_balance":
+            species_columns = [column for column in dataframe.columns if column != "total_mass"]
+            if not species_columns:
+                raise InvalidDatasetError("Mass balance requires at least one species concentration column")
+            for column in species_columns:
+                values = dataframe[column]
+                if values.isna().any() or not pd.api.types.is_numeric_dtype(values):
+                    raise InvalidDatasetError(
+                        f"Species column '{column}' must contain numeric values without empty cells"
+                    )
+                numeric = values.astype(float)
+                if not numeric.map(math.isfinite).all():
+                    raise InvalidDatasetError(f"Species column '{column}' must contain only finite values")
+                if (numeric < 0).any():
+                    raise InvalidDatasetError(
+                        f"Species column '{column}' values must be greater than or equal to 0"
+                    )
+
+        if task == "algo_equilibrium" and method == "mass_action":
+            from geochemistrypi.chemical_modeling.model.func.algo_equilibrium.mass_action import (
+                law_of_mass_action,
+            )
+
+            for row_number, row in enumerate(dataframe.itertuples(index=False), start=2):
+                try:
+                    stoich = json.loads(row.stoich)
+                    initial = json.loads(row.initial_concentrations)
+                    law_of_mass_action(float(row.K), stoich, initial)
+                except (TypeError, ValueError, json.JSONDecodeError) as exc:
+                    raise InvalidDatasetError(f"Row {row_number}: {exc}") from exc
+
+        if task == "algo_kinetic" and method == "adsorption_kinetics":
+            invalid_models = sorted(
+                {
+                    str(value).strip().lower()
+                    for value in dataframe["model"]
+                    if str(value).strip().lower() not in {"first", "second"}
+                }
+            )
+            if invalid_models:
+                raise InvalidDatasetError("Column 'model' must contain either 'first' or 'second'")
+
+        if task == "algo_fractionation" and method == "internal_standard":
+            def normalize_label(value: object) -> str:
+                if isinstance(value, (int, float)) and math.isfinite(float(value)):
+                    numeric = float(value)
+                    if numeric.is_integer():
+                        return str(int(numeric))
+                return str(value).strip()
+
+            labels = [normalize_label(value) for value in dataframe["Label"]]
+            standard_positions = [index for index, label in enumerate(labels) if label == "3133"]
+            if len(standard_positions) < 2:
+                raise InvalidDatasetError(
+                    "Hg internal standard requires at least two rows with Label '3133'"
+                )
+
+            for index, label in enumerate(labels):
+                if label == "3133":
+                    continue
+                previous = [position for position in standard_positions if position < index]
+                following = [position for position in standard_positions if position > index]
+                if not previous or not following:
+                    raise InvalidDatasetError(
+                        f"Row {index + 2}: each sample must be bracketed by Label '3133' rows"
+                    )
+
+        if task == "algo_thermodynamic" and method == "gibbs_minimization":
+            from geochemistrypi.chemical_modeling.model.func.algo_thermodynamic.gibbs_minimization import (
+                gibbs_minimization,
+            )
+
+            for row_number, row in enumerate(dataframe.itertuples(index=False), start=2):
+                try:
+                    gibbs_minimization(
+                        json.loads(row.gibbs_energies),
+                        json.loads(row.stoichiometry),
+                        json.loads(row.component_totals),
+                    )
+                except (TypeError, ValueError, json.JSONDecodeError) as exc:
+                    raise InvalidDatasetError(f"Row {row_number}: {exc}") from exc
+
+        if task == "algo_solubility" and method == "ding":
+            calibration_ranges = {
+                "Pressure": (0.0001, 5.5),
+                "T": (1473.15, 2073.15),
+                "SiO2": (33.0, 55.0),
+                "TiO2": (0.01, 15.0),
+                "Al2O3": (5.0, 20.0),
+                "FeO": (5.0, 30.0),
+                "MgO": (6.0, 23.0),
+                "CaO": (5.0, 19.0),
+                "sulfide_Ni": (0.0, 50.0),
+            }
+            for column, (minimum, maximum) in calibration_ranges.items():
+                values = dataframe[column].astype(float)
+                if ((values < minimum) | (values > maximum)).any():
+                    raise InvalidDatasetError(
+                        f"Column '{column}' values must be between {minimum:g} and {maximum:g}"
+                    )
+
+            oxide_columns = [
+                "SiO2",
+                "TiO2",
+                "Al2O3",
+                "FeO",
+                "MgO",
+                "CaO",
+                "Na2O",
+                "K2O",
+            ]
+            oxide_totals = dataframe[oxide_columns].astype(float).sum(axis=1)
+            if ((oxide_totals < 90) | (oxide_totals > 105)).any():
+                raise InvalidDatasetError(
+                    "Ding oxide totals must be between 90 and 105 wt.%"
+                )
+
+        if task == "algo_solubility" and method == "blanchard":
+            calibration_ranges = {
+                "Pressure": (0.0001, 24.0),
+                "T": (1423.0, 2623.0),
+                "SiO2": (0.0, 77.9),
+                "TiO2": (0.0, 15.3),
+                "Al2O3": (0.0, 34.1),
+                "FeO": (0.5, 40.1),
+                "MgO": (0.0, 53.3),
+                "CaO": (0.0, 32.7),
+                "Na2O": (0.0, 8.0),
+                "K2O": (0.0, 8.4),
+                "H2O": (0.0, 8.5),
+            }
+            for column, (minimum, maximum) in calibration_ranges.items():
+                values = dataframe[column].astype(float)
+                if ((values < minimum) | (values > maximum)).any():
+                    raise InvalidDatasetError(
+                        f"Column '{column}' values must be between {minimum:g} and {maximum:g}"
+                    )
+
+            if "P2O5" in dataframe.columns and (dataframe["P2O5"].astype(float) > 1.8).any():
+                raise InvalidDatasetError("Column 'P2O5' values must be between 0 and 1.8")
+
+            oxide_columns = [
+                column
+                for column in (
+                    "SiO2",
+                    "TiO2",
+                    "Al2O3",
+                    "FeO",
+                    "MgO",
+                    "CaO",
+                    "Na2O",
+                    "K2O",
+                    "H2O",
+                    "MnO",
+                    "P2O5",
+                    "Cr2O3",
+                )
+                if column in dataframe.columns
+            ]
+            oxide_totals = dataframe[oxide_columns].astype(float).sum(axis=1)
+            if ((oxide_totals < 90) | (oxide_totals > 110)).any():
+                raise InvalidDatasetError(
+                    "Blanchard oxide totals must be between 90 and 110 wt.%"
+                )
+
+            sulfide_totals = dataframe[["Fe", "Ni", "Cu"]].astype(float).sum(axis=1)
+            if (sulfide_totals > 100).any():
+                raise InvalidDatasetError(
+                    "Blanchard sulfide Fe + Ni + Cu must not exceed 100 wt.%"
+                )
+
+        if task == "algo_solubility" and method == "hybrid":
+            calibration_ranges = {
+                "Pressure": (0.0001, 24.0),
+                "T": (1423.0, 2623.0),
+                "SiO2": (27.712, 77.9),
+                "TiO2": (0.0, 18.77),
+                "Al2O3": (0.1397, 34.0438),
+                "FeO": (0.00456, 40.9967),
+                "MgO": (0.0, 53.212),
+                "CaO": (0.35197, 32.673),
+                "NiO": (0.0, 0.554),
+                "Na2O": (0.0, 7.9595),
+                "K2O": (0.0, 8.39),
+                "H2O": (0.0, 8.5),
+                "Fe": (0.0486, 91.054),
+                "Ni+Cu+Co": (0.0, 77.48),
+                "S": (8.672, 42.53),
+                "O": (0.0, 7.136),
+            }
+            for column, (minimum, maximum) in calibration_ranges.items():
+                values = dataframe[column].astype(float)
+                if ((values < minimum) | (values > maximum)).any():
+                    raise InvalidDatasetError(
+                        f"Column '{column}' values must be between {minimum:g} and {maximum:g}"
+                    )
+
+            oxide_columns = [
+                "SiO2",
+                "TiO2",
+                "Al2O3",
+                "FeO",
+                "MgO",
+                "CaO",
+                "NiO",
+                "Na2O",
+                "K2O",
+                "H2O",
+            ]
+            oxide_totals = dataframe[oxide_columns].astype(float).sum(axis=1)
+            if ((oxide_totals < 89) | (oxide_totals > 110)).any():
+                raise InvalidDatasetError(
+                    "Hybrid silicate oxide totals must be between 89 and 110 wt.%"
+                )
+
+            sulfide_columns = ["Fe", "Ni+Cu+Co", "S", "O"]
+            sulfide_totals = dataframe[sulfide_columns].astype(float).sum(axis=1)
+            if ((sulfide_totals < 75) | (sulfide_totals > 105)).any():
+                raise InvalidDatasetError(
+                    "Hybrid sulfide Fe + Ni+Cu+Co + S + O totals must be between 75 and 105 wt.%"
                 )
 
         if task == "algo_thermodynamic" and method == "vanthoff":

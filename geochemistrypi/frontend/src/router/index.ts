@@ -15,6 +15,11 @@ const router = createRouter({
       component: () => import('../views/online/online-page.vue')
     },
     {
+      path: '/data-mining',
+      name: 'dataMining',
+      component: () => import('../views/data-mining/data-mining-page.vue')
+    },
+    {
       path: '/guide',
       name: 'guide',
       component: () => import('../views/guide/guide-index.vue')

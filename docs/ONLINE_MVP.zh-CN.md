@@ -47,14 +47,20 @@ start-online.cmd
 
 启动程序会自动完成以下工作：
 
-1. 查找或创建 `.venv-online` Python 虚拟环境；
-2. 检查并按需安装 Online 后端依赖；
-3. 查找 Node.js，检查并按需安装前端依赖；
-4. 在后台启动 FastAPI 和 Vue；
-5. 等待前后端服务正常运行；
-6. 使用默认浏览器打开 Online 页面。
+1. 检测 Python 3.11 或更高版本，已安装则直接使用；
+2. 检测 Node.js 20 或更高版本，已安装则直接使用；
+3. 若缺少可用版本，通过 Windows WinGet 安装 Python 3.12 或 Node.js LTS；
+4. 查找或创建 `.venv-online` Python 虚拟环境；
+5. 检查并按需安装 Online 后端和前端依赖；
+6. 在后台启动 FastAPI 和 Vue，等待服务正常后打开 Online 页面。
 
-第一次启动可能需要下载依赖，因此耗时会比以后启动更长。启动窗口显示 `Geochemistry Pi Online is ready.` 表示启动成功。
+第一次启动可能需要下载系统软件和项目依赖，因此耗时会比以后启动更长。Windows 仍可能显示管理员权限确认，请允许安装。如果电脑没有 WinGet，启动窗口会说明需要手动安装的软件。窗口显示 `Geochemistry Pi Online is ready.` 表示启动成功。
+
+如需严格禁止自动安装，可以在 PowerShell 中运行：
+
+```powershell
+.\start-online.cmd -SkipInstall
+```
 
 ### 2. 停止系统
 

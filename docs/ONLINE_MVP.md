@@ -47,12 +47,18 @@ start-online.cmd
 
 The launcher:
 
-1. locates or creates `.venv-online`;
-2. checks the minimal Python dependencies;
-3. locates Node.js and installs frontend dependencies when needed;
-4. starts FastAPI and Vue in hidden background processes;
-5. waits for both services to become healthy;
-6. opens the Online page in the default browser.
+1. detects Python 3.11+ and Node.js 20+, reusing compatible installations;
+2. installs Python 3.12 or Node.js LTS with Windows WinGet when a compatible version is missing;
+3. locates or creates `.venv-online`;
+4. installs backend and frontend dependencies when needed;
+5. starts FastAPI and Vue in hidden background processes;
+6. waits for both services to become healthy and opens the Online page.
+
+The first automatic software installation may still display a Windows administrator confirmation. If WinGet is unavailable, the launcher reports which prerequisite must be installed manually. To prohibit any automatic installation, run:
+
+```powershell
+.\start-online.cmd -SkipInstall
+```
 
 To stop processes started by the launcher, double-click:
 

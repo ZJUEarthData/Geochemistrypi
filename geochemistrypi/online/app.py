@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .data_mining_service import DataMiningService
 from .router import create_router
 from .service import OnlineService
 
@@ -16,7 +17,7 @@ def create_app(runtime_dir: Path | None = None) -> FastAPI:
     app = FastAPI(
         title="Geochemistry Pi Online",
         version="0.1.0",
-        description="Minimal Online API for Geochemistry Pi chemical modeling.",
+        description="Minimal Online API for Geochemistry Pi chemical modeling and data mining.",
     )
     app.add_middleware(
         CORSMiddleware,
@@ -26,9 +27,12 @@ def create_app(runtime_dir: Path | None = None) -> FastAPI:
         allow_headers=["*"],
     )
 
-    service = OnlineService(runtime_dir or PROJECT_ROOT / "runtime")
+    resolved_runtime_dir = runtime_dir or PROJECT_ROOT / "runtime"
+    service = OnlineService(resolved_runtime_dir)
+    data_mining_service = DataMiningService(resolved_runtime_dir)
     app.state.online_service = service
-    app.include_router(create_router(service))
+    app.state.data_mining_service = data_mining_service
+    app.include_router(create_router(service, data_mining_service))
 
     @app.get("/", include_in_schema=False)
     async def root() -> dict[str, str]:
