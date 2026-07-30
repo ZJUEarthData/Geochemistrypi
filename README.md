@@ -152,6 +152,8 @@ Geochemistry π was selected for featuring as an Editor’s Highlight in EOS mag
 
 Have an overview of how our software can accelerate your data-mining experiment.
 
+- Interact with Deepseek to help install the new version of Geochemistry π and upgrade from the old version [[Bilibili]](https://www.bilibili.com/video/BV1regY6sE9s/?spm_id_from=333.1387.homepage.video_card.click) | [[YouTube]](https://www.youtube.com/watch?v=S5PLFnpB1jA)
+- Introduction to New Features in Geochemistrypi V0.8.0 - Yunzhou Han and Chufan Zhou [[Bilibili]](https://www.bilibili.com/video/BV14W3T6FEvf/?spm_id_from=333.1387.homepage.video_card.click)
 - Geochemistry π v0.7.0 Introduction Video [[Bilibili]](https://www.bilibili.com/video/BV1TorTYVEgn/?vd_source=27944ab3b73a78970c1a52a5dcbb9140) | [[YouTube]](https://www.youtube.com/watch?v=6IVaO_gq22A)
 - Geochemistry π v0.7.0 for Regression Demo [[Bilibili]](https://www.bilibili.com/video/BV1VormYvEt8/?spm_id_from=333.1387.homepage.video_card.click&vd_source=27944ab3b73a78970c1a52a5dcbb9140) | [[YouTube]](https://www.youtube.com/watch?v=eTJ-IV1n4QM)
 - Geochemistry π v0.7.0 for Classification Demo [[Bilibili]](https://www.bilibili.com/video/BV1ZDrSYjEBv/?spm_id_from=333.1387.homepage.video_card.click&vd_source=27944ab3b73a78970c1a52a5dcbb9140) | [[YouTube]](https://www.youtube.com/watch?v=c_eDI2gVTr0)
@@ -547,6 +549,7 @@ Even if you are not familiar with topics above, but if you are interested in and
 - [**Chinese Page**](https://person.zju.edu.cn/zhangzhou#0)
 - [**ResearchGate**](https://www.researchgate.net/profile/J-Zhangzhou-2?ev=hdr_xprf)
 - [**Bilibili**](https://space.bilibili.com/616904352?spm_id_from=333.788.b_765f7570696e666f.2)
+- [**Youtube**](https://www.youtube.com/@zju_earth_data2668)
 - [![ORCID](https://img.shields.io/badge/ORCID-0000--0003--0107--0548-brightgreen?logo=orcid)](https://orcid.org/0000-0003-0107-0548)
 
 **Do you want to contribute to this open-source program?** Contact with your CV: zhangzhou333@zju.edu.cn, sanyhew1097618435@163.com
