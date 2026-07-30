@@ -1,0 +1,320 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.geochemistrypi.org/contracts/v1/classification-experiment-spec.schema.json",
+  "x-contract-version": "1.0",
+  "title": "ClassificationExperimentSpec",
+  "description": "A non-interactive v1 classification experiment request.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "dataset",
+    "target_column",
+    "preprocessing",
+    "split",
+    "model",
+    "evaluation"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "client_request_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "maxLength": 128,
+      "default": null
+    },
+    "dataset": {
+      "$ref": "dataset-ref.schema.json"
+    },
+    "target_column": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "feature_columns": {
+      "oneOf": [
+        {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "group_column": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "maxLength": 256,
+      "default": null
+    },
+    "preprocessing": {
+      "$ref": "#/$defs/preprocessing"
+    },
+    "split": {
+      "$ref": "#/$defs/split"
+    },
+    "model": {
+      "$ref": "#/$defs/model"
+    },
+    "evaluation": {
+      "$ref": "#/$defs/evaluation"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "split": {
+            "properties": {
+              "strategy": {
+                "const": "group"
+              }
+            },
+            "required": [
+              "strategy"
+            ]
+          }
+        },
+        "required": [
+          "split"
+        ]
+      },
+      "then": {
+        "properties": {
+          "group_column": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "group_column"
+        ]
+      },
+      "else": {
+        "properties": {
+          "group_column": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "preprocessing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "missing_values": {
+          "type": "string",
+          "enum": [
+            "none",
+            "mean",
+            "median",
+            "most_frequent"
+          ],
+          "default": "median"
+        },
+        "scaling": {
+          "type": "string",
+          "enum": [
+            "none",
+            "min_max",
+            "standard",
+            "mean_normalization"
+          ],
+          "default": "standard"
+        },
+        "class_balance": {
+          "type": "string",
+          "enum": [
+            "none",
+            "random_over",
+            "random_under",
+            "over_under"
+          ],
+          "default": "none"
+        }
+      }
+    },
+    "split": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "strategy": {
+          "type": "string",
+          "enum": [
+            "stratified_random",
+            "group"
+          ],
+          "default": "stratified_random"
+        },
+        "test_size": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 1,
+          "default": 0.2
+        },
+        "group_column": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 256,
+          "default": null
+        },
+        "random_seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "default": 42
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "strategy": {
+                "const": "group"
+              }
+            },
+            "required": [
+              "strategy"
+            ]
+          },
+          "then": {
+            "properties": {
+              "group_column": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "group_column"
+            ]
+          },
+          "else": {
+            "properties": {
+              "group_column": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{1,63}$"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "automl"
+          ],
+          "default": "manual"
+        },
+        "parameters": {
+          "type": "object",
+          "maxProperties": 100,
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/jsonValue"
+          },
+          "default": {},
+          "description": "Validated again against the selected model's strict parameter schema."
+        }
+      }
+    },
+    "evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "primary_metric": {
+          "type": "string",
+          "enum": [
+            "accuracy",
+            "balanced_accuracy",
+            "macro_f1",
+            "weighted_f1"
+          ],
+          "default": "macro_f1"
+        },
+        "positive_label": {
+          "type": [
+            "string",
+            "number",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 256,
+          "default": null
+        },
+        "cross_validation_folds": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 100,
+          "default": 5
+        }
+      }
+    },
+    "jsonValue": {
+      "anyOf": [
+        {
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ]
+        },
+        {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "$ref": "#/$defs/jsonValue"
+          }
+        },
+        {
+          "type": "object",
+          "maxProperties": 100,
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/jsonValue"
+          }
+        }
+      ]
+    }
+  }
+}

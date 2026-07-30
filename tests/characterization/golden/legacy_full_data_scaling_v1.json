@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "purpose": "Freeze the legacy full-dataset StandardScaler behavior without treating it as scientifically correct.",
+  "source_dataset": "../data/legacy_full_data_scaling.csv",
+  "generation": {
+    "method": "feature_scaler(X, FEATURE_SCALING_STRATEGY, 1), followed by data_split(..., test_size=0.25)",
+    "random_state": 42,
+    "dependencies": {
+      "python": "3.9.20",
+      "numpy": "1.23.5",
+      "pandas": "1.5.2",
+      "scikit-learn": "1.1.3"
+    }
+  },
+  "tolerances": {
+    "relative": 1e-12,
+    "absolute": 1e-12
+  },
+  "expected": {
+    "full_data_mean": 88.16666666666667,
+    "full_data_standard_deviation": 274.948732594925,
+    "train_sample_ids": [
+      "s00",
+      "s02",
+      "s11",
+      "s01",
+      "s04",
+      "s07",
+      "s05",
+      "s10",
+      "s03"
+    ],
+    "test_sample_ids": [
+      "s09",
+      "s06",
+      "s08"
+    ],
+    "transformed_train_mean": -0.30328886444348024,
+    "transformed_test_mean": 0.9098665933304405
+  }
+}

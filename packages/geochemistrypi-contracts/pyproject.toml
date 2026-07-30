@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling>=1.18"]
+build-backend = "hatchling.build"
+
+[project]
+name = "geochemistrypi-contracts"
+version = "0.1.0"
+description = "Versioned wire contracts shared by GeochemistryPi engine and MCP environments"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+    { name = "GeochemistryPi contributors" },
+]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+]
+dependencies = []
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/README.md",
+    "/src",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/geochemistrypi_contracts"]

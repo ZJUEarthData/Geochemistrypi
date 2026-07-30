@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import pytest
-from data.data_readiness import limit_num_input, num2option, num_input
 from pytest import MonkeyPatch
+
+from geochemistrypi.data_mining.data.data_readiness import limit_num_input, num2option, num_input
 
 
 def test_num2option() -> None:

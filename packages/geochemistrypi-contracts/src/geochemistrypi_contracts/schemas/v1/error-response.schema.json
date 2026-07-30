@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.geochemistrypi.org/contracts/v1/error-response.schema.json",
+  "x-contract-version": "1.0",
+  "title": "ErrorResponse",
+  "description": "A bounded and stable v1 error response intended for sanitized data.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "error"
+  ],
+  "properties": {
+    "error": {
+      "$ref": "#/$defs/error"
+    }
+  },
+  "$defs": {
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "stage",
+        "run_id",
+        "retryable"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "UNSUPPORTED_CONTRACT_VERSION",
+            "SCHEMA_VALIDATION_FAILED",
+            "INVALID_DATASET",
+            "DATASET_CHANGED",
+            "INVALID_TARGET_COLUMN",
+            "INVALID_FEATURE_COLUMNS",
+            "INVALID_SPLIT_CONFIGURATION",
+            "INVALID_MODEL_PARAMETERS",
+            "RUN_NOT_FOUND",
+            "INTERNAL_ERROR"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "contract",
+            "validation",
+            "dataset",
+            "preprocessing",
+            "training",
+            "evaluation",
+            "persistence",
+            "runtime"
+          ]
+        },
+        "run_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "details": {
+          "type": "object",
+          "maxProperties": 100,
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/jsonValue"
+          },
+          "default": {}
+        }
+      }
+    },
+    "jsonValue": {
+      "anyOf": [
+        {
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ]
+        },
+        {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "$ref": "#/$defs/jsonValue"
+          }
+        },
+        {
+          "type": "object",
+          "maxProperties": 100,
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/jsonValue"
+          }
+        }
+      ]
+    }
+  }
+}

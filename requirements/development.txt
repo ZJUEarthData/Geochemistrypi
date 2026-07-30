@@ -30,6 +30,8 @@ python-dotenv
 rich
 mlflow<2.9
 imblearn
+jsonschema>=4.20,<5
+filelock>=3.13,<4
 pyarrow<15.0
 sphinx
 furo

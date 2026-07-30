@@ -23,13 +23,11 @@
 # Pycharm
 .idea
 
-# VSCode
+# Local editors
 .vscode/
 
-# Local development environments
-.conda/
-Lib/
-Scripts/
+# Local Agent/codebase-memory index
+/.codebase-memory/
 
 # Bytecode
 __pycache__
@@ -41,6 +39,11 @@ __pycache__
 # Python Virtual Environment
 venv_geo/*
 venv_geo
+/.conda/
+/conda/
+/Lib/
+/Scripts/
+
 
 # Ignore text files for the report
 report.txt
@@ -73,3 +76,6 @@ docs/build
 # mlflow
 mlruns
 geopi_tracking
+
+multiclass_classification
+multiclass_cli_test.csv

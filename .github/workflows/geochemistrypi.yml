@@ -1,41 +1,39 @@
-name: Python package
+name: Engine baseline
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  build:
-
+  test:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.8", "3.9"]
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install flake8 pytest
-        python -m pip install pre-commit
-        if [ -f requirements/production.txt ]; then pip install -r requirements/production.txt; fi
-    - name: Run pre-commit hooks
-      run: |
-        pre-commit run --all-files
-    # - name: Lint with flake8
-    #   run: |
-    #     # stop the build if there are Python syntax errors or undefined names
-    #     flake8 . --count --ignore=F811,W605 --show-source --statistics
-    #     # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-    #     flake8 . --count --exit-zero --max-complexity=20 --max-line-length=200 --statistics
-    # - name: Test with pytest
-      # run: |
-        # pytest
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          cache: pip
+          cache-dependency-path: |
+            requirements/production.txt
+            pyproject.toml
+            packages/geochemistrypi-contracts/pyproject.toml
+            packages/geochemistrypi-runtime/pyproject.toml
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements/production.txt
+          python -m pip wheel . --no-deps --wheel-dir wheelhouse
+          python -m pip wheel packages/geochemistrypi-contracts --no-deps --wheel-dir wheelhouse
+          python -m pip wheel packages/geochemistrypi-runtime --no-deps --wheel-dir wheelhouse
+          python -c "import glob, zipfile; engine_wheel = glob.glob('wheelhouse/geochemistrypi-*.whl')[0]; engine_names = zipfile.ZipFile(engine_wheel).namelist(); packaged_tests = [name for name in engine_names if name.startswith('geochemistrypi/data_mining/tests/')]; assert not packaged_tests, f'Test modules must not be shipped in the production wheel: {packaged_tests}'; contracts_wheel = glob.glob('wheelhouse/geochemistrypi_contracts-*.whl')[0]; contract_names = set(zipfile.ZipFile(contracts_wheel).namelist()); expected_schemas = {'geochemistrypi_contracts/schemas/v1/dataset-ref.schema.json', 'geochemistrypi_contracts/schemas/v1/classification-experiment-spec.schema.json', 'geochemistrypi_contracts/schemas/v1/experiment-result.schema.json', 'geochemistrypi_contracts/schemas/v1/error-response.schema.json'}; assert expected_schemas <= contract_names, f'Contracts wheel is missing schemas: {sorted(expected_schemas - contract_names)}'; runtime_wheel = glob.glob('wheelhouse/geochemistrypi_runtime-*.whl')[0]; runtime_names = zipfile.ZipFile(runtime_wheel).namelist(); runtime_tests = [name for name in runtime_names if name.startswith('tests/') or '/tests/' in name]; assert not runtime_tests, f'Runtime wheel must not ship tests: {runtime_tests}'; assert not any(name.startswith('geochemistrypi/') for name in runtime_names), 'Runtime wheel must not contain the Engine package'"
+          python -m pip install wheelhouse/geochemistrypi_contracts-*.whl wheelhouse/geochemistrypi_runtime-*.whl wheelhouse/geochemistrypi-*.whl "pytest>=7,<9" "jsonschema>=4.20,<5" "filelock>=3.13,<4" pre-commit
+      - name: Run pre-commit hooks
+        run: pre-commit run --all-files
+      - name: Run tests without database configuration
+        env:
+          SQLALCHEMY_DATABASE_URL: ""
+        run: python -m pytest

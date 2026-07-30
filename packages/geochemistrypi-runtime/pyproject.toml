@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling>=1.18"]
+build-backend = "hatchling.build"
+
+[project]
+name = "geochemistrypi-runtime"
+version = "0.1.0"
+description = "Durable local run storage shared by GeochemistryPi workers and MCP services"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+    { name = "GeochemistryPi contributors" },
+]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+]
+dependencies = [
+    "filelock>=3.13,<4",
+    "geochemistrypi-contracts==0.1.0",
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/README.md",
+    "/src",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/geochemistrypi_runtime"]
