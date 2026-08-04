@@ -162,7 +162,7 @@ jobs:
           from pathlib import Path
           import subprocess
 
-          from geochemistrypi_mcp.setup import SetupPaths
+          from geochemistrypi_mcp.lifecycle.setup import SetupPaths
 
           bundle = Path("release-bundle").resolve()
           wheel = next(bundle.glob("geochemistrypi_mcp-*.whl")).resolve()

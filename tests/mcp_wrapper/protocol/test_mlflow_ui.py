@@ -8,7 +8,7 @@ import psutil
 import pytest
 from geochemistrypi_mcp.api.schemas import StartMlflowUiRequest
 from geochemistrypi_mcp.config.settings import McpSettings
-from geochemistrypi_mcp.tracking.ui import MlflowUiError, MlflowUiManager
+from geochemistrypi_mcp.tracking.ui import MlflowUiError, MlflowUiManager, _commands_match
 
 
 def _settings(tmp_path: Path) -> McpSettings:
@@ -28,6 +28,17 @@ def _free_port() -> int:
 
 def _http_command(_: str, port: int) -> tuple[str, ...]:
     return (sys.executable, "-m", "http.server", str(port), "--bind", "127.0.0.1")
+
+
+def test_command_identity_accepts_equivalent_executable_paths_only(tmp_path: Path) -> None:
+    executable = tmp_path / "python"
+    alias = tmp_path / "python-alias"
+    executable.write_bytes(b"executable identity")
+    alias.hardlink_to(executable)
+
+    recorded = [str(alias), "-m", "mlflow", "ui"]
+    assert _commands_match([str(executable), "-m", "mlflow", "ui"], recorded)
+    assert not _commands_match([str(executable), "-m", "http.server"], recorded)
 
 
 def test_managed_ui_is_explicit_persistent_and_stops_verified_process(tmp_path: Path) -> None:

@@ -60,6 +60,18 @@ def _atomic_write_json(path: Path, value: dict[str, Any]) -> None:
         temporary.unlink(missing_ok=True)
 
 
+def _commands_match(actual: list[str], recorded: list[str]) -> bool:
+    """Compare commands while allowing equivalent executable path spellings."""
+    if len(actual) != len(recorded) or actual[1:] != recorded[1:]:
+        return False
+    if not actual or actual[0] == recorded[0]:
+        return bool(actual)
+    try:
+        return os.path.samefile(actual[0], recorded[0])
+    except (OSError, ValueError):
+        return False
+
+
 class MlflowUiManager:
     """Manage one persistent UI process while refusing ambiguous ownership."""
 
@@ -124,7 +136,7 @@ class MlflowUiManager:
         recorded_command = state.get("command")
         if not isinstance(recorded_command, list) or not all(isinstance(part, str) for part in recorded_command):
             raise MlflowUiError("The recorded MLflow UI command identity is invalid; it will not be stopped.")
-        if tuple(command) != tuple(recorded_command):
+        if not _commands_match(command, recorded_command):
             raise MlflowUiError("The recorded PID command no longer matches the managed MLflow UI; it will not be stopped.")
         if str(self.tracking_root) != state["tracking_root"]:
             raise MlflowUiError("The recorded MLflow UI uses a different tracking root; it will not be stopped.")
@@ -260,8 +272,12 @@ class MlflowUiManager:
                 except OSError as exc:
                     raise MlflowUiError("Cannot start MLflow UI in the configured CLI environment.") from exc
             try:
-                create_time = psutil.Process(process.pid).create_time()
-            except (psutil.NoSuchProcess, psutil.AccessDenied) as exc:
+                launched_process = psutil.Process(process.pid)
+                create_time = launched_process.create_time()
+                observed_command = launched_process.cmdline()
+                if not observed_command or not all(isinstance(part, str) and part for part in observed_command):
+                    raise ValueError("empty process command")
+            except (psutil.NoSuchProcess, psutil.AccessDenied, ValueError) as exc:
                 self._terminate_unrecorded_process(process)
                 raise MlflowUiError("MLflow UI exited before its process identity could be recorded.") from exc
             state = {
@@ -273,7 +289,7 @@ class MlflowUiManager:
                 "tracking_root": str(self.tracking_root),
                 "tracking_uri": uri,
                 "started_at": _utc_now(),
-                "command": list(command),
+                "command": observed_command,
             }
             try:
                 _atomic_write_json(self.state_path, state)

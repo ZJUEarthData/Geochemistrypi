@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 import typer
+from click import unstyle
 from click.testing import CliRunner
 from sklearn.datasets import make_classification
 from sklearn.linear_model import LogisticRegression, SGDClassifier
@@ -35,13 +36,15 @@ def test_typer_help_renders_with_installed_click() -> None:
     result = runner.invoke(command, ["--help"])
 
     assert result.exit_code == 0, result.output
-    assert "data-mining" in result.output
-    assert "datasets" in result.output
+    output = unstyle(result.output)
+    assert "data-mining" in output
+    assert "datasets" in output
 
     subcommand_result = runner.invoke(command, ["data-mining", "--help"])
     assert subcommand_result.exit_code == 0, subcommand_result.output
-    assert "--data" in subcommand_result.output
-    assert "--automation-plan" in subcommand_result.output
+    subcommand_output = unstyle(subcommand_result.output)
+    assert "--data" in subcommand_output
+    assert "--automation-plan" in subcommand_output
 
 
 @pytest.mark.parametrize(

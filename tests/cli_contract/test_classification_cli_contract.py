@@ -33,6 +33,12 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _source_sha256(path: Path) -> str:
+    """Hash source text independently of checkout newline conventions."""
+    normalized = path.read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
 def _normalize_console_output(value: str) -> str:
     return ANSI_ESCAPE.sub("", value).replace("\r", "").replace("\f", "\n")
 
@@ -88,8 +94,15 @@ def test_public_cli_entry_files_match_recorded_baseline() -> None:
     golden = _load_json(GOLDEN_PATH)
 
     for relative_path, expected_hash in golden["cli_entry_files"].items():
-        actual_hash = _sha256(REPOSITORY_ROOT / relative_path)
+        actual_hash = _source_sha256(REPOSITORY_ROOT / relative_path)
         assert actual_hash == expected_hash, f"Public CLI entry file changed without an intentional contract-baseline update: {relative_path}"
+
+
+def test_public_cli_source_hash_ignores_checkout_line_endings(tmp_path: Path) -> None:
+    source = tmp_path / "source.py"
+    source.write_bytes(b"first\r\nsecond\r\n")
+
+    assert _source_sha256(source) == hashlib.sha256(b"first\nsecond\n").hexdigest()
 
 
 def test_direct_classification_cli_contract(tmp_path: Path) -> None:

@@ -59,3 +59,11 @@ def test_internal_dependencies_follow_the_layered_architecture() -> None:
                     violations.append(f"{path.relative_to(package_directory)} -> {node.module}")
 
     assert violations == []
+
+
+def test_ci_uses_lifecycle_modules_for_internal_administrative_apis() -> None:
+    repository_root = Path(__file__).resolve().parents[3]
+    workflow = (repository_root / ".github" / "workflows" / "geochemistrypi.yml").read_text(encoding="utf-8")
+
+    assert "from geochemistrypi_mcp.setup import SetupPaths" not in workflow
+    assert "from geochemistrypi_mcp.release import inspect_wheel" not in workflow

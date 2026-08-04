@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 
 import pytest
+from click import unstyle
 from rich.prompt import Confirm, Prompt
 from typer.testing import CliRunner
 
@@ -127,14 +128,14 @@ def test_data_mining_tracking_options_require_safe_stable_selection(tmp_path: Pa
         ["data-mining", "--data", str(tmp_path / "rocks.csv"), "--existing-experiment-id", "7"],
     )
     assert missing_root.exit_code == 2
-    assert "requires --tracking-root" in missing_root.output
+    assert "requires --tracking-root" in unstyle(missing_root.output)
 
     relative_root = runner.invoke(
         cli_module.app,
         ["data-mining", "--data", str(tmp_path / "rocks.csv"), "--tracking-root", "relative"],
     )
     assert relative_root.exit_code == 2
-    assert "must be an absolute local path" in relative_root.output
+    assert "must be an absolute local path" in unstyle(relative_root.output)
 
     captured = {}
     monkeypatch.setattr(cli_module, "_run_cli_pipeline", lambda **values: captured.update(values))

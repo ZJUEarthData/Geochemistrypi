@@ -21,8 +21,8 @@
     "openpyxl": "3.0.10"
   },
   "cli_entry_files": {
-    "geochemistrypi/cli.py": "b0693301e695f24bea03f635fb2930857ce36e8545f14e8b5a8c7c68d1b4d180",
-    "geochemistrypi/data_mining/cli_pipeline.py": "026b425548e74978093268ace65b4f408dd7288fa7bb9c925337301910ce9842"
+    "geochemistrypi/cli.py": "d2fc0e802f6951b6a22e5304b6c760f601bb047ad39a5f6fca739f3686bbeca9",
+    "geochemistrypi/data_mining/cli_pipeline.py": "d29d5fb02bd04d51a0d4bc8ec5d24ad74090edd6353e265667092e41dbfd5c99"
   },
   "model": {
     "name": "Logistic Regression",
