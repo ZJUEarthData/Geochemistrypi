@@ -3,15 +3,9 @@
 import json
 import os
 import subprocess
-from pathlib import Path
 from typing import Any
 
-from ..api.schemas import (
-    GetExperimentRequest,
-    GetExperimentResponse,
-    ListExperimentsRequest,
-    ListExperimentsResponse,
-)
+from ..api.schemas import GetExperimentRequest, GetExperimentResponse, ListExperimentsRequest, ListExperimentsResponse
 from ..config.constants import ISOLATED_CLI_ENVIRONMENT_VARIABLES
 from ..config.settings import McpSettings, resolve_cli_interpreter
 
@@ -94,7 +88,6 @@ class ExperimentManager:
         response = self.get(GetExperimentRequest(experiment_id=experiment_id, maximum_runs=0))
         if response.experiment.name != expected_name:
             raise ExperimentStoreError(
-                f"existing_experiment_id {experiment_id!r} belongs to experiment "
-                f"{response.experiment.name!r}; set experiment_name to that exact value or choose another ID."
+                f"existing_experiment_id {experiment_id!r} belongs to experiment " f"{response.experiment.name!r}; set experiment_name to that exact value or choose another ID."
             )
         return response

@@ -90,10 +90,7 @@ class MlflowUiManager:
         try:
             value = json.loads(self.state_path.read_text(encoding="utf-8"))
         except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-            raise MlflowUiError(
-                f"Managed MLflow UI state is corrupt: {self.state_path}. "
-                "Do not stop a process by PID until this file is repaired or removed manually."
-            ) from exc
+            raise MlflowUiError(f"Managed MLflow UI state is corrupt: {self.state_path}. " "Do not stop a process by PID until this file is repaired or removed manually.") from exc
         if not isinstance(value, dict) or set(value) != _STATE_FIELDS or value.get("schema_version") != 1:
             raise MlflowUiError("Managed MLflow UI state has unknown or missing fields; process ownership cannot be verified.")
         return value
@@ -125,9 +122,7 @@ class MlflowUiManager:
         except (psutil.AccessDenied, ValueError, TypeError) as exc:
             raise MlflowUiError("The MLflow UI process identity cannot be inspected; it will not be stopped.") from exc
         recorded_command = state.get("command")
-        if not isinstance(recorded_command, list) or not all(
-            isinstance(part, str) for part in recorded_command
-        ):
+        if not isinstance(recorded_command, list) or not all(isinstance(part, str) for part in recorded_command):
             raise MlflowUiError("The recorded MLflow UI command identity is invalid; it will not be stopped.")
         if tuple(command) != tuple(recorded_command):
             raise MlflowUiError("The recorded PID command no longer matches the managed MLflow UI; it will not be stopped.")
@@ -206,9 +201,7 @@ class MlflowUiManager:
             process_state = "running" if self._port_is_accepting(int(state["port"])) else "starting"
             return self._response(
                 process_state,
-                "The managed MLflow UI is available locally."
-                if process_state == "running"
-                else "The managed MLflow UI process is starting but is not accepting connections yet.",
+                "The managed MLflow UI is available locally." if process_state == "running" else "The managed MLflow UI process is starting but is not accepting connections yet.",
                 state,
             )
 
@@ -217,16 +210,12 @@ class MlflowUiManager:
             current = self.status()
             if current.state in {"running", "starting"}:
                 if current.port != request.port:
-                    raise MlflowUiError(
-                        f"The managed MLflow UI already owns port {current.port}; stop it before selecting port {request.port}."
-                    )
+                    raise MlflowUiError(f"The managed MLflow UI already owns port {current.port}; stop it before selecting port {request.port}.")
                 return current
             if current.state == "ownership_mismatch":
                 raise MlflowUiError(current.message)
             if not self._port_is_available(request.port):
-                raise MlflowUiError(
-                    f"Local port {request.port} is already in use. Choose another port; no existing process was modified."
-                )
+                raise MlflowUiError(f"Local port {request.port} is already in use. Choose another port; no existing process was modified.")
             self.tracking_root.mkdir(parents=True, exist_ok=True)
             if self.settings.service_state_root is None:
                 raise MlflowUiError("The installer-owned service state root is not configured.")
@@ -290,16 +279,12 @@ class MlflowUiManager:
                 _atomic_write_json(self.state_path, state)
             except OSError as exc:
                 self._terminate_unrecorded_process(process)
-                raise MlflowUiError(
-                    "MLflow UI ownership state could not be stored, so the newly launched process was stopped."
-                ) from exc
+                raise MlflowUiError("MLflow UI ownership state could not be stored, so the newly launched process was stopped.") from exc
             deadline = time.monotonic() + 10
             while time.monotonic() < deadline:
                 if process.poll() is not None:
                     self.state_path.unlink(missing_ok=True)
-                    raise MlflowUiError(
-                        f"MLflow UI exited with code {process.returncode}; inspect {self.stderr_path}."
-                    )
+                    raise MlflowUiError(f"MLflow UI exited with code {process.returncode}; inspect {self.stderr_path}.")
                 if self._port_is_accepting(request.port):
                     return self._response("running", "The managed MLflow UI is available locally.", state)
                 time.sleep(0.1)

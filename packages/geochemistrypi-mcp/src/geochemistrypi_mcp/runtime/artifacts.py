@@ -74,9 +74,7 @@ def _reported_metrics(output_directory: Path) -> dict[str, Any]:
         if not path.is_file() or path.suffix.lower() not in {".json", ".txt"}:
             continue
         parts = path.relative_to(output_directory).parts
-        if (parts and parts[0] == "metrics") or (
-            len(parts) >= 2 and parts[1] == "metrics"
-        ):
+        if (parts and parts[0] == "metrics") or (len(parts) >= 2 and parts[1] == "metrics"):
             metric_paths.append(path)
     metric_paths.sort()
     for path in metric_paths[:_MAX_METRIC_FILES]:

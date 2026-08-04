@@ -5,7 +5,6 @@ from functools import lru_cache
 from importlib.resources import files
 from typing import Any
 
-
 _ALLOWED_STATUSES = {"implemented", "verified", "known_gap", "not_public"}
 
 
@@ -48,16 +47,10 @@ def load_capability_manifest() -> dict[str, Any]:
             raise CapabilityManifestError(f"Capability entry {index} has invalid fields.")
         if item["status"] not in _ALLOWED_STATUSES:
             raise CapabilityManifestError(f"Capability entry {index} has an invalid status.")
-        if item["mcp_supported"] and (
-            item["status"] != "verified" or not item["evidence"]
-        ):
-            raise CapabilityManifestError(
-                f"MCP capability {item['id']!r} lacks verified parity evidence."
-            )
+        if item["mcp_supported"] and (item["status"] != "verified" or not item["evidence"]):
+            raise CapabilityManifestError(f"MCP capability {item['id']!r} lacks verified parity evidence.")
         if item["status"] == "known_gap" and item["mcp_supported"]:
-            raise CapabilityManifestError(
-                f"Known gap {item['id']!r} cannot be advertised as supported."
-            )
+            raise CapabilityManifestError(f"Known gap {item['id']!r} cannot be advertised as supported.")
         identifiers.append(item["id"])
     if len(identifiers) != len(set(identifiers)):
         raise CapabilityManifestError("CLI capability IDs must be unique.")
@@ -70,8 +63,4 @@ def public_capabilities() -> tuple[dict[str, Any], ...]:
 
 
 def known_gap_ids() -> tuple[str, ...]:
-    return tuple(
-        item["id"]
-        for item in public_capabilities()
-        if item["status"] == "known_gap"
-    )
+    return tuple(item["id"] for item in public_capabilities() if item["status"] == "known_gap")

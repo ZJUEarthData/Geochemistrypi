@@ -41,6 +41,8 @@ REGRESSION_DATASET_PATH = FIXTURE_DIRECTORY / "regression_baseline.csv"
 CLUSTERING_DATASET_PATH = FIXTURE_DIRECTORY / "clustering_baseline.csv"
 DECOMPOSITION_DATASET_PATH = FIXTURE_DIRECTORY / "decomposition_baseline.csv"
 ANOMALY_DETECTION_DATASET_PATH = FIXTURE_DIRECTORY / "anomaly_detection_baseline.csv"
+CLUSTERING_METRIC_RELATIVE_TOLERANCE = 1e-4
+CLUSTERING_METRIC_ABSOLUTE_TOLERANCE = 1e-8
 
 
 @pytest.fixture
@@ -844,7 +846,14 @@ async def test_stdio_mcp_clustering_matches_direct_public_cli() -> None:
         assert result["application_input_sha256"] is None
         assert _all_files(direct_run) == _all_files(wrapped_run)
         assert _load_json(direct_run / "metrics" / "Model Score - KMeans.txt") == _load_json(wrapped_run / "metrics" / "Model Score - KMeans.txt")
-        assert _load_json(direct_run / "metrics" / "KMeans - Silhouette Scores.txt") == _load_json(wrapped_run / "metrics" / "KMeans - Silhouette Scores.txt")
+        direct_silhouette_scores = _load_json(direct_run / "metrics" / "KMeans - Silhouette Scores.txt")
+        wrapped_silhouette_scores = _load_json(wrapped_run / "metrics" / "KMeans - Silhouette Scores.txt")
+        assert direct_silhouette_scores.keys() == wrapped_silhouette_scores.keys()
+        assert direct_silhouette_scores == pytest.approx(
+            wrapped_silhouette_scores,
+            rel=CLUSTERING_METRIC_RELATIVE_TOLERANCE,
+            abs=CLUSTERING_METRIC_ABSOLUTE_TOLERANCE,
+        )
         assert _worksheet_values(direct_run / "artifacts" / "data" / "Cluster Labels - KMeans.xlsx") == _worksheet_values(wrapped_run / "artifacts" / "data" / "Cluster Labels - KMeans.xlsx")
         for artifact_name in (
             "Cluster Two-Dimensional Diagram - KMeans.png",

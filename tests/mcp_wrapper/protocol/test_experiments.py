@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -11,13 +12,15 @@ from geochemistrypi_mcp.tracking.experiments import ExperimentManager, Experimen
 
 
 def _settings(tmp_path: Path) -> McpSettings:
-    scripts = tmp_path / "cli" / "Scripts"
+    scripts = tmp_path / "cli" / ("Scripts" if os.name == "nt" else "bin")
     scripts.mkdir(parents=True)
-    (scripts / "geochemistrypi.exe").write_bytes(b"")
-    (scripts / "python.exe").write_bytes(b"")
+    cli_name = "geochemistrypi.exe" if os.name == "nt" else "geochemistrypi"
+    python_name = "python.exe" if os.name == "nt" else "python"
+    (scripts / cli_name).write_bytes(b"")
+    (scripts / python_name).write_bytes(b"")
     return McpSettings(
         runs_root=tmp_path / "runs",
-        cli_executable=scripts / "geochemistrypi.exe",
+        cli_executable=scripts / cli_name,
         tracking_root=tmp_path / "tracking",
     )
 

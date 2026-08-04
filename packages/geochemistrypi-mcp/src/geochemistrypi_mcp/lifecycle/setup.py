@@ -341,10 +341,7 @@ class SetupManager:
             manager = MlflowUiManager(settings)
             status = manager.status()
             if status.state == "ownership_mismatch":
-                raise SetupError(
-                    "Cannot replace the CLI environment because managed MLflow UI ownership is ambiguous: "
-                    f"{status.message}"
-                )
+                raise SetupError("Cannot replace the CLI environment because managed MLflow UI ownership is ambiguous: " f"{status.message}")
             if status.state in {"running", "starting"}:
                 manager.stop()
         except MlflowUiError as exc:
@@ -367,10 +364,7 @@ class SetupManager:
             "uv version check",
         ).stdout.strip()
         if version.split()[:2] != ["uv", SETUP_UV_VERSION]:
-            raise SetupError(
-                f"GeochemistryPi MCP setup requires uv {SETUP_UV_VERSION}; "
-                f"found {version or '<unknown>'}."
-            )
+            raise SetupError(f"GeochemistryPi MCP setup requires uv {SETUP_UV_VERSION}; " f"found {version or '<unknown>'}.")
         return executable
 
     def _prepare_environments(
@@ -441,13 +435,7 @@ class SetupManager:
                 value = json.loads(completed.stdout)
             except json.JSONDecodeError as exc:
                 raise SetupError(f"{name.upper()} runtime inventory returned invalid JSON.") from exc
-            if (
-                not isinstance(value, dict)
-                or type(value.get("count")) is not int
-                or value["count"] < 1
-                or not isinstance(value.get("sha256"), str)
-                or len(value["sha256"]) != 64
-            ):
+            if not isinstance(value, dict) or type(value.get("count")) is not int or value["count"] < 1 or not isinstance(value.get("sha256"), str) or len(value["sha256"]) != 64:
                 raise SetupError(f"{name.upper()} runtime inventory is incomplete.")
             values[name] = value
         return values
@@ -499,9 +487,7 @@ class SetupManager:
         try:
             path.resolve().relative_to(self.paths.app_root.resolve())
         except ValueError as exc:
-            raise SetupError(
-                f"Refusing to modify a path outside the application root: {path}"
-            ) from exc
+            raise SetupError(f"Refusing to modify a path outside the application root: {path}") from exc
 
     def _begin_runtime_transaction(self, *, persistent: bool) -> Path:
         """Move the current runtime aside before any destructive replacement."""
@@ -608,10 +594,8 @@ class SetupManager:
                 metadata.get("persistent") is True,
                 metadata.get("environments_present") is True,
                 self.paths.rollback_environments.is_dir(),
-                not metadata.get("settings_present")
-                or self.paths.rollback_settings_file.is_file(),
-                not metadata.get("manifest_present")
-                or self.paths.rollback_manifest_file.is_file(),
+                not metadata.get("settings_present") or self.paths.rollback_settings_file.is_file(),
+                not metadata.get("manifest_present") or self.paths.rollback_manifest_file.is_file(),
             )
         )
 
@@ -696,9 +680,7 @@ class SetupManager:
                     path.stat().st_mode if path.is_file() else None,
                 )
             except OSError as exc:
-                raise SetupError(
-                    f"Cannot snapshot {name} configuration before registration: {path}"
-                ) from exc
+                raise SetupError(f"Cannot snapshot {name} configuration before registration: {path}") from exc
         return snapshots
 
     def _restore_client_files(
@@ -725,20 +707,14 @@ class SetupManager:
         manifest = self._current_manifest()
         if self.bundle is not None:
             source: SourceLayout | ReleaseBundle = self.bundle
-        elif (
-            manifest.get("installation_source") == "release-bundle"
-            and self.paths.release_manifest_file.is_file()
-        ):
+        elif manifest.get("installation_source") == "release-bundle" and self.paths.release_manifest_file.is_file():
             try:
                 active_bundle = verify_release_bundle(
                     self.paths.release_root,
                     require_signatures=False,
                 )
             except ReleaseError as exc:
-                raise SetupError(
-                    "The installed release bundle is damaged; provide the original "
-                    f"verified bundle to repair it: {exc}"
-                ) from exc
+                raise SetupError("The installed release bundle is damaged; provide the original " f"verified bundle to repair it: {exc}") from exc
             source = replace(
                 active_bundle,
                 signatures_verified=manifest.get("signatures_verified") is True,
@@ -763,39 +739,25 @@ class SetupManager:
                 str(manifest.get("installation_source", "")),
             )
         ):
-            raise SetupError(
-                "Upgrade requires a healthy current-schema installation; run "
-                "repair before selecting a new release bundle."
-            )
+            raise SetupError("Upgrade requires a healthy current-schema installation; run " "repair before selecting a new release bundle.")
         if upgrade:
             current_healthy, current_summary = self.doctor(self.paths)
             if not current_healthy:
-                raise SetupError(
-                    "Upgrade preflight doctor failed; repair the current runtime "
-                    f"before upgrading: {current_summary}"
-                )
+                raise SetupError("Upgrade preflight doctor failed; repair the current runtime " f"before upgrading: {current_summary}")
         if upgrade and manifest.get("source_fingerprint") == fingerprint:
             raise SetupError("The selected release bundle is already installed; no upgrade was performed.")
-        if (
-            manifest
-            and isinstance(source, ReleaseBundle)
-            and manifest.get("source_fingerprint") != fingerprint
-            and not upgrade
-        ):
-            raise SetupError(
-                "A different release bundle must use the upgrade action so the "
-                "current runtime is retained for rollback."
-            )
+        if manifest and isinstance(source, ReleaseBundle) and manifest.get("source_fingerprint") != fingerprint and not upgrade:
+            raise SetupError("A different release bundle must use the upgrade action so the " "current runtime is retained for rollback.")
         prior_clients = tuple(str(value) for value in manifest.get("registered_clients", ()))
-        requested_clients = (
-            prior_clients or (STANDARD_CLIENT,)
-            if upgrade
-            else clients
-        )
-        refresh_required = repair or upgrade or not self._runtime_ready(
-            manifest,
-            fingerprint,
-            installation_source,
+        requested_clients = prior_clients or (STANDARD_CLIENT,) if upgrade else clients
+        refresh_required = (
+            repair
+            or upgrade
+            or not self._runtime_ready(
+                manifest,
+                fingerprint,
+                installation_source,
+            )
         )
         transaction: Path | None = None
         selected_clients = self._selected_clients(requested_clients)
@@ -805,10 +767,7 @@ class SetupManager:
             if refresh_required:
                 self._stop_managed_mlflow_ui()
                 transaction = self._begin_runtime_transaction(persistent=upgrade)
-                if (
-                    isinstance(source, ReleaseBundle)
-                    and source.directory == self.paths.release_root.resolve()
-                ):
+                if isinstance(source, ReleaseBundle) and source.directory == self.paths.release_root.resolve():
                     preserved_release = transaction / "release"
                     source = replace(
                         source,
@@ -839,9 +798,7 @@ class SetupManager:
                     "maximum_process_seconds": DEFAULT_MAXIMUM_PROCESS_SECONDS,
                 },
             )
-            self._activate_release_bundle(
-                source if isinstance(source, ReleaseBundle) else None
-            )
+            self._activate_release_bundle(source if isinstance(source, ReleaseBundle) else None)
             manifest_value: dict[str, object] = {
                 "schema_version": MANIFEST_SCHEMA_VERSION,
                 "installed_at": manifest.get("installed_at", _utc_now()),
@@ -859,40 +816,22 @@ class SetupManager:
                 "installation_source": installation_source,
                 "source_fingerprint": fingerprint,
                 "runtime_inventory": inventory,
-                "release_manifest_sha256": source.manifest_sha256
-                if isinstance(source, ReleaseBundle)
-                else None,
-                "release_id": source.release_id
-                if isinstance(source, ReleaseBundle)
-                else None,
-                "release_tag": source.release_tag
-                if isinstance(source, ReleaseBundle)
-                else None,
-                "release_artifacts": list(source.manifest["artifacts"])
-                if isinstance(source, ReleaseBundle)
-                else [],
-                "signatures_verified": source.signatures_verified
-                if isinstance(source, ReleaseBundle)
-                else False,
+                "release_manifest_sha256": source.manifest_sha256 if isinstance(source, ReleaseBundle) else None,
+                "release_id": source.release_id if isinstance(source, ReleaseBundle) else None,
+                "release_tag": source.release_tag if isinstance(source, ReleaseBundle) else None,
+                "release_artifacts": list(source.manifest["artifacts"]) if isinstance(source, ReleaseBundle) else [],
+                "signatures_verified": source.signatures_verified if isinstance(source, ReleaseBundle) else False,
                 "signature_policy": "verified"
                 if isinstance(source, ReleaseBundle) and source.signatures_verified
-                else (
-                    "explicit-development-override"
-                    if isinstance(source, ReleaseBundle)
-                    else "not-applicable"
-                ),
-                "rollback_available": (
-                    False if upgrade else self._rollback_snapshot_available()
-                ),
+                else ("explicit-development-override" if isinstance(source, ReleaseBundle) else "not-applicable"),
+                "rollback_available": (False if upgrade else self._rollback_snapshot_available()),
                 "registered_clients": list(registered_clients),
             }
             _atomic_write_json(self.paths.manifest_file, manifest_value)
             doctor_healthy, doctor_summary = self.doctor(self.paths)
             if not doctor_healthy:
-                raise SetupError(
-                    f"Installation completed but doctor failed: {doctor_summary}"
-                )
-        except Exception as exc:
+                raise SetupError(f"Installation completed but doctor failed: {doctor_summary}")
+        except Exception:
             if transaction is not None and transaction.exists():
                 self._restore_runtime_transaction(transaction)
             raise
@@ -903,17 +842,10 @@ class SetupManager:
                     persistent=upgrade,
                 )
             except Exception as exc:
-                recovery = (
-                    transaction
-                    if transaction.exists()
-                    else self.paths.rollback_root
-                )
+                recovery = transaction if transaction.exists() else self.paths.rollback_root
                 if recovery.exists():
                     self._restore_runtime_transaction(recovery)
-                raise SetupError(
-                    "The replacement runtime passed validation but its rollback "
-                    "snapshot could not be finalized; the prior runtime was restored."
-                ) from exc
+                raise SetupError("The replacement runtime passed validation but its rollback " "snapshot could not be finalized; the prior runtime was restored.") from exc
             if committed is not None:
                 manifest_value["rollback_available"] = True
                 manifest_value["updated_at"] = _utc_now()
@@ -921,10 +853,7 @@ class SetupManager:
                 doctor_healthy, doctor_summary = self.doctor(self.paths)
                 if not doctor_healthy:
                     self._restore_runtime_transaction(committed)
-                    raise SetupError(
-                        "Upgrade finalized but the rollback-aware doctor check "
-                        f"failed; the prior runtime was restored: {doctor_summary}"
-                    )
+                    raise SetupError("Upgrade finalized but the rollback-aware doctor check " f"failed; the prior runtime was restored: {doctor_summary}")
         client_snapshots = self._snapshot_client_files(selected_clients)
         try:
             registrations = self._register_clients(
@@ -936,9 +865,7 @@ class SetupManager:
             if upgrade and self.paths.rollback_root.exists():
                 self._restore_runtime_transaction(self.paths.rollback_root)
             raise SetupError(
-                "Client registration failed after the private runtime passed Doctor. "
-                "Client files were restored; rerun setup after resolving the reported "
-                f"client issue: {exc}"
+                "Client registration failed after the private runtime passed Doctor. " "Client files were restored; rerun setup after resolving the reported " f"client issue: {exc}"
             ) from exc
         action = "upgrade" if upgrade else ("repair" if repair else "install")
         return SetupResult(
@@ -953,16 +880,10 @@ class SetupManager:
     def rollback(self) -> SetupResult:
         """Restore the one retained pre-upgrade runtime as an atomic lifecycle action."""
         if not self._rollback_snapshot_available():
-            raise SetupError(
-                "No complete rollback snapshot is available. Rollback is created "
-                "only after a successful upgrade."
-            )
+            raise SetupError("No complete rollback snapshot is available. Rollback is created " "only after a successful upgrade.")
         rollback_manifest = _load_json_object(self.paths.rollback_manifest_file)
         if rollback_manifest.get("schema_version") != MANIFEST_SCHEMA_VERSION:
-            raise SetupError(
-                "The rollback snapshot uses an unsupported installer schema and "
-                "cannot be restored safely."
-            )
+            raise SetupError("The rollback snapshot uses an unsupported installer schema and " "cannot be restored safely.")
         self._stop_managed_mlflow_ui()
         current_backup = self._begin_runtime_transaction(persistent=False)
         registrations: tuple[RegistrationResult, ...] = ()
@@ -997,17 +918,12 @@ class SetupManager:
                     "rollback_available": False,
                 }
             )
-            registered = tuple(
-                str(value)
-                for value in restored_manifest.get("registered_clients", ())
-            )
+            registered = tuple(str(value) for value in restored_manifest.get("registered_clients", ()))
             _atomic_write_json(self.paths.manifest_file, restored_manifest)
             doctor_healthy, doctor_summary = self.doctor(self.paths)
             if not doctor_healthy:
                 raise SetupError(f"Rollback doctor failed: {doctor_summary}")
-            selected_clients = self._selected_clients(
-                registered or (STANDARD_CLIENT,)
-            )
+            selected_clients = self._selected_clients(registered or (STANDARD_CLIENT,))
             client_snapshots = self._snapshot_client_files(selected_clients)
             registrations = self._register_clients(
                 selected_clients,
@@ -1134,30 +1050,17 @@ def _windows_external_bootstrap_guidance(
     """Return a copyable command that cannot hold private-environment DLL locks."""
     action = arguments[0] if arguments else "<action>"
     if action == "upgrade":
-        return (
-            "Bootstrap upgrade from the new signed MCP wheel with the documented "
-            "uvx --from command."
-        )
+        return "Bootstrap upgrade from the new signed MCP wheel with the documented " "uvx --from command."
     try:
         active_bundle = verify_release_bundle(
             paths.release_root,
             require_signatures=False,
         )
     except ReleaseError:
-        return (
-            "Rerun the same action from the repository development bootstrap, "
-            "because this source installation has no retained release wheel."
-        )
-    requirement = (
-        "geochemistrypi-mcp[release] @ "
-        f"{active_bundle.mcp_wheel.resolve().as_uri()}"
-    )
+        return "Rerun the same action from the repository development bootstrap, " "because this source installation has no retained release wheel."
+    requirement = "geochemistrypi-mcp[release] @ " f"{active_bundle.mcp_wheel.resolve().as_uri()}"
     rendered_arguments = subprocess.list2cmdline(tuple(arguments))
-    return (
-        f'uv run --isolated --no-project --python {MCP_PYTHON_VERSION} '
-        f'--with "{requirement}" geochemistrypi-mcp-setup '
-        f"{rendered_arguments}"
-    )
+    return f"uv run --isolated --no-project --python {MCP_PYTHON_VERSION} " f'--with "{requirement}" geochemistrypi-mcp-setup ' f"{rendered_arguments}"
 
 
 def main(argv: Sequence[str] | None = None) -> None:
@@ -1166,18 +1069,9 @@ def main(argv: Sequence[str] | None = None) -> None:
     arguments = _parser().parse_args(raw_arguments)
     try:
         default_paths = SetupPaths.default()
-        if (
-            arguments.action != "print-config"
-            and _running_inside_private_mcp(default_paths)
-        ):
-            guidance = _windows_external_bootstrap_guidance(
-                default_paths, raw_arguments
-            )
-            raise SetupError(
-                "Windows cannot safely replace or remove the private environment "
-                "from a process running inside it. No files were changed. "
-                f"{guidance}"
-            )
+        if arguments.action != "print-config" and _running_inside_private_mcp(default_paths):
+            guidance = _windows_external_bootstrap_guidance(default_paths, raw_arguments)
+            raise SetupError("Windows cannot safely replace or remove the private environment " "from a process running inside it. No files were changed. " f"{guidance}")
         bundle_path = getattr(arguments, "bundle", None)
         allow_unsigned = getattr(arguments, "allow_unsigned_bundle", False)
         if allow_unsigned and bundle_path is None:

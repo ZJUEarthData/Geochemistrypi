@@ -77,9 +77,11 @@ class ClientAdapter(Protocol):
     name: str
     detection_paths: tuple[Path, ...]
 
-    def register(self, command: Path, replace: bool = False) -> RegistrationResult: ...
+    def register(self, command: Path, replace: bool = False) -> RegistrationResult:
+        ...
 
-    def unregister(self, command: Path | None = None) -> RegistrationResult: ...
+    def unregister(self, command: Path | None = None) -> RegistrationResult:
+        ...
 
 
 def backup_path(path: Path) -> Path:
@@ -188,10 +190,7 @@ class JsonClientAdapter:
         if existing == expected:
             return RegistrationResult(self.name, str(self.path), False)
         if existing is not None and not replace:
-            raise ClientConfigError(
-                f"{self.name} already defines {SERVER_ID!r} with a different command; "
-                "run repair to replace only that entry."
-            )
+            raise ClientConfigError(f"{self.name} already defines {SERVER_ID!r} with a different command; " "run repair to replace only that entry.")
         _create_backup_once(self.path)
         servers[SERVER_ID] = expected
         _atomic_write(self.path, json.dumps(document, indent=2, ensure_ascii=False) + "\n")
@@ -226,8 +225,7 @@ class OpenCodeClientAdapter(JsonClientAdapter):
     def register(self, command: Path, replace: bool = False) -> RegistrationResult:
         if self.jsonc_path.exists() and not self.path.exists():
             raise ClientConfigError(
-                f"OpenCode uses JSONC at {self.jsonc_path}; setup will not rewrite comments. "
-                "Use OpenCode's MCP settings to add the server manually, or create an OpenCode JSON config."
+                f"OpenCode uses JSONC at {self.jsonc_path}; setup will not rewrite comments. " "Use OpenCode's MCP settings to add the server manually, or create an OpenCode JSON config."
             )
         return super().register(command, replace)
 
@@ -271,10 +269,7 @@ class CodexClientAdapter:
         if existing is not None and dict(existing) == expected:
             return RegistrationResult(self.name, str(self.path), False)
         if existing is not None and not replace:
-            raise ClientConfigError(
-                f"Codex already defines {SERVER_ID!r} with a different command; "
-                "run repair to replace only that table."
-            )
+            raise ClientConfigError(f"Codex already defines {SERVER_ID!r} with a different command; " "run repair to replace only that table.")
         _create_backup_once(self.path)
         server = tomlkit.table()
         for key, value in expected.items():
@@ -354,10 +349,7 @@ class ContinueClientAdapter:
         if matches and dict(servers[matches[0]]) == expected:
             return RegistrationResult(self.name, str(self.path), False)
         if matches and not replace:
-            raise ClientConfigError(
-                f"Continue already defines {SERVER_ID!r} with a different command; "
-                "run repair to replace only that entry."
-            )
+            raise ClientConfigError(f"Continue already defines {SERVER_ID!r} with a different command; " "run repair to replace only that entry.")
         _create_backup_once(self.path)
         if matches:
             servers[matches[0]] = expected
@@ -407,10 +399,7 @@ class ClaudeCodeClientAdapter:
         if existing.returncode == 0 and str(command) in existing.stdout:
             return RegistrationResult(self.name, f"{self.executable} user scope", False)
         if existing.returncode == 0 and not replace:
-            raise ClientConfigError(
-                f"Claude Code already defines {SERVER_ID!r} with a different command; "
-                "run repair to replace only that entry."
-            )
+            raise ClientConfigError(f"Claude Code already defines {SERVER_ID!r} with a different command; " "run repair to replace only that entry.")
         definition = json.dumps(_server_definition(command, include_type=True), separators=(",", ":"))
         added = self.runner((str(self.executable), "mcp", "add-json", "--scope", "user", SERVER_ID, definition))
         if added.returncode != 0:

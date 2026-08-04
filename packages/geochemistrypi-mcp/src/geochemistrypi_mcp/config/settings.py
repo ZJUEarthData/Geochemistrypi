@@ -221,23 +221,17 @@ class McpSettings:
             ),
             maximum_dataset_bytes=_maximum_dataset_bytes(configured_maximum_bytes),
             maximum_columns=_positive_integer(
-                str(persisted["maximum_columns"])
-                if persisted.get("maximum_columns") is not None
-                else None,
+                str(persisted["maximum_columns"]) if persisted.get("maximum_columns") is not None else None,
                 "persisted maximum_columns",
                 DEFAULT_MAXIMUM_COLUMNS,
             ),
             maximum_artifact_references=_positive_integer(
-                str(persisted["maximum_artifact_references"])
-                if persisted.get("maximum_artifact_references") is not None
-                else None,
+                str(persisted["maximum_artifact_references"]) if persisted.get("maximum_artifact_references") is not None else None,
                 "persisted maximum_artifact_references",
                 DEFAULT_MAXIMUM_ARTIFACT_REFERENCES,
             ),
             concurrency=_positive_integer(
-                str(persisted["concurrency"])
-                if persisted.get("concurrency") is not None
-                else None,
+                str(persisted["concurrency"]) if persisted.get("concurrency") is not None else None,
                 "persisted concurrency",
                 DEFAULT_CONCURRENCY,
             ),

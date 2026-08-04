@@ -17,24 +17,13 @@ from pathlib import Path
 from typing import Callable, Mapping, Sequence
 from zipfile import BadZipFile, ZipFile
 
-from ..config.constants import (
-    CLI_PYTHON_REQUIRES,
-    MCP_PYTHON_REQUIRES,
-    MCP_SDK_REQUIRES,
-    PENDING_RELEASE_GATES,
-    PUBLIC_RELEASE_READY,
-    SERVER_VERSION,
-    SUPPORTED_CLI_VERSIONS,
-)
+from ..config.constants import CLI_PYTHON_REQUIRES, MCP_PYTHON_REQUIRES, MCP_SDK_REQUIRES, PENDING_RELEASE_GATES, PUBLIC_RELEASE_READY, SERVER_VERSION, SUPPORTED_CLI_VERSIONS
 
 RELEASE_MANIFEST_SCHEMA_VERSION = 1
 RELEASE_MANIFEST_FILENAME = "release-manifest.json"
 SIGSTORE_BUNDLE_SUFFIX = ".sigstore.json"
 SIGSTORE_OIDC_ISSUER = "https://token.actions.githubusercontent.com"
-RELEASE_WORKFLOW_IDENTITY_PREFIX = (
-    "https://github.com/ZJUEarthData/Geochemistrypi/"
-    ".github/workflows/release.yml@refs/tags/"
-)
+RELEASE_WORKFLOW_IDENTITY_PREFIX = "https://github.com/ZJUEarthData/Geochemistrypi/" ".github/workflows/release.yml@refs/tags/"
 CLI_VERSION = SUPPORTED_CLI_VERSIONS[0]
 EXPECTED_RELEASE_TAG = f"mcp-v{SERVER_VERSION}-cli-v{CLI_VERSION}"
 _SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
@@ -124,26 +113,13 @@ def inspect_wheel(path: Path) -> WheelMetadata:
     try:
         with ZipFile(path) as archive:
             names = archive.namelist()
-            metadata_names = [
-                name
-                for name in names
-                if name.endswith(".dist-info/METADATA") and name.count("/") == 1
-            ]
+            metadata_names = [name for name in names if name.endswith(".dist-info/METADATA") and name.count("/") == 1]
             if len(metadata_names) != 1:
-                raise ReleaseError(
-                    f"Wheel {path.name} must contain exactly one top-level METADATA file."
-                )
-            packaged_tests = [
-                name
-                for name in names
-                if "tests" in Path(name).parts
-                or Path(name).name.startswith("test_")
-            ]
+                raise ReleaseError(f"Wheel {path.name} must contain exactly one top-level METADATA file.")
+            packaged_tests = [name for name in names if "tests" in Path(name).parts or Path(name).name.startswith("test_")]
             if packaged_tests:
                 preview = ", ".join(packaged_tests[:5])
-                raise ReleaseError(
-                    f"Production wheel {path.name} contains repository tests: {preview}"
-                )
+                raise ReleaseError(f"Production wheel {path.name} contains repository tests: {preview}")
             message = BytesParser().parsebytes(archive.read(metadata_names[0]))
     except (BadZipFile, KeyError, OSError) as exc:
         raise ReleaseError(f"Cannot inspect wheel archive {path}: {exc}") from exc
@@ -151,9 +127,7 @@ def inspect_wheel(path: Path) -> WheelMetadata:
     version = str(message.get("Version", ""))
     requires_python = str(message.get("Requires-Python", ""))
     if not distribution or not version or not requires_python:
-        raise ReleaseError(
-            f"Wheel {path.name} is missing Name, Version, or Requires-Python metadata."
-        )
+        raise ReleaseError(f"Wheel {path.name} is missing Name, Version, or Requires-Python metadata.")
     return WheelMetadata(distribution, version, requires_python, len(names))
 
 
@@ -161,21 +135,12 @@ def _validate_expected_wheel(path: Path) -> WheelMetadata:
     metadata = inspect_wheel(path)
     expected = _EXPECTED_DISTRIBUTIONS.get(metadata.distribution)
     if expected is None:
-        raise ReleaseError(
-            f"Unexpected distribution {metadata.distribution!r} in {path.name}."
-        )
+        raise ReleaseError(f"Unexpected distribution {metadata.distribution!r} in {path.name}.")
     expected_version, expected_python = expected
     if metadata.version != expected_version:
-        raise ReleaseError(
-            f"Wheel {path.name} has version {metadata.version}; expected {expected_version}."
-        )
-    if _requirement_tokens(metadata.requires_python) != _requirement_tokens(
-        expected_python
-    ):
-        raise ReleaseError(
-            f"Wheel {path.name} has Requires-Python {metadata.requires_python!r}; "
-            f"expected {expected_python!r}."
-        )
+        raise ReleaseError(f"Wheel {path.name} has version {metadata.version}; expected {expected_version}.")
+    if _requirement_tokens(metadata.requires_python) != _requirement_tokens(expected_python):
+        raise ReleaseError(f"Wheel {path.name} has Requires-Python {metadata.requires_python!r}; " f"expected {expected_python!r}.")
     return metadata
 
 
@@ -203,25 +168,18 @@ def build_release_manifest(
     if not directory.is_dir():
         raise ReleaseError(f"Release distribution directory does not exist: {directory}")
     if release_tag != EXPECTED_RELEASE_TAG:
-        raise ReleaseError(
-            f"Release tag {release_tag!r} does not match this bundle's exact versions; "
-            f"expected {EXPECTED_RELEASE_TAG!r}."
-        )
+        raise ReleaseError(f"Release tag {release_tag!r} does not match this bundle's exact versions; " f"expected {EXPECTED_RELEASE_TAG!r}.")
     if source_commit != "uncommitted" and not _COMMIT_PATTERN.fullmatch(source_commit):
         raise ReleaseError("source_commit must be a 40-character lowercase Git SHA or 'uncommitted'.")
     wheels = sorted(directory.glob("*.whl"))
     if len(wheels) != len(_EXPECTED_DISTRIBUTIONS):
-        raise ReleaseError(
-            f"Expected exactly two production wheels, found {[path.name for path in wheels]}."
-        )
+        raise ReleaseError(f"Expected exactly two production wheels, found {[path.name for path in wheels]}.")
     artifacts: list[dict[str, object]] = []
     observed: set[str] = set()
     for wheel in wheels:
         metadata = _validate_expected_wheel(wheel)
         if metadata.distribution in observed:
-            raise ReleaseError(
-                f"Release directory contains more than one {metadata.distribution} wheel."
-            )
+            raise ReleaseError(f"Release directory contains more than one {metadata.distribution} wheel.")
         observed.add(metadata.distribution)
         artifacts.append(
             {
@@ -234,9 +192,7 @@ def build_release_manifest(
             }
         )
     if observed != set(_EXPECTED_DISTRIBUTIONS):
-        raise ReleaseError(
-            f"Release distributions do not match the required pair: {sorted(observed)}."
-        )
+        raise ReleaseError(f"Release distributions do not match the required pair: {sorted(observed)}.")
     artifacts.sort(key=lambda item: str(item["distribution"]))
     release_id = f"geochemistrypi-{CLI_VERSION}+mcp-{SERVER_VERSION}"
     manifest: dict[str, object] = {
@@ -293,14 +249,10 @@ def _validate_manifest_shape(value: Mapping[str, object]) -> None:
     if set(value) != _TOP_LEVEL_FIELDS:
         missing = sorted(_TOP_LEVEL_FIELDS - set(value))
         unknown = sorted(set(value) - _TOP_LEVEL_FIELDS)
-        raise ReleaseError(
-            f"Release manifest fields are not canonical; missing={missing}, unknown={unknown}."
-        )
+        raise ReleaseError(f"Release manifest fields are not canonical; missing={missing}, unknown={unknown}.")
     if value.get("schema_version") != RELEASE_MANIFEST_SCHEMA_VERSION:
         raise ReleaseError("Unsupported release manifest schema version.")
-    if value.get("release_tag") != EXPECTED_RELEASE_TAG or not _RELEASE_TAG_PATTERN.fullmatch(
-        str(value.get("release_tag", ""))
-    ):
+    if value.get("release_tag") != EXPECTED_RELEASE_TAG or not _RELEASE_TAG_PATTERN.fullmatch(str(value.get("release_tag", ""))):
         raise ReleaseError("Release manifest tag does not match the exact supported versions.")
     if value.get("release_id") != f"geochemistrypi-{CLI_VERSION}+mcp-{SERVER_VERSION}":
         raise ReleaseError("Release manifest ID does not match the exact supported versions.")
@@ -401,10 +353,7 @@ def _verify_signature(
         raise ReleaseError(f"Cannot run Sigstore verification for {artifact.name}: {exc}") from exc
     if completed.returncode != 0:
         detail = " ".join((completed.stderr or completed.stdout).split())[-1000:]
-        raise ReleaseError(
-            f"Sigstore verification failed for {artifact.name}: "
-            f"{detail or 'verification returned a non-zero exit code'}"
-        )
+        raise ReleaseError(f"Sigstore verification failed for {artifact.name}: " f"{detail or 'verification returned a non-zero exit code'}")
 
 
 @dataclass(frozen=True)
@@ -490,8 +439,7 @@ def verify_release_bundle(
             (
                 item.get("distribution") != metadata.distribution,
                 item.get("version") != metadata.version,
-                _requirement_tokens(str(item.get("requires_python", "")))
-                != _requirement_tokens(metadata.requires_python),
+                _requirement_tokens(str(item.get("requires_python", ""))) != _requirement_tokens(metadata.requires_python),
             )
         ):
             raise ReleaseError(f"Release artifact metadata does not match the manifest: {filename}")
@@ -554,10 +502,7 @@ def main(argv: Sequence[str] | None = None) -> None:
                 require_signatures=not arguments.allow_unsigned,
             )
             signature_state = "verified" if bundle.signatures_verified else "explicitly skipped"
-            print(
-                f"Verified {bundle.release_id}: two exact wheels, SHA-256 hashes match, "
-                f"signatures {signature_state}."
-            )
+            print(f"Verified {bundle.release_id}: two exact wheels, SHA-256 hashes match, " f"signatures {signature_state}.")
     except ReleaseError as exc:
         print(f"GeochemistryPi release verification failed: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc

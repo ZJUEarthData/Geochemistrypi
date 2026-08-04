@@ -6,22 +6,12 @@ import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from pydantic import ValidationError
 
-from ..api.schemas import (
-    BuiltInDatasetReference,
-    DatasetCatalogEntry,
-    DatasetReference,
-    DesktopDatasetReference,
-    ExplicitDatasetReference,
-    ListDatasetsRequest,
-    ListDatasetsResponse,
-)
+from ..api.schemas import BuiltInDatasetReference, DatasetCatalogEntry, DatasetReference, DesktopDatasetReference, ExplicitDatasetReference, ListDatasetsRequest, ListDatasetsResponse
 from ..config.constants import ISOLATED_CLI_ENVIRONMENT_VARIABLES
 from ..config.settings import McpSettings
-
 
 _SUPPORTED_ANALYSIS_TASKS = {
     "classification",
@@ -84,24 +74,17 @@ class DatasetCatalog:
                 env=process_environment,
             )
         except (OSError, subprocess.SubprocessError) as exc:
-            raise DatasetCatalogError(
-                "Unable to query datasets from the installed GeochemistryPi CLI."
-            ) from exc
+            raise DatasetCatalogError("Unable to query datasets from the installed GeochemistryPi CLI.") from exc
         stdout = completed.stdout.strip()
         if completed.returncode != 0:
             detail = " ".join(completed.stderr.split())[:500]
-            raise DatasetCatalogError(
-                "The installed GeochemistryPi CLI could not list datasets"
-                + (f": {detail}" if detail else ".")
-            )
+            raise DatasetCatalogError("The installed GeochemistryPi CLI could not list datasets" + (f": {detail}" if detail else "."))
         if len(stdout.encode("utf-8")) > _MAX_CATALOG_OUTPUT_BYTES:
             raise DatasetCatalogError("CLI dataset catalog exceeds the 1 MiB safety limit.")
         try:
             value = json.loads(stdout)
         except json.JSONDecodeError as exc:
-            raise DatasetCatalogError(
-                "The installed GeochemistryPi CLI returned an invalid dataset catalog."
-            ) from exc
+            raise DatasetCatalogError("The installed GeochemistryPi CLI returned an invalid dataset catalog.") from exc
         if not isinstance(value, dict):
             raise DatasetCatalogError("CLI dataset catalog must be a JSON object.")
         expected_fields = {
@@ -115,9 +98,7 @@ class DatasetCatalog:
         unknown = sorted(set(value) - expected_fields)
         missing = sorted(expected_fields - set(value))
         if unknown or missing:
-            raise DatasetCatalogError(
-                f"CLI dataset catalog fields are invalid; unknown: {unknown}, missing: {missing}."
-            )
+            raise DatasetCatalogError(f"CLI dataset catalog fields are invalid; unknown: {unknown}, missing: {missing}.")
         if value.get("schema_version") != 1 or value.get("source_filter") != request.source:
             raise DatasetCatalogError("CLI dataset catalog version or source filter is inconsistent.")
         raw_datasets = value.get("datasets")
@@ -131,28 +112,15 @@ class DatasetCatalog:
             task = item.get("task")
             role = item.get("role")
             blockers = item.get("analysis_blockers")
-            if not isinstance(blockers, list) or not all(
-                isinstance(blocker, str) for blocker in blockers
-            ):
-                raise DatasetCatalogError(
-                    "Every CLI dataset entry must declare analysis_blockers."
-                )
-            item["supported_for_analysis"] = (
-                not blockers
-                and (
-                    item.get("source") == "desktop"
-                    or task in _SUPPORTED_ANALYSIS_TASKS
-                    and role in {"training", "application"}
-                )
-            )
+            if not isinstance(blockers, list) or not all(isinstance(blocker, str) for blocker in blockers):
+                raise DatasetCatalogError("Every CLI dataset entry must declare analysis_blockers.")
+            item["supported_for_analysis"] = not blockers and (item.get("source") == "desktop" or task in _SUPPORTED_ANALYSIS_TASKS and role in {"training", "application"})
             enriched.append(item)
         value["datasets"] = enriched
         try:
             response = ListDatasetsResponse.model_validate(value)
         except ValidationError as exc:
-            raise DatasetCatalogError(
-                "The installed CLI dataset catalog does not match schema version 1."
-            ) from exc
+            raise DatasetCatalogError("The installed CLI dataset catalog does not match schema version 1.") from exc
         identifiers = [item.dataset_id for item in response.datasets]
         if len(identifiers) != len(set(identifiers)):
             raise DatasetCatalogError("CLI dataset catalog contains duplicate dataset IDs.")
@@ -160,51 +128,33 @@ class DatasetCatalog:
         return response
 
     def _validate_paths(self, response: ListDatasetsResponse) -> None:
-        desktop_root = (
-            Path(response.desktop_root).resolve()
-            if response.desktop_root is not None
-            else None
-        )
+        desktop_root = Path(response.desktop_root).resolve() if response.desktop_root is not None else None
         for entry in response.datasets:
             path = Path(entry.path)
             if not path.is_absolute():
-                raise DatasetCatalogError(
-                    f"CLI dataset catalog returned a non-absolute path for {entry.dataset_id}."
-                )
+                raise DatasetCatalogError(f"CLI dataset catalog returned a non-absolute path for {entry.dataset_id}.")
             try:
                 resolved = path.resolve(strict=True)
             except (OSError, RuntimeError) as exc:
-                raise DatasetCatalogError(
-                    f"CLI dataset is no longer available: {entry.dataset_id}."
-                ) from exc
+                raise DatasetCatalogError(f"CLI dataset is no longer available: {entry.dataset_id}.") from exc
             if not resolved.is_file():
-                raise DatasetCatalogError(
-                    f"CLI dataset is not a regular file: {entry.dataset_id}."
-                )
+                raise DatasetCatalogError(f"CLI dataset is not a regular file: {entry.dataset_id}.")
             try:
                 metadata = resolved.stat()
                 digest = _sha256(resolved)
             except OSError as exc:
-                raise DatasetCatalogError(
-                    f"CLI dataset became unavailable while it was being verified: {entry.dataset_id}; retry after writes stop."
-                ) from exc
+                raise DatasetCatalogError(f"CLI dataset became unavailable while it was being verified: {entry.dataset_id}; retry after writes stop.") from exc
             if metadata.st_size != entry.size_bytes or digest != entry.sha256:
-                raise DatasetCatalogError(
-                    f"CLI dataset changed while it was being listed: {entry.dataset_id}; retry after writes stop."
-                )
+                raise DatasetCatalogError(f"CLI dataset changed while it was being listed: {entry.dataset_id}; retry after writes stop.")
             if entry.source == "desktop":
                 if desktop_root is None:
                     raise DatasetCatalogError("Desktop dataset catalog omitted its root.")
                 try:
                     resolved.relative_to(desktop_root)
                 except ValueError as exc:
-                    raise DatasetCatalogError(
-                        f"Desktop dataset escapes Desktop/geopi_input: {entry.file_name}."
-                    ) from exc
+                    raise DatasetCatalogError(f"Desktop dataset escapes Desktop/geopi_input: {entry.file_name}.") from exc
                 if resolved.parent != desktop_root:
-                    raise DatasetCatalogError(
-                        f"Desktop dataset must be an immediate child of Desktop/geopi_input: {entry.file_name}."
-                    )
+                    raise DatasetCatalogError(f"Desktop dataset must be an immediate child of Desktop/geopi_input: {entry.file_name}.")
 
     def resolve(
         self,
@@ -225,52 +175,33 @@ class DatasetCatalog:
         entry: DatasetCatalogEntry | None = None
         if isinstance(reference, BuiltInDatasetReference):
             entry = next(
-                (
-                    candidate
-                    for candidate in response.datasets
-                    if candidate.dataset_id == reference.dataset_id
-                ),
+                (candidate for candidate in response.datasets if candidate.dataset_id == reference.dataset_id),
                 None,
             )
             if entry is None:
                 available = [item.dataset_id for item in response.datasets]
-                raise DatasetCatalogError(
-                    f"Unknown built-in dataset ID {reference.dataset_id!r}; available IDs: {available}"
-                )
+                raise DatasetCatalogError(f"Unknown built-in dataset ID {reference.dataset_id!r}; available IDs: {available}")
             if task is not None and entry.task != task:
-                raise DatasetCatalogError(
-                    f"Built-in dataset {entry.dataset_id!r} is for {entry.task}, not {task}."
-                )
+                raise DatasetCatalogError(f"Built-in dataset {entry.dataset_id!r} is for {entry.task}, not {task}.")
             if role is not None and entry.role != role:
-                raise DatasetCatalogError(
-                    f"Built-in dataset {entry.dataset_id!r} has role {entry.role}, not {role}."
-                )
+                raise DatasetCatalogError(f"Built-in dataset {entry.dataset_id!r} has role {entry.role}, not {role}.")
             if role == "training" and entry.analysis_blockers:
                 raise DatasetCatalogError(
-                    f"Built-in dataset {entry.dataset_id!r} is discoverable and inspectable but "
-                    f"cannot start this analysis yet; blocking capabilities: {list(entry.analysis_blockers)}."
+                    f"Built-in dataset {entry.dataset_id!r} is discoverable and inspectable but " f"cannot start this analysis yet; blocking capabilities: {list(entry.analysis_blockers)}."
                 )
         elif isinstance(reference, DesktopDatasetReference):
             entry = next(
-                (
-                    candidate
-                    for candidate in response.datasets
-                    if candidate.file_name == reference.file_name
-                ),
+                (candidate for candidate in response.datasets if candidate.file_name == reference.file_name),
                 None,
             )
             if entry is None:
                 available = [item.file_name for item in response.datasets]
-                raise DatasetCatalogError(
-                    f"Desktop dataset {reference.file_name!r} was not found; available files: {available}"
-                )
+                raise DatasetCatalogError(f"Desktop dataset {reference.file_name!r} was not found; available files: {available}")
         else:
             raise DatasetCatalogError("Unsupported dataset reference type.")
         expected = reference.expected_sha256
         if expected is not None and expected != entry.sha256:
-            raise DatasetCatalogError(
-                f"Dataset {entry.dataset_id!r} changed since it was selected; expected SHA-256 {expected}, found {entry.sha256}."
-            )
+            raise DatasetCatalogError(f"Dataset {entry.dataset_id!r} changed since it was selected; expected SHA-256 {expected}, found {entry.sha256}.")
         return ResolvedDataset(
             path=Path(entry.path),
             expected_sha256=expected,

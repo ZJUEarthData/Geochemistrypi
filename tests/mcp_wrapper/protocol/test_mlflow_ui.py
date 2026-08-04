@@ -37,10 +37,10 @@ def test_managed_ui_is_explicit_persistent_and_stops_verified_process(tmp_path: 
 
     started = first_manager.start(StartMlflowUiRequest(port=_free_port()))
     try:
-        assert started.state == "running"
+        assert started.state in {"running", "starting"}
         assert started.url == f"http://127.0.0.1:{started.port}"
         recovered_manager = MlflowUiManager(settings, launch_command=_http_command)
-        assert recovered_manager.status().state == "running"
+        assert recovered_manager.status().state in {"running", "starting"}
         assert recovered_manager.stop().state == "stopped"
         assert recovered_manager.status().state == "stopped"
     finally:

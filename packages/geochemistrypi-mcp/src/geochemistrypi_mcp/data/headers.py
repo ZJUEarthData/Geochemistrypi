@@ -3,7 +3,6 @@
 import re
 from typing import Any, Sequence
 
-
 _CONTROL_CHARACTER = re.compile(r"[\x00-\x1f\x7f]")
 
 
@@ -26,36 +25,22 @@ def normalize_dataset_header(
     if not raw_header:
         raise HeaderValidationError("Dataset must contain a header row.")
     if len(raw_header) > maximum_columns:
-        raise HeaderValidationError(
-            f"Dataset has {len(raw_header)} columns; the limit is {maximum_columns}."
-        )
+        raise HeaderValidationError(f"Dataset has {len(raw_header)} columns; the limit is {maximum_columns}.")
     columns = []
     for index, value in enumerate(raw_header):
         column = f"Unnamed: {index}" if value is None or value == "" else str(value)
         if not column.strip():
-            raise HeaderValidationError(
-                f"Dataset column {index + 1} contains only whitespace."
-            )
+            raise HeaderValidationError(f"Dataset column {index + 1} contains only whitespace.")
         if column != column.strip():
-            raise HeaderValidationError(
-                f"Dataset column {index + 1} has leading or trailing whitespace: {column!r}."
-            )
+            raise HeaderValidationError(f"Dataset column {index + 1} has leading or trailing whitespace: {column!r}.")
         if len(column) > 128:
-            raise HeaderValidationError(
-                f"Dataset column {index + 1} name must not exceed 128 characters."
-            )
+            raise HeaderValidationError(f"Dataset column {index + 1} name must not exceed 128 characters.")
         if _CONTROL_CHARACTER.search(column):
-            raise HeaderValidationError(
-                f"Dataset column {index + 1} contains a control character."
-            )
+            raise HeaderValidationError(f"Dataset column {index + 1} contains a control character.")
         columns.append(column)
     if len(columns) != len(set(columns)) and not allow_pandas_duplicate_mangling:
-        duplicates = sorted(
-            {column for column in columns if columns.count(column) > 1}
-        )
-        raise HeaderValidationError(
-            f"Dataset contains duplicate or colliding column names: {duplicates}"
-        )
+        duplicates = sorted({column for column in columns if columns.count(column) > 1})
+        raise HeaderValidationError(f"Dataset contains duplicate or colliding column names: {duplicates}")
     if allow_pandas_duplicate_mangling:
         raw_names = set(columns)
         seen = set()
@@ -78,14 +63,10 @@ def normalize_dataset_header(
     return tuple(columns)
 
 
-def header_normalization_warnings(
-    raw_header: Sequence[Any], columns: Sequence[str]
-) -> tuple[str, ...]:
+def header_normalization_warnings(raw_header: Sequence[Any], columns: Sequence[str]) -> tuple[str, ...]:
     warnings = []
     for index, (raw, normalized) in enumerate(zip(raw_header, columns)):
         original = "" if raw is None else str(raw)
         if original != normalized:
-            warnings.append(
-                f"Column {index + 1} was normalized from {original!r} to {normalized!r} to match pandas."
-            )
+            warnings.append(f"Column {index + 1} was normalized from {original!r} to {normalized!r} to match pandas.")
     return tuple(warnings)

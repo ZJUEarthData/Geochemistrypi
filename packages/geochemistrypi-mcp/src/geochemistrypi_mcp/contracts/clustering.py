@@ -18,9 +18,7 @@ MODEL_DISPLAY_NAMES: Final[dict[str, str]] = {
     "mean_shift": "MeanShift",
 }
 
-MODEL_NUMBERS: Final[dict[str, int]] = {
-    name: index for index, name in enumerate(MODEL_ORDER, start=1)
-}
+MODEL_NUMBERS: Final[dict[str, int]] = {name: index for index, name in enumerate(MODEL_ORDER, start=1)}
 
 SCALING_METHODS: Final[tuple[str, ...]] = (
     "none",

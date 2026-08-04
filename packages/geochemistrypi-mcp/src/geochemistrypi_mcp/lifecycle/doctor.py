@@ -18,7 +18,7 @@ from mcp.client.stdio import stdio_client
 
 from ..config.constants import CLI_PYTHON_REQUIRES, COMPATIBILITY_POLICY_VERSION, ISOLATED_CLI_ENVIRONMENT_VARIABLES, MCP_PYTHON_REQUIRES, MCP_SDK_REQUIRES, SERVER_VERSION, SUPPORTED_CLI_VERSIONS
 from ..config.settings import SETTINGS_FILE_ENV, SETTINGS_SCHEMA_VERSION, resolve_cli_interpreter
-from .release import ReleaseError, SIGSTORE_BUNDLE_SUFFIX, verify_release_bundle
+from .release import SIGSTORE_BUNDLE_SUFFIX, ReleaseError, verify_release_bundle
 from .setup import MANIFEST_SCHEMA_VERSION, SetupPaths
 
 EXPECTED_TOOLS = {
@@ -197,13 +197,7 @@ def _manifest_check(paths: SetupPaths) -> DoctorCheck:
         return DoctorCheck("install-manifest", False, "Runtime inventory is missing or incomplete.")
     for name in ("mcp", "cli"):
         item = inventory.get(name)
-        if (
-            not isinstance(item, dict)
-            or type(item.get("count")) is not int
-            or item["count"] < 1
-            or not isinstance(item.get("sha256"), str)
-            or not _SHA256_PATTERN.fullmatch(item["sha256"])
-        ):
+        if not isinstance(item, dict) or type(item.get("count")) is not int or item["count"] < 1 or not isinstance(item.get("sha256"), str) or not _SHA256_PATTERN.fullmatch(item["sha256"]):
             return DoctorCheck(
                 "install-manifest",
                 False,
@@ -211,10 +205,7 @@ def _manifest_check(paths: SetupPaths) -> DoctorCheck:
             )
     if type(value.get("rollback_available")) is not bool:
         return DoctorCheck("install-manifest", False, "Rollback availability is not explicit.")
-    if value["rollback_available"] and (
-        not paths.rollback_metadata_file.is_file()
-        or not paths.rollback_environments.is_dir()
-    ):
+    if value["rollback_available"] and (not paths.rollback_metadata_file.is_file() or not paths.rollback_environments.is_dir()):
         return DoctorCheck(
             "install-manifest",
             False,
@@ -323,13 +314,7 @@ def _collect_runtime_inventory(
             value = json.loads(completed.stdout)
         except json.JSONDecodeError as exc:
             raise RuntimeError(f"{name.upper()} inventory returned invalid JSON.") from exc
-        if (
-            not isinstance(value, dict)
-            or type(value.get("count")) is not int
-            or value["count"] < 1
-            or not isinstance(value.get("sha256"), str)
-            or not _SHA256_PATTERN.fullmatch(value["sha256"])
-        ):
+        if not isinstance(value, dict) or type(value.get("count")) is not int or value["count"] < 1 or not isinstance(value.get("sha256"), str) or not _SHA256_PATTERN.fullmatch(value["sha256"]):
             raise RuntimeError(f"{name.upper()} inventory is incomplete.")
         values[name] = value
     return values
@@ -351,9 +336,7 @@ def _runtime_inventory_check(
             False,
             "Installed distribution inventory changed after setup; run repair from the trusted bundle.",
         )
-    if not isinstance(observed, Mapping) or not all(
-        isinstance(observed.get(name), Mapping) for name in ("mcp", "cli")
-    ):
+    if not isinstance(observed, Mapping) or not all(isinstance(observed.get(name), Mapping) for name in ("mcp", "cli")):
         return DoctorCheck("runtime-inventory", False, "Runtime inventory is malformed.")
     mcp = observed["mcp"]
     cli = observed["cli"]
@@ -428,9 +411,7 @@ def run_doctor(
 ) -> DoctorReport:
     """Check persisted state, both private runtimes, run storage, and MCP stdio."""
     resolved_paths = paths or SetupPaths.default()
-    resolved_inventory_probe = inventory_probe or (
-        lambda value: _collect_runtime_inventory(value, runner)
-    )
+    resolved_inventory_probe = inventory_probe or (lambda value: _collect_runtime_inventory(value, runner))
     checks = [
         _settings_check(resolved_paths),
         _manifest_check(resolved_paths),

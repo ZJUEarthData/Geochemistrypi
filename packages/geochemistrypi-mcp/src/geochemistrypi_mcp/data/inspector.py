@@ -14,11 +14,7 @@ from openpyxl import load_workbook
 
 from ..api.schemas import DatasetColumnSummary, DatasetInspectionRequest, DatasetInspectionResponse
 from ..config.settings import McpSettings
-from .headers import (
-    HeaderValidationError,
-    header_normalization_warnings,
-    normalize_dataset_header,
-)
+from .headers import HeaderValidationError, header_normalization_warnings, normalize_dataset_header
 
 _SUPPORTED_SUFFIXES = {".csv": "csv", ".xlsx": "xlsx"}
 _TYPE_SAMPLE_ROWS = 50
@@ -170,14 +166,7 @@ def _inspect_csv(
     request: DatasetInspectionRequest,
     settings: McpSettings,
     allow_pandas_duplicate_mangling: bool,
-) -> tuple[
-    tuple[str, ...],
-    tuple[str, ...],
-    int,
-    bool,
-    list[list[Any]],
-    list[list[Any]],
-]:
+) -> tuple[tuple[str, ...], tuple[str, ...], int, bool, list[list[Any]], list[list[Any]],]:
     try:
         with snapshot.resolved_path.open("r", encoding="utf-8-sig", newline="") as stream:
             reader = csv.reader(stream)
@@ -206,14 +195,7 @@ def _inspect_xlsx(
     request: DatasetInspectionRequest,
     settings: McpSettings,
     allow_pandas_duplicate_mangling: bool,
-) -> tuple[
-    tuple[str, ...],
-    tuple[str, ...],
-    int,
-    bool,
-    list[list[Any]],
-    list[list[Any]],
-]:
+) -> tuple[tuple[str, ...], tuple[str, ...], int, bool, list[list[Any]], list[list[Any]],]:
     try:
         with snapshot.resolved_path.open("rb") as stream:
             workbook = load_workbook(stream, read_only=True, data_only=True)

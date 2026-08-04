@@ -116,7 +116,7 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
-          from geochemistrypi_mcp.release import inspect_wheel
+          from geochemistrypi_mcp.lifecycle.release import inspect_wheel
 
           wheels = sorted(Path("release-bundle").glob("*.whl"))
           if len(wheels) != 2:

@@ -16,7 +16,19 @@ from typing import Any, Iterable, List, Optional, Sequence, Tuple
 
 from pydantic import TypeAdapter
 
-from ..api.schemas import AnomalyDetectionModelSettings, AnomalyDetectionRequest, ClassificationModelSettings, ClassificationRequest, ClusteringModelSettings, ClusteringRequest, DecompositionModelSettings, DecompositionRequest, RegressionModelSettings, RegressionRequest, TimeSeriesRequest
+from ..api.schemas import (
+    AnomalyDetectionModelSettings,
+    AnomalyDetectionRequest,
+    ClassificationModelSettings,
+    ClassificationRequest,
+    ClusteringModelSettings,
+    ClusteringRequest,
+    DecompositionModelSettings,
+    DecompositionRequest,
+    RegressionModelSettings,
+    RegressionRequest,
+    TimeSeriesRequest,
+)
 from ..config.constants import INTERACTION_PLAN_VERSION
 from ..contracts.anomaly_detection import MODEL_DISPLAY_NAMES as ANOMALY_DETECTION_MODEL_DISPLAY_NAMES
 from ..contracts.anomaly_detection import MODEL_NUMBERS as ANOMALY_DETECTION_MODEL_NUMBERS
@@ -161,9 +173,7 @@ def _read_dataset_columns(path: Path) -> Tuple[str, ...]:
         raise PlanCompilationError(str(exc)) from exc
 
 
-def _validate_world_map(
-    path: Path, columns: Sequence[str], configuration: Any
-) -> None:
+def _validate_world_map(path: Path, columns: Sequence[str], configuration: Any) -> None:
     """Validate semantic map roles and every rendered value before CLI startup."""
     if not configuration.enabled:
         return
@@ -174,44 +184,28 @@ def _validate_world_map(
     )
     missing = sorted({column for column in requested if column not in columns})
     if missing:
-        raise PlanCompilationError(
-            f"World-map columns are absent from the training dataset: {missing}"
-        )
+        raise PlanCompilationError(f"World-map columns are absent from the training dataset: {missing}")
     positions = [columns.index(column) for column in requested]
     row_count = 0
-    for row_count, raw_values in enumerate(
-        _iter_selected_rows(path, positions), start=1
-    ):
+    for row_count, raw_values in enumerate(_iter_selected_rows(path, positions), start=1):
         parsed = []
         for column, raw in zip(requested, raw_values):
             if raw is None or (isinstance(raw, str) and not raw.strip()):
-                raise PlanCompilationError(
-                    f"World-map column {column!r} contains a missing value at data row {row_count + 1}."
-                )
+                raise PlanCompilationError(f"World-map column {column!r} contains a missing value at data row {row_count + 1}.")
             try:
                 number = float(raw)
             except (TypeError, ValueError) as exc:
-                raise PlanCompilationError(
-                    f"World-map column {column!r} contains a non-numeric value at data row {row_count + 1}."
-                ) from exc
+                raise PlanCompilationError(f"World-map column {column!r} contains a non-numeric value at data row {row_count + 1}.") from exc
             if not math.isfinite(number):
-                raise PlanCompilationError(
-                    f"World-map column {column!r} contains a non-finite value at data row {row_count + 1}."
-                )
+                raise PlanCompilationError(f"World-map column {column!r} contains a non-finite value at data row {row_count + 1}.")
             parsed.append(number)
         longitude, latitude = parsed[:2]
         if longitude < -180 or longitude > 180:
-            raise PlanCompilationError(
-                f"World-map longitude must be between -180 and 180 degrees; data row {row_count + 1} contains {longitude}."
-            )
+            raise PlanCompilationError(f"World-map longitude must be between -180 and 180 degrees; data row {row_count + 1} contains {longitude}.")
         if latitude < -90 or latitude > 90:
-            raise PlanCompilationError(
-                f"World-map latitude must be between -90 and 90 degrees; data row {row_count + 1} contains {latitude}."
-            )
+            raise PlanCompilationError(f"World-map latitude must be between -90 and 90 degrees; data row {row_count + 1} contains {latitude}.")
     if row_count == 0:
-        raise PlanCompilationError(
-            "World-map rendering requires at least one data row."
-        )
+        raise PlanCompilationError("World-map rendering requires at least one data row.")
 
 
 def _world_map_option(configuration: Any) -> str:
@@ -225,15 +219,11 @@ def _world_map_option(configuration: Any) -> str:
     return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
 
 
-def _command_with_world_map(
-    command: Tuple[str, ...], configuration: Any
-) -> Tuple[str, ...]:
+def _command_with_world_map(command: Tuple[str, ...], configuration: Any) -> Tuple[str, ...]:
     return (*command, "--world-map-config", _world_map_option(configuration))
 
 
-def _command_with_analysis_options(
-    command: Tuple[str, ...], configuration: Any, existing_experiment_id: Optional[str]
-) -> Tuple[str, ...]:
+def _command_with_analysis_options(command: Tuple[str, ...], configuration: Any, existing_experiment_id: Optional[str]) -> Tuple[str, ...]:
     resolved = _command_with_world_map(command, configuration)
     if existing_experiment_id:
         resolved = (*resolved, "--existing-experiment-id", existing_experiment_id)
@@ -1640,9 +1630,7 @@ class ClassificationPlanCompiler:
                 "--application",
                 str(application_path),
             )
-        command = _command_with_analysis_options(
-            command, request.world_map, request.existing_experiment_id
-        )
+        command = _command_with_analysis_options(command, request.world_map, request.existing_experiment_id)
         return InteractionPlan(
             schema_version=INTERACTION_PLAN_VERSION,
             name=f"classification-{request.model.type}-v1",
@@ -2270,9 +2258,7 @@ class RegressionPlanCompiler:
                 "--application",
                 str(application_path),
             )
-        command = _command_with_analysis_options(
-            command, request.world_map, request.existing_experiment_id
-        )
+        command = _command_with_analysis_options(command, request.world_map, request.existing_experiment_id)
         return InteractionPlan(
             schema_version=INTERACTION_PLAN_VERSION,
             name=f"regression-{request.model.type}-v1",
@@ -3074,9 +3060,7 @@ class TimeSeriesPlanCompiler:
     ) -> InteractionPlan:
         data_path = request.training_dataset_path.expanduser().resolve()
         if not data_path.is_file():
-            raise PlanCompilationError(
-                f"Training data file does not exist: {data_path}"
-            )
+            raise PlanCompilationError(f"Training data file does not exist: {data_path}")
         columns = _read_dataset_columns(data_path)
         roles = (
             request.age_column,
@@ -3087,70 +3071,42 @@ class TimeSeriesPlanCompiler:
         )
         missing = sorted(set(roles) - set(columns))
         if missing:
-            raise PlanCompilationError(
-                f"Time Series columns are absent from the training dataset: {missing}"
-            )
+            raise PlanCompilationError(f"Time Series columns are absent from the training dataset: {missing}")
         positions = [columns.index(column) for column in roles]
         row_count = 0
         maximum_age = 0.0
-        for row_number, raw_values in enumerate(
-            _iter_selected_rows(data_path, positions), start=2
-        ):
+        for row_number, raw_values in enumerate(_iter_selected_rows(data_path, positions), start=2):
             row_count += 1
             values = []
             for column, raw in zip(roles, raw_values):
                 try:
                     number = float(raw)
                 except (TypeError, ValueError) as exc:
-                    raise PlanCompilationError(
-                        f"Time Series column {column!r} contains a non-numeric value at data row {row_number}."
-                    ) from exc
+                    raise PlanCompilationError(f"Time Series column {column!r} contains a non-numeric value at data row {row_number}.") from exc
                 if not math.isfinite(number):
-                    raise PlanCompilationError(
-                        f"Time Series column {column!r} contains a missing or non-finite value at data row {row_number}."
-                    )
+                    raise PlanCompilationError(f"Time Series column {column!r} contains a missing or non-finite value at data row {row_number}.")
                 values.append(number)
             age, age_max, probability, latitude, longitude = values
             if age < 0:
-                raise PlanCompilationError(
-                    f"Time Series ages must be non-negative; data row {row_number} contains {age}."
-                )
+                raise PlanCompilationError(f"Time Series ages must be non-negative; data row {row_number} contains {age}.")
             if age_max < age:
-                raise PlanCompilationError(
-                    f"Time Series maximum age must be greater than or equal to age at data row {row_number}."
-                )
+                raise PlanCompilationError(f"Time Series maximum age must be greater than or equal to age at data row {row_number}.")
             if probability < 0 or probability > 1:
-                raise PlanCompilationError(
-                    f"Time Series probability must be between 0 and 1 at data row {row_number}."
-                )
+                raise PlanCompilationError(f"Time Series probability must be between 0 and 1 at data row {row_number}.")
             if latitude < -90 or latitude > 90:
-                raise PlanCompilationError(
-                    f"Time Series latitude must be between -90 and 90 degrees at data row {row_number}."
-                )
+                raise PlanCompilationError(f"Time Series latitude must be between -90 and 90 degrees at data row {row_number}.")
             if longitude < -180 or longitude > 180:
-                raise PlanCompilationError(
-                    f"Time Series longitude must be between -180 and 180 degrees at data row {row_number}."
-                )
+                raise PlanCompilationError(f"Time Series longitude must be between -180 and 180 degrees at data row {row_number}.")
             maximum_age = max(maximum_age, age_max)
         if row_count == 0:
-            raise PlanCompilationError(
-                "Time Series input must contain at least one data row."
-            )
+            raise PlanCompilationError("Time Series input must contain at least one data row.")
         if maximum_age <= 0:
-            raise PlanCompilationError(
-                "Time Series input must contain at least one positive maximum age."
-            )
+            raise PlanCompilationError("Time Series input must contain at least one positive maximum age.")
         bin_count = math.ceil(maximum_age / request.bin_width)
         if bin_count > 10_000:
-            raise PlanCompilationError(
-                f"bin_width creates {bin_count} bins; the safety limit is 10000."
-            )
+            raise PlanCompilationError(f"bin_width creates {bin_count} bins; the safety limit is 10000.")
 
-        executable = (
-            Path(cli_executable).expanduser().resolve()
-            if cli_executable is not None
-            else resolve_public_cli_executable()
-        )
+        executable = Path(cli_executable).expanduser().resolve() if cli_executable is not None else resolve_public_cli_executable()
         command = (
             str(executable),
             "time-series",
@@ -3188,13 +3144,7 @@ class TimeSeriesPlanCompiler:
             steps=(),
             expected_output_relative_paths=(
                 (base / "artifacts" / "data" / "Subaerial Proportion.csv").as_posix(),
-                (
-                    base
-                    / "artifacts"
-                    / "image"
-                    / "model_output"
-                    / "Subaerial Proportion.pdf"
-                ).as_posix(),
+                (base / "artifacts" / "image" / "model_output" / "Subaerial Proportion.pdf").as_posix(),
                 (base / "metrics" / "Time Series Metrics.json").as_posix(),
                 (base / "parameters" / "Time Series Parameters.json").as_posix(),
             ),
@@ -3213,12 +3163,8 @@ class AnalysisPlanCompiler:
         self.time_series = TimeSeriesPlanCompiler()
 
     @staticmethod
-    def _tail_after_common_setup(
-        plan: InteractionPlan, model_name: str
-    ) -> Tuple[InteractionStep, ...]:
-        model_index = next(
-            index for index, step in enumerate(plan.steps) if step.id == model_name
-        )
+    def _tail_after_common_setup(plan: InteractionPlan, model_name: str) -> Tuple[InteractionStep, ...]:
+        model_index = next(index for index, step in enumerate(plan.steps) if step.id == model_name)
         index = model_index + 1
         common_ids = {
             "continue_after_model",
@@ -3233,9 +3179,7 @@ class AnalysisPlanCompiler:
         return plan.steps[index:]
 
     @staticmethod
-    def _prefixed_steps(
-        model_name: str, steps: Sequence[InteractionStep]
-    ) -> List[InteractionStep]:
+    def _prefixed_steps(model_name: str, steps: Sequence[InteractionStep]) -> List[InteractionStep]:
         return [
             InteractionStep(
                 f"{model_name}.{step.id}",
@@ -3248,17 +3192,11 @@ class AnalysisPlanCompiler:
 
     def _compile_all_models(
         self,
-        request: ClassificationRequest
-        | RegressionRequest
-        | ClusteringRequest
-        | DecompositionRequest
-        | AnomalyDetectionRequest,
+        request: ClassificationRequest | RegressionRequest | ClusteringRequest | DecompositionRequest | AnomalyDetectionRequest,
         cli_executable: Optional[Path],
     ) -> InteractionPlan:
         if getattr(request.missing_values, "method", None) == "keep":
-            raise PlanCompilationError(
-                "model_selection.mode='all' requires missing values to be rejected, dropped, or imputed so every task model receives compatible data."
-            )
+            raise PlanCompilationError("model_selection.mode='all' requires missing values to be rejected, dropped, or imputed so every task model receives compatible data.")
         contracts = {
             "classification": (
                 self.classification,
@@ -3296,19 +3234,12 @@ class AnalysisPlanCompiler:
         plans = []
         for model_name in model_order:
             child_tuning = tuning
-            if (
-                request.task == "regression"
-                and model_name in REGRESSION_MODELS_WITHOUT_AUTOML
-            ):
+            if request.task == "regression" and model_name in REGRESSION_MODELS_WITHOUT_AUTOML:
                 child_tuning = "manual"
             child = request.model_copy(
                 update={
                     "model": adapter.validate_python({"type": model_name}),
-                    **(
-                        {"tuning": child_tuning}
-                        if request.task in {"classification", "regression"}
-                        else {}
-                    ),
+                    **({"tuning": child_tuning} if request.task in {"classification", "regression"} else {}),
                 }
             )
             plans.append(
@@ -3319,11 +3250,7 @@ class AnalysisPlanCompiler:
             )
 
         first_model, first_plan = plans[0]
-        selection_index = next(
-            index
-            for index, step in enumerate(first_plan.steps)
-            if step.id == first_model
-        )
+        selection_index = next(index for index, step in enumerate(first_plan.steps) if step.id == first_model)
         steps = list(first_plan.steps[:selection_index])
         selection_anchors = first_plan.steps[selection_index].output_anchors
         steps.extend(
@@ -3344,9 +3271,7 @@ class AnalysisPlanCompiler:
                         ("automated machine learning", "(Model)"),
                         "1" if tuning == "automl" else "2",
                     ),
-                    InteractionStep(
-                        "continue_after_automl", ("(Press Enter",), ""
-                    ),
+                    InteractionStep("continue_after_automl", ("(Press Enter",), ""),
                 ]
             )
             common_inference = next(
@@ -3381,33 +3306,18 @@ class AnalysisPlanCompiler:
                 )
             )
 
-        base = (
-            Path("geopi_output")
-            / request.experiment_name
-            / request.run_name
-        )
-        expected_outputs = [
-            (base / "summary" / "Aggregate Model Results.json").as_posix()
-        ]
+        base = Path("geopi_output") / request.experiment_name / request.run_name
+        expected_outputs = [(base / "summary" / "Aggregate Model Results.json").as_posix()]
         for (model_name, plan) in plans:
             display = display_names[model_name]
-            single_run_base = (
-                Path("geopi_output")
-                / request.experiment_name
-                / request.run_name
-            )
+            single_run_base = Path("geopi_output") / request.experiment_name / request.run_name
             for relative in plan.expected_output_relative_paths:
                 candidate = Path(relative)
                 try:
                     child_tail = candidate.relative_to(single_run_base)
                 except ValueError as exc:
-                    raise PlanCompilationError(
-                        "A child model projected an output outside its run directory: "
-                        f"{relative!r}."
-                    ) from exc
-                expected_outputs.append(
-                    (base / display / child_tail).as_posix()
-                )
+                    raise PlanCompilationError("A child model projected an output outside its run directory: " f"{relative!r}.") from exc
+                expected_outputs.append((base / display / child_tail).as_posix())
         return InteractionPlan(
             schema_version=INTERACTION_PLAN_VERSION,
             name=f"{request.task}-all-models-{tuning}-v1",
@@ -3421,10 +3331,7 @@ class AnalysisPlanCompiler:
         request: ClassificationRequest | RegressionRequest | ClusteringRequest | DecompositionRequest | AnomalyDetectionRequest | TimeSeriesRequest,
         cli_executable: Optional[Path] = None,
     ) -> InteractionPlan:
-        if (
-            request.task != "time_series"
-            and request.model_selection.mode == "all"
-        ):
+        if request.task != "time_series" and request.model_selection.mode == "all":
             return self._compile_all_models(request, cli_executable)
         if request.task == "classification":
             return self.classification.compile(request, cli_executable=cli_executable)

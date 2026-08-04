@@ -90,9 +90,7 @@ def _load_automation_events(
         workspace,
     )
     if value["schema_version"] != CLI_AUTOMATION_CONTRACT_VERSION:
-        raise CliProcessError(
-            f"CLI automation event schema {value['schema_version']!r} is unsupported.", workspace
-        )
+        raise CliProcessError(f"CLI automation event schema {value['schema_version']!r} is unsupported.", workspace)
     if value["plan_name"] != plan.name:
         raise CliProcessError("CLI automation events name a different interaction plan.", workspace)
     completed = value["completed_input_ids"]
@@ -318,9 +316,7 @@ class CliInteractionDriver:
                 {
                     "schema_version": CLI_AUTOMATION_CONTRACT_VERSION,
                     "plan_name": plan.name,
-                    "inputs": [
-                        {"id": step.id, "response": step.response} for step in plan.steps
-                    ],
+                    "inputs": [{"id": step.id, "response": step.response} for step in plan.steps],
                 },
             )
             executed_command.extend(
@@ -475,9 +471,7 @@ class CliInteractionDriver:
 
             returncode = process.wait()
             if self.automation_mode:
-                completed_step_ids, interaction_events = _load_automation_events(
-                    automation_events_path, plan, workspace_path
-                )
+                completed_step_ids, interaction_events = _load_automation_events(automation_events_path, plan, workspace_path)
                 step_index = len(completed_step_ids)
             elif step_index != len(plan.steps):
                 unused = [step.id for step in plan.steps[step_index:]]
@@ -505,9 +499,7 @@ class CliInteractionDriver:
                 "plan_name": plan.name,
                 "plan_schema_version": plan.schema_version,
                 "command": executed_command,
-                "input_transport": (
-                    "cli_automation_v1" if self.automation_mode else "legacy_prompt_sync_v1"
-                ),
+                "input_transport": ("cli_automation_v1" if self.automation_mode else "legacy_prompt_sync_v1"),
                 "workspace": str(workspace_path),
                 "started_at": started_at,
                 "finished_at": _utc_now(),

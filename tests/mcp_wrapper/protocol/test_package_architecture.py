@@ -3,7 +3,6 @@ from pathlib import Path
 
 import geochemistrypi_mcp
 
-
 ROOT_MODULES = {
     "__init__.py",
     "__main__.py",
@@ -42,11 +41,7 @@ def test_source_package_keeps_only_stable_entry_points_at_the_root() -> None:
     package_directory = _package_directory()
 
     assert {path.name for path in package_directory.glob("*.py")} == ROOT_MODULES
-    assert {
-        path.name
-        for path in package_directory.iterdir()
-        if path.is_dir() and not path.name.startswith("__")
-    } == LAYERS
+    assert {path.name for path in package_directory.iterdir() if path.is_dir() and not path.name.startswith("__")} == LAYERS
 
 
 def test_internal_dependencies_follow_the_layered_architecture() -> None:
