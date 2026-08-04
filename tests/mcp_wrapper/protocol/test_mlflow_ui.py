@@ -59,29 +59,46 @@ def test_managed_ui_is_explicit_persistent_and_stops_verified_process(tmp_path: 
             psutil.Process(started.pid).kill()
 
 
-def test_managed_ui_never_kills_unrelated_process_with_reused_metadata(tmp_path: Path) -> None:
+def test_managed_ui_recovery_uses_launch_identity_when_command_line_changes(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    manager = MlflowUiManager(settings, launch_command=_http_command)
+    started = manager.start(StartMlflowUiRequest(port=_free_port()))
+    try:
+        state = json.loads(manager.state_path.read_text(encoding="utf-8"))
+        assert state["schema_version"] == 2
+        state["command"] = [sys.executable, "macOS-adjusted-command-line"]
+        manager.state_path.write_text(json.dumps(state), encoding="utf-8")
+
+        recovered_manager = MlflowUiManager(settings, launch_command=_http_command)
+        assert recovered_manager.status().state in {"running", "starting"}
+        assert recovered_manager.stop().state == "stopped"
+    finally:
+        if started.pid and psutil.pid_exists(started.pid):
+            psutil.Process(started.pid).kill()
+
+
+@pytest.mark.parametrize("schema_version", [1, 2])
+def test_managed_ui_never_kills_unrelated_process_with_reused_metadata(tmp_path: Path, schema_version: int) -> None:
     settings = _settings(tmp_path)
     manager = MlflowUiManager(settings, launch_command=_http_command)
     process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"])
     try:
         owned = psutil.Process(process.pid)
         manager.state_path.parent.mkdir(parents=True)
-        manager.state_path.write_text(
-            json.dumps(
-                {
-                    "schema_version": 1,
-                    "pid": process.pid,
-                    "process_create_time": owned.create_time(),
-                    "host": "127.0.0.1",
-                    "port": 5000,
-                    "tracking_root": str(settings.tracking_root),
-                    "tracking_uri": settings.tracking_root.as_uri(),
-                    "started_at": "2026-01-01T00:00:00+00:00",
-                    "command": [sys.executable, "-m", "mlflow", "ui"],
-                }
-            ),
-            encoding="utf-8",
-        )
+        state = {
+            "schema_version": schema_version,
+            "pid": process.pid,
+            "process_create_time": owned.create_time(),
+            "host": "127.0.0.1",
+            "port": 5000,
+            "tracking_root": str(settings.tracking_root),
+            "tracking_uri": settings.tracking_root.as_uri(),
+            "started_at": "2026-01-01T00:00:00+00:00",
+            "command": [sys.executable, "-m", "mlflow", "ui"],
+        }
+        if schema_version == 2:
+            state["instance_id"] = "0" * 64
+        manager.state_path.write_text(json.dumps(state), encoding="utf-8")
         assert manager.status().state == "ownership_mismatch"
         with pytest.raises(MlflowUiError, match="will not be stopped"):
             manager.stop()

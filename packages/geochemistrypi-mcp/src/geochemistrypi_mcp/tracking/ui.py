@@ -2,6 +2,7 @@
 
 import json
 import os
+import secrets
 import socket
 import subprocess
 import tempfile
@@ -18,7 +19,9 @@ from ..config.constants import ISOLATED_CLI_ENVIRONMENT_VARIABLES
 from ..config.settings import McpSettings, resolve_cli_interpreter
 
 _HOST = "127.0.0.1"
-_STATE_FIELDS = {
+_OWNERSHIP_ENVIRONMENT_VARIABLE = "GEOCHEMISTRYPI_MCP_MLFLOW_UI_INSTANCE_ID"
+_INSTANCE_ID_LENGTH = 64
+_STATE_FIELDS_V1 = {
     "schema_version",
     "pid",
     "process_create_time",
@@ -28,6 +31,10 @@ _STATE_FIELDS = {
     "tracking_uri",
     "started_at",
     "command",
+}
+_STATE_FIELDS_BY_SCHEMA = {
+    1: _STATE_FIELDS_V1,
+    2: _STATE_FIELDS_V1 | {"instance_id"},
 }
 
 
@@ -103,7 +110,9 @@ class MlflowUiManager:
             value = json.loads(self.state_path.read_text(encoding="utf-8"))
         except (OSError, UnicodeError, json.JSONDecodeError) as exc:
             raise MlflowUiError(f"Managed MLflow UI state is corrupt: {self.state_path}. " "Do not stop a process by PID until this file is repaired or removed manually.") from exc
-        if not isinstance(value, dict) or set(value) != _STATE_FIELDS or value.get("schema_version") != 1:
+        schema_version = value.get("schema_version") if isinstance(value, dict) else None
+        expected_fields = _STATE_FIELDS_BY_SCHEMA.get(schema_version)
+        if expected_fields is None or set(value) != expected_fields:
             raise MlflowUiError("Managed MLflow UI state has unknown or missing fields; process ownership cannot be verified.")
         return value
 
@@ -124,20 +133,29 @@ class MlflowUiManager:
             return stream.connect_ex((_HOST, port)) == 0
 
     def _owned_process(self, state: dict[str, Any]) -> psutil.Process:
+        schema_version = state.get("schema_version")
         try:
             process = psutil.Process(int(state["pid"]))
             if abs(process.create_time() - float(state["process_create_time"])) > 0.01:
                 raise MlflowUiError("The recorded MLflow UI PID now belongs to a different process; it will not be stopped.")
-            command = process.cmdline()
+            command = process.cmdline() if schema_version == 1 else None
+            environment = process.environ() if schema_version == 2 else None
         except psutil.NoSuchProcess as exc:
             raise exc
         except (psutil.AccessDenied, ValueError, TypeError) as exc:
             raise MlflowUiError("The MLflow UI process identity cannot be inspected; it will not be stopped.") from exc
         recorded_command = state.get("command")
-        if not isinstance(recorded_command, list) or not all(isinstance(part, str) for part in recorded_command):
+        if not isinstance(recorded_command, list) or not recorded_command or not all(isinstance(part, str) and part for part in recorded_command):
             raise MlflowUiError("The recorded MLflow UI command identity is invalid; it will not be stopped.")
-        if not _commands_match(command, recorded_command):
+        if schema_version == 1 and not _commands_match(command or [], recorded_command):
             raise MlflowUiError("The recorded PID command no longer matches the managed MLflow UI; it will not be stopped.")
+        if schema_version == 2:
+            instance_id = state.get("instance_id")
+            if not isinstance(instance_id, str) or len(instance_id) != _INSTANCE_ID_LENGTH or any(character not in "0123456789abcdef" for character in instance_id):
+                raise MlflowUiError("The recorded MLflow UI launch identity is invalid; it will not be stopped.")
+            observed_instance_id = (environment or {}).get(_OWNERSHIP_ENVIRONMENT_VARIABLE, "")
+            if not secrets.compare_digest(observed_instance_id, instance_id):
+                raise MlflowUiError("The recorded PID does not carry the managed MLflow UI launch identity; it will not be stopped.")
         if str(self.tracking_root) != state["tracking_root"]:
             raise MlflowUiError("The recorded MLflow UI uses a different tracking root; it will not be stopped.")
         return process
@@ -255,6 +273,8 @@ class MlflowUiManager:
             environment = os.environ.copy()
             for name in ISOLATED_CLI_ENVIRONMENT_VARIABLES:
                 environment.pop(name, None)
+            instance_id = secrets.token_hex(_INSTANCE_ID_LENGTH // 2)
+            environment[_OWNERSHIP_ENVIRONMENT_VARIABLE] = instance_id
             creationflags = 0
             if os.name == "nt":
                 creationflags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW
@@ -281,7 +301,7 @@ class MlflowUiManager:
                 self._terminate_unrecorded_process(process)
                 raise MlflowUiError("MLflow UI exited before its process identity could be recorded.") from exc
             state = {
-                "schema_version": 1,
+                "schema_version": 2,
                 "pid": process.pid,
                 "process_create_time": create_time,
                 "host": _HOST,
@@ -290,6 +310,7 @@ class MlflowUiManager:
                 "tracking_uri": uri,
                 "started_at": _utc_now(),
                 "command": observed_command,
+                "instance_id": instance_id,
             }
             try:
                 _atomic_write_json(self.state_path, state)
