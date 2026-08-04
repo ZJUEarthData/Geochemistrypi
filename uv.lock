@@ -111,16 +111,21 @@ wheels = [
 
 [[package]]
 name = "cartopy"
-version = "0.21.1"
+version = "0.22.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "matplotlib" },
-    { name = "numpy" },
-    { name = "pyproj" },
-    { name = "pyshp" },
-    { name = "shapely" },
+    { name = "matplotlib", marker = "sys_platform != 'win32'" },
+    { name = "numpy", marker = "sys_platform != 'win32'" },
+    { name = "packaging", marker = "sys_platform != 'win32'" },
+    { name = "pyproj", marker = "sys_platform != 'win32'" },
+    { name = "pyshp", marker = "sys_platform != 'win32'" },
+    { name = "shapely", marker = "sys_platform != 'win32'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e8/11/ed3e364b3910f0951821e6b5a03a03ce425464b72aa3da08d47b78ae17bd/Cartopy-0.21.1.tar.gz", hash = "sha256:89d5649712c8582231c6e11825a04c85f6f0cee94dbb89e4db23eabca1cc250a", size = 10917080, upload-time = "2022-12-12T22:23:26.025Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c8/99/e2ad8a60df598de02904867ec83bc9d785b6534a503aecc9426889aa807e/Cartopy-0.22.0.tar.gz", hash = "sha256:b300f90120931d43f11ef87c064ea1dacec1b59a4940aa76ebf82cf09548bb49", size = 10938577, upload-time = "2023-08-07T22:03:06.998Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a5/77/fb21d3da02fb3967d4de591844db39fb93d87a766f55f2316a8e71e1299d/Cartopy-0.22.0-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:fbc761b80d2fad8cb6ea1c7d3388862e9fbc53c17f14baf6d4038561c7865e6f", size = 11182521, upload-time = "2023-08-05T00:58:07.703Z" },
+    { url = "https://files.pythonhosted.org/packages/ad/99/ed2559a0e336efab40fcd439811805eb4a72dee17fbff4329e4df3e601b2/Cartopy-0.22.0-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:3b25dd55844f36115e6c3632a16ed545cbee011068777b5a7a49ed3e1dbcafcb", size = 11167201, upload-time = "2023-08-05T00:58:10.416Z" },
+]
 
 [[package]]
 name = "certifi"
@@ -600,7 +605,7 @@ test = [
 requires-dist = [
     { name = "basemap", marker = "sys_platform != 'darwin'", specifier = "==1.3.8" },
     { name = "bcrypt", specifier = "==4.0.1" },
-    { name = "cartopy", marker = "sys_platform == 'darwin'", specifier = "==0.21.1" },
+    { name = "cartopy", marker = "sys_platform == 'darwin'", specifier = "==0.22.0" },
     { name = "dash", specifier = "==2.10.0" },
     { name = "fastapi", specifier = "==0.95.2" },
     { name = "flaml", specifier = "==1.0.14" },
@@ -1643,7 +1648,7 @@ name = "shapely"
 version = "2.0.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "numpy" },
+    { name = "numpy", marker = "sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/21/c0/a911d1fd765d07a2b6769ce155219a281bfbe311584ebe97340d75c5bdb1/shapely-2.0.7.tar.gz", hash = "sha256:28fe2997aab9a9dc026dc6a355d04e85841546b2a5d232ed953e3321ab958ee5", size = 283413, upload-time = "2025-01-31T01:10:20.787Z" }
 wheels = [

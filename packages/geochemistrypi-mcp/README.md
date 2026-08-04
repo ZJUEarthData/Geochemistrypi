@@ -98,6 +98,10 @@ data directory. It installs both packages from the current clone, verifies the
 0.2.0/0.8.0 version handshake, persists private paths, runs an end-to-end
 doctor, and registers one stable zero-argument server command in detected MCP
 clients. Users never configure either private Python environment or a CLI path.
+The CLI environment accepts third-party dependencies only as prebuilt wheels,
+so setup never falls back to a platform compiler or system headers. Development
+setup permits a source build only for the current local `geochemistrypi`
+project; verified release-bundle setup installs both projects from wheels.
 
 Safe auto-detection supports 13 MCP hosts: Codex, Claude Desktop, Claude Code,
 Cursor, VS Code, Gemini CLI, Windsurf, Cline, Roo Code, Zed, Continue, Kiro,

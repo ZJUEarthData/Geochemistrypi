@@ -34,6 +34,7 @@ from .release import ReleaseBundle, ReleaseError, verify_release_bundle
 
 MCP_PYTHON_VERSION = "3.11"
 CLI_PYTHON_VERSION = "3.9"
+CLI_DISTRIBUTION_NAME = "geochemistrypi"
 SETUP_UV_VERSION = "0.11.7"
 MANIFEST_SCHEMA_VERSION = 2
 LEGACY_MANIFEST_SCHEMA_VERSIONS = (1,)
@@ -389,7 +390,18 @@ class SetupManager:
                 command.append("--clear")
             command.append(str(environment))
             self._run_checked(command, purpose)
-            self._run_checked((str(uv), "pip", "install", "--python", str(python), str(package)), f"{purpose} package installation")
+            install_command = [str(uv), "pip", "install", "--python", str(python)]
+            if version == CLI_PYTHON_VERSION:
+                # The CLI carries native scientific dependencies. Requiring wheels
+                # keeps setup self-contained instead of silently depending on a
+                # platform compiler or system headers such as GEOS.
+                install_command.extend(("--only-binary", ":all:"))
+                if isinstance(source, SourceLayout):
+                    # Development setup still has to build the local project. No
+                    # third-party source distribution receives this exception.
+                    install_command.extend(("--no-binary", CLI_DISTRIBUTION_NAME))
+            install_command.append(str(package))
+            self._run_checked(install_command, f"{purpose} package installation")
 
     def _validate_environments(self, paths: SetupPaths) -> tuple[str, str]:
         if not paths.server_command.is_file():

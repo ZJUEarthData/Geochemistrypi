@@ -450,6 +450,57 @@ def test_setup_requires_the_exact_pinned_uv_version(tmp_path: Path) -> None:
     assert manager._uv_executable() == uv.resolve()
 
 
+def test_cli_environment_builds_only_local_project_or_uses_wheels(tmp_path: Path) -> None:
+    uv = tmp_path / "uv.exe"
+    uv.touch()
+    paths = SetupPaths(tmp_path / "application")
+    commands: list[tuple[str, ...]] = []
+
+    def run(command):
+        normalized = tuple(str(part) for part in command)
+        commands.append(normalized)
+        stdout = "uv 0.11.7\n" if normalized[1:] == ("--version",) else ""
+        return subprocess.CompletedProcess(normalized, 0, stdout, "")
+
+    source = _source_layout(tmp_path)
+    manager = SetupManager(
+        paths=paths,
+        runner=run,
+        executable_lookup=lambda _: str(uv),
+    )
+
+    manager._prepare_environments(source, clear=False)
+
+    cli_install = next(command for command in commands if "pip" in command and str(paths.cli_python) in command)
+    assert cli_install == (
+        str(uv.resolve()),
+        "pip",
+        "install",
+        "--python",
+        str(paths.cli_python),
+        "--only-binary",
+        ":all:",
+        "--no-binary",
+        "geochemistrypi",
+        str(source.repository_root),
+    )
+
+    commands.clear()
+    bundle = _release_bundle(tmp_path)
+    manager._prepare_environments(bundle, clear=False)
+    cli_install = next(command for command in commands if "pip" in command and str(paths.cli_python) in command)
+    assert cli_install == (
+        str(uv.resolve()),
+        "pip",
+        "install",
+        "--python",
+        str(paths.cli_python),
+        "--only-binary",
+        ":all:",
+        str(bundle.cli_wheel),
+    )
+
+
 def test_setup_runner_removes_foreign_python_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     observed_environment = {}
     for name in ISOLATED_CLI_ENVIRONMENT_VARIABLES:
