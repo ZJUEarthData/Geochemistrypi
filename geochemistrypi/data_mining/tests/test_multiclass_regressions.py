@@ -36,10 +36,28 @@ def test_typer_help_renders_with_installed_click() -> None:
 
     assert result.exit_code == 0, result.output
     assert "data-mining" in result.output
+    assert "datasets" in result.output
 
     subcommand_result = runner.invoke(command, ["data-mining", "--help"])
     assert subcommand_result.exit_code == 0, subcommand_result.output
     assert "--data" in subcommand_result.output
+    assert "--automation-plan" in subcommand_result.output
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ["data-mining", "--data", "a.csv", "--training", "b.csv"],
+        ["data-mining", "--application", "application.csv"],
+        ["data-mining", "--automation-plan", "plan.json"],
+        ["data-mining", "--mlflow", "--data", "a.csv"],
+    ],
+)
+def test_cli_rejects_ambiguous_sources_and_incomplete_automation(arguments) -> None:
+    result = CliRunner().invoke(typer.main.get_command(app), arguments)
+
+    assert result.exit_code != 0
+    assert "Invalid value" in result.output
 
 
 def test_cli_version_does_not_hijack_data_mining_options() -> None:

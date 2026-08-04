@@ -71,10 +71,10 @@ async def post_dataset(
     try:
         if ext == ".csv":
             df = pd.read_csv(io.BytesIO(raw))
-        elif ext in (".xlsx", ".xls"):
+        elif ext == ".xlsx":
             df = pd.read_excel(io.BytesIO(raw))
         else:
-            raise HTTPException(status_code=400, detail="Unsupported file type. Use .csv/.xlsx/.xls")
+            raise HTTPException(status_code=400, detail="Unsupported file type. Use .csv or .xlsx")
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to parse file: {e}")
 

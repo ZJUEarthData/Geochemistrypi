@@ -30,7 +30,17 @@ class AnomalyDetectionModelSelection(ModelSelectionBase):
     ) -> None:
         """Train by Scikit-learn framework."""
 
-        self.ad_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test, name_train=name_train, name_test=name_test, name_all=name_all)
+        self.ad_workflow.data_upload(
+            X=X,
+            y=y,
+            X_train=X_train,
+            X_test=X_test,
+            y_train=y_train,
+            y_test=y_test,
+            name_train=name_train,
+            name_test=name_test,
+            name_all=name_all,
+        )
 
         # Model option
         if self.model_name == "Isolation Forest":
@@ -59,8 +69,22 @@ class AnomalyDetectionModelSelection(ModelSelectionBase):
         self.ad_workflow.fit(X)
         y_predict = self.ad_workflow.predict(X)
         X_anomaly_detection, X_normal, X_abnormal, name_normal, name_abnormal = self.ad_workflow._detect_data(X, name_all, y_predict)
-        self.ad_workflow.anomaly_detection_result = X_anomaly_detection
-        self.ad_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test, name_train=name_train, name_test=name_test, name_all=name_all)
+        self.ad_workflow.anomaly_detection_result = pd.Series(
+            y_predict,
+            index=X.index,
+            name="is_abnormal",
+        )
+        self.ad_workflow.data_upload(
+            X=X,
+            y=y,
+            X_train=X_train,
+            X_test=X_test,
+            y_train=y_train,
+            y_test=y_test,
+            name_train=name_train,
+            name_test=name_test,
+            name_all=name_all,
+        )
 
         # Save the model hyper-parameters
         self.ad_workflow.save_hyper_parameters(hyper_parameters, self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
@@ -72,9 +96,30 @@ class AnomalyDetectionModelSelection(ModelSelectionBase):
         self.ad_workflow.special_components()
 
         # Save abnormal detection result
-        self.ad_workflow.data_save(X_anomaly_detection, name_all, "X Abnormal Detection", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Abnormal Detection Data")
-        self.ad_workflow.data_save(X_normal, name_normal, "X Normal", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Normal Data")
-        self.ad_workflow.data_save(X_abnormal, name_abnormal, "X Abnormal", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Abnormal Data")
+        self.ad_workflow.data_save(
+            X_anomaly_detection,
+            name_all,
+            "X Abnormal Detection",
+            os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"),
+            MLFLOW_ARTIFACT_DATA_PATH,
+            "Abnormal Detection Data",
+        )
+        self.ad_workflow.data_save(
+            X_normal,
+            name_normal,
+            "X Normal",
+            os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"),
+            MLFLOW_ARTIFACT_DATA_PATH,
+            "Normal Data",
+        )
+        self.ad_workflow.data_save(
+            X_abnormal,
+            name_abnormal,
+            "X Abnormal",
+            os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"),
+            MLFLOW_ARTIFACT_DATA_PATH,
+            "Abnormal Data",
+        )
 
         # Save the trained model
         self.ad_workflow.model_save()

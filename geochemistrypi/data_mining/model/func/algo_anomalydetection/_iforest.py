@@ -41,8 +41,9 @@ def isolation_forest_manual_hyper_parameters() -> Dict:
         "bootstrap": bootstrap,
     }
     if not max_samples:
-        # Use the default value provided by sklearn.ensemble.RandomForestClassifier.
-        hyper_parameters["max_samples"] = None
+        # IsolationForest does not accept None. Preserve its public default when
+        # bootstrap sampling is disabled and the CLI therefore skips this prompt.
+        hyper_parameters["max_samples"] = "auto"
     else:
         hyper_parameters["max_samples"] = max_samples
     return hyper_parameters

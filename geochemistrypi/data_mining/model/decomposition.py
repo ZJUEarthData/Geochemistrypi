@@ -276,7 +276,7 @@ class PCADecomposition(DecompositionWorkflowBase):
         return hyper_parameters
 
     @staticmethod
-    def _get_principal_components(graph_name: str, n_components: Optional[int], trained_model: object) -> None:
+    def _get_principal_components(graph_name: str, n_components: Optional[int], trained_model: object) -> pd.DataFrame:
         """Get principal components."""
         print(f"-----* {graph_name} *-----")
         print("Every column represents one principal component respectively.")
@@ -289,6 +289,7 @@ class PCADecomposition(DecompositionWorkflowBase):
         pc_data.columns = pc_name
         pc_data.set_index(DecompositionWorkflowBase.X.columns, inplace=True)
         print(pc_data)
+        return pc_data
 
     @staticmethod
     def _get_explained_variance_ratio(graph_name: str, trained_model: object) -> None:
@@ -317,7 +318,7 @@ class PCADecomposition(DecompositionWorkflowBase):
     def special_components(self, **kwargs: Union[Dict, np.ndarray, int]) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         self._reduced_data2pd(kwargs["reduced_data"], kwargs["components_num"])
-        self._get_principal_components(
+        self.pc_data = self._get_principal_components(
             graph_name=PCASpecialFunction.PRINCIPAL_COMPONENTS.value,
             trained_model=self.model,
             n_components=self.n_components,
@@ -331,8 +332,9 @@ class PCADecomposition(DecompositionWorkflowBase):
         # Draw graphs when the number of principal components > 3
         if kwargs["components_num"] > 3:
             # choose two of dimensions to draw
-            two_dimen_axis_index, two_dimen_pc_data = self.choose_dimension_data(self.X_reduced, 2)
+            two_dimen_axis_index, _ = self.choose_dimension_data(self.X_reduced, 2)
             two_dimen_reduced_data = self.X_reduced.iloc[:, two_dimen_axis_index]
+            two_dimen_pc_data = self.pc_data.iloc[:, two_dimen_axis_index]
             self._biplot(
                 reduced_data=two_dimen_reduced_data,
                 pc_data=two_dimen_pc_data,
@@ -343,8 +345,9 @@ class PCADecomposition(DecompositionWorkflowBase):
             )
 
             # choose three of dimensions to draw
-            three_dimen_axis_index, three_dimen_pc_data = self.choose_dimension_data(self.X_reduced, 3)
+            three_dimen_axis_index, _ = self.choose_dimension_data(self.X_reduced, 3)
             three_dimen_reduced_data = self.X_reduced.iloc[:, three_dimen_axis_index]
+            three_dimen_pc_data = self.pc_data.iloc[:, three_dimen_axis_index]
             self._triplot(
                 reduced_data=three_dimen_reduced_data,
                 pc_data=three_dimen_pc_data,
@@ -355,8 +358,9 @@ class PCADecomposition(DecompositionWorkflowBase):
             )
         elif kwargs["components_num"] == 3:
             # choose two of dimensions to draw
-            two_dimen_axis_index, two_dimen_pc_data = self.choose_dimension_data(self.X_reduced, 2)
+            two_dimen_axis_index, _ = self.choose_dimension_data(self.X_reduced, 2)
             two_dimen_reduced_data = self.X_reduced.iloc[:, two_dimen_axis_index]
+            two_dimen_pc_data = self.pc_data.iloc[:, two_dimen_axis_index]
             self._biplot(
                 reduced_data=two_dimen_reduced_data,
                 pc_data=two_dimen_pc_data,

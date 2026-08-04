@@ -2,12 +2,86 @@
 
 Provides functions to compute and plot subaerial proportion time series.
 """
+import math
 import os
 from typing import Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+TIME_SERIES_RANDOM_SEED = 2025
+MAX_BOOTSTRAP_ITERATIONS = 10_000
+MAX_TIME_BINS = 10_000
+
+
+class TimeSeriesValidationError(ValueError):
+    """Raised before numerical work when Time Series inputs are unsafe."""
+
+
+def _validated_time_series_arrays(
+    df: pd.DataFrame,
+    bin_width: float,
+    n_iter: int,
+    age_col: str,
+    age_max_col: str,
+    prob_col: str,
+    lat_col: str,
+    lon_col: str,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, int]:
+    if not isinstance(df, pd.DataFrame) or df.empty:
+        raise TimeSeriesValidationError("Time Series input must contain at least one data row.")
+    if not math.isfinite(bin_width) or bin_width <= 0:
+        raise TimeSeriesValidationError("bin_width must be a finite positive number.")
+    if isinstance(n_iter, bool) or not isinstance(n_iter, int):
+        raise TimeSeriesValidationError("n_iter must be an integer.")
+    if n_iter < 1 or n_iter > MAX_BOOTSTRAP_ITERATIONS:
+        raise TimeSeriesValidationError(f"n_iter must be between 1 and {MAX_BOOTSTRAP_ITERATIONS}.")
+    roles = {
+        "age": age_col,
+        "maximum age": age_max_col,
+        "probability": prob_col,
+        "latitude": lat_col,
+        "longitude": lon_col,
+    }
+    if len(set(roles.values())) != len(roles):
+        raise TimeSeriesValidationError("Time Series column roles must identify five different columns.")
+    missing = sorted(set(roles.values()) - set(df.columns))
+    if missing:
+        raise TimeSeriesValidationError(f"Time Series input is missing required columns: {missing}.")
+    arrays = {}
+    for role, column in roles.items():
+        try:
+            values = pd.to_numeric(df[column], errors="raise").to_numpy(dtype=float)
+        except (TypeError, ValueError) as exc:
+            raise TimeSeriesValidationError(f"Time Series {role} column must contain only numeric values: {column!r}.") from exc
+        finite = np.isfinite(values)
+        if not bool(finite.all()):
+            rows = [int(index) + 2 for index in np.flatnonzero(~finite)[:10]]
+            raise TimeSeriesValidationError(f"Time Series {role} column contains missing or non-finite values at data rows {rows}: {column!r}.")
+        arrays[role] = values
+    age = arrays["age"]
+    age_max = arrays["maximum age"]
+    probability = arrays["probability"]
+    latitude = arrays["latitude"]
+    longitude = arrays["longitude"]
+    if bool((age < 0).any()):
+        raise TimeSeriesValidationError("Time Series ages must be non-negative.")
+    if bool((age_max < age).any()):
+        raise TimeSeriesValidationError("Time Series maximum ages must be greater than or equal to ages.")
+    if bool(((probability < 0) | (probability > 1)).any()):
+        raise TimeSeriesValidationError("Time Series probability values must be between 0 and 1.")
+    if bool(((latitude < -90) | (latitude > 90)).any()):
+        raise TimeSeriesValidationError("Time Series latitude values must be between -90 and 90 degrees.")
+    if bool(((longitude < -180) | (longitude > 180)).any()):
+        raise TimeSeriesValidationError("Time Series longitude values must be between -180 and 180 degrees.")
+    data_max = float(np.max(age_max))
+    if data_max <= 0:
+        raise TimeSeriesValidationError("Time Series input must contain at least one positive maximum age.")
+    num_bins = int(math.ceil(data_max / bin_width))
+    if num_bins < 1 or num_bins > MAX_TIME_BINS:
+        raise TimeSeriesValidationError(f"bin_width creates {num_bins} bins; the safety limit is {MAX_TIME_BINS}.")
+    return age, age_max, probability, latitude, longitude, num_bins
 
 
 def compute_subaerial_proportion(
@@ -19,20 +93,26 @@ def compute_subaerial_proportion(
     prob_col: str = "SBAP",
     lat_col: str = "LATITUDE",
     lon_col: str = "LONGITUDE",
+    seed: int = TIME_SERIES_RANDOM_SEED,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Compute mean and 2*std subaerial proportion per age bin.
 
     Returns (age_x, ave_bin, std_bin).
     """
-    age = df[age_col].values
-    ageMax = df[age_max_col].values
-    age_error = np.abs(ageMax - age) / 2
-
-    x = df[prob_col].values
-    Lat = df[lat_col].values
-    Lon = df[lon_col].values
-
-    np.random.seed(2025)
+    if isinstance(seed, bool) or not isinstance(seed, int) or seed < 0:
+        raise TimeSeriesValidationError("seed must be a non-negative integer.")
+    age, age_max, x, latitude, longitude, num_bins = _validated_time_series_arrays(
+        df,
+        bin_width,
+        n_iter,
+        age_col,
+        age_max_col,
+        prob_col,
+        lat_col,
+        lon_col,
+    )
+    age_error = (age_max - age) / 2
+    random = np.random.RandomState(seed)
 
     WEI = np.ones((age.size, 1))
     batch_size = 2000
@@ -40,56 +120,27 @@ def compute_subaerial_proportion(
     # compute WEI in batches (same formula as original)
     for i in range(0, age.size, batch_size):
         end = min(i + batch_size, age.size)
-        outlat = Lat[i:end][:, np.newaxis]
-        outlon = Lon[i:end][:, np.newaxis]
+        outlat = latitude[i:end][:, np.newaxis]
+        outlon = longitude[i:end][:, np.newaxis]
         outage = age[i:end][:, np.newaxis]
 
-        ka = 1 / (((Lat - outlat) / 2) ** 2 + ((Lon - outlon) / 2) ** 2 + 1)
+        ka = 1 / (((latitude - outlat) / 2) ** 2 + ((longitude - outlon) / 2) ** 2 + 1)
         kb = 1 / (((age - outage) / 38) ** 2 + 1)
 
         a = np.nansum(ka + kb, axis=1)
         WEI[i:end, 0] = 1 / (a / 0.2)
 
-        nan_mask = np.isnan(x[i:end])
-        WEI[i:end, 0][nan_mask] = 0
-
-    # filter
-    index_wei = np.where((np.isinf(WEI[:, 0])) | (np.isnan(x)))[0]
-    mask = (~np.isinf(WEI[:, 0])) & (~np.isnan(x)) & (WEI[:, 0] > 0)
-    del_age = age[mask]
-    del_age_error = age_error[mask]
-    del_p = x[mask]
-    del_WEI = WEI[mask, 0]
-    if del_WEI.sum() == 0:
-        del_WEIP = np.ones_like(del_WEI) / max(1, del_WEI.size)
-    else:
-        del_WEIP = del_WEI / np.nansum(del_WEI)
-
-    data_max = np.nanmax(age)
-    total_age_limit = np.ceil(data_max / bin_width) * bin_width
-    num_bins = int(total_age_limit / bin_width)
+    if not bool(np.isfinite(WEI[:, 0]).all()) or bool((WEI[:, 0] <= 0).any()):
+        raise TimeSeriesValidationError("Time Series spatial-temporal weights are not finite and positive.")
+    probabilities = WEI[:, 0] / WEI[:, 0].sum()
 
     boot6 = np.ones((num_bins, n_iter)) * np.nan
 
-    bootfixa = np.zeros((index_wei.size, 1))
-    bootfixy = np.zeros((index_wei.size, 1))
-    if index_wei.size > 0:
-        bootfixy[:, 0] = x[index_wei]
-
     for i in range(n_iter):
-        if index_wei.size > 0:
-            bootfixa[:, 0] = np.random.normal(loc=age[index_wei], scale=age_error[index_wei])
-
-        if del_age.size == 0:
-            break
-
-        bootstrapSamples = np.random.choice(np.arange(del_age.size), size=del_age.size, p=del_WEIP)
-        boot1 = np.random.normal(loc=del_age[bootstrapSamples], scale=del_age_error[bootstrapSamples]).reshape(-1, 1)
-        boot2 = del_p[bootstrapSamples].reshape(-1, 1)
-
-        bootage_cmb = np.vstack((bootfixa, boot1))
-        booty_cmb = np.vstack((bootfixy, boot2))
-        boot3 = np.hstack((bootage_cmb, booty_cmb))
+        bootstrap_samples = random.choice(np.arange(age.size), size=age.size, p=probabilities)
+        boot1 = random.normal(loc=age[bootstrap_samples], scale=age_error[bootstrap_samples]).reshape(-1, 1)
+        boot2 = x[bootstrap_samples].reshape(-1, 1)
+        boot3 = np.hstack((boot1, boot2))
         boot4 = boot3[boot3[:, 0].argsort()]
 
         boot5_list = []
@@ -104,9 +155,11 @@ def compute_subaerial_proportion(
 
         boot6[:, i] = boot5_list
 
-    ave_bin = np.nanmean(boot6, axis=1)[:num_bins]
-    std_bin = 2 * np.nanstd(boot6, axis=1)[:num_bins]
-    age_x = np.arange(bin_width / 2, total_age_limit, bin_width)
+    ave_bin = np.asarray([np.mean(row[np.isfinite(row)]) if np.isfinite(row).any() else np.nan for row in boot6])
+    std_bin = np.asarray([2 * np.std(row[np.isfinite(row)]) if np.isfinite(row).any() else np.nan for row in boot6])
+    if not bool(np.isfinite(ave_bin).any()):
+        raise TimeSeriesValidationError("Time Series computation produced no populated age bins.")
+    age_x = (np.arange(num_bins, dtype=float) + 0.5) * bin_width
 
     return age_x, ave_bin, std_bin
 
@@ -120,6 +173,8 @@ def plot_and_save(
     age_unit: str = "Ma",
     title: Optional[str] = None,
     fit_curve: bool = True,
+    csv_out_dir: Optional[str] = None,
+    pdf_out_dir: Optional[str] = None,
 ) -> str:
     """
     Plot the result and save PDF and CSV.
@@ -149,6 +204,10 @@ def plot_and_save(
     if out_dir is None:
         out_dir = os.getcwd()
     os.makedirs(out_dir, exist_ok=True)
+    csv_directory = csv_out_dir or out_dir
+    pdf_directory = pdf_out_dir or out_dir
+    os.makedirs(csv_directory, exist_ok=True)
+    os.makedirs(pdf_directory, exist_ok=True)
 
     # Convert age unit if needed
     if age_unit == "Ga":
@@ -276,14 +335,35 @@ def plot_and_save(
     # ============================================================
     plt.tight_layout()
 
-    pdf_path = os.path.join(out_dir, f"{out_name}.pdf")
-    csv_path = os.path.join(out_dir, f"{out_name}.csv")
-    plt.savefig(pdf_path, dpi=600, bbox_inches="tight")
+    pdf_path = os.path.join(pdf_directory, f"{out_name}.pdf")
+    csv_path = os.path.join(csv_directory, f"{out_name}.csv")
+    plt.savefig(
+        pdf_path,
+        dpi=600,
+        bbox_inches="tight",
+        metadata={
+            "Creator": "GeochemistryPi",
+            "Producer": "GeochemistryPi",
+            "CreationDate": None,
+            "ModDate": None,
+        },
+    )
     plt.close()
 
     # Save CSV with columns: age, mean, std
-    df_out = pd.DataFrame({"age": plot_age, "mean": ave_bin, "std2": std_bin})
-    df_out.to_csv(csv_path, index=False)
+    df_out = pd.DataFrame(
+        {
+            f"age_{age_unit}": plot_age,
+            "mean_percent": ave_bin,
+            "two_sigma_percent": std_bin,
+        }
+    )
+    df_out.to_csv(
+        csv_path,
+        index=False,
+        float_format="%.12g",
+        lineterminator="\n",
+    )
 
     return os.path.join(out_dir, out_name)
 

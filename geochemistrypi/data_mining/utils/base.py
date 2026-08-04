@@ -516,7 +516,7 @@ def copy_files_from_source_dir_to_dest_dir(source_dir: str, dest_dir: str) -> No
 
 
 def list_excel_files(directory: str) -> list:
-    """Recursively lists all Excel files (including .xlsx, .xls, and .csv) in the specified directory and its subdirectories.
+    """Recursively list supported .xlsx and .csv files.
 
     Parameters
     ----------
@@ -531,11 +531,11 @@ def list_excel_files(directory: str) -> list:
     Notes
     -----
     (1) The function uses `os.walk` to traverse the directory and its subdirectories.
-    (2) Only files with extensions .xlsx, .xls, and .csv are considered as Excel files.
+    (2) Only files with extensions .xlsx and .csv are supported by the CLI reader.
     """
     excel_files = []
     for root, dirs, files in os.walk(directory):
         for file in files:
-            if file.endswith(".xlsx") or file.endswith(".xls") or file.endswith(".csv"):
+            if file.endswith(".xlsx") or file.endswith(".csv"):
                 excel_files.append(os.path.join(root, file))
     return excel_files

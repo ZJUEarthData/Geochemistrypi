@@ -22,7 +22,9 @@ fastapi
 uvicorn
 python-multipart
 dash
+setuptools==80.9.0
 sqlalchemy
+greenlet==3.1.1
 passlib
 python-jose[cryptography]
 bcrypt
