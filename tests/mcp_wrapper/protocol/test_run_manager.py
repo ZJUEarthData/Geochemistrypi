@@ -101,6 +101,22 @@ def _wait_for_state(manager: RunManager, run_id: str, expected: set[str], timeou
     raise AssertionError(f"Run {run_id} did not reach {expected}; last state was {manager.get_status(run_id).state}")
 
 
+def _wait_for_pid(path: Path, timeout: float = 5) -> int:
+    deadline = time.monotonic() + timeout
+    last_value: str | None = None
+    while time.monotonic() < deadline:
+        try:
+            last_value = path.read_text(encoding="utf-8").strip()
+        except FileNotFoundError:
+            last_value = None
+        if last_value and last_value.isdecimal():
+            pid = int(last_value)
+            if pid > 0:
+                return pid
+        time.sleep(0.05)
+    raise AssertionError(f"PID file {path} did not contain a valid PID; last value was {last_value!r}")
+
+
 def test_validate_analysis_previews_workload_without_creating_run_or_process(tmp_path: Path) -> None:
     script = tmp_path / "never-started.py"
     script.write_text("raise AssertionError('must not start')\n", encoding="utf-8")
@@ -349,7 +365,10 @@ import time
 from pathlib import Path
 
 child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
-Path("child.pid").write_text(str(child.pid), encoding="utf-8")
+pid_path = Path("child.pid")
+pid_path.touch()
+time.sleep(0.5)
+pid_path.write_text(str(child.pid), encoding="utf-8")
 print("READY>", flush=True)
 input()
 time.sleep(60)
@@ -362,10 +381,7 @@ time.sleep(60)
     workspace = tmp_path / "runs" / acknowledgement.run_id / "workspace"
     try:
         assert _wait_for_state(manager, acknowledgement.run_id, {"running"}) == "running"
-        deadline = time.monotonic() + 5
-        while not (workspace / "child.pid").is_file() and time.monotonic() < deadline:
-            time.sleep(0.05)
-        child_pid = int((workspace / "child.pid").read_text(encoding="utf-8"))
+        child_pid = _wait_for_pid(workspace / "child.pid")
         response = manager.cancel(acknowledgement.run_id)
         assert response.state == "cancellation_requested"
         assert _wait_for_state(manager, acknowledgement.run_id, {"cancelled"}) == "cancelled"
