@@ -2,9 +2,9 @@ import hashlib
 from pathlib import Path
 
 import pytest
-from geochemistrypi_mcp.dataset_inspector import DatasetInspectionError, inspect_dataset, snapshot_dataset
-from geochemistrypi_mcp.schemas import DatasetInspectionRequest
-from geochemistrypi_mcp.settings import McpSettings
+from geochemistrypi_mcp.api.schemas import DatasetInspectionRequest
+from geochemistrypi_mcp.config.settings import McpSettings
+from geochemistrypi_mcp.data.inspector import DatasetInspectionError, inspect_dataset, snapshot_dataset
 from openpyxl import Workbook
 from pydantic import ValidationError
 
@@ -52,9 +52,7 @@ def test_xlsx_inspection_uses_bounded_rows_and_marks_metadata_count_as_inexact(t
     assert result.format == "xlsx"
     assert result.row_count == 2
     assert result.row_count_exact is False
-    assert result.sample_rows == (
-        {"SampleID": "A", "SIO2": 50.1, "Label": "basalt"},
-    )
+    assert result.sample_rows == ({"SampleID": "A", "SIO2": 50.1, "Label": "basalt"},)
 
 
 def test_xlsx_blank_header_matches_pandas_unnamed_column_and_is_read_only(
@@ -86,9 +84,7 @@ def test_every_bundled_workbook_can_be_inspected_without_modification(
     tmp_path: Path,
 ) -> None:
     repository = Path(__file__).resolve().parents[3]
-    dataset_root = (
-        repository / "geochemistrypi" / "data_mining" / "data" / "dataset"
-    )
+    dataset_root = repository / "geochemistrypi" / "data_mining" / "data" / "dataset"
     paths = sorted(dataset_root.glob("*.xlsx"))
     before = {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in paths}
 
@@ -103,13 +99,9 @@ def test_every_bundled_workbook_can_be_inspected_without_modification(
 
     assert len(results) == 8
     assert all(result.column_count >= 1 for result in results)
-    time_series = next(
-        result for result in results if result.source_path.endswith("Data_Time_Series.xlsx")
-    )
+    time_series = next(result for result in results if result.source_path.endswith("Data_Time_Series.xlsx"))
     assert any("FEOT.1" in warning for warning in time_series.header_warnings)
-    assert before == {
-        path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in paths
-    }
+    assert before == {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in paths}
 
 
 @pytest.mark.parametrize(
@@ -120,9 +112,7 @@ def test_every_bundled_workbook_can_be_inspected_without_modification(
         (["SampleID", "x" * 129], "must not exceed 128"),
     ],
 )
-def test_unsafe_xlsx_headers_fail_deterministically(
-    tmp_path: Path, headers, message: str
-) -> None:
+def test_unsafe_xlsx_headers_fail_deterministically(tmp_path: Path, headers, message: str) -> None:
     path = tmp_path / "unsafe.xlsx"
     workbook = Workbook()
     worksheet = workbook.active
@@ -131,9 +121,7 @@ def test_unsafe_xlsx_headers_fail_deterministically(
     workbook.save(path)
 
     with pytest.raises(DatasetInspectionError, match=message):
-        inspect_dataset(
-            DatasetInspectionRequest(dataset_path=path.resolve()), _settings(tmp_path)
-        )
+        inspect_dataset(DatasetInspectionRequest(dataset_path=path.resolve()), _settings(tmp_path))
 
 
 def test_inspection_rejects_relative_unknown_oversized_and_extra_inputs(tmp_path: Path) -> None:

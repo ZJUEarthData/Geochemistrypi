@@ -6,10 +6,10 @@ from contextlib import asynccontextmanager
 
 from mcp.server import Server
 
-from .constants import SERVER_NAME, SERVER_VERSION
-from .runs import RunManager
-from .settings import McpSettings
-from .tools import build_tool_handlers
+from .api.tools import build_tool_handlers
+from .config.constants import SERVER_NAME, SERVER_VERSION
+from .config.settings import McpSettings
+from .runtime.runs import RunManager
 
 SERVER_INSTRUCTIONS = """
 Help geochemists analyze local data with GeochemistryPi. Accept short,

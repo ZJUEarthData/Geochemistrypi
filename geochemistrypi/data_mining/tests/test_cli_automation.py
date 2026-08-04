@@ -7,14 +7,7 @@ from rich.prompt import Confirm, Prompt
 from typer.testing import CliRunner
 
 import geochemistrypi.cli as cli_module
-
-from geochemistrypi.automation import (
-    AutomationContractError,
-    AutomationPlan,
-    MissingAutomationInputError,
-    UnusedAutomationInputError,
-    automation_input_adapter,
-)
+from geochemistrypi.automation import AutomationContractError, AutomationPlan, MissingAutomationInputError, UnusedAutomationInputError, automation_input_adapter
 
 
 def _write_plan(path: Path, inputs, **extra) -> None:
@@ -27,9 +20,7 @@ def _write_plan(path: Path, inputs, **extra) -> None:
     path.write_text(json.dumps(value), encoding="utf-8")
 
 
-def test_automation_adapter_preserves_rich_prompts_and_writes_strict_events(
-    tmp_path: Path, capsys
-) -> None:
+def test_automation_adapter_preserves_rich_prompts_and_writes_strict_events(tmp_path: Path, capsys) -> None:
     plan_path = tmp_path / "plan.json"
     events_path = tmp_path / "events.json"
     _write_plan(

@@ -3,7 +3,7 @@ from pathlib import Path
 
 import geochemistrypi_mcp
 import pytest
-from geochemistrypi_mcp.schemas import (
+from geochemistrypi_mcp.api.schemas import (
     AnalysisValidationResponse,
     AnomalyDetectionRequest,
     CancelRunResponse,
@@ -15,8 +15,8 @@ from geochemistrypi_mcp.schemas import (
     RunStatusResponse,
     StartAnalysisResponse,
 )
+from geochemistrypi_mcp.config.settings import McpSettings
 from geochemistrypi_mcp.server import SERVER_INSTRUCTIONS, create_server
-from geochemistrypi_mcp.settings import McpSettings
 from mcp import Client, StdioServerParameters
 from mcp.client.stdio import stdio_client
 

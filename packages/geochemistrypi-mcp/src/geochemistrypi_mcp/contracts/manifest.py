@@ -15,7 +15,7 @@ class CapabilityManifestError(RuntimeError):
 
 @lru_cache(maxsize=1)
 def load_capability_manifest() -> dict[str, Any]:
-    resource = files("geochemistrypi_mcp").joinpath("cli_capability_manifest_v1.json")
+    resource = files(__package__).joinpath("cli_capability_manifest_v1.json")
     try:
         value = json.loads(resource.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:

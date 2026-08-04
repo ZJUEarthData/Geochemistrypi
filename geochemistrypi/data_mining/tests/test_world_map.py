@@ -67,9 +67,7 @@ def test_configured_world_map_uses_explicit_columns_and_multiple_values(
     monkeypatch.setattr(
         map_plot,
         "map_projected_by_basemap",
-        lambda value, name, longitude, latitude: rendered.append(
-            (value.name, tuple(longitude), tuple(latitude))
-        ),
+        lambda value, name, longitude, latitude: rendered.append((value.name, tuple(longitude), tuple(latitude))),
     )
 
     map_plot.process_world_map(
@@ -118,9 +116,7 @@ def test_configured_world_map_supports_location_only_projection(monkeypatch) -> 
         ("SIO2", [float("nan")], "missing or non-finite"),
     ],
 )
-def test_configured_world_map_rejects_invalid_values_before_rendering(
-    column, values, message
-) -> None:
+def test_configured_world_map_rejects_invalid_values_before_rendering(column, values, message) -> None:
     data = pd.DataFrame(
         {
             "SampleID": ["A"],

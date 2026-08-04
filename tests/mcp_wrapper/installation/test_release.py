@@ -4,14 +4,7 @@ from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
 import pytest
-from geochemistrypi_mcp.release import (
-    EXPECTED_RELEASE_TAG,
-    RELEASE_MANIFEST_FILENAME,
-    SIGSTORE_BUNDLE_SUFFIX,
-    ReleaseError,
-    build_release_manifest,
-    verify_release_bundle,
-)
+from geochemistrypi_mcp.lifecycle.release import EXPECTED_RELEASE_TAG, RELEASE_MANIFEST_FILENAME, SIGSTORE_BUNDLE_SUFFIX, ReleaseError, build_release_manifest, verify_release_bundle
 
 
 def _wheel(
@@ -28,10 +21,7 @@ def _wheel(
     with ZipFile(wheel, "w", ZIP_DEFLATED) as archive:
         archive.writestr(
             f"{metadata_root}/METADATA",
-            "Metadata-Version: 2.4\n"
-            f"Name: {distribution}\n"
-            f"Version: {version}\n"
-            f"Requires-Python: {requires_python}\n",
+            "Metadata-Version: 2.4\n" f"Name: {distribution}\n" f"Version: {version}\n" f"Requires-Python: {requires_python}\n",
         )
         archive.writestr(
             f"{metadata_root}/WHEEL",

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 from geochemistrypi_mcp import PlanCompilationError, RegressionPlanCompiler, RegressionRequest
-from geochemistrypi_mcp.regression_contract import MODEL_DISPLAY_NAMES, MODEL_ORDER, MODELS_WITHOUT_AUTOML
+from geochemistrypi_mcp.contracts.regression import MODEL_DISPLAY_NAMES, MODEL_ORDER, MODELS_WITHOUT_AUTOML
 from pydantic import ValidationError
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]

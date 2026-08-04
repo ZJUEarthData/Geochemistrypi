@@ -3,12 +3,12 @@ import os
 import subprocess
 from pathlib import Path
 
-import geochemistrypi_mcp.setup as setup_runtime
+import geochemistrypi_mcp.lifecycle.setup as setup_runtime
 import pytest
-from geochemistrypi_mcp.client_config import ClientLocations
-from geochemistrypi_mcp.constants import ISOLATED_CLI_ENVIRONMENT_VARIABLES
-from geochemistrypi_mcp.release import ReleaseBundle
-from geochemistrypi_mcp.setup import SetupError, SetupManager, SetupPaths, SourceLayout, _remove_tree, _rmtree_onerror
+from geochemistrypi_mcp.config.clients import ClientLocations
+from geochemistrypi_mcp.config.constants import ISOLATED_CLI_ENVIRONMENT_VARIABLES
+from geochemistrypi_mcp.lifecycle.release import ReleaseBundle
+from geochemistrypi_mcp.lifecycle.setup import SetupError, SetupManager, SetupPaths, SourceLayout, _remove_tree, _rmtree_onerror
 
 
 def _source_layout(tmp_path: Path) -> SourceLayout:

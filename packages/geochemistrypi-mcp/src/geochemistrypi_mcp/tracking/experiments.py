@@ -6,14 +6,14 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from .constants import ISOLATED_CLI_ENVIRONMENT_VARIABLES
-from .schemas import (
+from ..api.schemas import (
     GetExperimentRequest,
     GetExperimentResponse,
     ListExperimentsRequest,
     ListExperimentsResponse,
 )
-from .settings import McpSettings, resolve_cli_interpreter
+from ..config.constants import ISOLATED_CLI_ENVIRONMENT_VARIABLES
+from ..config.settings import McpSettings, resolve_cli_interpreter
 
 
 class ExperimentStoreError(ValueError):

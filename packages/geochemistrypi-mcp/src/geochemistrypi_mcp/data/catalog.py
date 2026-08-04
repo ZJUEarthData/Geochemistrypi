@@ -10,8 +10,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from .constants import ISOLATED_CLI_ENVIRONMENT_VARIABLES
-from .schemas import (
+from ..api.schemas import (
     BuiltInDatasetReference,
     DatasetCatalogEntry,
     DatasetReference,
@@ -20,7 +19,8 @@ from .schemas import (
     ListDatasetsRequest,
     ListDatasetsResponse,
 )
-from .settings import McpSettings
+from ..config.constants import ISOLATED_CLI_ENVIRONMENT_VARIABLES
+from ..config.settings import McpSettings
 
 
 _SUPPORTED_ANALYSIS_TASKS = {

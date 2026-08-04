@@ -13,9 +13,9 @@ from typing import Any, Callable
 
 import psutil
 
-from .constants import ISOLATED_CLI_ENVIRONMENT_VARIABLES
-from .schemas import MlflowUiStatusResponse, StartMlflowUiRequest
-from .settings import McpSettings, resolve_cli_interpreter
+from ..api.schemas import MlflowUiStatusResponse, StartMlflowUiRequest
+from ..config.constants import ISOLATED_CLI_ENVIRONMENT_VARIABLES
+from ..config.settings import McpSettings, resolve_cli_interpreter
 
 _HOST = "127.0.0.1"
 _STATE_FIELDS = {

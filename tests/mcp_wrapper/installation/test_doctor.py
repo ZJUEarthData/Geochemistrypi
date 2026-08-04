@@ -3,11 +3,11 @@ import os
 import subprocess
 from pathlib import Path
 
-import geochemistrypi_mcp.doctor as doctor_module
+import geochemistrypi_mcp.lifecycle.doctor as doctor_module
 import pytest
-from geochemistrypi_mcp.constants import ISOLATED_CLI_ENVIRONMENT_VARIABLES
-from geochemistrypi_mcp.doctor import run_doctor
-from geochemistrypi_mcp.setup import SetupPaths
+from geochemistrypi_mcp.config.constants import ISOLATED_CLI_ENVIRONMENT_VARIABLES
+from geochemistrypi_mcp.lifecycle.doctor import run_doctor
+from geochemistrypi_mcp.lifecycle.setup import SetupPaths
 
 
 def _touch(path: Path) -> None:

@@ -3,12 +3,7 @@ from pathlib import Path
 import mlflow
 import pytest
 
-from geochemistrypi.tracking import (
-    TrackingStoreError,
-    get_experiment,
-    list_experiments,
-    require_experiment,
-)
+from geochemistrypi.tracking import TrackingStoreError, get_experiment, list_experiments, require_experiment
 
 
 def test_persistent_tracking_store_lists_and_reads_bounded_runs(tmp_path: Path) -> None:

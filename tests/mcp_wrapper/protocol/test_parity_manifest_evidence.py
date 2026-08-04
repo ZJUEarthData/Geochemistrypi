@@ -1,8 +1,7 @@
 import json
 from pathlib import Path
 
-from geochemistrypi_mcp.capability_manifest import load_capability_manifest
-
+from geochemistrypi_mcp.contracts.manifest import load_capability_manifest
 
 
 def _matrix() -> dict:
@@ -49,11 +48,7 @@ def test_every_supported_capability_has_resolvable_direct_and_mcp_evidence() -> 
 
 def test_matrix_branch_inventory_covers_every_pr9i_dimension() -> None:
     matrix = _matrix()
-    coverage = {
-        value
-        for scenario in matrix["branch_scenarios"]
-        for value in scenario["coverage"]
-    }
+    coverage = {value for scenario in matrix["branch_scenarios"] for value in scenario["coverage"]}
     assert {
         "classification_inference",
         "regression_inference",

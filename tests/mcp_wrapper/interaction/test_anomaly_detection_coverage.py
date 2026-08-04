@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 from geochemistrypi_mcp import AnomalyDetectionPlanCompiler, AnomalyDetectionRequest, PlanCompilationError
-from geochemistrypi_mcp.anomaly_detection_contract import MODEL_DISPLAY_NAMES, MODEL_ORDER
+from geochemistrypi_mcp.contracts.anomaly_detection import MODEL_DISPLAY_NAMES, MODEL_ORDER
 from pydantic import ValidationError
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]

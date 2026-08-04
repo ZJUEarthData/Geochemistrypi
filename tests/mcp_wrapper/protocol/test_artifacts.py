@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from geochemistrypi_mcp.artifacts import discover_artifacts
+from geochemistrypi_mcp.runtime.artifacts import discover_artifacts
 
 
 def test_artifact_discovery_indexes_parent_and_all_model_children(
@@ -10,16 +10,12 @@ def test_artifact_discovery_indexes_parent_and_all_model_children(
     output = tmp_path / "output"
     for directory in ("artifacts", "metrics", "parameters", "summary"):
         (output / directory).mkdir(parents=True)
-    (output / "summary" / "Aggregate Model Results.json").write_text(
-        "{}", encoding="utf-8"
-    )
+    (output / "summary" / "Aggregate Model Results.json").write_text("{}", encoding="utf-8")
     for model, score in (("Model A", 0.8), ("Model B", 0.7)):
         for directory in ("artifacts", "metrics", "parameters", "summary"):
             (output / model / directory).mkdir(parents=True)
         (output / model / "artifacts" / "model.joblib").write_bytes(model.encode())
-        (output / model / "metrics" / "Score.json").write_text(
-            json.dumps({"score": score}), encoding="utf-8"
-        )
+        (output / model / "metrics" / "Score.json").write_text(json.dumps({"score": score}), encoding="utf-8")
 
     discovered = discover_artifacts(output, maximum_response_references=100)
     relative_paths = {item.relative_path for item in discovered.response_references}

@@ -2,13 +2,7 @@ from pathlib import Path
 
 import pytest
 from geochemistrypi_mcp import AnalysisPlanCompiler
-from geochemistrypi_mcp.schemas import (
-    AnomalyDetectionRequest,
-    ClassificationRequest,
-    ClusteringRequest,
-    DecompositionRequest,
-    RegressionRequest,
-)
+from geochemistrypi_mcp.api.schemas import AnomalyDetectionRequest, ClassificationRequest, ClusteringRequest, DecompositionRequest, RegressionRequest
 from pydantic import ValidationError
 
 
@@ -16,9 +10,7 @@ def _dataset(tmp_path: Path) -> Path:
     path = tmp_path / "all-models.csv"
     rows = ["SampleID,F1,F2,F3,Label,Target"]
     for index in range(50):
-        rows.append(
-            f"S{index:02d},{index + 1},{(index % 7) + 2},{(index % 11) + 3},{index % 2},{index * 0.5 + 1}"
-        )
+        rows.append(f"S{index:02d},{index + 1},{(index % 7) + 2},{(index % 11) + 3},{index % 2},{index * 0.5 + 1}")
     path.write_text("\n".join(rows) + "\n", encoding="utf-8")
     return path
 
@@ -38,35 +30,28 @@ def _common(path: Path, task: str) -> dict:
 @pytest.mark.parametrize(
     "request_factory",
     [
-        lambda path: ClassificationRequest(
-            **_common(path, "classification"), target_column="Label"
-        ),
-        lambda path: RegressionRequest(
-            **_common(path, "regression"), target_column="Target"
-        ),
+        lambda path: ClassificationRequest(**_common(path, "classification"), target_column="Label"),
+        lambda path: RegressionRequest(**_common(path, "regression"), target_column="Target"),
         lambda path: ClusteringRequest(**_common(path, "clustering")),
         lambda path: DecompositionRequest(**_common(path, "decomposition")),
-        lambda path: AnomalyDetectionRequest(
-            **_common(path, "anomaly_detection")
-        ),
+        lambda path: AnomalyDetectionRequest(**_common(path, "anomaly_detection")),
     ],
 )
-def test_all_five_task_families_compile_complete_unique_child_plans(
-    tmp_path: Path, request_factory
-) -> None:
+def test_all_five_task_families_compile_complete_unique_child_plans(tmp_path: Path, request_factory) -> None:
     request = request_factory(_dataset(tmp_path))
     plan = AnalysisPlanCompiler().compile(request, cli_executable=Path(__file__))
     ids = [step.id for step in plan.steps]
 
     assert plan.name == f"{request.task}-all-models-manual-v1"
     assert len(ids) == len(set(ids))
-    assert next(step for step in plan.steps if step.id == "all_models").response == {
+    expected_response = {
         "classification": "12",
         "regression": "16",
         "clustering": "6",
         "decomposition": "4",
         "anomaly_detection": "3",
     }[request.task]
+    assert next(step for step in plan.steps if step.id == "all_models").response == expected_response
     assert any(step_id.startswith(f"{request.model.type}.") for step_id in ids)
     assert not any(
         step_id.endswith(
@@ -77,9 +62,7 @@ def test_all_five_task_families_compile_complete_unique_child_plans(
         )
         for step_id in ids
     )
-    assert plan.expected_output_relative_paths[0].endswith(
-        "summary/Aggregate Model Results.json"
-    )
+    assert plan.expected_output_relative_paths[0].endswith("summary/Aggregate Model Results.json")
 
 
 @pytest.mark.parametrize(
@@ -89,9 +72,7 @@ def test_all_five_task_families_compile_complete_unique_child_plans(
         (RegressionRequest, "regression", "Target"),
     ],
 )
-def test_supervised_all_models_automl_is_one_parent_choice_with_manual_fallbacks(
-    tmp_path: Path, request_type, task: str, target: str
-) -> None:
+def test_supervised_all_models_automl_is_one_parent_choice_with_manual_fallbacks(tmp_path: Path, request_type, task: str, target: str) -> None:
     values = _common(_dataset(tmp_path), task)
     values["target_column"] = target
     values["model_selection"] = {"mode": "all", "tuning": "automl"}
@@ -103,43 +84,20 @@ def test_supervised_all_models_automl_is_one_parent_choice_with_manual_fallbacks
     assert ids.count("enable_automl") == 1
     assert not any(step_id.endswith(".enable_automl") for step_id in ids)
     if task == "regression":
-        assert any(
-            step_id.startswith("linear_regression.")
-            and "continue_after_hyperparameters" not in step_id
-            for step_id in ids
-        )
+        assert any(step_id.startswith("linear_regression.") and "continue_after_hyperparameters" not in step_id for step_id in ids)
 
 
 def test_all_models_projects_manifest_and_children_under_the_real_parent_run(
     tmp_path: Path,
 ) -> None:
-    request = AnomalyDetectionRequest(
-        **_common(_dataset(tmp_path), "anomaly_detection")
-    )
+    request = AnomalyDetectionRequest(**_common(_dataset(tmp_path), "anomaly_detection"))
 
-    plan = AnalysisPlanCompiler().compile(
-        request, cli_executable=Path(__file__)
-    )
+    plan = AnalysisPlanCompiler().compile(request, cli_executable=Path(__file__))
     paths = set(plan.expected_output_relative_paths)
 
-    assert (
-        "geopi_output/All Models Contract/Anomaly Detection/summary/"
-        "Aggregate Model Results.json"
-    ) in paths
-    assert any(
-        path.startswith(
-            "geopi_output/All Models Contract/Anomaly Detection/"
-            "Isolation Forest/"
-        )
-        for path in paths
-    )
-    assert not any(
-        path.startswith(
-            "geopi_output/All Models Contract/Isolation Forest/"
-            "Anomaly Detection/"
-        )
-        for path in paths
-    )
+    assert ("geopi_output/All Models Contract/Anomaly Detection/summary/" "Aggregate Model Results.json") in paths
+    assert any(path.startswith("geopi_output/All Models Contract/Anomaly Detection/" "Isolation Forest/") for path in paths)
+    assert not any(path.startswith("geopi_output/All Models Contract/Isolation Forest/" "Anomaly Detection/") for path in paths)
 
 
 def test_all_models_rejects_ignored_legacy_fields_and_unsupervised_automl(

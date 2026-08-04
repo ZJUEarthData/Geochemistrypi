@@ -110,14 +110,8 @@ def get_experiment(
                     "start_time": run.info.start_time,
                     "end_time": run.info.end_time,
                     "artifact_uri": str(run.info.artifact_uri),
-                    "metrics": {
-                        str(key): _safe_metric(value)
-                        for key, value in sorted(run.data.metrics.items())
-                    },
-                    "params": {
-                        str(key): str(value)[:500]
-                        for key, value in sorted(run.data.params.items())
-                    },
+                    "metrics": {str(key): _safe_metric(value) for key, value in sorted(run.data.metrics.items())},
+                    "params": {str(key): str(value)[:500] for key, value in sorted(run.data.params.items())},
                 }
             )
     return {
@@ -134,8 +128,5 @@ def require_experiment(tracking_root: Path, experiment_id: str, expected_name: s
     value = get_experiment(tracking_root, experiment_id, maximum_runs=0)
     experiment = value["experiment"]
     if experiment["name"] != expected_name:
-        raise TrackingStoreError(
-            f"experiment_id {experiment_id!r} belongs to {experiment['name']!r}, "
-            f"not requested experiment_name {expected_name!r}"
-        )
+        raise TrackingStoreError(f"experiment_id {experiment_id!r} belongs to {experiment['name']!r}, " f"not requested experiment_name {expected_name!r}")
     return experiment

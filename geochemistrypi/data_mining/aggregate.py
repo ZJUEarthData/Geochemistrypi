@@ -25,11 +25,7 @@ def child_result(
     resolved_parent = Path(parent_directory).resolve()
     resolved_child = Path(child_directory).resolve()
     relative = resolved_child.relative_to(resolved_parent).as_posix()
-    artifact_count = (
-        sum(1 for path in resolved_child.rglob("*") if path.is_file())
-        if resolved_child.is_dir()
-        else 0
-    )
+    artifact_count = sum(1 for path in resolved_child.rglob("*") if path.is_file()) if resolved_child.is_dir() else 0
     return {
         "model": model,
         "state": state,

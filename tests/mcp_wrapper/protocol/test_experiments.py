@@ -4,11 +4,10 @@ import sys
 from pathlib import Path
 
 import pytest
-from geochemistrypi_mcp.experiments import ExperimentManager, ExperimentStoreError
-from geochemistrypi_mcp.schemas import GetExperimentRequest, ListExperimentsRequest
-from geochemistrypi_mcp.schemas import ClassificationRequest
-from geochemistrypi_mcp.runs import RunManager
-from geochemistrypi_mcp.settings import McpSettings
+from geochemistrypi_mcp.api.schemas import ClassificationRequest, GetExperimentRequest, ListExperimentsRequest
+from geochemistrypi_mcp.config.settings import McpSettings
+from geochemistrypi_mcp.runtime.runs import RunManager
+from geochemistrypi_mcp.tracking.experiments import ExperimentManager, ExperimentStoreError
 
 
 def _settings(tmp_path: Path) -> McpSettings:
@@ -61,7 +60,7 @@ def test_experiment_manager_uses_bounded_core_json_bridge(tmp_path: Path, monkey
             }
         return subprocess.CompletedProcess(command, 0, json.dumps(value), "")
 
-    monkeypatch.setattr("geochemistrypi_mcp.experiments.subprocess.run", run)
+    monkeypatch.setattr("geochemistrypi_mcp.tracking.experiments.subprocess.run", run)
     manager = ExperimentManager(settings)
 
     assert manager.list(ListExperimentsRequest(maximum_experiments=4)).experiment_count == 1
@@ -78,10 +77,8 @@ def test_experiment_manager_sanitizes_cli_failures(tmp_path: Path, monkeypatch) 
     settings = _settings(tmp_path)
     monkeypatch.setattr(McpSettings, "require_supported_cli", lambda self: (self.cli_executable, "0.8.0"))
     monkeypatch.setattr(
-        "geochemistrypi_mcp.experiments.subprocess.run",
-        lambda command, **kwargs: subprocess.CompletedProcess(
-            command, 2, "", json.dumps({"error": "Unknown experiment ID"}) + "\n"
-        ),
+        "geochemistrypi_mcp.tracking.experiments.subprocess.run",
+        lambda command, **kwargs: subprocess.CompletedProcess(command, 2, "", json.dumps({"error": "Unknown experiment ID"}) + "\n"),
     )
     with pytest.raises(ExperimentStoreError, match="Unknown experiment ID"):
         ExperimentManager(settings).get(GetExperimentRequest(experiment_id="404"))

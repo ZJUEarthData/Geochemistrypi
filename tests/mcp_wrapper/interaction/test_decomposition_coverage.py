@@ -4,12 +4,8 @@ import sys
 from pathlib import Path
 
 import pytest
-from geochemistrypi_mcp import (
-    DecompositionPlanCompiler,
-    DecompositionRequest,
-    PlanCompilationError,
-)
-from geochemistrypi_mcp.decomposition_contract import MODEL_DISPLAY_NAMES, MODEL_ORDER
+from geochemistrypi_mcp import DecompositionPlanCompiler, DecompositionRequest, PlanCompilationError
+from geochemistrypi_mcp.contracts.decomposition import MODEL_DISPLAY_NAMES, MODEL_ORDER
 from pydantic import ValidationError
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]

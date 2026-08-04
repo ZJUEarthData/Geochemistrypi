@@ -8,14 +8,8 @@ from typer.testing import CliRunner
 
 from geochemistrypi.cli import app
 from geochemistrypi.data_mining.cli_pipeline import semantic_mode_number
-from geochemistrypi.data_mining.constants import (
-    MODE_OPTION,
-    MODE_OPTION_WITH_MISSING_VALUES,
-)
-from geochemistrypi.data_mining.process.time_series import (
-    TimeSeriesValidationError,
-    compute_subaerial_proportion,
-)
+from geochemistrypi.data_mining.constants import MODE_OPTION, MODE_OPTION_WITH_MISSING_VALUES
+from geochemistrypi.data_mining.process.time_series import TimeSeriesValidationError, compute_subaerial_proportion
 
 
 def _frame() -> pd.DataFrame:
@@ -56,9 +50,7 @@ def test_time_series_is_seeded_without_mutating_global_random_state() -> None:
         ("R_AGE", np.nan, "missing or non-finite"),
     ],
 )
-def test_time_series_rejects_invalid_scientific_values(
-    column: str, value: float, message: str
-) -> None:
+def test_time_series_rejects_invalid_scientific_values(column: str, value: float, message: str) -> None:
     frame = _frame()
     frame.loc[0, column] = value
     with pytest.raises(TimeSeriesValidationError, match=message):
@@ -95,18 +87,8 @@ def test_time_series_cli_writes_standard_indexable_outputs(tmp_path: Path) -> No
     assert result.exit_code == 0, result.output
     run = output_root / "Time Series Test" / "Deterministic"
     assert (run / "artifacts" / "data" / "Subaerial Proportion.csv").is_file()
-    assert (
-        run
-        / "artifacts"
-        / "image"
-        / "model_output"
-        / "Subaerial Proportion.pdf"
-    ).is_file()
-    parameters = json.loads(
-        (run / "parameters" / "Time Series Parameters.json").read_text(
-            encoding="utf-8"
-        )
-    )
+    assert (run / "artifacts" / "image" / "model_output" / "Subaerial Proportion.pdf").is_file()
+    parameters = json.loads((run / "parameters" / "Time Series Parameters.json").read_text(encoding="utf-8"))
     assert parameters["random_seed"] == 7
     assert parameters["bootstrap_iterations"] == 5
     assert len(parameters["input_sha256"]) == 64

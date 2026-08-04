@@ -12,7 +12,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type
 
-
 AUTOMATION_CONTRACT_VERSION = 1
 _MAX_PLAN_BYTES = 1024 * 1024
 _MAX_INPUTS = 512
@@ -93,9 +92,7 @@ class AutomationPlan:
         try:
             resolved = source.resolve(strict=True)
             if resolved.stat().st_size > _MAX_PLAN_BYTES:
-                raise AutomationContractError(
-                    f"Automation plan exceeds the {_MAX_PLAN_BYTES}-byte safety limit."
-                )
+                raise AutomationContractError(f"Automation plan exceeds the {_MAX_PLAN_BYTES}-byte safety limit.")
             value = json.loads(resolved.read_text(encoding="utf-8"))
         except AutomationContractError:
             raise
@@ -105,9 +102,7 @@ class AutomationPlan:
             raise AutomationContractError("Automation plan must be a JSON object.")
         _require_exact_fields(value, {"schema_version", "plan_name", "inputs"}, "automation plan")
         if value["schema_version"] != AUTOMATION_CONTRACT_VERSION:
-            raise AutomationContractError(
-                f"Unsupported automation schema {value['schema_version']!r}; expected {AUTOMATION_CONTRACT_VERSION}."
-            )
+            raise AutomationContractError(f"Unsupported automation schema {value['schema_version']!r}; expected {AUTOMATION_CONTRACT_VERSION}.")
         plan_name = value["plan_name"]
         if not isinstance(plan_name, str) or not plan_name.strip() or len(plan_name) > 128:
             raise AutomationContractError("plan_name must be a non-blank string of at most 128 characters.")
@@ -125,21 +120,15 @@ class AutomationPlan:
             input_id = item["id"]
             response = item["response"]
             if not isinstance(input_id, str) or _INPUT_ID.fullmatch(input_id) is None:
-                raise AutomationContractError(
-                    f"inputs[{index}].id must match {_INPUT_ID.pattern!r}."
-                )
+                raise AutomationContractError(f"inputs[{index}].id must match {_INPUT_ID.pattern!r}.")
             if input_id in seen:
                 raise AutomationContractError(f"Duplicate automation input id: {input_id!r}")
             if not isinstance(response, str):
                 raise AutomationContractError(f"inputs[{index}].response must be a string.")
             if "\n" in response or "\r" in response:
-                raise AutomationContractError(
-                    f"inputs[{index}].response must contain exactly one input line."
-                )
+                raise AutomationContractError(f"inputs[{index}].response must contain exactly one input line.")
             if len(response) > _MAX_RESPONSE_CHARACTERS:
-                raise AutomationContractError(
-                    f"inputs[{index}].response exceeds {_MAX_RESPONSE_CHARACTERS} characters."
-                )
+                raise AutomationContractError(f"inputs[{index}].response exceeds {_MAX_RESPONSE_CHARACTERS} characters.")
             seen.add(input_id)
             parsed.append(AutomationInput(input_id, response))
         return cls(AUTOMATION_CONTRACT_VERSION, plan_name.strip(), tuple(parsed))
@@ -174,10 +163,7 @@ class AutomationInputAdapter:
         sys.stdout.write(prompt_text)
         sys.stdout.flush()
         if self._index >= len(self.plan.inputs):
-            raise MissingAutomationInputError(
-                "The CLI requested another input after every automation response was consumed. "
-                "The workflow or its input contract has changed."
-            )
+            raise MissingAutomationInputError("The CLI requested another input after every automation response was consumed. " "The workflow or its input contract has changed.")
         supplied = self.plan.inputs[self._index]
         self._index += 1
         self._events.append(
@@ -224,9 +210,7 @@ class AutomationInputAdapter:
             return False
         unused = [item.id for item in self.plan.inputs[self._index :]]
         if unused:
-            error = UnusedAutomationInputError(
-                f"CLI completed with {len(unused)} unused automation inputs: {unused}"
-            )
+            error = UnusedAutomationInputError(f"CLI completed with {len(unused)} unused automation inputs: {unused}")
             self._write_events("failed", error)
             raise error
         self._write_events("completed", None)

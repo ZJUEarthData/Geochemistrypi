@@ -7,12 +7,12 @@ from pathlib import Path
 import psutil
 import pytest
 from geochemistrypi_mcp import CliInteractionDriver, InteractionPlan, InteractionStep
-from geochemistrypi_mcp.classification_contract import MODEL_DISPLAY_NAMES as CLASSIFICATION_MODEL_DISPLAY_NAMES
-from geochemistrypi_mcp.classification_contract import MODEL_ORDER as CLASSIFICATION_MODEL_ORDER
-from geochemistrypi_mcp.dataset_catalog import ResolvedDataset
-from geochemistrypi_mcp.runs import RunManager, RunStateError
-from geochemistrypi_mcp.schemas import BuiltInDatasetReference, ClassificationRequest, ClusteringRequest, DecompositionRequest, RandomForestSettings, TimeSeriesRequest
-from geochemistrypi_mcp.settings import McpSettings
+from geochemistrypi_mcp.api.schemas import BuiltInDatasetReference, ClassificationRequest, ClusteringRequest, DecompositionRequest, RandomForestSettings, TimeSeriesRequest
+from geochemistrypi_mcp.config.settings import McpSettings
+from geochemistrypi_mcp.contracts.classification import MODEL_DISPLAY_NAMES as CLASSIFICATION_MODEL_DISPLAY_NAMES
+from geochemistrypi_mcp.contracts.classification import MODEL_ORDER as CLASSIFICATION_MODEL_ORDER
+from geochemistrypi_mcp.data.catalog import ResolvedDataset
+from geochemistrypi_mcp.runtime.runs import RunManager, RunStateError
 
 
 def _request(

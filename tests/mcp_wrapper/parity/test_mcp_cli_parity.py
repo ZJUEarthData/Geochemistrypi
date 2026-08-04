@@ -26,8 +26,8 @@ from geochemistrypi_mcp import (
     TimeSeriesPlanCompiler,
     TimeSeriesRequest,
 )
-from geochemistrypi_mcp.constants import ISOLATED_CLI_ENVIRONMENT_VARIABLES
-from geochemistrypi_mcp.settings import resolve_cli_interpreter
+from geochemistrypi_mcp.config.constants import ISOLATED_CLI_ENVIRONMENT_VARIABLES
+from geochemistrypi_mcp.config.settings import resolve_cli_interpreter
 from mcp import Client, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from openpyxl import load_workbook
@@ -144,10 +144,7 @@ async def test_stdio_mcp_attaches_a_real_run_to_an_existing_experiment(
     async with Client(stdio_client(parameters)) as client:
         listed = await client.call_tool("list_experiments", {"maximum_experiments": 10})
         assert listed.is_error is False
-        assert any(
-            value["experiment_id"] == experiment_id
-            for value in listed.structured_content["experiments"]
-        )
+        assert any(value["experiment_id"] == experiment_id for value in listed.structured_content["experiments"])
         before = await client.call_tool(
             "get_experiment",
             {"experiment_id": experiment_id, "maximum_runs": 10},
@@ -192,11 +189,7 @@ async def test_stdio_mcp_time_series_matches_noninteractive_public_cli(
     cli_executable = Path(os.environ["GEOCHEMISTRYPI_CLI_EXECUTABLE"]).resolve()
     source = tmp_path / "time-series.csv"
     source.write_text(
-        "R_AGE,R_MAX_AGE,SBAP,LATITUDE,LONGITUDE\n"
-        "10,12,0.9,-20,100\n"
-        "20,25,0.1,5,110\n"
-        "35,40,0.8,30,120\n"
-        "50,55,0.2,45,130\n",
+        "R_AGE,R_MAX_AGE,SBAP,LATITUDE,LONGITUDE\n" "10,12,0.9,-20,100\n" "20,25,0.1,5,110\n" "35,40,0.8,30,120\n" "50,55,0.2,45,130\n",
         encoding="utf-8",
     )
     request = TimeSeriesRequest(
@@ -208,9 +201,7 @@ async def test_stdio_mcp_time_series_matches_noninteractive_public_cli(
         seed=7,
         fit_curve=False,
     )
-    plan = TimeSeriesPlanCompiler().compile(
-        request, cli_executable=cli_executable
-    )
+    plan = TimeSeriesPlanCompiler().compile(request, cli_executable=cli_executable)
     assert plan.steps == ()
     direct_workspace = tmp_path / "direct-time-series"
     direct_workspace.mkdir()
@@ -248,9 +239,7 @@ async def test_stdio_mcp_time_series_matches_noninteractive_public_cli(
         },
     )
     async with Client(stdio_client(parameters)) as client:
-        started = await client.call_tool(
-            "start_analysis", request.model_dump(mode="json")
-        )
+        started = await client.call_tool("start_analysis", request.model_dump(mode="json"))
         assert started.is_error is False, started.content[0].text
         run_id = started.structured_content["run_id"]
         deadline = time.monotonic() + 180
@@ -267,29 +256,16 @@ async def test_stdio_mcp_time_series_matches_noninteractive_public_cli(
         assert result_call.is_error is False
         result = result_call.structured_content
 
-    direct_run = (
-        direct_workspace
-        / "geopi_output"
-        / request.experiment_name
-        / request.run_name
-    )
+    direct_run = direct_workspace / "geopi_output" / request.experiment_name / request.run_name
     wrapped_run = Path(result["output_directory"])
     assert result["task"] == "time_series"
     assert result["model"] == "subaerial_proportion_bootstrap"
     assert result["tuning"] == "not_applicable"
     assert result["input_sha256"] == _sha256(source)
     assert _all_files(direct_run) == _all_files(wrapped_run)
-    assert (
-        direct_run / "artifacts" / "data" / "Subaerial Proportion.csv"
-    ).read_bytes() == (
-        wrapped_run / "artifacts" / "data" / "Subaerial Proportion.csv"
-    ).read_bytes()
-    assert _load_json(
-        direct_run / "metrics" / "Time Series Metrics.json"
-    ) == _load_json(wrapped_run / "metrics" / "Time Series Metrics.json")
-    assert result["reported_metrics"]["Time Series Metrics.json"][
-        "populated_bins"
-    ] > 0
+    assert (direct_run / "artifacts" / "data" / "Subaerial Proportion.csv").read_bytes() == (wrapped_run / "artifacts" / "data" / "Subaerial Proportion.csv").read_bytes()
+    assert _load_json(direct_run / "metrics" / "Time Series Metrics.json") == _load_json(wrapped_run / "metrics" / "Time Series Metrics.json")
+    assert result["reported_metrics"]["Time Series Metrics.json"]["populated_bins"] > 0
     assert result["artifact_count"] == len(_all_files(wrapped_run))
 
 
@@ -305,9 +281,7 @@ async def test_stdio_mcp_anomaly_all_models_matches_real_cli_aggregate(
     source = parity_root / "anomaly-all-models.csv"
     rows = ["SampleID,F1,F2,F3"]
     for index in range(50):
-        rows.append(
-            f"A{index:02d},{index + 1},{(index % 7) + 2},{(index % 11) + 3}"
-        )
+        rows.append(f"A{index:02d},{index + 1},{(index % 7) + 2},{(index % 11) + 3}")
     source.write_text("\n".join(rows) + "\n", encoding="utf-8")
     analysis_request = AnomalyDetectionRequest(
         training_dataset_path=source,
@@ -317,9 +291,7 @@ async def test_stdio_mcp_anomaly_all_models_matches_real_cli_aggregate(
         feature_columns=("F1", "F2", "F3"),
         model_selection={"mode": "all", "tuning": "manual"},
     )
-    plan = AnalysisPlanCompiler().compile(
-        analysis_request, cli_executable=cli_executable
-    )
+    plan = AnalysisPlanCompiler().compile(analysis_request, cli_executable=cli_executable)
     assert next(step for step in plan.steps if step.id == "all_models").response == "3"
     direct_workspace = parity_root / "direct-anomaly-all"
     direct_workspace.mkdir()
@@ -353,9 +325,7 @@ async def test_stdio_mcp_anomaly_all_models_matches_real_cli_aggregate(
         args=["-m", "geochemistrypi_mcp"],
         env={
             "GEOCHEMISTRYPI_CLI_EXECUTABLE": str(cli_executable),
-            "GEOCHEMISTRYPI_MCP_RUNS_ROOT": str(
-                parity_root / "r"
-            ),
+            "GEOCHEMISTRYPI_MCP_RUNS_ROOT": str(parity_root / "r"),
             "MPLBACKEND": "Agg",
         },
     )
@@ -383,19 +353,10 @@ async def test_stdio_mcp_anomaly_all_models_matches_real_cli_aggregate(
         assert result_call.is_error is False
         result = result_call.structured_content
 
-    direct_run = (
-        direct_workspace
-        / "geopi_output"
-        / analysis_request.experiment_name
-        / analysis_request.run_name
-    )
+    direct_run = direct_workspace / "geopi_output" / analysis_request.experiment_name / analysis_request.run_name
     wrapped_run = Path(result["output_directory"])
-    direct_manifest = _load_json(
-        direct_run / "summary" / "Aggregate Model Results.json"
-    )
-    wrapped_manifest = _load_json(
-        wrapped_run / "summary" / "Aggregate Model Results.json"
-    )
+    direct_manifest = _load_json(direct_run / "summary" / "Aggregate Model Results.json")
+    wrapped_manifest = _load_json(wrapped_run / "summary" / "Aggregate Model Results.json")
     assert result["model"] == "all_models"
     assert result["aggregate_state"] == "complete"
     assert [child["model"] for child in result["children"]] == [
@@ -404,9 +365,7 @@ async def test_stdio_mcp_anomaly_all_models_matches_real_cli_aggregate(
     ]
     assert all(child["state"] == "succeeded" for child in result["children"])
     assert direct_manifest["state"] == wrapped_manifest["state"] == "complete"
-    assert direct_manifest["succeeded_count"] == wrapped_manifest[
-        "succeeded_count"
-    ] == 2
+    assert direct_manifest["succeeded_count"] == wrapped_manifest["succeeded_count"] == 2
     assert _all_files(direct_run) == _all_files(wrapped_run)
     assert result["artifact_count"] == len(_all_files(wrapped_run))
 
@@ -447,14 +406,8 @@ async def test_stdio_mcp_lists_and_inspects_every_installed_builtin_dataset(
             assert inspected.is_error is False, inspected.content[0].text
             inspections.append(inspected.structured_content)
 
-    assert {item["sha256"] for item in inspections} == {
-        item["sha256"] for item in datasets
-    }
-    time_series = next(
-        item
-        for item in inspections
-        if item["source_path"].endswith("Data_Time_Series.xlsx")
-    )
+    assert {item["sha256"] for item in inspections} == {item["sha256"] for item in datasets}
+    time_series = next(item for item in inspections if item["source_path"].endswith("Data_Time_Series.xlsx"))
     assert any("FEOT.1" in warning for warning in time_series["header_warnings"])
 
 

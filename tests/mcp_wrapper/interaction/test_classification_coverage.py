@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 from geochemistrypi_mcp import ClassificationPlanCompiler, ClassificationRequest, PlanCompilationError
-from geochemistrypi_mcp.classification_contract import MODEL_DISPLAY_NAMES, MODEL_ORDER
+from geochemistrypi_mcp.contracts.classification import MODEL_DISPLAY_NAMES, MODEL_ORDER
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 CAPABILITY_FIXTURE = REPOSITORY_ROOT / "tests" / "mcp_wrapper" / "parity" / "fixtures" / "classification_capability_matrix_v1.json"
@@ -65,9 +65,7 @@ def test_every_public_cli_model_family_compiles_a_manual_plan(tmp_path: Path, mo
         "model",
         f"{MODEL_DISPLAY_NAMES[model_name]}.joblib",
     )
-    assert Path(plan.expected_output_relative_paths[2]).name == (
-        f"Precision-Recall vs. Threshold Diagram - {MODEL_DISPLAY_NAMES[model_name]}.png"
-    )
+    assert Path(plan.expected_output_relative_paths[2]).name == (f"Precision-Recall vs. Threshold Diagram - {MODEL_DISPLAY_NAMES[model_name]}.png")
 
 
 def test_existing_experiment_id_skips_ambiguous_name_prompts(tmp_path: Path) -> None:

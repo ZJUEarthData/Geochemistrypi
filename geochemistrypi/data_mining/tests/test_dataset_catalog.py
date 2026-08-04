@@ -29,15 +29,10 @@ def test_every_declared_builtin_is_listed_without_modification() -> None:
         "builtin:time_series",
     }
     assert all(item["sha256"] == _sha256(Path(item["path"])) for item in result["datasets"])
-    assert all(
-        "branch.world_map" not in item["analysis_blockers"]
-        for item in result["datasets"]
-    )
+    assert all("branch.world_map" not in item["analysis_blockers"] for item in result["datasets"])
 
 
-def test_desktop_discovery_is_read_only_non_recursive_and_format_limited(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_desktop_discovery_is_read_only_non_recursive_and_format_limited(tmp_path: Path, monkeypatch) -> None:
     home = tmp_path / "home"
     desktop_root = home / "Desktop" / "geopi_input"
     desktop_root.mkdir(parents=True)
@@ -56,9 +51,7 @@ def test_desktop_discovery_is_read_only_non_recursive_and_format_limited(
     assert [item["file_name"] for item in result["datasets"]] == ["valid.csv"]
 
 
-def test_desktop_discovery_does_not_create_a_missing_directory(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_desktop_discovery_does_not_create_a_missing_directory(tmp_path: Path, monkeypatch) -> None:
     home = tmp_path / "missing-home"
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
 
@@ -69,9 +62,7 @@ def test_desktop_discovery_does_not_create_a_missing_directory(
     assert "did not create it" in result["warnings"][0]
 
 
-def test_desktop_discovery_warns_when_a_file_changes_during_read(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_desktop_discovery_warns_when_a_file_changes_during_read(tmp_path: Path, monkeypatch) -> None:
     home = tmp_path / "home"
     desktop_root = home / "Desktop" / "geopi_input"
     desktop_root.mkdir(parents=True)

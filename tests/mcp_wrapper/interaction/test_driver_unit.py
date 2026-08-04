@@ -20,8 +20,8 @@ from geochemistrypi_mcp import (
     UnusedResponsesError,
     WorkspacePathError,
 )
-from geochemistrypi_mcp.interaction_plan import _console_script_name
-from geochemistrypi_mcp.schemas import BuiltInDatasetReference
+from geochemistrypi_mcp.api.schemas import BuiltInDatasetReference
+from geochemistrypi_mcp.planning.interaction_plan import _console_script_name
 from pydantic import ValidationError
 
 
@@ -86,9 +86,7 @@ def test_semantic_request_accepts_one_dataset_source_and_rejects_ambiguity(
 ) -> None:
     data_path = _dataset(tmp_path)
     values = {
-        "training_dataset": BuiltInDatasetReference(
-            dataset_id="builtin:classification"
-        ),
+        "training_dataset": BuiltInDatasetReference(dataset_id="builtin:classification"),
         "experiment_name": "Driver Contract",
         "run_name": "Classification V1",
         "identifier_column": "SampleID",
@@ -100,9 +98,7 @@ def test_semantic_request_accepts_one_dataset_source_and_rejects_ambiguity(
     with pytest.raises(ValidationError, match="provide exactly one"):
         ClassificationRequest(**{**values, "training_dataset_path": data_path})
     with pytest.raises(ValidationError, match="provide exactly one"):
-        ClassificationRequest(
-            **{key: value for key, value in values.items() if key != "training_dataset"}
-        )
+        ClassificationRequest(**{key: value for key, value in values.items() if key != "training_dataset"})
 
 
 def test_plan_compiler_maps_semantic_column_names_to_cli_indices(tmp_path: Path) -> None:
@@ -160,9 +156,7 @@ def test_coordinate_dataset_can_disable_or_semantically_configure_world_map(
         encoding="utf-8",
     )
 
-    disabled = ClassificationPlanCompiler().compile(
-        _request(data_path), cli_executable=Path(sys.executable)
-    )
+    disabled = ClassificationPlanCompiler().compile(_request(data_path), cli_executable=Path(sys.executable))
     configured = ClassificationPlanCompiler().compile(
         _request(
             data_path,
@@ -177,17 +171,13 @@ def test_coordinate_dataset_can_disable_or_semantically_configure_world_map(
     )
 
     assert json.loads(disabled.public_command[-1])["enabled"] is False
-    assert json.loads(configured.public_command[-1])["value_columns"] == [
-        "SIO2(WT%)"
-    ]
+    assert json.loads(configured.public_command[-1])["value_columns"] == ["SIO2(WT%)"]
 
 
 def test_world_map_values_and_coordinate_ranges_fail_before_cli(tmp_path: Path) -> None:
     data_path = tmp_path / "invalid-coordinates.csv"
     data_path.write_text(
-        "SampleID,Label,Value,LATITUDE,LONGITUDE\n"
-        "A,0,not-a-number,30,120\n"
-        "B,1,2,95,121\n",
+        "SampleID,Label,Value,LATITUDE,LONGITUDE\n" "A,0,not-a-number,30,120\n" "B,1,2,95,121\n",
         encoding="utf-8",
     )
     request = _request(
@@ -202,9 +192,7 @@ def test_world_map_values_and_coordinate_ranges_fail_before_cli(tmp_path: Path) 
     )
 
     with pytest.raises(PlanCompilationError, match="non-numeric"):
-        ClassificationPlanCompiler().compile(
-            request, cli_executable=Path(sys.executable)
-        )
+        ClassificationPlanCompiler().compile(request, cli_executable=Path(sys.executable))
 
 
 def test_time_series_plan_is_noninteractive_and_semantically_validated(
@@ -212,10 +200,7 @@ def test_time_series_plan_is_noninteractive_and_semantically_validated(
 ) -> None:
     data_path = tmp_path / "time-series.csv"
     data_path.write_text(
-        "R_AGE,R_MAX_AGE,SBAP,LATITUDE,LONGITUDE\n"
-        "10,12,0.9,-20,100\n"
-        "20,25,0.1,5,110\n"
-        "35,40,0.8,30,120\n",
+        "R_AGE,R_MAX_AGE,SBAP,LATITUDE,LONGITUDE\n" "10,12,0.9,-20,100\n" "20,25,0.1,5,110\n" "35,40,0.8,30,120\n",
         encoding="utf-8",
     )
     request = TimeSeriesRequest(
@@ -226,9 +211,7 @@ def test_time_series_plan_is_noninteractive_and_semantically_validated(
         fit_curve=False,
     )
 
-    plan = TimeSeriesPlanCompiler().compile(
-        request, cli_executable=Path(sys.executable)
-    )
+    plan = TimeSeriesPlanCompiler().compile(request, cli_executable=Path(sys.executable))
 
     assert plan.steps == ()
     assert plan.public_command[:4] == (
@@ -244,8 +227,7 @@ def test_time_series_plan_is_noninteractive_and_semantically_validated(
 def test_time_series_plan_rejects_invalid_rows_before_cli(tmp_path: Path) -> None:
     data_path = tmp_path / "invalid-time-series.csv"
     data_path.write_text(
-        "R_AGE,R_MAX_AGE,SBAP,LATITUDE,LONGITUDE\n"
-        "20,10,1.2,95,181\n",
+        "R_AGE,R_MAX_AGE,SBAP,LATITUDE,LONGITUDE\n" "20,10,1.2,95,181\n",
         encoding="utf-8",
     )
     request = TimeSeriesRequest(
@@ -254,9 +236,7 @@ def test_time_series_plan_rejects_invalid_rows_before_cli(tmp_path: Path) -> Non
     )
 
     with pytest.raises(PlanCompilationError, match="maximum age"):
-        TimeSeriesPlanCompiler().compile(
-            request, cli_executable=Path(sys.executable)
-        )
+        TimeSeriesPlanCompiler().compile(request, cli_executable=Path(sys.executable))
 
 
 @pytest.mark.parametrize(("os_name", "expected"), [("nt", "geochemistrypi.exe"), ("posix", "geochemistrypi")])

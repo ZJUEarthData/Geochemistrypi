@@ -4,30 +4,13 @@ import sys
 from pathlib import Path
 
 import pytest
-from geochemistrypi_mcp import (
-    ClusteringPlanCompiler,
-    ClusteringRequest,
-    PlanCompilationError,
-)
-from geochemistrypi_mcp.clustering_contract import MODEL_DISPLAY_NAMES, MODEL_ORDER
+from geochemistrypi_mcp import ClusteringPlanCompiler, ClusteringRequest, PlanCompilationError
+from geochemistrypi_mcp.contracts.clustering import MODEL_DISPLAY_NAMES, MODEL_ORDER
 from pydantic import ValidationError
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
-DATASET_PATH = (
-    REPOSITORY_ROOT
-    / "tests"
-    / "cli_contract"
-    / "fixtures"
-    / "clustering_baseline.csv"
-)
-CAPABILITY_FIXTURE = (
-    REPOSITORY_ROOT
-    / "tests"
-    / "mcp_wrapper"
-    / "parity"
-    / "fixtures"
-    / "clustering_capability_matrix_v1.json"
-)
+DATASET_PATH = REPOSITORY_ROOT / "tests" / "cli_contract" / "fixtures" / "clustering_baseline.csv"
+CAPABILITY_FIXTURE = REPOSITORY_ROOT / "tests" / "mcp_wrapper" / "parity" / "fixtures" / "clustering_capability_matrix_v1.json"
 
 
 def _request(path: Path = DATASET_PATH, **overrides) -> ClusteringRequest:
@@ -46,10 +29,7 @@ def _request(path: Path = DATASET_PATH, **overrides) -> ClusteringRequest:
 def _assignment(path: Path, name: str):
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     for node in tree.body:
-        if isinstance(node, ast.Assign) and any(
-            isinstance(target, ast.Name) and target.id == name
-            for target in node.targets
-        ):
+        if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == name for target in node.targets):
             return ast.literal_eval(node.value)
     raise AssertionError(f"Assignment {name} not found")
 
@@ -79,26 +59,20 @@ def test_every_public_cli_clustering_family_compiles_a_plan(
 
     assert responses["clustering_mode"] == "3"
     assert responses[model_name] == str(MODEL_ORDER.index(model_name) + 1)
-    assert any(
-        MODEL_DISPLAY_NAMES[model_name] + " - Hyper-parameters Specification"
-        in step.output_anchors
-        for step in plan.steps
-    )
-    assert not {
+    assert any(MODEL_DISPLAY_NAMES[model_name] + " - Hyper-parameters Specification" in step.output_anchors for step in plan.steps)
+    supervised_responses = {
         "target_column",
         "default_test_ratio",
         "enable_automl",
         "continue_after_inference",
-    } & responses.keys()
+    }
+    assert not supervised_responses.intersection(responses)
     assert Path(plan.expected_output_relative_paths[0]).parts[-3:] == (
         "artifacts",
         "model",
         f"{MODEL_DISPLAY_NAMES[model_name]}.joblib",
     )
-    assert any(
-        Path(path).name == f"Cluster Labels - {MODEL_DISPLAY_NAMES[model_name]}.xlsx"
-        for path in plan.expected_output_relative_paths
-    )
+    assert any(Path(path).name == f"Cluster Labels - {MODEL_DISPLAY_NAMES[model_name]}.xlsx" for path in plan.expected_output_relative_paths)
 
 
 @pytest.mark.parametrize(
@@ -172,17 +146,12 @@ def test_clustering_preprocessing_and_plot_dimension_branches() -> None:
     no_scaling_steps = {step.id: step.response for step in no_scaling.steps}
     assert no_scaling_steps["skip_feature_scaling"] == "2"
     assert "clustering_plot_2d_feature_1" not in no_scaling_steps
-    assert not any(
-        Path(path).name == "Transform Pipeline.joblib"
-        for path in no_scaling.expected_output_relative_paths
-    )
+    assert not any(Path(path).name == "Transform Pipeline.joblib" for path in no_scaling.expected_output_relative_paths)
 
     engineered = ClusteringPlanCompiler().compile(
         _request(
             feature_columns=("FeatureA", "FeatureB"),
-            engineered_features=(
-                {"name": "FeatureRatio", "formula": "{FeatureA} / ({FeatureB} + 1)"},
-            ),
+            engineered_features=({"name": "FeatureRatio", "formula": "{FeatureA} / ({FeatureB} + 1)"},),
             scaling="mean_normalization",
             model={"type": "dbscan", "minimum_samples": 2},
         ),
@@ -196,10 +165,7 @@ def test_clustering_preprocessing_and_plot_dimension_branches() -> None:
     assert engineered_steps["clustering_plot_3d_feature_1"] == "1"
     assert engineered_steps["clustering_plot_3d_feature_2"] == "2"
     assert engineered_steps["clustering_plot_3d_feature_3"] == "3"
-    assert any(
-        Path(path).name == "Transform Pipeline.joblib"
-        for path in engineered.expected_output_relative_paths
-    )
+    assert any(Path(path).name == "Transform Pipeline.joblib" for path in engineered.expected_output_relative_paths)
 
 
 def test_clustering_rejects_invalid_data_before_cli_execution(tmp_path: Path) -> None:
@@ -232,9 +198,7 @@ def test_clustering_rejects_invalid_data_before_cli_execution(tmp_path: Path) ->
 
     too_small = tmp_path / "too-small.csv"
     too_small.write_text(
-        "SampleID,FeatureA,FeatureB,FeatureC\n"
-        + "\n".join(f"S-{index},{index},{index + 1},{index + 2}" for index in range(10))
-        + "\n",
+        "SampleID,FeatureA,FeatureB,FeatureC\n" + "\n".join(f"S-{index},{index},{index + 1},{index + 2}" for index in range(10)) + "\n",
         encoding="utf-8",
     )
     with pytest.raises(PlanCompilationError, match="k=2 through k=10"):

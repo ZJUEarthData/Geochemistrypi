@@ -9,17 +9,10 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from geochemistrypi_mcp import (
-    AnalysisPlanCompiler,
-    AnomalyDetectionRequest,
-    ClassificationRequest,
-    ClusteringRequest,
-    DecompositionRequest,
-    RegressionRequest,
-)
-from geochemistrypi_mcp.cli_driver import CliInteractionDriver
-from geochemistrypi_mcp.runs import RunManager
-from geochemistrypi_mcp.settings import McpSettings
+from geochemistrypi_mcp import AnalysisPlanCompiler, AnomalyDetectionRequest, ClassificationRequest, ClusteringRequest, DecompositionRequest, RegressionRequest
+from geochemistrypi_mcp.config.settings import McpSettings
+from geochemistrypi_mcp.runtime.cli_driver import CliInteractionDriver
+from geochemistrypi_mcp.runtime.runs import RunManager
 from openpyxl import load_workbook
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -180,9 +173,7 @@ def test_full_real_model_parity(case_id: str, task: str, model: str, mode: str, 
     if os.environ.get("GEOCHEMISTRYPI_FULL_PARITY") != "1":
         pytest.skip("Set GEOCHEMISTRYPI_FULL_PARITY=1 only in the scheduled or release-candidate full matrix.")
     shard = os.environ.get("GEOCHEMISTRYPI_PARITY_SHARD")
-    expected_shard = (
-        "aggregates" if mode == "aggregate" else f"{task}-{mode}" if task in {"classification", "regression"} else "unsupervised-manual"
-    )
+    expected_shard = "aggregates" if mode == "aggregate" else f"{task}-{mode}" if task in {"classification", "regression"} else "unsupervised-manual"
     if shard and shard != expected_shard:
         pytest.skip(f"Scenario belongs to shard {expected_shard}.")
     cli_executable = Path(os.environ["GEOCHEMISTRYPI_CLI_EXECUTABLE"]).resolve()

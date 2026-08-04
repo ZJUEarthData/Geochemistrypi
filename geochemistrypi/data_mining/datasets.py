@@ -3,14 +3,12 @@
 import csv
 import hashlib
 import json
-import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from openpyxl import load_workbook
 
 from .constants import BUILT_IN_DATASET_PATH
-
 
 DATASET_CATALOG_SCHEMA_VERSION = 1
 SUPPORTED_DATASET_SUFFIXES = {".csv": "csv", ".xlsx": "xlsx"}
@@ -119,21 +117,11 @@ def _entry(
 
 def _built_in_entries() -> List[Dict[str, Any]]:
     root = Path(BUILT_IN_DATASET_PATH).resolve(strict=True)
-    discovered = {
-        path.name
-        for path in root.iterdir()
-        if path.is_file() and path.suffix.lower() in SUPPORTED_DATASET_SUFFIXES
-    }
+    discovered = {path.name for path in root.iterdir() if path.is_file() and path.suffix.lower() in SUPPORTED_DATASET_SUFFIXES}
     declared = set(_BUILT_IN_DATASETS)
     if discovered != declared:
-        raise DatasetCatalogError(
-            "Built-in dataset declarations are stale. "
-            f"Undeclared files: {sorted(discovered - declared)}; missing files: {sorted(declared - discovered)}"
-        )
-    return [
-        _entry(root / name, "builtin", dataset_id, task, role)
-        for name, (dataset_id, task, role) in sorted(_BUILT_IN_DATASETS.items())
-    ]
+        raise DatasetCatalogError("Built-in dataset declarations are stale. " f"Undeclared files: {sorted(discovered - declared)}; missing files: {sorted(declared - discovered)}")
+    return [_entry(root / name, "builtin", dataset_id, task, role) for name, (dataset_id, task, role) in sorted(_BUILT_IN_DATASETS.items())]
 
 
 def desktop_input_root() -> Path:
@@ -152,9 +140,7 @@ def _desktop_entries() -> Tuple[List[Dict[str, Any]], List[str], Path]:
     try:
         candidates = sorted(root.iterdir(), key=lambda item: item.name.casefold())
     except OSError as exc:
-        raise DatasetCatalogError(
-            f"Desktop dataset location could not be read: {root}"
-        ) from exc
+        raise DatasetCatalogError(f"Desktop dataset location could not be read: {root}") from exc
     for candidate in candidates:
         if candidate.suffix.lower() not in SUPPORTED_DATASET_SUFFIXES:
             continue
@@ -179,9 +165,7 @@ def _desktop_entries() -> Tuple[List[Dict[str, Any]], List[str], Path]:
                 )
             )
         except OSError:
-            warnings.append(
-                f"Ignored Desktop entry that changed while being read: {candidate.name}"
-            )
+            warnings.append(f"Ignored Desktop entry that changed while being read: {candidate.name}")
     return entries, warnings, root
 
 

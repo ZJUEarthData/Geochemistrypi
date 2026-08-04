@@ -16,8 +16,8 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 import psutil
 
-from .constants import CLI_AUTOMATION_CONTRACT_VERSION, ISOLATED_CLI_ENVIRONMENT_VARIABLES
-from .interaction_plan import InteractionPlan, InteractionStep
+from ..config.constants import CLI_AUTOMATION_CONTRACT_VERSION, ISOLATED_CLI_ENVIRONMENT_VARIABLES
+from ..planning.interaction_plan import InteractionPlan, InteractionStep
 
 ANSI_ESCAPE = re.compile(r"\x1b(?:\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1b\\))")
 CAPTURE_DIRECTORY_NAME = ".geochemistrypi-driver"

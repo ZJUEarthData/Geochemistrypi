@@ -12,26 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-from .anomaly_detection_contract import MODEL_DISPLAY_NAMES as ANOMALY_DETECTION_MODEL_DISPLAY_NAMES
-from .anomaly_detection_contract import MODEL_ORDER as ANOMALY_DETECTION_MODEL_ORDER
-from .artifacts import discover_artifacts
-from .classification_contract import MODEL_DISPLAY_NAMES as CLASSIFICATION_MODEL_DISPLAY_NAMES
-from .classification_contract import MODEL_ORDER as CLASSIFICATION_MODEL_ORDER
-from .cli_driver import CliInteractionDriver, CliRunCancelledError
-from .clustering_contract import MODEL_DISPLAY_NAMES as CLUSTERING_MODEL_DISPLAY_NAMES
-from .clustering_contract import MODEL_ORDER as CLUSTERING_MODEL_ORDER
-from .constants import ARTIFACT_INDEX_SCHEMA_VERSION, SERVER_VERSION
-from .dataset_catalog import DatasetCatalog, ResolvedDataset
-from .dataset_inspector import DatasetSnapshot
-from .dataset_inspector import inspect_dataset as inspect_local_dataset
-from .dataset_inspector import sha256_file, snapshot_dataset
-from .decomposition_contract import MODEL_DISPLAY_NAMES as DECOMPOSITION_MODEL_DISPLAY_NAMES
-from .decomposition_contract import MODEL_ORDER as DECOMPOSITION_MODEL_ORDER
-from .experiments import ExperimentManager
-from .interaction_plan import AnalysisPlanCompiler, InteractionPlan
-from .regression_contract import MODEL_DISPLAY_NAMES as REGRESSION_MODEL_DISPLAY_NAMES
-from .regression_contract import MODEL_ORDER as REGRESSION_MODEL_ORDER
-from .schemas import (
+from ..api.schemas import (
     AnalysisValidationResponse,
     AnomalyDetectionRequest,
     CancelRunResponse,
@@ -45,7 +26,26 @@ from .schemas import (
     StartAnalysisResponse,
     TimeSeriesRequest,
 )
-from .settings import McpSettings
+from ..config.constants import ARTIFACT_INDEX_SCHEMA_VERSION, SERVER_VERSION
+from ..config.settings import McpSettings
+from ..contracts.anomaly_detection import MODEL_DISPLAY_NAMES as ANOMALY_DETECTION_MODEL_DISPLAY_NAMES
+from ..contracts.anomaly_detection import MODEL_ORDER as ANOMALY_DETECTION_MODEL_ORDER
+from ..contracts.classification import MODEL_DISPLAY_NAMES as CLASSIFICATION_MODEL_DISPLAY_NAMES
+from ..contracts.classification import MODEL_ORDER as CLASSIFICATION_MODEL_ORDER
+from ..contracts.clustering import MODEL_DISPLAY_NAMES as CLUSTERING_MODEL_DISPLAY_NAMES
+from ..contracts.clustering import MODEL_ORDER as CLUSTERING_MODEL_ORDER
+from ..contracts.decomposition import MODEL_DISPLAY_NAMES as DECOMPOSITION_MODEL_DISPLAY_NAMES
+from ..contracts.decomposition import MODEL_ORDER as DECOMPOSITION_MODEL_ORDER
+from ..contracts.regression import MODEL_DISPLAY_NAMES as REGRESSION_MODEL_DISPLAY_NAMES
+from ..contracts.regression import MODEL_ORDER as REGRESSION_MODEL_ORDER
+from ..data.catalog import DatasetCatalog, ResolvedDataset
+from ..data.inspector import DatasetSnapshot
+from ..data.inspector import inspect_dataset as inspect_local_dataset
+from ..data.inspector import sha256_file, snapshot_dataset
+from ..planning.interaction_plan import AnalysisPlanCompiler, InteractionPlan
+from ..tracking.experiments import ExperimentManager
+from .artifacts import discover_artifacts
+from .cli_driver import CliInteractionDriver, CliRunCancelledError
 
 _RUN_ID = re.compile(r"^run-[0-9a-f]{16}$")
 _TERMINAL_STATES = {"succeeded", "partial_failure", "failed", "cancelled"}

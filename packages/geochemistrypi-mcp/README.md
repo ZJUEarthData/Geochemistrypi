@@ -78,8 +78,8 @@ release-candidate testing and is recorded permanently in the install
 manifest; it is not a production verification mode.
 
 See the
-[PR9K release implementation and operator handoff](../../md/GeochemistryPi_MCP_PR9K_Release_Implementation.md)
-for the complete upgrade, rollback, and publication-gate contract.
+[MCP architecture and implementation overview](<../../docs/source/For Developer/MCP/index.md>)
+for the shared architecture, safety, verification, and release boundaries.
 
 ## One-action development setup from a local clone
 

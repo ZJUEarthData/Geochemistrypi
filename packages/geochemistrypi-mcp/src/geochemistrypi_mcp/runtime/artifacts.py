@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .schemas import ArtifactReference
+from ..api.schemas import ArtifactReference
 
 _REQUIRED_OUTPUT_DIRECTORIES = ("artifacts", "metrics", "parameters", "summary")
 _MAX_INDEXED_ARTIFACTS = 10_000

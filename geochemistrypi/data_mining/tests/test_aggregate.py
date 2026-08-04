@@ -1,11 +1,7 @@
 import json
 from pathlib import Path
 
-from geochemistrypi.data_mining.aggregate import (
-    child_result,
-    safe_child_error,
-    write_aggregate_manifest,
-)
+from geochemistrypi.data_mining.aggregate import child_result, safe_child_error, write_aggregate_manifest
 
 
 def test_aggregate_manifest_is_atomic_complete_and_counts_child_artifacts(

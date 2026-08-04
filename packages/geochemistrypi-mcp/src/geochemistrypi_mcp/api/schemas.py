@@ -7,7 +7,7 @@ from typing import Annotated, Any, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 
-from .regression_contract import MODELS_WITHOUT_AUTOML
+from ..contracts.regression import MODELS_WITHOUT_AUTOML
 
 _WINDOWS_RESERVED_NAMES = {
     "AUX",

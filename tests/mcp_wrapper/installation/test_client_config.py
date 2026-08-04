@@ -4,9 +4,7 @@ from pathlib import Path
 
 import pytest
 import tomlkit
-from ruamel.yaml import YAML
-
-from geochemistrypi_mcp.client_config import (
+from geochemistrypi_mcp.config.clients import (
     SERVER_ID,
     SUPPORTED_CLIENTS,
     ClaudeCodeClientAdapter,
@@ -17,6 +15,7 @@ from geochemistrypi_mcp.client_config import (
     backup_path,
     client_adapters,
 )
+from ruamel.yaml import YAML
 
 
 def test_json_registration_is_atomic_repeatable_and_preserves_unrelated_state(tmp_path: Path) -> None:
@@ -98,17 +97,7 @@ def test_windows_adapters_use_each_clients_supported_schema(tmp_path: Path) -> N
     gemini = json.loads((locations.home / ".gemini" / "settings.json").read_text(encoding="utf-8"))
     windsurf = json.loads((locations.home / ".codeium" / "windsurf" / "mcp_config.json").read_text(encoding="utf-8"))
     cline = json.loads((locations.home / ".cline" / "data" / "settings" / "cline_mcp_settings.json").read_text(encoding="utf-8"))
-    roo = json.loads(
-        (
-            locations.appdata
-            / "Code"
-            / "User"
-            / "globalStorage"
-            / "rooveterinaryinc.roo-cline"
-            / "settings"
-            / "mcp_settings.json"
-        ).read_text(encoding="utf-8")
-    )
+    roo = json.loads((locations.appdata / "Code" / "User" / "globalStorage" / "rooveterinaryinc.roo-cline" / "settings" / "mcp_settings.json").read_text(encoding="utf-8"))
     zed = json.loads((locations.appdata / "Zed" / "settings.json").read_text(encoding="utf-8"))
     kiro = json.loads((locations.home / ".kiro" / "settings" / "mcp.json").read_text(encoding="utf-8"))
     opencode = json.loads((locations.home / ".config" / "opencode" / "opencode.json").read_text(encoding="utf-8"))

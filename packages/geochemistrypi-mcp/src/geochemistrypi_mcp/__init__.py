@@ -1,22 +1,8 @@
 """Local MCP wrapper for the public GeochemistryPi CLI."""
 
-from .cli_driver import CliDriverError, CliInteractionDriver, CliProcessError, CliRunCancelledError, CliRunResult, PromptTimeoutError, UnexpectedPromptError, UnusedResponsesError, WorkspacePathError
-from .constants import SERVER_VERSION as __version__
-from .interaction_plan import (
-    AnalysisPlanCompiler,
-    AnomalyDetectionPlanCompiler,
-    ClassificationPlanCompiler,
-    ClusteringPlanCompiler,
-    DecompositionPlanCompiler,
-    InteractionPlan,
-    InteractionStep,
-    PlanCompilationError,
-    RegressionPlanCompiler,
-    TimeSeriesPlanCompiler,
-)
-from .schemas import (
-    AnalysisRequest,
+from .api.schemas import (
     AllModelsSelection,
+    AnalysisRequest,
     AnomalyDetectionRequest,
     BuiltInDatasetReference,
     ClassificationRequest,
@@ -36,6 +22,30 @@ from .schemas import (
     ScalingMethod,
     SingleModelSelection,
     TimeSeriesRequest,
+)
+from .config.constants import SERVER_VERSION as __version__
+from .planning.interaction_plan import (
+    AnalysisPlanCompiler,
+    AnomalyDetectionPlanCompiler,
+    ClassificationPlanCompiler,
+    ClusteringPlanCompiler,
+    DecompositionPlanCompiler,
+    InteractionPlan,
+    InteractionStep,
+    PlanCompilationError,
+    RegressionPlanCompiler,
+    TimeSeriesPlanCompiler,
+)
+from .runtime.cli_driver import (
+    CliDriverError,
+    CliInteractionDriver,
+    CliProcessError,
+    CliRunCancelledError,
+    CliRunResult,
+    PromptTimeoutError,
+    UnexpectedPromptError,
+    UnusedResponsesError,
+    WorkspacePathError,
 )
 
 __all__ = [

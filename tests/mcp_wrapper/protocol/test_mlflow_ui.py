@@ -6,9 +6,9 @@ from pathlib import Path
 
 import psutil
 import pytest
-from geochemistrypi_mcp.schemas import StartMlflowUiRequest
-from geochemistrypi_mcp.settings import McpSettings
-from geochemistrypi_mcp.tracking_ui import MlflowUiError, MlflowUiManager
+from geochemistrypi_mcp.api.schemas import StartMlflowUiRequest
+from geochemistrypi_mcp.config.settings import McpSettings
+from geochemistrypi_mcp.tracking.ui import MlflowUiError, MlflowUiManager
 
 
 def _settings(tmp_path: Path) -> McpSettings:
@@ -121,7 +121,7 @@ def test_managed_ui_stops_new_process_if_ownership_state_cannot_be_written(
         launched_pids.append(int(value["pid"]))
         raise OSError("simulated disk failure")
 
-    monkeypatch.setattr("geochemistrypi_mcp.tracking_ui._atomic_write_json", fail_write)
+    monkeypatch.setattr("geochemistrypi_mcp.tracking.ui._atomic_write_json", fail_write)
 
     with pytest.raises(MlflowUiError, match="newly launched process was stopped"):
         manager.start(StartMlflowUiRequest(port=_free_port()))

@@ -5,13 +5,8 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-
-from geochemistrypi_mcp.dataset_catalog import DatasetCatalog, DatasetCatalogError
-from geochemistrypi_mcp.schemas import (
-    BuiltInDatasetReference,
-    DesktopDatasetReference,
-    ListDatasetsRequest,
-)
+from geochemistrypi_mcp.api.schemas import BuiltInDatasetReference, DesktopDatasetReference, ListDatasetsRequest
+from geochemistrypi_mcp.data.catalog import DatasetCatalog, DatasetCatalogError
 
 
 def _entry(path: Path, **overrides) -> dict:
@@ -47,21 +42,15 @@ def _catalog(entries, source="builtin", desktop_root=None) -> str:
 
 
 def _service(monkeypatch, stdout: str, returncode: int = 0) -> DatasetCatalog:
-    settings = SimpleNamespace(
-        require_supported_cli=lambda: (Path("C:/fake/geochemistrypi.exe"), "0.8.0")
-    )
+    settings = SimpleNamespace(require_supported_cli=lambda: (Path("C:/fake/geochemistrypi.exe"), "0.8.0"))
     monkeypatch.setattr(
-        "geochemistrypi_mcp.dataset_catalog.subprocess.run",
-        lambda *args, **kwargs: subprocess.CompletedProcess(
-            args[0], returncode, stdout=stdout, stderr="catalog error" if returncode else ""
-        ),
+        "geochemistrypi_mcp.data.catalog.subprocess.run",
+        lambda *args, **kwargs: subprocess.CompletedProcess(args[0], returncode, stdout=stdout, stderr="catalog error" if returncode else ""),
     )
     return DatasetCatalog(settings)
 
 
-def test_catalog_lists_and_resolves_a_task_matched_builtin(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_catalog_lists_and_resolves_a_task_matched_builtin(tmp_path: Path, monkeypatch) -> None:
     path = tmp_path / "classification.csv"
     path.write_text("id,value\n1,2\n", encoding="utf-8")
     service = _service(monkeypatch, _catalog([_entry(path)]))
@@ -78,9 +67,7 @@ def test_catalog_lists_and_resolves_a_task_matched_builtin(
     assert resolved.dataset_id == "builtin:classification"
 
 
-def test_builtin_resolution_rejects_wrong_task_or_role(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_builtin_resolution_rejects_wrong_task_or_role(tmp_path: Path, monkeypatch) -> None:
     path = tmp_path / "classification.csv"
     path.write_text("id,value\n1,2\n", encoding="utf-8")
     service = _service(monkeypatch, _catalog([_entry(path)]))
@@ -92,9 +79,7 @@ def test_builtin_resolution_rejects_wrong_task_or_role(
         service.resolve(reference, task="classification", role="application")
 
 
-def test_builtin_resolution_surfaces_known_analysis_blockers(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_builtin_resolution_surfaces_known_analysis_blockers(tmp_path: Path, monkeypatch) -> None:
     path = tmp_path / "classification.csv"
     path.write_text("id,value\n1,2\n", encoding="utf-8")
     entry = _entry(path, analysis_blockers=["branch.world_map"])
@@ -108,9 +93,7 @@ def test_builtin_resolution_surfaces_known_analysis_blockers(
         )
 
 
-def test_desktop_catalog_cannot_escape_or_recurse_from_expected_root(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_desktop_catalog_cannot_escape_or_recurse_from_expected_root(tmp_path: Path, monkeypatch) -> None:
     root = tmp_path / "Desktop" / "geopi_input"
     root.mkdir(parents=True)
     outside = tmp_path / "outside.csv"
@@ -143,14 +126,12 @@ def test_catalog_surfaces_cli_failure_without_parsing_stdout(monkeypatch) -> Non
         service.list(ListDatasetsRequest(source="builtin"))
 
 
-def test_catalog_surfaces_a_dataset_disappearing_during_verification(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_catalog_surfaces_a_dataset_disappearing_during_verification(tmp_path: Path, monkeypatch) -> None:
     path = tmp_path / "classification.csv"
     path.write_text("id,value\n1,2\n", encoding="utf-8")
     service = _service(monkeypatch, _catalog([_entry(path)]))
     monkeypatch.setattr(
-        "geochemistrypi_mcp.dataset_catalog._sha256",
+        "geochemistrypi_mcp.data.catalog._sha256",
         lambda candidate: (_ for _ in ()).throw(OSError("file disappeared")),
     )
 

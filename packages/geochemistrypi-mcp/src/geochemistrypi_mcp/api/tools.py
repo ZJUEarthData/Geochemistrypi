@@ -11,22 +11,8 @@ from mcp.server import ServerRequestContext
 from mcp.types import INVALID_PARAMS, CallToolRequestParams, CallToolResult, ListToolsResult, PaginatedRequestParams, TextContent, Tool
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-from .anomaly_detection_contract import MISSING_VALUE_METHODS as ANOMALY_DETECTION_MISSING_VALUE_METHODS
-from .anomaly_detection_contract import MODEL_ORDER as ANOMALY_DETECTION_MODEL_ORDER
-from .anomaly_detection_contract import SCALING_METHODS as ANOMALY_DETECTION_SCALING_METHODS
-from .anomaly_detection_contract import UNSUPPORTED_INTERACTIONS as ANOMALY_DETECTION_UNSUPPORTED_INTERACTIONS
-from .capability_manifest import known_gap_ids, load_capability_manifest, public_capabilities
-from .classification_contract import FEATURE_SELECTION_METHODS, LABEL_STRATEGIES, MISSING_VALUE_METHODS
-from .classification_contract import MODEL_ORDER as CLASSIFICATION_MODEL_ORDER
-from .classification_contract import SCALING_METHODS, TUNING_MODES
-from .classification_contract import UNSUPPORTED_INTERACTIONS as CLASSIFICATION_UNSUPPORTED_INTERACTIONS
-from .cli_driver import CliDriverError
-from .client_config import SUPPORTED_CLIENTS
-from .clustering_contract import MISSING_VALUE_METHODS as CLUSTERING_MISSING_VALUE_METHODS
-from .clustering_contract import MODEL_ORDER as CLUSTERING_MODEL_ORDER
-from .clustering_contract import SCALING_METHODS as CLUSTERING_SCALING_METHODS
-from .clustering_contract import UNSUPPORTED_INTERACTIONS as CLUSTERING_UNSUPPORTED_INTERACTIONS
-from .constants import (
+from ..config.clients import SUPPORTED_CLIENTS
+from ..config.constants import (
     ARTIFACT_INDEX_SCHEMA_VERSION,
     CLI_AUTOMATION_CONTRACT_VERSION,
     CLI_PYTHON_REQUIRES,
@@ -41,19 +27,35 @@ from .constants import (
     SUPPORTED_CLI_VERSIONS,
     TARGET_OPERATING_SYSTEMS,
 )
-from .dataset_catalog import DatasetCatalogError
-from .dataset_inspector import DatasetInspectionError
-from .dataset_inspector import inspect_dataset as inspect_local_dataset
-from .decomposition_contract import MISSING_VALUE_METHODS as DECOMPOSITION_MISSING_VALUE_METHODS
-from .decomposition_contract import MODEL_ORDER as DECOMPOSITION_MODEL_ORDER
-from .decomposition_contract import SCALING_METHODS as DECOMPOSITION_SCALING_METHODS
-from .decomposition_contract import UNSUPPORTED_INTERACTIONS as DECOMPOSITION_UNSUPPORTED_INTERACTIONS
-from .experiments import ExperimentManager, ExperimentStoreError
-from .interaction_plan import PlanCompilationError
-from .regression_contract import MODEL_ORDER as REGRESSION_MODEL_ORDER
-from .regression_contract import MODELS_WITHOUT_AUTOML
-from .regression_contract import UNSUPPORTED_INTERACTIONS as REGRESSION_UNSUPPORTED_INTERACTIONS
-from .runs import RunManager, RunNotFoundError, RunStateError
+from ..config.settings import McpSettings, SettingsError
+from ..contracts.anomaly_detection import MISSING_VALUE_METHODS as ANOMALY_DETECTION_MISSING_VALUE_METHODS
+from ..contracts.anomaly_detection import MODEL_ORDER as ANOMALY_DETECTION_MODEL_ORDER
+from ..contracts.anomaly_detection import SCALING_METHODS as ANOMALY_DETECTION_SCALING_METHODS
+from ..contracts.anomaly_detection import UNSUPPORTED_INTERACTIONS as ANOMALY_DETECTION_UNSUPPORTED_INTERACTIONS
+from ..contracts.classification import FEATURE_SELECTION_METHODS, LABEL_STRATEGIES, MISSING_VALUE_METHODS
+from ..contracts.classification import MODEL_ORDER as CLASSIFICATION_MODEL_ORDER
+from ..contracts.classification import SCALING_METHODS, TUNING_MODES
+from ..contracts.classification import UNSUPPORTED_INTERACTIONS as CLASSIFICATION_UNSUPPORTED_INTERACTIONS
+from ..contracts.clustering import MISSING_VALUE_METHODS as CLUSTERING_MISSING_VALUE_METHODS
+from ..contracts.clustering import MODEL_ORDER as CLUSTERING_MODEL_ORDER
+from ..contracts.clustering import SCALING_METHODS as CLUSTERING_SCALING_METHODS
+from ..contracts.clustering import UNSUPPORTED_INTERACTIONS as CLUSTERING_UNSUPPORTED_INTERACTIONS
+from ..contracts.decomposition import MISSING_VALUE_METHODS as DECOMPOSITION_MISSING_VALUE_METHODS
+from ..contracts.decomposition import MODEL_ORDER as DECOMPOSITION_MODEL_ORDER
+from ..contracts.decomposition import SCALING_METHODS as DECOMPOSITION_SCALING_METHODS
+from ..contracts.decomposition import UNSUPPORTED_INTERACTIONS as DECOMPOSITION_UNSUPPORTED_INTERACTIONS
+from ..contracts.manifest import known_gap_ids, load_capability_manifest, public_capabilities
+from ..contracts.regression import MODEL_ORDER as REGRESSION_MODEL_ORDER
+from ..contracts.regression import MODELS_WITHOUT_AUTOML
+from ..contracts.regression import UNSUPPORTED_INTERACTIONS as REGRESSION_UNSUPPORTED_INTERACTIONS
+from ..data.catalog import DatasetCatalogError
+from ..data.inspector import DatasetInspectionError
+from ..data.inspector import inspect_dataset as inspect_local_dataset
+from ..planning.interaction_plan import PlanCompilationError
+from ..runtime.cli_driver import CliDriverError
+from ..runtime.runs import RunManager, RunNotFoundError, RunStateError
+from ..tracking.experiments import ExperimentManager, ExperimentStoreError
+from ..tracking.ui import MlflowUiError, MlflowUiManager
 from .schemas import (
     AnalysisRequest,
     AnalysisValidationResponse,
@@ -76,8 +78,6 @@ from .schemas import (
     StartAnalysisResponse,
     StartMlflowUiRequest,
 )
-from .settings import McpSettings, SettingsError
-from .tracking_ui import MlflowUiError, MlflowUiManager
 
 LOGGER = logging.getLogger(__name__)
 _MAX_MODEL_TEXT = 4000

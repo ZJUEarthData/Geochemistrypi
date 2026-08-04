@@ -25,11 +25,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = _parser().parse_args(argv)
     try:
         root = resolve_tracking_root(args.tracking_root)
-        value = (
-            list_experiments(root, args.maximum_experiments)
-            if args.action == "list"
-            else get_experiment(root, args.experiment_id, args.maximum_runs)
-        )
+        value = list_experiments(root, args.maximum_experiments) if args.action == "list" else get_experiment(root, args.experiment_id, args.maximum_runs)
     except (OSError, TrackingStoreError) as exc:
         print(json.dumps({"error": " ".join(str(exc).split())[:1000]}), file=sys.stderr)
         return 2

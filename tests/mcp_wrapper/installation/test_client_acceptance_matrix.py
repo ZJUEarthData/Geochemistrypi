@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from geochemistrypi_mcp.client_config import SUPPORTED_CLIENTS
+from geochemistrypi_mcp.config.clients import SUPPORTED_CLIENTS
 
 
 def test_client_acceptance_matrix_covers_every_supported_target_and_required_step() -> None:

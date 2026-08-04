@@ -12,13 +12,13 @@ from typing import Any, BinaryIO, Iterable, Sequence
 
 from openpyxl import load_workbook
 
-from .dataset_headers import (
+from ..api.schemas import DatasetColumnSummary, DatasetInspectionRequest, DatasetInspectionResponse
+from ..config.settings import McpSettings
+from .headers import (
     HeaderValidationError,
     header_normalization_warnings,
     normalize_dataset_header,
 )
-from .schemas import DatasetColumnSummary, DatasetInspectionRequest, DatasetInspectionResponse
-from .settings import McpSettings
 
 _SUPPORTED_SUFFIXES = {".csv": "csv", ".xlsx": "xlsx"}
 _TYPE_SAMPLE_ROWS = 50
