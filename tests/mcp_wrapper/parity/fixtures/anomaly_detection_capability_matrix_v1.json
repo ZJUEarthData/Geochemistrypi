@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "cli_version": "0.8.0",
+  "task": "anomaly_detection",
+  "execution_owner": "geochemistrypi data-mining",
+  "models": [
+    {"id": "isolation_forest", "cli_name": "Isolation Forest"},
+    {"id": "local_outlier_factor", "cli_name": "Local Outlier Factor"}
+  ],
+  "interactions": {
+    "missing_values": ["error", "drop_rows", "impute"],
+    "scaling": ["none", "min_max", "standardization", "mean_normalization"],
+    "application_data": ["disabled"],
+    "target_column": ["not_applicable"],
+    "tuning": ["not_applicable"]
+  },
+  "common_outputs": [
+    "X Abnormal Detection",
+    "X Normal",
+    "X Abnormal",
+    "Anomaly Detection Density Estimation",
+    "Anomaly Detection Two-Dimensional Diagram",
+    "Anomaly Detection Three-Dimensional Diagram",
+    "model joblib",
+    "Transform Pipeline Configuration"
+  ],
+  "unsupported": [
+    "all_models",
+    "application_data",
+    "target_column",
+    "automl",
+    "keep_missing_values",
+    "feature_selection",
+    "previous_experiment"
+  ]
+}

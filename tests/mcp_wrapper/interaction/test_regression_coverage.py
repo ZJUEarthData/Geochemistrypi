@@ -1,0 +1,218 @@
+import ast
+import json
+import sys
+from pathlib import Path
+
+import pytest
+from geochemistrypi_mcp import PlanCompilationError, RegressionPlanCompiler, RegressionRequest
+from geochemistrypi_mcp.regression_contract import MODEL_DISPLAY_NAMES, MODEL_ORDER, MODELS_WITHOUT_AUTOML
+from pydantic import ValidationError
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
+CAPABILITY_FIXTURE = REPOSITORY_ROOT / "tests" / "mcp_wrapper" / "parity" / "fixtures" / "regression_capability_matrix_v1.json"
+
+
+def _dataset(tmp_path: Path, *, missing: bool = False, non_numeric_target: bool = False) -> Path:
+    path = tmp_path / ("regression-missing.csv" if missing else "regression.csv")
+    rows = ["SampleID,Target,SIO2,TIO2"]
+    for index in range(1, 21):
+        target = "high" if non_numeric_target and index == 4 else str(10 + index * 1.5)
+        sio2 = "" if missing and index == 3 else str(48 + index)
+        rows.append(f"S-{index},{target},{sio2},{0.5 + index / 10}")
+    path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    return path
+
+
+def _request(path: Path, **overrides) -> RegressionRequest:
+    values = {
+        "task": "regression",
+        "training_dataset_path": path,
+        "experiment_name": "PR5 Coverage",
+        "run_name": "Regression",
+        "identifier_column": "SampleID",
+        "feature_columns": ("SIO2", "TIO2"),
+        "target_column": "Target",
+    }
+    values.update(overrides)
+    return RegressionRequest(**values)
+
+
+def _assignment(path: Path, name: str):
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == name for target in node.targets):
+            return ast.literal_eval(node.value)
+    raise AssertionError(f"Assignment {name} not found")
+
+
+def test_versioned_regression_capability_matrix_matches_public_cli_constants() -> None:
+    fixture = json.loads(CAPABILITY_FIXTURE.read_text(encoding="utf-8"))
+    cli_models = _assignment(REPOSITORY_ROOT / "geochemistrypi" / "data_mining" / "constants.py", "REGRESSION_MODELS")
+
+    assert tuple(item["id"] for item in fixture["models"]) == MODEL_ORDER
+    assert [item["cli_name"] for item in fixture["models"]] == cli_models
+    assert [MODEL_DISPLAY_NAMES[model] for model in MODEL_ORDER] == cli_models
+    assert tuple(item["id"] for item in fixture["models"] if not item["automl"]) == MODELS_WITHOUT_AUTOML
+
+
+@pytest.mark.parametrize("model_name", MODEL_ORDER)
+def test_every_public_cli_regression_family_compiles_a_manual_plan(tmp_path: Path, model_name: str) -> None:
+    plan = RegressionPlanCompiler().compile(
+        _request(_dataset(tmp_path), model={"type": model_name}),
+        cli_executable=Path(sys.executable),
+    )
+    responses = {step.id: step.response for step in plan.steps}
+
+    assert responses["regression_mode"] == "1"
+    assert responses[model_name] == str(MODEL_ORDER.index(model_name) + 1)
+    assert any(MODEL_DISPLAY_NAMES[model_name] + " - Hyper-parameters Specification" in step.output_anchors for step in plan.steps)
+    assert Path(plan.expected_output_relative_paths[0]).parts[-3:] == (
+        "artifacts",
+        "model",
+        f"{MODEL_DISPLAY_NAMES[model_name]}.joblib",
+    )
+    assert Path(plan.expected_output_relative_paths[2]).name == f"Predicted vs. Actual Diagram - {MODEL_DISPLAY_NAMES[model_name]}.png"
+
+
+@pytest.mark.parametrize("model_name", tuple(model for model in MODEL_ORDER if model not in MODELS_WITHOUT_AUTOML))
+def test_supported_regression_automl_plans_omit_manual_prompts(tmp_path: Path, model_name: str) -> None:
+    plan = RegressionPlanCompiler().compile(
+        _request(_dataset(tmp_path), tuning="automl", model={"type": model_name}),
+        cli_executable=Path(sys.executable),
+    )
+
+    assert {step.id: step.response for step in plan.steps}["enable_automl"] == "1"
+    assert not any("Hyper-parameters Specification" in anchor for step in plan.steps for anchor in step.output_anchors)
+
+
+@pytest.mark.parametrize("model_name", MODELS_WITHOUT_AUTOML)
+def test_cli_models_without_automl_are_rejected_before_execution(tmp_path: Path, model_name: str) -> None:
+    with pytest.raises(ValidationError, match="does not offer AutoML"):
+        _request(_dataset(tmp_path), tuning="automl", model={"type": model_name})
+
+
+@pytest.mark.parametrize(
+    ("model", "required_steps", "absent_steps"),
+    [
+        ({"type": "polynomial_regression"}, {"degree", "interaction_only", "include_bias"}, {"disable_automl"}),
+        ({"type": "support_vector_machine", "kernel": "poly"}, {"kernel", "degree", "gamma"}, set()),
+        (
+            {"type": "random_forest", "bootstrap": False, "maximum_samples": None, "out_of_bag_score": False},
+            {"bootstrap", "out_of_bag_score"},
+            {"maximum_samples"},
+        ),
+        ({"type": "k_nearest_neighbors", "algorithm": "kd_tree", "metric": "euclidean"}, {"leaf_size", "metric"}, {"power"}),
+        ({"type": "stochastic_gradient_descent", "penalty": "elasticnet"}, {"penalty", "l1_ratio", "power"}, set()),
+        ({"type": "bayesian_ridge"}, {"alpha_1", "lambda_2", "compute_score", "copy_x", "verbose"}, set()),
+    ],
+)
+def test_regression_conditional_model_prompt_branches(
+    tmp_path: Path,
+    model: dict,
+    required_steps: set[str],
+    absent_steps: set[str],
+) -> None:
+    plan = RegressionPlanCompiler().compile(_request(_dataset(tmp_path), model=model), cli_executable=Path(sys.executable))
+    step_ids = {step.id for step in plan.steps}
+    assert required_steps <= step_ids
+    assert not absent_steps & step_ids
+
+
+def test_regression_training_application_and_preprocessing_parity(tmp_path: Path) -> None:
+    training = _dataset(tmp_path)
+    application = tmp_path / "regression-application.csv"
+    application.write_text("SampleID,SIO2,TIO2\nA-1,55,1.1\nA-2,57,1.2\n", encoding="utf-8")
+    request = _request(
+        training,
+        application_dataset_path=application,
+        engineered_features=({"name": "SiTi", "formula": "{SIO2} / {TIO2}"},),
+        scaling="mean_normalization",
+        feature_selection={"method": "select_k_best", "retain_count": 2},
+        model={"type": "ridge_regression"},
+    )
+    plan = RegressionPlanCompiler().compile(request, cli_executable=Path(sys.executable))
+    responses = {step.id: step.response for step in plan.steps}
+
+    assert plan.public_command[:6] == (
+        str(Path(sys.executable).resolve()),
+        "data-mining",
+        "--training",
+        str(training.resolve()),
+        "--application",
+        str(application.resolve()),
+    )
+    assert plan.public_command[6] == "--world-map-config"
+    assert json.loads(plan.public_command[7])["enabled"] is False
+    assert responses["engineered_feature_1_formula"] == "b / c"
+    assert responses["feature_columns"] == "[2,4]"
+    assert responses["mean_normalization"] == "3"
+    assert responses["feature_selection_method"] == "2"
+    assert responses["feature_selection_retain_count"] == "2"
+    assert any(step.id == "continue_after_inference" for step in plan.steps)
+
+
+def test_linear_family_plot_dimension_prompts_follow_final_feature_count(tmp_path: Path) -> None:
+    two_features = RegressionPlanCompiler().compile(
+        _request(_dataset(tmp_path), model={"type": "linear_regression"}),
+        cli_executable=Path(sys.executable),
+    )
+    two_feature_steps = {step.id: step.response for step in two_features.steps}
+    assert two_feature_steps["one_dimensional_plot_feature"] == "1"
+    assert "two_dimensional_plot_feature_1" not in two_feature_steps
+
+    three_features = RegressionPlanCompiler().compile(
+        _request(
+            _dataset(tmp_path),
+            engineered_features=({"name": "SiTi", "formula": "{SIO2} / {TIO2}"},),
+            model={"type": "ridge_regression"},
+        ),
+        cli_executable=Path(sys.executable),
+    )
+    three_feature_steps = {step.id: step.response for step in three_features.steps}
+    assert three_feature_steps["one_dimensional_plot_feature"] == "1"
+    assert three_feature_steps["two_dimensional_plot_feature_1"] == "1"
+    assert three_feature_steps["two_dimensional_plot_feature_2"] == "2"
+
+
+def test_regression_rejects_non_numeric_targets_and_unsupported_missing_value_models(tmp_path: Path) -> None:
+    with pytest.raises(PlanCompilationError, match="target column.*non-numeric"):
+        RegressionPlanCompiler().compile(_request(_dataset(tmp_path, non_numeric_target=True)), cli_executable=Path(sys.executable))
+
+    missing_path = _dataset(tmp_path, missing=True)
+    with pytest.raises(PlanCompilationError, match="choose keep, drop_rows, or impute explicitly"):
+        RegressionPlanCompiler().compile(_request(missing_path), cli_executable=Path(sys.executable))
+    with pytest.raises(PlanCompilationError, match="only offers XGBoost"):
+        RegressionPlanCompiler().compile(
+            _request(missing_path, missing_values={"method": "keep"}, model={"type": "ridge_regression"}),
+            cli_executable=Path(sys.executable),
+        )
+
+    xgboost = RegressionPlanCompiler().compile(
+        _request(missing_path, missing_values={"method": "keep"}, model={"type": "xgboost"}),
+        cli_executable=Path(sys.executable),
+    )
+    assert {step.id: step.response for step in xgboost.steps}["xgboost"] == "1"
+
+    too_small = tmp_path / "too-small.csv"
+    too_small.write_text("SampleID,Target,SIO2,TIO2\n" + "\n".join(f"S-{index},{index * 2},{index},{index / 10}" for index in range(1, 11)) + "\n", encoding="utf-8")
+    with pytest.raises(PlanCompilationError, match="fixed 10-fold cross-validation"):
+        RegressionPlanCompiler().compile(_request(too_small), cli_executable=Path(sys.executable))
+
+    negative_target = tmp_path / "negative-target.csv"
+    negative_target.write_text(_dataset(tmp_path).read_text(encoding="utf-8").replace("11.5", "-11.5", 1), encoding="utf-8")
+    with pytest.raises(PlanCompilationError, match="poisson.*non-negative"):
+        RegressionPlanCompiler().compile(
+            _request(negative_target, model={"type": "decision_tree", "criterion": "poisson"}),
+            cli_executable=Path(sys.executable),
+        )
+
+
+def test_regression_request_rejects_classification_only_and_manual_automl_fields(tmp_path: Path) -> None:
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        _request(_dataset(tmp_path), label_customization={"strategy": "encode_original"})
+    with pytest.raises(ValidationError, match="manual model settings are not used"):
+        _request(
+            _dataset(tmp_path),
+            tuning="automl",
+            model={"type": "ridge_regression", "alpha": 0.5},
+        )
