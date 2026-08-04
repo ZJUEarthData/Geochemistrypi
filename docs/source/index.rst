@@ -33,6 +33,7 @@ Welcome to Geochemistry π
    Deployment <deployment.rst>
    Complete Pull Request <For Developer/A Completed Pull Request.md>
    Add New Model To Framework <For Developer/Add New Model To Framework.md>
+   MCP Developer Notes <For Developer/MCP/index.md>
    Docs Link <For Developer/Developer Docs link.md>
    Xterm Demo <For Developer/xterm_demo.rst>
 
