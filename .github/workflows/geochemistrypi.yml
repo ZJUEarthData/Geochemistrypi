@@ -1,41 +1,307 @@
-name: Python package
+name: Engine baseline
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 0"
+
+permissions:
+  contents: read
 
 jobs:
-  build:
-
+  test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      MPLBACKEND: Agg
+      SQLALCHEMY_DATABASE_URL: ""
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up supported Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          cache: pip
+
+      - name: Install build and quality tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build pre-commit pytest
+
+      - name: Run pre-commit hooks
+        run: pre-commit run --all-files
+
+      - name: Build production wheel
+        run: python -m build --wheel
+
+      - name: Verify production wheel excludes source tests
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          wheels = sorted(Path("dist").glob("*.whl"))
+          if len(wheels) != 1:
+              raise SystemExit(f"Expected exactly one wheel, found: {wheels}")
+          with ZipFile(wheels[0]) as archive:
+              packaged_tests = [
+                  name
+                  for name in archive.namelist()
+                  if name.startswith("geochemistrypi/data_mining/tests/")
+              ]
+          if packaged_tests:
+              raise SystemExit(f"Production wheel contains source tests: {packaged_tests}")
+          print(f"Verified {wheels[0].name}: 0 packaged source-test paths")
+          PY
+
+      - name: Install production wheel
+        run: python -m pip install dist/*.whl
+
+      - name: Run tests against the installed CLI wheel
+        working-directory: ${{ runner.temp }}
+        run: >-
+          python -m pytest
+          -c "${{ github.workspace }}/tests/installed-wheel-pytest.ini"
+          --import-mode=importlib
+          "${{ github.workspace }}/geochemistrypi"
+          "${{ github.workspace }}/tests/cli_contract"
+          "${{ github.workspace }}/tests/test_database_boundary.py"
+
+  mcp-wrapper:
+    name: MCP wrapper (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9"]
+        # The CLI is Python 3.9-only. Keep its legacy scientific stack on the
+        # supported Intel runner instead of inheriting macos-latest arm64.
+        os: [ubuntu-latest, windows-latest, macos-15-intel]
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install flake8 pytest
-        python -m pip install pre-commit
-        if [ -f requirements/production.txt ]; then pip install -r requirements/production.txt; fi
-    - name: Run pre-commit hooks
-      run: |
-        pre-commit run --all-files
-    # - name: Lint with flake8
-    #   run: |
-    #     # stop the build if there are Python syntax errors or undefined names
-    #     flake8 . --count --ignore=F811,W605 --show-source --statistics
-    #     # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-    #     flake8 . --count --exit-zero --max-complexity=20 --max-line-length=200 --statistics
-    # - name: Test with pytest
-      # run: |
-        # pytest
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up MCP Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install MCP package and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build -e "packages/geochemistrypi-mcp[test]"
+
+      - name: Run cross-platform MCP tests
+        env:
+          SQLALCHEMY_DATABASE_URL: ""
+        run: python -m pytest tests/mcp_wrapper/installation tests/mcp_wrapper/interaction tests/mcp_wrapper/protocol
+
+      - name: Build the exact CLI and MCP release candidate
+        run: |
+          python -m build --wheel --outdir release-bundle .
+          python -m build --wheel --outdir release-bundle packages/geochemistrypi-mcp
+          geochemistrypi-mcp-release build-manifest --dist release-bundle --release-tag mcp-v0.2.0-cli-v0.8.0 --source-commit "${{ github.sha }}"
+          geochemistrypi-mcp-release verify --bundle release-bundle --allow-unsigned
+
+      - name: Verify both production wheels exclude repository tests
+        shell: python
+        run: |
+          from pathlib import Path
+          from geochemistrypi_mcp.release import inspect_wheel
+
+          wheels = sorted(Path("release-bundle").glob("*.whl"))
+          if len(wheels) != 2:
+              raise SystemExit(f"Expected exactly two wheels, found: {wheels}")
+          for wheel in wheels:
+              metadata = inspect_wheel(wheel)
+              print(f"Verified {wheel.name}: {metadata.file_count} packaged files, no repository tests")
+
+      - name: Verify installed MCP wheel
+        shell: python
+        run: |
+          from pathlib import Path
+          import os
+          import subprocess
+          import sys
+
+          workspace = Path.cwd().resolve()
+          wheel = next(Path("release-bundle").glob("geochemistrypi_mcp-*.whl"))
+          subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "geochemistrypi-mcp"])
+          subprocess.check_call([sys.executable, "-m", "pip", "install", str(wheel)])
+          subprocess.check_call(
+              [
+                  sys.executable,
+                  "-m",
+                  "pytest",
+                  "-c",
+                  str(workspace / "tests" / "installed-wheel-pytest.ini"),
+                  str(workspace / "tests" / "mcp_wrapper" / "installation"),
+                  str(workspace / "tests" / "mcp_wrapper" / "interaction"),
+                  str(workspace / "tests" / "mcp_wrapper" / "protocol"),
+              ],
+              cwd=os.environ["RUNNER_TEMP"],
+          )
+
+      - name: Install pinned setup runtime
+        run: python -m pip install uv==0.11.7
+
+      - name: Exercise clean install, repeat, repair, upgrade, rollback, and uninstall
+        shell: python
+        env:
+          GEOCHEMISTRYPI_MCP_APP_ROOT: ${{ runner.temp }}/geochemistrypi-mcp-lifecycle
+        run: |
+          from pathlib import Path
+          import subprocess
+
+          from geochemistrypi_mcp.setup import SetupPaths
+
+          bundle = Path("release-bundle").resolve()
+          wheel = next(bundle.glob("geochemistrypi_mcp-*.whl")).resolve()
+          requirement = f"geochemistrypi-mcp[release] @ {wheel.as_uri()}"
+          bootstrap = [
+              "uv", "run", "--isolated", "--no-project", "--python", "3.11",
+              "--with", requirement, "geochemistrypi-mcp-setup",
+          ]
+
+          def setup(*arguments):
+              subprocess.check_call([*bootstrap, *arguments])
+
+          paths = SetupPaths.default()
+          setup("install", "--client", "standard")
+          setup("install", "--client", "standard")
+
+          run_artifact = paths.runs_root / "ci-preserved" / "result.json"
+          tracking_artifact = paths.tracking_root / "ci-preserved" / "meta.yaml"
+          run_artifact.parent.mkdir(parents=True, exist_ok=True)
+          tracking_artifact.parent.mkdir(parents=True, exist_ok=True)
+          run_artifact.write_text('{"preserved": true}\n', encoding="utf-8")
+          tracking_artifact.write_text("name: preserved\n", encoding="utf-8")
+
+          setup("upgrade", "--bundle", str(bundle), "--allow-unsigned-bundle")
+          setup("rollback")
+          setup("uninstall")
+          assert run_artifact.is_file()
+          assert tracking_artifact.is_file()
+
+          setup(
+              "install", "--bundle", str(bundle),
+              "--allow-unsigned-bundle", "--client", "standard",
+          )
+          setup("install", "--client", "standard")
+          setup("repair", "--client", "standard")
+          doctor = paths.server_command.with_name(
+              paths.server_command.name.replace(
+                  "geochemistrypi-mcp",
+                  "geochemistrypi-mcp-doctor",
+              )
+          )
+          subprocess.check_call([str(doctor), "--json"])
+          setup("uninstall")
+          assert run_artifact.read_text(encoding="utf-8") == '{"preserved": true}\n'
+          assert tracking_artifact.read_text(encoding="utf-8") == "name: preserved\n"
+
+  mcp-cli-parity:
+    name: MCP to CLI parity
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up CLI Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          cache: pip
+
+      - name: Build and install the CLI in its private environment
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build --wheel
+          python -m venv .engine-venv
+          .engine-venv/bin/python -m pip install --upgrade pip
+          .engine-venv/bin/python -m pip install dist/*.whl
+
+      - name: Set up MCP Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install the MCP package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e "packages/geochemistrypi-mcp[test]"
+
+      - name: Compare direct CLI and stdio MCP outputs
+        env:
+          GEOCHEMISTRYPI_CLI_EXECUTABLE: ${{ github.workspace }}/.engine-venv/bin/geochemistrypi
+          SQLALCHEMY_DATABASE_URL: ""
+        run: python -m pytest -m mcp_cli_parity tests/mcp_wrapper/parity
+
+  pr9i-full-parity:
+    name: PR9I full parity (${{ matrix.shard }})
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+          - classification-manual
+          - classification-automl
+          - regression-manual
+          - regression-automl
+          - unsupervised-manual
+          - aggregates
+          - branches-rendering
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up CLI Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          cache: pip
+
+      - name: Build and install the CLI in its private environment
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build --wheel
+          python -m venv .engine-venv
+          .engine-venv/bin/python -m pip install --upgrade pip
+          .engine-venv/bin/python -m pip install dist/*.whl
+
+      - name: Set up MCP Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install MCP package and run shard
+        env:
+          GEOCHEMISTRYPI_CLI_EXECUTABLE: ${{ github.workspace }}/.engine-venv/bin/geochemistrypi
+          GEOCHEMISTRYPI_FULL_PARITY: "1"
+          GEOCHEMISTRYPI_PARITY_SHARD: ${{ matrix.shard }}
+          SQLALCHEMY_DATABASE_URL: ""
+          MPLBACKEND: Agg
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e "packages/geochemistrypi-mcp[test]"
+          if [ "${GEOCHEMISTRYPI_PARITY_SHARD}" = "branches-rendering" ]; then
+            python -m pytest -m mcp_cli_parity tests/mcp_wrapper/parity/test_mcp_cli_parity.py
+          else
+            python -m pytest -m mcp_cli_full_parity tests/mcp_wrapper/parity/test_full_parity_matrix.py
+          fi
