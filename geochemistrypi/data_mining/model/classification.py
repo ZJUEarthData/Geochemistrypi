@@ -3898,7 +3898,10 @@ class SGDClassification(LinearWorkflowMixin, ClassificationWorkflowBase):
                     "eta0": {"domain": tune.loguniform(lower=0.000001, upper=0.1), "init_value": 0.000001},
                     "power_t": {"domain": tune.uniform(lower=0.1, upper=0.9), "init_value": 0.5},
                     "early_stopping": {"domain": tune.choice([True, False]), "init_value": False},
-                    "validation_fraction": {"domain": tune.uniform(lower=0.000001, upper=1), "init_vlue": 0.1},
+                    # Keep enough samples on both sides of the early-stopping
+                    # split. FLAML may sample the upper bound exactly, so 1.0
+                    # is not a valid bound for sklearn's open interval (0, 1).
+                    "validation_fraction": {"domain": tune.uniform(lower=0.05, upper=0.5), "init_value": 0.1},
                     "warm_start": {"domain": tune.choice([True, False]), "init_value": False},
                 }
                 return space

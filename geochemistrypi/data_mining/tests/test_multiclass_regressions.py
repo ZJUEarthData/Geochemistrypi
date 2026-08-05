@@ -22,7 +22,7 @@ from sklearn.tree import DecisionTreeClassifier
 from geochemistrypi.cli import app
 from geochemistrypi.data_mining.data.data_readiness import create_sub_data_set, data_split
 from geochemistrypi.data_mining.model._base import TreeWorkflowMixin
-from geochemistrypi.data_mining.model.classification import ClassificationWorkflowBase, MLPClassification, SGDClassification, XGBoostClassification
+from geochemistrypi.data_mining.model.classification import ClassificationWorkflowBase, LogisticRegressionClassification, MLPClassification, SGDClassification, XGBoostClassification
 from geochemistrypi.data_mining.model.func._common_supervised import plot_decision_tree
 from geochemistrypi.data_mining.model.func.algo_classification._common import score
 from geochemistrypi.data_mining.model.func.algo_classification._logistic_regression import plot_logistic_importance
@@ -372,6 +372,27 @@ def test_automl_settings_use_a_repeatable_trial_budget_and_random_state() -> Non
 
     workflow.random_state = None
     assert workflow._prepare_automl_settings(original)["seed"] == workflow.default_random_state
+
+
+def test_logistic_automl_uses_a_unix_safe_compatibility_budget() -> None:
+    workflow = LogisticRegressionClassification()
+
+    prepared = workflow._prepare_automl_settings(workflow.settings)
+
+    assert prepared["estimator_list"] == ["lrl2"]
+    assert prepared["time_budget"] == workflow.automl_compatibility_time_budget_seconds
+    assert 0 < prepared["time_budget"] <= 2_147_483_647
+
+
+def test_sgd_automl_validation_fraction_search_space_is_always_valid() -> None:
+    workflow = SGDClassification()
+
+    search_space = workflow.customization().search_space((100, 4), "classification")
+    validation_fraction = search_space["validation_fraction"]
+
+    assert validation_fraction["init_value"] == 0.1
+    assert 0 < validation_fraction["domain"].lower
+    assert validation_fraction["domain"].upper < 1
 
 
 def test_regression_cross_validation_scores_remain_numeric_in_json_output() -> None:

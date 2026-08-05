@@ -31,6 +31,11 @@ class WorkflowBase(metaclass=ABCMeta):
     default_random_state = 42
     automl_max_iterations = 20
     automl_tuning_trials = 8
+    # FLAML 1.0.14 passes an unbounded L2-logistic budget to signal.alarm on
+    # Unix, where it overflows the C integer accepted by the system call. The
+    # fixed max_iter above remains the real search bound; this finite value is
+    # deliberately high enough not to become a wall-clock stopping condition.
+    automl_compatibility_time_budget_seconds = 86_400
 
     @classmethod
     def show_info(cls) -> None:
@@ -57,8 +62,13 @@ class WorkflowBase(metaclass=ABCMeta):
         np.random.seed(random_seed)
         prepared = dict(settings)
         # A wall-clock cutoff can end otherwise identical searches on different
-        # trials. A fixed trial budget is both bounded and reproducible.
-        prepared.pop("time_budget", None)
+        # machines. Keep it disabled for reproducible trial-based searches. The
+        # FLAML 1.0.14 L2-logistic learner is the sole exception: on Unix it
+        # passes an unbounded value to signal.alarm(), which overflows a C int.
+        if tuple(prepared.get("estimator_list", ())) == ("lrl2",):
+            prepared["time_budget"] = self.automl_compatibility_time_budget_seconds
+        else:
+            prepared.pop("time_budget", None)
         prepared.setdefault("max_iter", self.automl_max_iterations)
         prepared.setdefault("seed", random_seed)
         return prepared

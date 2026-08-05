@@ -263,6 +263,12 @@ print(f"UNBUFFERED={os.environ['PYTHONUNBUFFERED']}", flush=True)
 print(f"DATABASE={os.environ.get('SQLALCHEMY_DATABASE_URL', '<missing>')}", flush=True)
 print(f"PYTHONHOME={os.environ.get('PYTHONHOME', '<missing>')}", flush=True)
 print(f"VIRTUAL_ENV={os.environ.get('VIRTUAL_ENV', '<missing>')}", flush=True)
+print(f"OMP_NUM_THREADS={os.environ.get('OMP_NUM_THREADS', '<missing>')}", flush=True)
+print(f"OPENBLAS_NUM_THREADS={os.environ.get('OPENBLAS_NUM_THREADS', '<missing>')}", flush=True)
+print(f"MKL_NUM_THREADS={os.environ.get('MKL_NUM_THREADS', '<missing>')}", flush=True)
+print(f"NUMEXPR_NUM_THREADS={os.environ.get('NUMEXPR_NUM_THREADS', '<missing>')}", flush=True)
+print(f"VECLIB_MAXIMUM_THREADS={os.environ.get('VECLIB_MAXIMUM_THREADS', '<missing>')}", flush=True)
+print(f"BLIS_NUM_THREADS={os.environ.get('BLIS_NUM_THREADS', '<missing>')}", flush=True)
 print(f"SECOND={second}", flush=True)
 """,
     )
@@ -280,6 +286,12 @@ print(f"SECOND={second}", flush=True)
             "PYTHONUNBUFFERED": "0",
             "SQLALCHEMY_DATABASE_URL": "sqlite:///wrong.db",
             "VIRTUAL_ENV": "C:/wrong-environment",
+            "OMP_NUM_THREADS": "99",
+            "OPENBLAS_NUM_THREADS": "99",
+            "MKL_NUM_THREADS": "99",
+            "NUMEXPR_NUM_THREADS": "99",
+            "VECLIB_MAXIMUM_THREADS": "99",
+            "BLIS_NUM_THREADS": "99",
         },
     )
 
@@ -295,6 +307,15 @@ print(f"SECOND={second}", flush=True)
     assert "DATABASE=<missing>" in stdout
     assert "PYTHONHOME=C:/wrong-python" not in stdout
     assert "VIRTUAL_ENV=<missing>" in stdout
+    for variable in (
+        "OMP_NUM_THREADS",
+        "OPENBLAS_NUM_THREADS",
+        "MKL_NUM_THREADS",
+        "NUMEXPR_NUM_THREADS",
+        "VECLIB_MAXIMUM_THREADS",
+        "BLIS_NUM_THREADS",
+    ):
+        assert f"{variable}=1" in stdout
     assert result.stderr_path.read_text(encoding="utf-8").strip() == "diagnostic"
     trace = json.loads(result.trace_path.read_text(encoding="utf-8"))
     assert trace["status"] == "completed"
@@ -425,6 +446,24 @@ def test_driver_rejects_an_output_path_that_windows_plotting_cannot_save(tmp_pat
 
     with pytest.raises(WorkspacePathError, match="choose a shorter workspace parent"):
         CliInteractionDriver(prompt_timeout_seconds=1, process_timeout_seconds=2).run(plan, workspace_parent=tmp_path / "runs")
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows generated-sidecar path budget regression")
+def test_driver_reserves_windows_path_space_for_generated_spreadsheet_sidecars(tmp_path: Path) -> None:
+    script = _fake_script(tmp_path, 'raise SystemExit("must not start")\n')
+    workspace = tmp_path / "workspace"
+    relative_path = "x" * (259 - len(str(workspace)) - 1)
+    plan = InteractionPlan(
+        schema_version=1,
+        name="windows-sidecar-path-budget",
+        public_command=(sys.executable, "-u", str(script)),
+        steps=(InteractionStep("never", ("NEVER>",), ""),),
+        expected_output_relative_paths=(relative_path,),
+    )
+
+    assert len(str(workspace / relative_path)) == 259
+    with pytest.raises(WorkspacePathError, match="including generated sidecars"):
+        CliInteractionDriver(prompt_timeout_seconds=1, process_timeout_seconds=2).run(plan, workspace=workspace)
 
 
 def test_driver_package_does_not_import_machine_learning_implementations() -> None:
