@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+from pathlib import Path
 from time import sleep
 from typing import Optional
 
@@ -9,6 +10,7 @@ from rich import print
 from rich.console import Console
 from rich.prompt import Confirm, Prompt
 
+from .aggregate import child_result, safe_child_error, write_aggregate_manifest
 from .constants import (
     ANOMALYDETECTION_MODELS,
     BUILT_IN_DATASET_PATH,
@@ -53,18 +55,37 @@ from .data.inference import build_transform_pipeline, model_inference
 from .data.preprocessing import feature_scaler, feature_selector
 from .data.statistic import monte_carlo_simulator
 from .enum_ import DataSource
-from .plot.map_plot import process_world_map
+from .plot.map_plot import WorldMapConfiguration, process_world_map
 from .plot.statistic_plot import basic_statistic, check_missing_value, correlation_plot, distribution_plot, is_null_value, log_distribution_plot, probability_plot, ratio_null_vs_filled
 from .process.classify import ClassificationModelSelection
 from .process.cluster import ClusteringModelSelection
 from .process.decompose import DecompositionModelSelection
 from .process.detect import AnomalyDetectionModelSelection
 from .process.regress import RegressionModelSelection
+from .run_time_series import run_time_series_dataframe
 from .utils.base import clear_output, copy_files, copy_files_from_source_dir_to_dest_dir, create_geopi_output_dir, get_os, list_excel_files, log, save_data, show_warning
 from .utils.mlflow_utils import retrieve_previous_experiment_id
 
 
-def cli_pipeline(training_data_path: str, application_data_path: Optional[str] = None, data_source: Optional[DataSource] = None) -> None:
+def semantic_mode_number(selected_number: int, visible_options: list) -> int:
+    """Map a visible menu position back to the stable full-mode number."""
+    if selected_number < 1 or selected_number > len(visible_options):
+        raise ValueError("Selected mode number is outside the visible menu.")
+    selected_label = visible_options[selected_number - 1]
+    try:
+        return MODE_OPTION.index(selected_label) + 1
+    except ValueError as exc:
+        raise ValueError(f"Unknown mode label in visible menu: {selected_label!r}") from exc
+
+
+def cli_pipeline(
+    training_data_path: str,
+    application_data_path: Optional[str] = None,
+    data_source: Optional[DataSource] = None,
+    world_map_configuration: Optional[WorldMapConfiguration] = None,
+    tracking_root: Optional[str] = None,
+    existing_experiment_id: Optional[str] = None,
+) -> None:
     """The command line interface software for Geochemistry Pi.
     The business logic of this CLI software can be found in the figures in the README.md file.
     It provides three  MLOps core functionalities:
@@ -110,7 +131,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
 
         def _data_requirement_print():
             print("[bold green]Please restart the software after putting the data in the 'geopi_input' directory.[/bold green]")
-            print("[bold green]Currently, the data file format only supports '.xlsx', '.xls', '.csv'.[/bold green]")
+            print("[bold green]Currently, the data file format only supports '.xlsx' and '.csv'.[/bold green]")
             print("[bold green]If you want to activate the model inference, please put the 'application data' in it as well.[/bold green]")
             print("[bold green]Check our online documentation for more information on the format of the 'application data'.[/bold green]")
 
@@ -208,41 +229,60 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     logger.debug("Experiment Setup")
     console.print("Press [bold magenta]Ctrl + C[/bold magenta] to exit our software at any time.")
     console.print("Input Template [bold magenta][Option1/Option2][/bold magenta] [bold cyan](Default Value)[/bold cyan]: Input Value")
-    # Create a new experiment or use the previous experiment
-    is_used_previous_experiment = Confirm.ask("Use Previous Experiment", default=False)
-    # Set the tracking uri to the local directory, in the future, we can set it to the remote server.
-    experiments_location = "file:///" + os.path.join(WORKING_PATH, "geopi_tracking")
-    mlflow.set_tracking_uri(experiments_location)
+    # A managed caller can provide one durable tracking root and stable existing
+    # experiment ID. The human CLI keeps its original interactive behavior.
+    if existing_experiment_id and not tracking_root:
+        raise ValueError("existing_experiment_id requires an explicit tracking_root")
+    tracking_directory = Path(tracking_root).expanduser().resolve() if tracking_root else Path(WORKING_PATH, "geopi_tracking").resolve()
+    if tracking_root and not Path(tracking_root).expanduser().is_absolute():
+        raise ValueError("tracking_root must be an absolute local path")
+    tracking_directory.mkdir(parents=True, exist_ok=True)
+    mlflow.set_tracking_uri(tracking_directory.as_uri())
     # Print the tracking uri for debugging.
     # print("tracking uri:", mlflow.get_tracking_uri())
-    if is_used_previous_experiment:
-        # List all existing experiment names
-        existing_experiments = mlflow.search_experiments()
-        print("   [underline]Experiment Index: Experiment Name[/underline]")
-        for idx, exp in enumerate(existing_experiments):
-            print(f"   [bold underline magenta]Experiment {idx}: {exp.name}[/bold underline magenta]")
-        old_experiment_id = None
-        # If the user doesn't provide the correct experiment name, then ask the user to input again.
-        while not old_experiment_id:
-            old_experiment_name = Prompt.ask("Previous Experiment Name")
-            old_experiment_id = retrieve_previous_experiment_id(old_experiment_name)
-        mlflow.set_experiment(experiment_id=old_experiment_id)
-        experiment = mlflow.get_experiment(experiment_id=old_experiment_id)
+    if existing_experiment_id:
+        from geochemistrypi.tracking import get_experiment
+
+        experiment_value = get_experiment(
+            tracking_directory,
+            existing_experiment_id,
+            maximum_runs=0,
+        )
+        experiment_id = experiment_value["experiment"]["experiment_id"]
+        mlflow.set_experiment(experiment_id=experiment_id)
+        experiment = mlflow.get_experiment(experiment_id=experiment_id)
     else:
-        new_experiment_name = Prompt.ask("New Experiment", default="GeoPi - Rock Classification")
-        # new_experiment_tag = Prompt.ask("Experiment Tag Version", default="E - v1.0.0")
-        try:
-            # new_experiment_id = mlflow.create_experiment(name=new_experiment_name, artifact_location=artifact_localtion, tags={"version": new_experiment_tag})
-            new_experiment_id = mlflow.create_experiment(name=new_experiment_name)
-        except mlflow.exceptions.MlflowException as e:
-            if "already exists" in str(e):
-                console.print("   The experiment name already exists.", style="bold red")
-                console.print("   Use the existing experiment.", style="bold red")
-                console.print(f"   '{new_experiment_name}' is activated.", style="bold red")
-                new_experiment_id = mlflow.get_experiment_by_name(name=new_experiment_name).experiment_id
-            else:
-                raise e
-        experiment = mlflow.get_experiment(experiment_id=new_experiment_id)
+        # Create a new experiment or use a previous experiment by name for the
+        # original interactive CLI. MCP intentionally uses the stable-ID branch.
+        is_used_previous_experiment = Confirm.ask("Use Previous Experiment", default=False)
+        if is_used_previous_experiment:
+            # List all existing experiment names
+            existing_experiments = mlflow.search_experiments()
+            print("   [underline]Experiment Index: Experiment Name[/underline]")
+            for idx, exp in enumerate(existing_experiments):
+                print(f"   [bold underline magenta]Experiment {idx}: {exp.name}[/bold underline magenta]")
+            old_experiment_id = None
+            # If the user doesn't provide the correct experiment name, then ask the user to input again.
+            while not old_experiment_id:
+                old_experiment_name = Prompt.ask("Previous Experiment Name")
+                old_experiment_id = retrieve_previous_experiment_id(old_experiment_name)
+            mlflow.set_experiment(experiment_id=old_experiment_id)
+            experiment = mlflow.get_experiment(experiment_id=old_experiment_id)
+        else:
+            new_experiment_name = Prompt.ask("New Experiment", default="GeoPi - Rock Classification")
+            # new_experiment_tag = Prompt.ask("Experiment Tag Version", default="E - v1.0.0")
+            try:
+                # new_experiment_id = mlflow.create_experiment(name=new_experiment_name, artifact_location=artifact_localtion, tags={"version": new_experiment_tag})
+                new_experiment_id = mlflow.create_experiment(name=new_experiment_name)
+            except mlflow.exceptions.MlflowException as e:
+                if "already exists" in str(e):
+                    console.print("   The experiment name already exists.", style="bold red")
+                    console.print("   Use the existing experiment.", style="bold red")
+                    console.print(f"   '{new_experiment_name}' is activated.", style="bold red")
+                    new_experiment_id = mlflow.get_experiment_by_name(name=new_experiment_name).experiment_id
+                else:
+                    raise e
+            experiment = mlflow.get_experiment(experiment_id=new_experiment_id)
     # print("Artifact Location: {}".format(experiment.artifact_location))
     run_name = Prompt.ask("Run Name", default="XGBoost Algorithm - Test 1")
     # run_tag = Prompt.ask("Run Tag Version", default="R - v1.0.0")
@@ -269,6 +309,8 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
             training_data_path = "Data_Decomposition.xlsx"
         elif built_in_training_data_num == 5:
             training_data_path = "Data_AnomalyDetection.xlsx"
+        elif built_in_training_data_num == 6:
+            training_data_path = "Data_Time_Series.xlsx"
         data = read_data(file_path=training_data_path)
         print(f"Successfully loading the built-in training data set '{training_data_path}'.")
         show_data_columns(data.columns)
@@ -300,6 +342,8 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         inference_data = None
     elif is_built_in_inference_data and built_in_training_data_num == 5:
         inference_data = None
+    elif is_built_in_inference_data and built_in_training_data_num == 6:
+        inference_data = None
 
     # <--- Name Selection --->
     logger.debug("Output Data Identifier Column Selection")
@@ -313,7 +357,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     # <--- World Map Projection --->
     logger.debug("World Map Projection")
     print("[bold green]-*-*- World Map Projection -*-*-[/bold green]")
-    process_world_map(data, name_column_select)
+    process_world_map(data, name_column_select, world_map_configuration)
 
     # <--- Data Selection --->
     logger.debug("Data Selection")
@@ -506,11 +550,52 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
     if missing_value_flag and not process_missing_value_flag:
         # The anomaly detection mode and decomposition mode don't support missing values.
         num2option(MODE_OPTION_WITH_MISSING_VALUES)
-        mode_num = limit_num_input(MODE_OPTION_WITH_MISSING_VALUES, SECTION[2], num_input)
+        selected_mode_num = limit_num_input(MODE_OPTION_WITH_MISSING_VALUES, SECTION[2], num_input)
+        mode_num = semantic_mode_number(selected_mode_num, MODE_OPTION_WITH_MISSING_VALUES)
     else:
         num2option(MODE_OPTION)
-        mode_num = limit_num_input(MODE_OPTION, SECTION[2], num_input)
+        selected_mode_num = limit_num_input(MODE_OPTION, SECTION[2], num_input)
+        mode_num = semantic_mode_number(selected_mode_num, MODE_OPTION)
     clear_output()
+
+    if mode_num == 6:
+        print("[bold green]-*-*- Time Series Configuration -*-*-[/bold green]")
+        age_column = Prompt.ask("Age Column", default="R_AGE")
+        maximum_age_column = Prompt.ask("Maximum Age Column", default="R_MAX_AGE")
+        probability_column = Prompt.ask("Probability Column", default="SBAP")
+        latitude_column = Prompt.ask("Latitude Column", default="LATITUDE")
+        longitude_column = Prompt.ask("Longitude Column", default="LONGITUDE")
+        bin_width = float(Prompt.ask("Age Bin Width (Ma)", default="10"))
+        iterations = int(Prompt.ask("Bootstrap Iterations", default="100"))
+        seed = int(Prompt.ask("Random Seed", default="2025"))
+        age_unit = Prompt.ask("Output Age Unit", choices=["Ma", "Ga"], default="Ma")
+        fit_curve = Confirm.ask("Plot Fitted Trend Curve", default=True)
+        if data_source == DataSource.BUILT_IN:
+            source_path = Path(BUILT_IN_DATASET_PATH) / training_data_path
+        elif data_source == DataSource.DESKTOP:
+            source_path = Path(INPUT_PATH) / training_data_path
+        else:
+            source_path = Path(training_data_path)
+        output_directory = run_time_series_dataframe(
+            data_selected_imputed_fe,
+            source_path,
+            Path(OUTPUT_PATH),
+            experiment.name,
+            run_name,
+            bin_width,
+            iterations,
+            seed,
+            age_column,
+            maximum_age_column,
+            probability_column,
+            latitude_column,
+            longitude_column,
+            age_unit,
+            fit_curve,
+        )
+        print(f"[bold green]Saved Time Series outputs to {output_directory}[/bold green]")
+        mlflow.end_run()
+        return
 
     # <--- Data Segmentation --->
     # divide X and y data set when it is supervised learning
@@ -693,7 +778,7 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
             4: DecompositionModelSelection,
             5: AnomalyDetectionModelSelection,
         }
-    MODELS = Modes2Models[mode_num]
+    MODELS = list(Modes2Models[mode_num])
     num2option(MODELS)
     # Add the option of all models
     all_models_num = len(MODELS) + 1
@@ -814,62 +899,144 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
 
     else:
         # Run all models
-        for i in range(len(MODELS) - 1):
-            # Start a nested MLflow run within the current MLflow run
-            with mlflow.start_run(run_name=MODELS[i], experiment_id=experiment.experiment_id, nested=True):
-                create_geopi_output_dir(OUTPUT_PATH, experiment.name, run_name, MODELS[i])
-                if mode_num == 2:
-                    run = Modes2Initiators[mode_num](MODELS[i], label_config=label_config, labels_already_customized=True, metric_average=metric_average)
-                else:
-                    run = Modes2Initiators[mode_num](MODELS[i])
-                # If is_automl is False, then run all models without AutoML.
-                if not is_automl:
-                    run.activate(X, y, X_train, X_test, y_train, y_test, name_train, name_test, name_all)
-                else:
-                    # If is_automl is True, but MODELS[i] is in the NON_AUTOML_MODELS, then run the model without AutoML.
-                    if MODELS[i] in NON_AUTOML_MODELS:
-                        run.activate(X, y, X_train, X_test, y_train, y_test, name_train, name_test, name_all)
-                    else:
-                        # If is_automl is True, and MODELS[i] is not in the NON_AUTOML_MODELS, then run the model with AutoML.
-                        run.activate(X, y, X_train, X_test, y_train, y_test, name_train, name_test, name_all, is_automl)
-
-                # <--- Transform Pipeline --->
-                # Construct the transform pipeline using sklearn.pipeline.make_pipeline method.
-                logger.debug("Transform Pipeline")
-                print("[bold green]-*-*- Transform Pipeline Construction -*-*-[/bold green]")
-                transformer_config, transform_pipeline = build_transform_pipeline(imputation_config, feature_scaling_config, feature_selection_config, run, X_train, y_train)
-
-                # <--- Model Inference --->
-                # If the user provides the inference data, then run the model inference.
-                # If the user chooses to drop the rows with missing values, then before running the model inference, need to drop the rows with missing values in inference data either.
-                logger.debug("Model Inference")
-                if inference_data_fe_selected is not None:
-                    print("[bold green]-*-*- Model Inference -*-*-[/bold green]")
-                    if drop_rows_with_missing_value_flag:
-                        inference_name_column = inference_data[NAME]
-                        inference_data_name = pd.concat([inference_name_column, inference_data_fe_selected], axis=1)
-                        inference_data_fe_selected_dropped = inference_data_fe_selected.dropna()
-                        inference_data_fe_selected_dropped_name = inference_data_name.dropna()
-                        inference_name_column_drop = inference_data_fe_selected_dropped_name[NAME]
-                        model_inference(inference_data_fe_selected_dropped, inference_name_column_drop, is_inference, run, transformer_config, transform_pipeline)
-                        save_data(
-                            inference_data_fe_selected_dropped,
-                            inference_name_column_drop,
-                            "Application Data Feature-Engineering Selected Dropped-Imputed",
-                            GEOPI_OUTPUT_ARTIFACTS_DATA_PATH,
-                            MLFLOW_ARTIFACT_DATA_PATH,
+        parent_directory = Path(OUTPUT_PATH) / experiment.name / run_name
+        child_results = []
+        for child_model in MODELS[:-1]:
+            child_directory = parent_directory / child_model
+            child_directory.mkdir(parents=True, exist_ok=True)
+            try:
+                # Start a nested MLflow run within the current MLflow run.
+                with mlflow.start_run(
+                    run_name=child_model,
+                    experiment_id=experiment.experiment_id,
+                    nested=True,
+                ):
+                    create_geopi_output_dir(OUTPUT_PATH, experiment.name, run_name, child_model)
+                    if mode_num == 2:
+                        run = Modes2Initiators[mode_num](
+                            child_model,
+                            label_config=label_config,
+                            labels_already_customized=True,
+                            metric_average=metric_average,
                         )
                     else:
-                        inference_name_column = inference_data[NAME]
-                        model_inference(inference_data_fe_selected, inference_name_column, is_inference, run, transformer_config, transform_pipeline)
-                    clear_output()
+                        run = Modes2Initiators[mode_num](child_model)
+                    if not is_automl or child_model in NON_AUTOML_MODELS:
+                        run.activate(
+                            X,
+                            y,
+                            X_train,
+                            X_test,
+                            y_train,
+                            y_test,
+                            name_train,
+                            name_test,
+                            name_all,
+                        )
+                    else:
+                        run.activate(
+                            X,
+                            y,
+                            X_train,
+                            X_test,
+                            y_train,
+                            y_test,
+                            name_train,
+                            name_test,
+                            name_all,
+                            is_automl,
+                        )
 
-            # <--- Data Dumping --->
-            # In this section, convert the data in the output to the summary.
-            GEOPI_OUTPUT_SUMMARY_PATH = os.getenv("GEOPI_OUTPUT_SUMMARY_PATH")
-            GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
-            GEOPI_OUTPUT_METRICS_PATH = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
-            GEOPI_OUTPUT_PARAMETERS_PATH = os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH")
-            copy_files(GEOPI_OUTPUT_ARTIFACTS_PATH, GEOPI_OUTPUT_METRICS_PATH, GEOPI_OUTPUT_PARAMETERS_PATH, GEOPI_OUTPUT_SUMMARY_PATH)
+                    logger.debug("Transform Pipeline")
+                    print("[bold green]-*-*- Transform Pipeline Construction -*-*-[/bold green]")
+                    transformer_config, transform_pipeline = build_transform_pipeline(
+                        imputation_config,
+                        feature_scaling_config,
+                        feature_selection_config,
+                        run,
+                        X_train,
+                        y_train,
+                    )
+
+                    logger.debug("Model Inference")
+                    if inference_data_fe_selected is not None:
+                        print("[bold green]-*-*- Model Inference -*-*-[/bold green]")
+                        if drop_rows_with_missing_value_flag:
+                            inference_name_column = inference_data[NAME]
+                            inference_data_name = pd.concat(
+                                [inference_name_column, inference_data_fe_selected],
+                                axis=1,
+                            )
+                            inference_data_fe_selected_dropped = inference_data_fe_selected.dropna()
+                            inference_data_fe_selected_dropped_name = inference_data_name.dropna()
+                            inference_name_column_drop = inference_data_fe_selected_dropped_name[NAME]
+                            model_inference(
+                                inference_data_fe_selected_dropped,
+                                inference_name_column_drop,
+                                is_inference,
+                                run,
+                                transformer_config,
+                                transform_pipeline,
+                            )
+                            save_data(
+                                inference_data_fe_selected_dropped,
+                                inference_name_column_drop,
+                                "Application Data Feature-Engineering Selected Dropped-Imputed",
+                                os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"),
+                                MLFLOW_ARTIFACT_DATA_PATH,
+                            )
+                        else:
+                            inference_name_column = inference_data[NAME]
+                            model_inference(
+                                inference_data_fe_selected,
+                                inference_name_column,
+                                is_inference,
+                                run,
+                                transformer_config,
+                                transform_pipeline,
+                            )
+                        clear_output()
+
+                    copy_files(
+                        os.environ["GEOPI_OUTPUT_ARTIFACTS_PATH"],
+                        os.environ["GEOPI_OUTPUT_METRICS_PATH"],
+                        os.environ["GEOPI_OUTPUT_PARAMETERS_PATH"],
+                        os.environ["GEOPI_OUTPUT_SUMMARY_PATH"],
+                    )
+                child_results.append(
+                    child_result(
+                        parent_directory,
+                        child_model,
+                        child_directory,
+                        "succeeded",
+                    )
+                )
+            except Exception as exc:
+                logger.exception("All-models child failed: %s", child_model)
+                child_results.append(
+                    child_result(
+                        parent_directory,
+                        child_model,
+                        child_directory,
+                        "failed",
+                        safe_child_error(exc),
+                    )
+                )
+                print(f"[bold red]Model {child_model!r} failed; continuing with the remaining models.[/bold red]")
+
+        create_geopi_output_dir(OUTPUT_PATH, experiment.name, run_name)
+        write_aggregate_manifest(
+            parent_directory,
+            {
+                1: "regression",
+                2: "classification",
+                3: "clustering",
+                4: "decomposition",
+                5: "anomaly_detection",
+            }[mode_num],
+            "automl" if is_automl else "manual",
+            MODELS[:-1],
+            child_results,
+        )
 
     mlflow.end_run()

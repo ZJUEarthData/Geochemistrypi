@@ -10,7 +10,7 @@ import pandas as pd
 # read Excel data
 root = tk.Tk()
 root.withdraw()
-file_path = filedialog.askopenfilename(title="Choose your Excel dataset", filetypes=[("Excel", "*.xlsx *.xls")])
+file_path = filedialog.askopenfilename(title="Choose your Excel dataset", filetypes=[("Excel", "*.xlsx")])
 if not file_path:
     print("finished")
     exit()

@@ -86,31 +86,73 @@ class AnomalyDetectionWorkflowBase(WorkflowBase):
         return X_anomaly_detection, X_normal, X_abnormal, name_normal, name_abnormal
 
     @staticmethod
-    def _density_estimation(data: pd.DataFrame, name_column: str, labels: pd.DataFrame, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _density_estimation(
+        data: pd.DataFrame,
+        name_column: str,
+        labels: pd.Series,
+        graph_name: str,
+        algorithm_name: str,
+        local_path: str,
+        mlflow_path: str,
+    ) -> None:
         """Plot the density estimation diagram of the anomaly detection result."""
         print(f"-----* {graph_name} *-----")
         density_estimation(data, labels, algorithm_name=algorithm_name)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
         data_with_labels = pd.concat([data, labels], axis=1)
-        save_data(data_with_labels, name_column, f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+        save_data(
+            data_with_labels,
+            name_column,
+            f"{graph_name} - {algorithm_name}",
+            local_path,
+            mlflow_path,
+        )
 
     @staticmethod
-    def _scatter2d(data: pd.DataFrame, name_column: str, labels: pd.DataFrame, algorithm_name: str, graph_name: str, local_path: str, mlflow_path: str) -> None:
+    def _scatter2d(
+        data: pd.DataFrame,
+        name_column: str,
+        labels: pd.Series,
+        algorithm_name: str,
+        graph_name: str,
+        local_path: str,
+        mlflow_path: str,
+    ) -> None:
         """Plot the two-dimensional diagram of the anomaly detection result."""
         print(f"-----* {graph_name} *-----")
         scatter2d(data, labels, algorithm_name=algorithm_name)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
         data_with_labels = pd.concat([data, labels], axis=1)
-        save_data(data_with_labels, name_column, f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+        save_data(
+            data_with_labels,
+            name_column,
+            f"{graph_name} - {algorithm_name}",
+            local_path,
+            mlflow_path,
+        )
 
     @staticmethod
-    def _scatter3d(data: pd.DataFrame, name_column: str, labels: pd.DataFrame, algorithm_name: str, graph_name: str, local_path: str, mlflow_path: str) -> None:
+    def _scatter3d(
+        data: pd.DataFrame,
+        name_column: str,
+        labels: pd.Series,
+        algorithm_name: str,
+        graph_name: str,
+        local_path: str,
+        mlflow_path: str,
+    ) -> None:
         """Plot the three-dimensional diagram of the anomaly detection result."""
         print(f"-----* {graph_name} *-----")
         scatter3d(data, labels, algorithm_name=algorithm_name)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
         data_with_labels = pd.concat([data, labels], axis=1)
-        save_data(data_with_labels, name_column, f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+        save_data(
+            data_with_labels,
+            name_column,
+            f"{graph_name} - {algorithm_name}",
+            local_path,
+            mlflow_path,
+        )
 
     def common_components(self) -> None:
         """Invoke all common application functions for anomaly detection algorithms by Scikit-learn framework."""
@@ -457,13 +499,29 @@ class LocalOutlierFactorAnomalyDetection(AnomalyDetectionWorkflowBase):
         return hyper_parameters
 
     @staticmethod
-    def _plot_lof_scores(X_train: pd.DataFrame, name_column_train: str, lof_scores: np.ndarray, graph_name: str, image_config: dict, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_lof_scores(
+        X_train: pd.DataFrame,
+        name_column_train: str,
+        lof_scores: np.ndarray,
+        graph_name: str,
+        image_config: dict,
+        algorithm_name: str,
+        local_path: str,
+        mlflow_path: str,
+    ) -> None:
         """Draw the LOF scores bar diagram."""
         print(f"-----* {graph_name} *-----")
         columns_name = X_train.index
         data = plot_lof_scores(columns_name, lof_scores, image_config)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
-        save_data(data, name_column_train, f"{graph_name} - {algorithm_name}", local_path, mlflow_path, True)
+        save_data(
+            data,
+            name_column_train,
+            f"{graph_name} - {algorithm_name}",
+            local_path,
+            mlflow_path,
+            True,
+        )
 
     def special_components(self, **kwargs) -> None:
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""

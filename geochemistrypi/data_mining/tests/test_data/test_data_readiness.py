@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
+import pandas as pd
 import pytest
-from data.data_readiness import limit_num_input, num2option, num_input
 from pytest import MonkeyPatch
+
+from geochemistrypi.data_mining.data.data_readiness import limit_num_input, num2option, num_input, select_column_name
 
 
 def test_num2option() -> None:
@@ -78,3 +80,15 @@ def test_invalid_limit_num_input(monkeypatch: MonkeyPatch) -> None:
         prefix = "Data"
         monkeypatch.setattr("builtins.input", lambda _: inputs.pop(0))
         assert limit_num_input(option_list, prefix, num_input) == 4
+
+
+def test_select_column_name_does_not_retry_forever_on_encoding_error(monkeypatch: MonkeyPatch) -> None:
+    error = UnicodeEncodeError("cp1252", "➜", 0, 1, "cannot encode prompt")
+
+    def raise_encoding_error(**_: object) -> int:
+        raise error
+
+    monkeypatch.setattr("geochemistrypi.data_mining.data.data_readiness.int_input", raise_encoding_error)
+
+    with pytest.raises(UnicodeEncodeError, match="cannot encode prompt"):
+        select_column_name(pd.DataFrame({"SampleID": ["A01"]}))

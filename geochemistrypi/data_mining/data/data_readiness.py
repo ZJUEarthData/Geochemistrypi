@@ -179,6 +179,10 @@ def select_column_name(data: pd.DataFrame) -> str:
                 continue
             column_name = data.columns[column_index - 1]
             return column_name
+        except UnicodeError:
+            # Encoding failures are environmental errors, not invalid user input.
+            # Re-raise instead of consuming stdin forever while retrying.
+            raise
         except ValueError:
             print("Invalid input, please enter an integer.")
 

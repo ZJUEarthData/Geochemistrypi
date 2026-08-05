@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "matrix_id": "geochemistrypi-cli-mcp-pr9i-v1",
+  "cli_version": "0.8.0",
+  "comparison_contract": {
+    "input_sha256_before_and_after": true,
+    "complete_recursive_file_inventory": true,
+    "tabular_identity_fields": ["identifiers", "row_order", "feature_order", "targets", "predictions"],
+    "absolute_float_tolerance": 1e-9,
+    "relative_float_tolerance": 1e-7,
+    "images": ["nonempty", "recognized_signature", "same_relative_path"],
+    "binary_hash_images_across_platforms": false,
+    "golden_update_policy": "scientific-review-required"
+  },
+  "manual_single_models": {
+    "classification": ["logistic_regression", "support_vector_machine", "decision_tree", "random_forest", "extra_trees", "xgboost", "multi_layer_perceptron", "gradient_boosting", "k_nearest_neighbors", "stochastic_gradient_descent", "adaboost"],
+    "regression": ["linear_regression", "polynomial_regression", "k_nearest_neighbors", "support_vector_machine", "decision_tree", "random_forest", "extra_trees", "gradient_boosting", "xgboost", "multi_layer_perceptron", "lasso_regression", "elastic_net", "stochastic_gradient_descent", "bayesian_ridge", "ridge_regression"],
+    "clustering": ["kmeans", "dbscan", "agglomerative", "affinity_propagation", "mean_shift"],
+    "decomposition": ["pca", "tsne", "mds"],
+    "anomaly_detection": ["isolation_forest", "local_outlier_factor"]
+  },
+  "automl_models": {
+    "classification": ["logistic_regression", "support_vector_machine", "decision_tree", "random_forest", "extra_trees", "xgboost", "multi_layer_perceptron", "gradient_boosting", "k_nearest_neighbors", "stochastic_gradient_descent", "adaboost"],
+    "regression": ["k_nearest_neighbors", "support_vector_machine", "decision_tree", "random_forest", "extra_trees", "gradient_boosting", "xgboost", "multi_layer_perceptron", "lasso_regression", "elastic_net", "stochastic_gradient_descent", "bayesian_ridge", "ridge_regression"]
+  },
+  "aggregate_tasks": ["classification", "regression", "clustering", "decomposition", "anomaly_detection"],
+  "branch_scenarios": [
+    {"id":"branch.inference.classification","coverage":["classification_inference"],"evidence":"tests/mcp_wrapper/parity/test_mcp_cli_parity.py::test_stdio_mcp_classification_application_feature_engineering_matches_direct_cli"},
+    {"id":"branch.inference.regression","coverage":["regression_inference"],"evidence":"tests/mcp_wrapper/parity/test_mcp_cli_parity.py::test_stdio_mcp_regression_matches_direct_cli_with_application_data"},
+    {"id":"branch.labels.all","coverage":["encode_original","map","interval","quantile"],"evidence":"tests/mcp_wrapper/interaction/test_classification_coverage.py::test_label_preprocessing_feature_engineering_and_application_branches_compile"},
+    {"id":"branch.missing_values.all","coverage":["error","keep","drop_rows","impute"],"evidence":"tests/mcp_wrapper/interaction/test_driver_unit.py"},
+    {"id":"branch.scaling.all","coverage":["none","min_max","standardization","mean_normalization"],"evidence":"tests/mcp_wrapper/interaction/test_driver_unit.py"},
+    {"id":"branch.feature_selection.supervised","coverage":["variance_threshold","k_best"],"evidence":"tests/mcp_wrapper/interaction/test_driver_unit.py"},
+    {"id":"branch.feature_engineering.chain","coverage":["addition","subtraction","multiplication","division","absolute","logarithm","power"],"evidence":"tests/mcp_wrapper/parity/test_mcp_cli_parity.py::test_stdio_mcp_classification_application_feature_engineering_matches_direct_cli"},
+    {"id":"branch.world_map.all","coverage":["disabled","single","multiple"],"evidence":"geochemistrypi/data_mining/tests/test_world_map.py"},
+    {"id":"branch.experiments.new_existing","coverage":["new","existing_id"],"evidence":"tests/mcp_wrapper/protocol/test_experiments.py"},
+    {"id":"branch.sources.all","coverage":["path","builtin","desktop"],"evidence":"tests/mcp_wrapper/protocol/test_dataset_catalog.py"},
+    {"id":"branch.time_series","coverage":["seeded_bootstrap"],"evidence":"tests/mcp_wrapper/parity/test_mcp_cli_parity.py::test_stdio_mcp_time_series_matches_noninteractive_public_cli"}
+  ],
+  "execution": {
+    "fast_gate": "pytest -m mcp_cli_parity tests/mcp_wrapper/parity",
+    "full_gate": "pytest -m mcp_cli_full_parity tests/mcp_wrapper/parity/test_full_parity_matrix.py",
+    "shards": ["classification-manual", "classification-automl", "regression-manual", "regression-automl", "unsupervised-manual", "aggregates", "branches-rendering"]
+  }
+}

@@ -55,7 +55,14 @@ class PipelineConstrutor:
         return make_pipeline(*transformers)
 
 
-def build_transform_pipeline(imputation_config: Dict, feature_scaling_config: Dict, feature_selection_config: Dict, run: object, X_train: pd.DataFrame, y_train: pd.DataFrame) -> Tuple[Dict, object]:
+def build_transform_pipeline(
+    imputation_config: Dict,
+    feature_scaling_config: Dict,
+    feature_selection_config: Dict,
+    run: object,
+    X_train: pd.DataFrame,
+    y_train: Optional[pd.DataFrame],
+) -> Tuple[Dict, object]:
     """Build the transform pipeline.
 
     Parameters
@@ -75,8 +82,8 @@ def build_transform_pipeline(imputation_config: Dict, feature_scaling_config: Di
     X_train : pd.DataFrame
         The training data.
 
-    y_train : pd.DataFrame
-        The target data.
+    y_train : pd.DataFrame, optional
+        The target data. Unsupervised workflows pass ``None``.
 
     Returns
     -------
@@ -98,7 +105,7 @@ def build_transform_pipeline(imputation_config: Dict, feature_scaling_config: Di
     # univariate feature selection methods (GenericUnivariateSelect,
     # SelectKBest with f_regression) do not support multi-output targets.
     # =====================================================================
-    if y_train.shape[1] > 1:
+    if y_train is not None and y_train.shape[1] > 1:
         print(f"[Multi-output Regression] Detected {y_train.shape[1]} target columns. " "Skipping feature selection (GenericUnivariateSelect / SelectKBest) " "to avoid dimension mismatch.")
         # Remove feature selection transformers from configuration
         transformer_config = {k: v for k, v in transformer_config.items() if k not in ["GenericUnivariateSelect", "SelectKBest"]}
