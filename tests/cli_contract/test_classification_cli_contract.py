@@ -80,7 +80,7 @@ def test_classification_fixture_integrity_and_provenance() -> None:
     golden = _load_json(GOLDEN_PATH)
     fixture = golden["fixture"]
 
-    assert _sha256(DATASET_PATH) == fixture["sha256"]
+    assert _source_sha256(DATASET_PATH) == fixture["sha256"]
     source_path = REPOSITORY_ROOT / fixture["source_path"]
     assert _sha256(source_path) == fixture["source_sha256"]
 
@@ -111,7 +111,7 @@ def test_direct_classification_cli_contract(tmp_path: Path) -> None:
     golden = _load_json(GOLDEN_PATH)
     executable = _public_cli_executable()
 
-    fixture_hash_before = _sha256(DATASET_PATH)
+    fixture_hash_before = _source_sha256(DATASET_PATH)
     command = [value.format(fixture=str(DATASET_PATH)) for value in interaction["public_command"]]
     command[0] = executable
     responses = "\n".join(step["response"] for step in interaction["steps"]) + "\n"
@@ -140,7 +140,7 @@ def test_direct_classification_cli_contract(tmp_path: Path) -> None:
     )
     combined_output = result.stdout + "\n" + result.stderr
     assert result.returncode == 0, f"Direct public CLI run failed with exit code {result.returncode}:\n{combined_output[-12000:]}"
-    assert _sha256(DATASET_PATH) == fixture_hash_before == golden["fixture"]["sha256"]
+    assert _source_sha256(DATASET_PATH) == fixture_hash_before == golden["fixture"]["sha256"]
     _assert_prompt_sequence(combined_output, interaction["steps"])
 
     run_directory = tmp_path / "geopi_output" / interaction["experiment_name"] / interaction["run_name"]

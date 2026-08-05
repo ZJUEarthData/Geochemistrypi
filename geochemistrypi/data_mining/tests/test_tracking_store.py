@@ -3,6 +3,7 @@ from pathlib import Path
 import mlflow
 import pytest
 
+from geochemistrypi.data_mining.utils.mlflow_utils import set_active_experiment
 from geochemistrypi.tracking import TrackingStoreError, get_experiment, list_experiments, require_experiment
 
 
@@ -34,3 +35,25 @@ def test_tracking_store_requires_stable_id_and_matching_output_name(tmp_path: Pa
         require_experiment(tracking_root, experiment_id, "Ambiguous Name")
     with pytest.raises(TrackingStoreError, match="experiment_id"):
         get_experiment(tracking_root, "../unsafe")
+
+
+def test_active_experiment_is_inherited_by_nested_automl_runs_in_a_new_store(tmp_path: Path) -> None:
+    tracking_root = tmp_path / "tracking"
+    tracking_root.mkdir()
+    previous_tracking_uri = mlflow.get_tracking_uri()
+    from mlflow.tracking import fluent
+
+    previous_active_experiment_id = fluent._active_experiment_id
+    try:
+        mlflow.set_tracking_uri(tracking_root.as_uri())
+        experiment_id = mlflow.create_experiment("AutoML Parent Experiment")
+        experiment = set_active_experiment(experiment_id)
+
+        with mlflow.start_run(experiment_id=experiment.experiment_id, run_name="Parent"):
+            with mlflow.start_run(nested=True, run_name="FLAML Trial") as nested_run:
+                assert nested_run.info.experiment_id == experiment_id
+    finally:
+        while mlflow.active_run() is not None:
+            mlflow.end_run()
+        fluent._active_experiment_id = previous_active_experiment_id
+        mlflow.set_tracking_uri(previous_tracking_uri)

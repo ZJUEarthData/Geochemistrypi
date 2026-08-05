@@ -70,13 +70,17 @@ class ClassificationWorkflowBase(WorkflowBase):
     @dispatch(object, object, bool)
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None, is_automl: bool = False) -> None:
         """Fit the model by FLAML framework."""
+        self._fit_automl(X, y)
+
+    def _fit_automl(self, X: pd.DataFrame, y: pd.DataFrame) -> None:
+        """Fit the configured classifier through the shared AutoML workflow."""
         if self.naming not in RAY_FLAML:
             self.automl = AutoML()
             if self.customized:  # When the model is not built-in in FLAML framwork
                 self.automl.add_learner(learner_name=self.customized_name, learner_class=self.customization)
             if y.shape[1] == 1:  # FLAML's data format validation mechanism
                 y = y.squeeze()  # Convert a single dataFrame column into a series
-            self.automl.fit(X_train=X, y_train=y, **self.settings)
+            self.automl.fit(X_train=X, y_train=y, **self._prepare_automl_settings(self.settings))
         else:
             # When the model is not built-in in FLAML framework, use RAY + FLAML customization.
             self.ray_tune(
@@ -1876,6 +1880,11 @@ class XGBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
             self.model.set_params(eval_metric=self.eval_metric or "logloss")
         self.model.fit(X, y_series)
 
+    @dispatch(object, object, bool)
+    def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None, is_automl: bool = False) -> None:
+        """Fit XGBoost through the shared FLAML workflow in AutoML mode."""
+        self._fit_automl(X, y)
+
     @property
     def settings(self) -> Dict:
         """The configuration to implement AutoML by FLAML framework."""
@@ -2493,9 +2502,11 @@ class MLPClassification(ClassificationWorkflowBase):
         from ray.tune.search.flaml import BlendSearch
         from sklearn.metrics import accuracy_score
 
+        random_state = self._automl_random_seed()
+
         def customized_model(l1: int, l2: int, l3: int, batch: int) -> object:
             """The customized model by Scikit-learn framework."""
-            return MLPClassifier(hidden_layer_sizes=(l1, l2, l3), batch_size=batch)
+            return MLPClassifier(hidden_layer_sizes=(l1, l2, l3), batch_size=batch, random_state=random_state)
 
         def evaluate(l1: int, l2: int, l3: int, batch: int) -> float:
             """The evaluation function by simulating a long-running ML experiment
@@ -2507,11 +2518,9 @@ class MLPClassification(ClassificationWorkflowBase):
             return acc
 
         def objective(config: Dict) -> None:
-            """Objective function takes a Tune config, evaluates the score of your experiment in a training loop,
-            and uses session.report to report the score back to Tune."""
-            for step in range(config["steps"]):
-                score = evaluate(config["l1"], config["l2"], config["l3"], config["batch"])
-                session.report({"iterations": step, "mean_loss": score})
+            """Evaluate one deterministic MLP configuration and report its accuracy."""
+            score = evaluate(config["l1"], config["l2"], config["l3"], config["batch"])
+            session.report({"score": score})
 
         # Search space: The critical assumption is that the optimal hyper-parameters live within this space.
         search_config = {
@@ -2521,31 +2530,26 @@ class MLPClassification(ClassificationWorkflowBase):
             "batch": tune.randint(20, 100),
         }
 
-        # Define the time budget in seconds.
-        time_budget_s = 30
+        # A seeded, fixed-size, serial search is reproducible across direct CLI
+        # and MCP-launched processes. Accuracy must be maximized, not minimized.
+        algo = BlendSearch(metric="score", mode="max", space=search_config, seed=random_state)
+        algo = ConcurrencyLimiter(algo, max_concurrent=1)
 
-        # Integrate with FLAML's BlendSearch to implement hyper-parameters optimization .
-        algo = BlendSearch(metric="mean_loss", mode="min", space=search_config)
-        algo.set_search_properties(config={"time_budget_s": time_budget_s})
-        algo = ConcurrencyLimiter(algo, max_concurrent=4)
-
-        # Use Ray Tune to  run the experiment to "min"imize the “mean_loss” of the "objective"
-        # by searching "search_config" via "algo", "num_samples" times.
+        # Search the configured number of candidate networks and maximize accuracy.
         tuner = tune.Tuner(
             objective,
             tune_config=tune.TuneConfig(
-                metric="mean_loss",
-                mode="min",
+                metric="score",
+                mode="max",
                 search_alg=algo,
-                num_samples=-1,
-                time_budget_s=time_budget_s,
+                num_samples=self.automl_tuning_trials,
             ),
-            param_space={"steps": 100},
+            param_space={},
         )
         results = tuner.fit()
 
-        # The hyper-parameters found to minimize the mean loss of the defined objective and the corresponding model.
-        best_result = results.get_best_result(metric="mean_loss", mode="min")
+        # The hyper-parameters found to maximize accuracy and the corresponding model.
+        best_result = results.get_best_result(metric="score", mode="max")
         self.ray_best_model = customized_model(best_result.config["l1"], best_result.config["l2"], best_result.config["l3"], best_result.config["batch"])
 
     @classmethod

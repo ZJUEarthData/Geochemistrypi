@@ -110,7 +110,7 @@ class RegressionWorkflowBase(WorkflowBase):
 
                 # Create a MultiOutputRegressor wrapper for multiple Y columns
                 self.automl = MultiOutputRegressor(self.automl)
-            self.automl.fit(X, y, **self.settings)
+            self.automl.fit(X, y, **self._prepare_automl_settings(self.settings))
         else:
             # When the model is not built-in in FLAML framework, use RAY + FLAML customization.
             self.ray_tune(
@@ -2052,9 +2052,11 @@ class MLPRegression(RegressionWorkflowBase):
         from ray.tune.search.flaml import BlendSearch
         from sklearn.metrics import mean_squared_error
 
+        random_state = self._automl_random_seed()
+
         def customized_model(l1: int, l2: int, l3: int, batch: int) -> object:
             """The customized model by Scikit-learn framework."""
-            return MLPRegressor(hidden_layer_sizes=(l1, l2, l3), batch_size=batch)
+            return MLPRegressor(hidden_layer_sizes=(l1, l2, l3), batch_size=batch, random_state=random_state)
 
         def evaluate(l1: int, l2: int, l3: int, batch: int) -> float:
             """The evaluation function by simulating a long-running ML experiment
@@ -2067,11 +2069,9 @@ class MLPRegression(RegressionWorkflowBase):
             return rmse
 
         def objective(config: Dict) -> None:
-            """Objective function takes a Tune config, evaluates the score of your experiment in a training loop,
-            and uses session.report to report the score back to Tune."""
-            for step in range(config["steps"]):
-                score = evaluate(config["l1"], config["l2"], config["l3"], config["batch"])
-                session.report({"iterations": step, "mean_loss": score})
+            """Evaluate one deterministic MLP configuration and report its RMSE."""
+            score = evaluate(config["l1"], config["l2"], config["l3"], config["batch"])
+            session.report({"mean_loss": score})
 
         # Search space: The critical assumption is that the optimal hyper-parameters live within this space.
         search_config = {
@@ -2081,13 +2081,10 @@ class MLPRegression(RegressionWorkflowBase):
             "batch": tune.randint(20, 100),
         }
 
-        # Define the time budget in seconds.
-        time_budget_s = 30
-
-        # Integrate with FLAML's BlendSearch to implement hyper-parameters optimization .
-        algo = BlendSearch(metric="mean_loss", mode="min", space=search_config)
-        algo.set_search_properties(config={"time_budget_s": time_budget_s})
-        algo = ConcurrencyLimiter(algo, max_concurrent=4)
+        # Use a seeded, fixed-size, serial search so repeated scientific runs
+        # evaluate the same configurations in the same order.
+        algo = BlendSearch(metric="mean_loss", mode="min", space=search_config, seed=random_state)
+        algo = ConcurrencyLimiter(algo, max_concurrent=1)
 
         # Use Ray Tune to  run the experiment to "min"imize the “mean_loss” of the "objective"
         # by searching "search_config" via "algo", "num_samples" times.
@@ -2097,10 +2094,9 @@ class MLPRegression(RegressionWorkflowBase):
                 metric="mean_loss",
                 mode="min",
                 search_alg=algo,
-                num_samples=-1,
-                time_budget_s=time_budget_s,
+                num_samples=self.automl_tuning_trials,
             ),
-            param_space={"steps": 100},
+            param_space={},
         )
         results = tuner.fit()
 
@@ -4429,7 +4425,7 @@ class RidgeRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         coef, intercept = self._get_model_coef_intercept()
 
         self._show_formula(
-            coef=[coef],
+            coef=coef,
             intercept=intercept,
             features_name=RidgeRegression.X_train.columns,
             regression_classification="Regression",

@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import inspect
+import json
+import random
 from contextlib import ExitStack
 from unittest.mock import patch
 
@@ -11,16 +13,21 @@ import typer
 from click import unstyle
 from click.testing import CliRunner
 from sklearn.datasets import make_classification
+from sklearn.ensemble import GradientBoostingClassifier, GradientBoostingRegressor
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.model_selection import train_test_split
+from sklearn.multioutput import MultiOutputRegressor
 from sklearn.tree import DecisionTreeClassifier
 
 from geochemistrypi.cli import app
 from geochemistrypi.data_mining.data.data_readiness import create_sub_data_set, data_split
-from geochemistrypi.data_mining.model.classification import ClassificationWorkflowBase, SGDClassification
+from geochemistrypi.data_mining.model._base import TreeWorkflowMixin
+from geochemistrypi.data_mining.model.classification import ClassificationWorkflowBase, MLPClassification, SGDClassification, XGBoostClassification
 from geochemistrypi.data_mining.model.func._common_supervised import plot_decision_tree
 from geochemistrypi.data_mining.model.func.algo_classification._common import score
 from geochemistrypi.data_mining.model.func.algo_classification._logistic_regression import plot_logistic_importance
+from geochemistrypi.data_mining.model.func.algo_regression._common import display_cross_validation_scores
+from geochemistrypi.data_mining.model.regression import MLPRegression, RidgeRegression
 
 matplotlib.use("Agg")
 
@@ -315,6 +322,170 @@ def test_sgd_manual_special_components_accepts_multiclass_coefficients() -> None
 
     with patch("geochemistrypi.data_mining.model._base.save_text"):
         workflow.special_components()
+
+
+def test_xgboost_classification_automl_fit_supports_the_three_argument_dispatch() -> None:
+    captured = {}
+
+    class AutoMLDouble:
+        def fit(self, **kwargs) -> None:
+            captured.update(kwargs)
+
+    X = pd.DataFrame({"feature_0": [0.0, 1.0, 2.0, 3.0], "feature_1": [3.0, 2.0, 1.0, 0.0]})
+    y = pd.DataFrame({"Target": [0, 0, 1, 1]})
+    workflow = XGBoostClassification(n_estimators=2, max_depth=1)
+
+    with patch("geochemistrypi.data_mining.model.classification.AutoML", return_value=AutoMLDouble()):
+        workflow.fit(X, y, True)
+
+    assert captured["X_train"].equals(X)
+    assert captured["y_train"].equals(y["Target"])
+    assert captured["estimator_list"] == ["xgboost"]
+    assert captured["task"] == "classification"
+    assert captured["max_iter"] == workflow.automl_max_iterations
+    assert captured["seed"] == workflow.random_state
+    assert "time_budget" not in captured
+
+
+def test_automl_settings_use_a_repeatable_trial_budget_and_random_state() -> None:
+    workflow = XGBoostClassification(n_estimators=2, max_depth=1)
+    workflow.random_state = (42,)
+    original = {"time_budget": 10, "metric": "accuracy"}
+
+    first_settings = workflow._prepare_automl_settings(original)
+    first_random = random.random()
+    first_numpy_random = np.random.random()
+    second_settings = workflow._prepare_automl_settings(original)
+
+    assert original == {"time_budget": 10, "metric": "accuracy"}
+    assert (
+        first_settings
+        == second_settings
+        == {
+            "metric": "accuracy",
+            "max_iter": workflow.automl_max_iterations,
+            "seed": 42,
+        }
+    )
+    assert random.random() == first_random
+    assert np.random.random() == first_numpy_random
+
+    workflow.random_state = None
+    assert workflow._prepare_automl_settings(original)["seed"] == workflow.default_random_state
+
+
+def test_regression_cross_validation_scores_remain_numeric_in_json_output() -> None:
+    scores = np.array([1.0, 2.0, 3.0])
+
+    with patch("geochemistrypi.data_mining.model.func.algo_regression._common.mlflow.log_metric"):
+        result = display_cross_validation_scores(scores, "Example")
+
+    assert result["Fold Scores"] == [1.0, 2.0, 3.0]
+    assert all(isinstance(value, float) for value in result["Fold Scores"])
+
+
+@pytest.mark.parametrize(
+    ("tuning_method", "metric", "mode"),
+    [
+        (MLPClassification.ray_tune, "score", "max"),
+        (MLPRegression.ray_tune, "mean_loss", "min"),
+    ],
+)
+def test_mlp_automl_uses_seeded_fixed_serial_trials(tuning_method, metric: str, mode: str) -> None:
+    source = inspect.getsource(tuning_method)
+
+    assert "time_budget_s" not in source
+    assert "max_concurrent=1" in source
+    assert "num_samples=self.automl_tuning_trials" in source
+    assert f'metric="{metric}"' in source
+    assert f'mode="{mode}"' in source
+    assert "seed=random_state" in source
+    assert "random_state=random_state" in source
+
+
+@pytest.mark.parametrize(
+    ("model", "target"),
+    [
+        (GradientBoostingClassifier(n_estimators=3, random_state=42), pd.Series([0, 0, 0, 1, 1, 1])),
+        (GradientBoostingRegressor(n_estimators=3, random_state=42), pd.Series([0.0, 0.2, 0.4, 1.0, 1.2, 1.4])),
+    ],
+)
+def test_tree_feature_importance_prefers_an_ensemble_top_level_vector(model, target: pd.Series) -> None:
+    X = pd.DataFrame(
+        {
+            "feature_0": [0.0, 0.2, 0.4, 1.0, 1.2, 1.4],
+            "feature_1": [1.4, 1.2, 1.0, 0.4, 0.2, 0.0],
+        }
+    )
+    trained_model = model.fit(X, target)
+    captured = {}
+
+    def capture_feature_importance(columns, feature_importances, image_config):
+        captured["columns"] = tuple(columns)
+        captured["feature_importances"] = np.asarray(feature_importances)
+        return pd.DataFrame({"feature": columns, "importance": feature_importances})
+
+    with patch("geochemistrypi.data_mining.model._base.plot_feature_importance", side_effect=capture_feature_importance), patch("geochemistrypi.data_mining.model._base.save_fig"), patch(
+        "geochemistrypi.data_mining.model._base.save_data"
+    ):
+        TreeWorkflowMixin._plot_feature_importance(X, "SampleID", trained_model, {}, "Gradient Boosting", "Feature Importance", ".", None)
+
+    assert captured["columns"] == tuple(X.columns)
+    np.testing.assert_allclose(captured["feature_importances"], trained_model.feature_importances_)
+
+
+def test_tree_feature_importance_preserves_multioutput_regressor_support() -> None:
+    X = pd.DataFrame(
+        {
+            "feature_0": [0.0, 0.2, 0.4, 1.0, 1.2, 1.4],
+            "feature_1": [1.4, 1.2, 1.0, 0.4, 0.2, 0.0],
+        }
+    )
+    y = pd.DataFrame({"target_0": [0.0, 0.2, 0.4, 1.0, 1.2, 1.4], "target_1": [1.4, 1.2, 1.0, 0.4, 0.2, 0.0]})
+    trained_model = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=3, random_state=42)).fit(X, y)
+    captured = {}
+
+    def capture_feature_importance(columns, feature_importances, image_config):
+        captured["feature_importances"] = np.asarray(feature_importances)
+        return pd.DataFrame({"feature": columns, "importance": feature_importances})
+
+    with patch("geochemistrypi.data_mining.model._base.plot_feature_importance", side_effect=capture_feature_importance), patch("geochemistrypi.data_mining.model._base.save_fig"), patch(
+        "geochemistrypi.data_mining.model._base.save_data"
+    ):
+        TreeWorkflowMixin._plot_feature_importance(X, "SampleID", trained_model, {}, "Gradient Boosting", "Feature Importance", ".", None)
+
+    expected = np.mean([estimator.feature_importances_ for estimator in trained_model.estimators_], axis=0)
+    np.testing.assert_allclose(captured["feature_importances"], expected)
+
+
+def test_ridge_manual_formula_accepts_single_target_dataframe_coefficients() -> None:
+    X = pd.DataFrame({"feature": [0.0, 0.5, 1.0, 1.5, 2.0, 2.5]})
+    y = pd.DataFrame({"Target": [1.0, 1.4, 2.1, 2.6, 3.2, 3.7]})
+    names = pd.Series([f"sample-{index}" for index in range(len(X))], name="SampleID")
+    workflow = RidgeRegression()
+    workflow.model.fit(X, y)
+    assert workflow.model.coef_.ndim == 2
+    workflow.data_upload(
+        X=X,
+        y=y,
+        X_train=X,
+        X_test=X,
+        y_train=y,
+        y_test=y,
+        y_test_predict=y,
+        name_train=names,
+        name_test=names,
+        name_all=names,
+    )
+    captured = {}
+
+    def capture_text(value, name, *args, **kwargs) -> None:
+        captured[name] = json.loads(value)
+
+    with patch("geochemistrypi.data_mining.model._base.save_text", side_effect=capture_text), patch.object(workflow, "_plot_2d_scatter_diagram"), patch.object(workflow, "_plot_2d_line_diagram"):
+        workflow.special_components()
+
+    assert "feature" in captured["Ridge Regression Formula"]["y:"]
 
 
 def test_process_classify_imports_on_python_38_compatible_annotations() -> None:

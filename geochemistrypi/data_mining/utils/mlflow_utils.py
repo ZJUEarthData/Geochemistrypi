@@ -3,6 +3,13 @@ from typing import Union
 import mlflow
 
 
+def set_active_experiment(experiment_id: str):
+    """Activate an existing MLflow experiment for parent and nested runs."""
+    experiment_id = str(experiment_id)
+    mlflow.set_experiment(experiment_id=experiment_id)
+    return mlflow.get_experiment(experiment_id=experiment_id)
+
+
 def retrieve_previous_experiment_id(experiment_name: str) -> Union[str, None]:
     """Retrieve the previous experiment with the same name.
 

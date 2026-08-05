@@ -64,7 +64,7 @@ from .process.detect import AnomalyDetectionModelSelection
 from .process.regress import RegressionModelSelection
 from .run_time_series import run_time_series_dataframe
 from .utils.base import clear_output, copy_files, copy_files_from_source_dir_to_dest_dir, create_geopi_output_dir, get_os, list_excel_files, log, save_data, show_warning
-from .utils.mlflow_utils import retrieve_previous_experiment_id
+from .utils.mlflow_utils import retrieve_previous_experiment_id, set_active_experiment
 
 
 def semantic_mode_number(selected_number: int, visible_options: list) -> int:
@@ -249,8 +249,6 @@ def cli_pipeline(
             maximum_runs=0,
         )
         experiment_id = experiment_value["experiment"]["experiment_id"]
-        mlflow.set_experiment(experiment_id=experiment_id)
-        experiment = mlflow.get_experiment(experiment_id=experiment_id)
     else:
         # Create a new experiment or use a previous experiment by name for the
         # original interactive CLI. MCP intentionally uses the stable-ID branch.
@@ -266,8 +264,7 @@ def cli_pipeline(
             while not old_experiment_id:
                 old_experiment_name = Prompt.ask("Previous Experiment Name")
                 old_experiment_id = retrieve_previous_experiment_id(old_experiment_name)
-            mlflow.set_experiment(experiment_id=old_experiment_id)
-            experiment = mlflow.get_experiment(experiment_id=old_experiment_id)
+            experiment_id = old_experiment_id
         else:
             new_experiment_name = Prompt.ask("New Experiment", default="GeoPi - Rock Classification")
             # new_experiment_tag = Prompt.ask("Experiment Tag Version", default="E - v1.0.0")
@@ -282,7 +279,12 @@ def cli_pipeline(
                     new_experiment_id = mlflow.get_experiment_by_name(name=new_experiment_name).experiment_id
                 else:
                     raise e
-            experiment = mlflow.get_experiment(experiment_id=new_experiment_id)
+            experiment_id = new_experiment_id
+    # FLAML opens nested MLflow runs without passing an experiment ID. Setting
+    # the active experiment here keeps those child runs attached to the same
+    # experiment as the explicit parent run, including in a new empty file store
+    # where MLflow's default experiment 0 does not exist.
+    experiment = set_active_experiment(experiment_id)
     # print("Artifact Location: {}".format(experiment.artifact_location))
     run_name = Prompt.ask("Run Name", default="XGBoost Algorithm - Test 1")
     # run_tag = Prompt.ask("Run Tag Version", default="R - v1.0.0")
