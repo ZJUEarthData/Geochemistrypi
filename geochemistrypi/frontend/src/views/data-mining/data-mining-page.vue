@@ -18,6 +18,7 @@ import {
   type RegressionResponse
 } from '@/api/data-mining'
 import { artifactUrl, getHealth } from '@/api/online'
+import { apiText, dataMiningFeatureDescription, t, warningIsSuccess } from '@/i18n'
 
 type ServiceState = 'checking' | 'online' | 'offline'
 
@@ -46,37 +47,51 @@ const clusteringFeatures = ref<string[]>([])
 const clusterCount = ref(3)
 const errorMessage = ref('')
 
-const missingStrategyOptions: Array<{
-  value: MissingValueStrategy
-  label: string
-  description: string
-}> = [
+const missingStrategyOptions = computed<
+  Array<{
+    value: MissingValueStrategy
+    label: string
+    description: string
+  }>
+>(() => [
   {
     value: 'keep',
-    label: 'Keep missing values',
-    description: 'Do not replace or remove missing values.'
+    label: t('Keep missing values', '保留缺失值'),
+    description: t('Do not replace or remove missing values.', '不替换或删除缺失值。')
   },
   {
     value: 'drop_rows',
-    label: 'Drop incomplete rows',
-    description: 'Remove rows containing a missing value in any selected column.'
+    label: t('Drop incomplete rows', '删除不完整行'),
+    description: t(
+      'Remove rows containing a missing value in any selected column.',
+      '删除任一已选列中含缺失值的行。'
+    )
   },
   {
     value: 'fill_mean',
-    label: 'Fill numeric columns with mean',
-    description: 'Fill numeric missing values with the mean of each column.'
+    label: t('Fill numeric columns with mean', '用均值填充数值列'),
+    description: t(
+      'Fill numeric missing values with the mean of each column.',
+      '用各列均值填充数值缺失值。'
+    )
   },
   {
     value: 'fill_median',
-    label: 'Fill numeric columns with median',
-    description: 'Fill numeric missing values with the median of each column.'
+    label: t('Fill numeric columns with median', '用中位数填充数值列'),
+    description: t(
+      'Fill numeric missing values with the median of each column.',
+      '用各列中位数填充数值缺失值。'
+    )
   },
   {
     value: 'fill_mode',
-    label: 'Fill each column with mode',
-    description: 'Fill missing values with the most frequent non-empty value in each column.'
+    label: t('Fill each column with mode', '用众数填充各列'),
+    description: t(
+      'Fill missing values with the most frequent non-empty value in each column.',
+      '用每列最常见的非空值填充缺失值。'
+    )
   }
-]
+])
 
 const currentFeature = computed(() =>
   features.value.find((feature) => feature.name === selectedFeature.value)
@@ -118,7 +133,7 @@ const classificationFeatureOptions = computed(() =>
   numericColumns.value.filter((column) => column !== classificationTarget.value)
 )
 const selectedStrategy = computed(() =>
-  missingStrategyOptions.find((option) => option.value === missingStrategy.value)
+  missingStrategyOptions.value.find((option) => option.value === missingStrategy.value)
 )
 const canRun = computed(() => {
   const baseReady =
@@ -151,17 +166,18 @@ const canRun = computed(() => {
 })
 const runButtonLabel = computed(() => {
   if (running.value) {
-    if (isPreprocessing.value) return 'Processing…'
-    if (isRegression.value || isClassification.value) return 'Training…'
-    if (isClustering.value) return 'Clustering…'
-    return 'Analyzing…'
+    if (isPreprocessing.value) return t('Processing…', '正在处理…')
+    if (isRegression.value || isClassification.value) return t('Training…', '正在训练…')
+    if (isClustering.value) return t('Clustering…', '正在聚类…')
+    return t('Analyzing…', '正在分析…')
   }
-  if (!currentFeatureIsVerified.value) return '该功能暂不可运行'
-  if (isPreprocessing.value) return 'Run preprocessing'
-  if (isRegression.value) return 'Run regression'
-  if (isClassification.value) return 'Run classification'
-  if (isClustering.value) return 'Run clustering'
-  return 'Analyze dataset'
+  if (!currentFeatureIsVerified.value)
+    return t('This function is not available yet', '该功能暂不可运行')
+  if (isPreprocessing.value) return t('Run preprocessing', '运行预处理')
+  if (isRegression.value) return t('Run regression', '运行回归')
+  if (isClassification.value) return t('Run classification', '运行分类')
+  if (isClustering.value) return t('Run clustering', '运行聚类')
+  return t('Analyze dataset', '分析数据集')
 })
 
 watch(selectedFeature, async () => {
@@ -246,7 +262,9 @@ async function loadPage() {
   } catch (error) {
     serviceState.value = 'offline'
     errorMessage.value =
-      error instanceof Error ? error.message : 'Cannot connect to the backend service.'
+      error instanceof Error
+        ? error.message
+        : t('Cannot connect to the backend service.', '无法连接后端服务。')
   } finally {
     loadingCatalog.value = false
   }
@@ -268,7 +286,10 @@ async function onFileChange(event: Event) {
   if (file && !/\.(xlsx|csv)$/i.test(file.name)) {
     datasetFile.value = null
     input.value = ''
-    errorMessage.value = 'Data Mining currently supports .xlsx and .csv files.'
+    errorMessage.value = t(
+      'Data Mining currently supports .xlsx and .csv files.',
+      '数据挖掘目前支持 .xlsx 和 .csv 文件。'
+    )
     return
   }
   datasetFile.value = file
@@ -300,8 +321,10 @@ async function inspectDatasetColumns() {
       regressionTarget.value = detectedNumericColumns[detectedNumericColumns.length - 1] || ''
       regressionFeatures.value = detectedNumericColumns.slice(0, -1)
       if (detectedNumericColumns.length < 2) {
-        errorMessage.value =
-          'Regression requires at least two numeric columns: one target and one feature.'
+        errorMessage.value = t(
+          'Regression requires at least two numeric columns: one target and one feature.',
+          '回归至少需要两个数值列：一个目标列和一个特征列。'
+        )
       }
     } else if (isClassification.value) {
       const detectedColumns = columnInspection.value.columns.map((column) => column.name)
@@ -313,20 +336,27 @@ async function inspectDatasetColumns() {
         (column) => column !== classificationTarget.value
       )
       if (!classificationTarget.value || classificationFeatures.value.length === 0) {
-        errorMessage.value =
-          'Classification requires a target column and at least one numeric feature column.'
+        errorMessage.value = t(
+          'Classification requires a target column and at least one numeric feature column.',
+          '分类需要一个目标列和至少一个数值特征列。'
+        )
       }
     } else if (isClustering.value) {
       clusteringFeatures.value = columnInspection.value.columns
         .filter((column) => column.data_type === 'number')
         .map((column) => column.name)
       if (clusteringFeatures.value.length === 0) {
-        errorMessage.value = 'Clustering requires at least one numeric feature column.'
+        errorMessage.value = t(
+          'Clustering requires at least one numeric feature column.',
+          '聚类至少需要一个数值特征列。'
+        )
       }
     }
   } catch (error) {
     errorMessage.value =
-      error instanceof Error ? error.message : 'Could not inspect dataset columns.'
+      error instanceof Error
+        ? error.message
+        : t('Could not inspect dataset columns.', '无法检测数据集列。')
   } finally {
     inspectingColumns.value = false
   }
@@ -345,7 +375,7 @@ async function submitJob() {
         selectedColumns.value,
         missingStrategy.value
       )
-      ElMessage.success('Data preprocessing completed')
+      ElMessage.success(t('Data preprocessing completed', '数据预处理完成'))
     } else if (isRegression.value) {
       regressionResult.value = await runRegression(
         datasetFile.value,
@@ -353,7 +383,7 @@ async function submitJob() {
         regressionFeatures.value,
         regressionTestSize.value
       )
-      ElMessage.success('Linear regression completed')
+      ElMessage.success(t('Linear regression completed', '线性回归完成'))
     } else if (isClassification.value) {
       classificationResult.value = await runClassification(
         datasetFile.value,
@@ -361,22 +391,24 @@ async function submitJob() {
         classificationFeatures.value,
         classificationTestSize.value
       )
-      ElMessage.success('Logistic classification completed')
+      ElMessage.success(t('Logistic classification completed', '逻辑分类完成'))
     } else if (isClustering.value) {
       clusteringResult.value = await runClustering(
         datasetFile.value,
         clusteringFeatures.value,
         clusterCount.value
       )
-      ElMessage.success('K-means clustering completed')
+      ElMessage.success(t('K-means clustering completed', 'K-means 聚类完成'))
     } else {
       result.value = await profileDataset(datasetFile.value)
-      ElMessage.success('Dataset profile completed')
+      ElMessage.success(t('Dataset profile completed', '数据集概览完成'))
     }
   } catch (error) {
     errorMessage.value =
-      error instanceof Error ? error.message : 'The Data Mining operation failed.'
-    ElMessage.error('Data Mining operation failed')
+      error instanceof Error
+        ? error.message
+        : t('The Data Mining operation failed.', '数据挖掘操作失败。')
+    ElMessage.error(t('Data Mining operation failed', '数据挖掘操作失败'))
   } finally {
     running.value = false
   }
@@ -403,7 +435,7 @@ function formatLabel(value: string) {
 }
 
 function statusLabel(status: 'verified' | 'testing') {
-  return status === 'verified' ? '已验证' : '测试中'
+  return status === 'verified' ? t('Verified', '已验证') : t('Testing', '测试中')
 }
 
 function statusType(status: 'verified' | 'testing') {
@@ -442,37 +474,41 @@ function formatCell(value: unknown) {
     <section class="page-heading">
       <div>
         <p class="eyebrow">GEOCHEMISTRY π ONLINE</p>
-        <h1>Data mining</h1>
+        <h1>{{ t('Data mining', '数据挖掘') }}</h1>
         <p class="intro">
-          Upload a dataset, inspect its structure and quality, then continue to preprocessing and
-          modeling.
+          {{
+            t(
+              'Upload a dataset, inspect its structure and quality, then continue to preprocessing and modeling.',
+              '上传数据集，检查其结构与质量，再继续进行预处理和建模。'
+            )
+          }}
         </p>
       </div>
       <div class="service-status" :class="serviceState">
         <span class="status-dot"></span>
-        <span v-if="serviceState === 'checking'">Checking service</span>
-        <span v-else-if="serviceState === 'online'">Backend online</span>
-        <span v-else>Backend offline</span>
+        <span v-if="serviceState === 'checking'">{{ t('Checking service', '正在检查服务') }}</span>
+        <span v-else-if="serviceState === 'online'">{{ t('Backend online', '后端已连接') }}</span>
+        <span v-else>{{ t('Backend offline', '后端离线') }}</span>
       </div>
     </section>
 
     <el-card v-loading="loadingCatalog" class="workflow-card" shadow="never">
       <el-form label-position="top">
         <div class="form-grid">
-          <el-form-item label="Function">
+          <el-form-item :label="t('Function', '功能')">
             <el-select
               v-model="selectedFeature"
-              placeholder="Select a function"
+              :placeholder="t('Select a function', '选择功能')"
               :disabled="running"
             >
               <el-option
                 v-for="feature in features"
                 :key="feature.name"
-                :label="feature.description"
+                :label="dataMiningFeatureDescription(feature.name, feature.description)"
                 :value="feature.name"
               >
                 <div class="feature-option">
-                  <span>{{ feature.description }}</span>
+                  <span>{{ dataMiningFeatureDescription(feature.name, feature.description) }}</span>
                   <el-tag :type="statusType(feature.status)" size="small" effect="plain">
                     {{ statusLabel(feature.status) }}
                   </el-tag>
@@ -481,7 +517,7 @@ function formatCell(value: unknown) {
             </el-select>
           </el-form-item>
 
-          <el-form-item label="Supported data">
+          <el-form-item :label="t('Supported data', '支持的数据')">
             <div class="format-tags">
               <el-tag
                 v-for="format in currentFeature?.input_formats || []"
@@ -497,37 +533,46 @@ function formatCell(value: unknown) {
         <section v-if="currentFeature" class="feature-guide">
           <div class="feature-guide-heading">
             <div>
-              <p class="guide-kicker">功能状态与输出说明</p>
-              <h2>{{ currentFeature.description }}</h2>
+              <p class="guide-kicker">
+                {{ t('FUNCTION STATUS AND OUTPUT GUIDE', '功能状态与输出说明') }}
+              </p>
+              <h2>
+                {{ dataMiningFeatureDescription(currentFeature.name, currentFeature.description) }}
+              </h2>
             </div>
             <el-tag :type="statusType(currentFeature.status)" effect="dark">
               {{ statusLabel(currentFeature.status) }}
             </el-tag>
           </div>
 
-          <p class="status-message">{{ currentFeature.status_message }}</p>
+          <p class="status-message">{{ apiText(currentFeature.status_message) }}</p>
           <div v-if="currentFeature.outputs.length" class="output-list">
-            <strong>当前输出</strong>
+            <strong>{{ t('Outputs', '当前输出') }}</strong>
             <el-tag
               v-for="output in currentFeature.outputs"
               :key="output"
               type="info"
               effect="plain"
             >
-              {{ output }}
+              {{ apiText(output) }}
             </el-tag>
           </div>
 
           <el-alert
             v-if="!currentFeatureIsVerified"
-            title="该功能仍在接入中，完成输入和结果验证后开放运行。"
+            :title="
+              t(
+                'This function is still being integrated and will become available after input and result validation.',
+                '该功能仍在接入中，完成输入和结果验证后开放运行。'
+              )
+            "
             type="warning"
             :closable="false"
             show-icon
           />
         </section>
 
-        <el-form-item label="Dataset (.xlsx or .csv)">
+        <el-form-item :label="t('Dataset (.xlsx or .csv)', '数据集（.xlsx 或 .csv）')">
           <label class="file-picker" :class="{ disabled: running || !currentFeatureIsVerified }">
             <input
               type="file"
@@ -535,35 +580,42 @@ function formatCell(value: unknown) {
               :disabled="running || !currentFeatureIsVerified"
               @change="onFileChange"
             />
-            <span class="file-button">Choose dataset</span>
-            <span class="file-name">{{ datasetFile?.name || 'No file selected' }}</span>
+            <span class="file-button">{{ t('Choose dataset', '选择数据集') }}</span>
+            <span class="file-name">{{
+              datasetFile?.name || t('No file selected', '未选择文件')
+            }}</span>
           </label>
         </el-form-item>
 
         <section v-if="isPreprocessing" v-loading="inspectingColumns" class="preprocessing-panel">
           <div class="section-heading">
             <div>
-              <p class="guide-kicker">PREPROCESSING CONFIGURATION</p>
-              <h3>Select output columns and a missing-value rule</h3>
+              <p class="guide-kicker">{{ t('PREPROCESSING CONFIGURATION', '预处理配置') }}</p>
+              <h3>
+                {{
+                  t('Select output columns and a missing-value rule', '选择输出列和缺失值处理规则')
+                }}
+              </h3>
             </div>
             <el-tag v-if="columnInspection" type="success" effect="plain">
-              {{ columnInspection.columns.length }} columns detected
+              {{ columnInspection.columns.length }} {{ t('columns detected', '列已识别') }}
             </el-tag>
           </div>
 
           <template v-if="columnInspection">
-            <el-form-item label="Columns to keep">
+            <el-form-item :label="t('Columns to keep', '要保留的列')">
               <div class="column-selection">
                 <div class="selection-tools">
                   <span>
-                    {{ selectedColumns.length }} of {{ columnInspection.columns.length }} selected
+                    {{ selectedColumns.length }} / {{ columnInspection.columns.length }}
+                    {{ t('selected', '已选择') }}
                   </span>
                   <div>
                     <el-button link type="primary" :disabled="running" @click="selectAllColumns">
-                      Select all
+                      {{ t('Select all', '全选') }}
                     </el-button>
                     <el-button link :disabled="running" @click="clearSelectedColumns">
-                      Clear
+                      {{ t('Clear', '清空') }}
                     </el-button>
                   </div>
                 </div>
@@ -573,7 +625,7 @@ function formatCell(value: unknown) {
                   filterable
                   collapse-tags
                   collapse-tags-tooltip
-                  placeholder="Select at least one column"
+                  :placeholder="t('Select at least one column', '至少选择一列')"
                   :disabled="running"
                 >
                   <el-option
@@ -584,14 +636,16 @@ function formatCell(value: unknown) {
                   >
                     <div class="column-option">
                       <span>{{ column.name }}</span>
-                      <small> {{ column.data_type }} · {{ column.missing }} missing </small>
+                      <small>
+                        {{ column.data_type }} · {{ column.missing }} {{ t('missing', '缺失') }}
+                      </small>
                     </div>
                   </el-option>
                 </el-select>
               </div>
             </el-form-item>
 
-            <el-form-item label="Missing-value handling">
+            <el-form-item :label="t('Missing-value handling', '缺失值处理')">
               <el-select v-model="missingStrategy" :disabled="running">
                 <el-option
                   v-for="option in missingStrategyOptions"
@@ -606,14 +660,24 @@ function formatCell(value: unknown) {
 
           <el-alert
             v-else-if="!datasetFile"
-            title="Choose a dataset first. Its columns will be detected automatically."
+            :title="
+              t(
+                'Choose a dataset first. Its columns will be detected automatically.',
+                '请先选择数据集，系统将自动识别其列。'
+              )
+            "
             type="info"
             :closable="false"
             show-icon
           />
 
           <el-alert
-            title="The uploaded source file is never modified. A new UTF-8 CSV file and a JSON processing record will be generated."
+            :title="
+              t(
+                'The uploaded source file is never modified. A new UTF-8 CSV file and a JSON processing record will be generated.',
+                '上传的源文件不会被修改。系统将生成新的 UTF-8 CSV 文件和 JSON 处理记录。'
+              )
+            "
             type="info"
             :closable="false"
             show-icon
@@ -623,23 +687,30 @@ function formatCell(value: unknown) {
         <section v-if="isRegression" v-loading="inspectingColumns" class="preprocessing-panel">
           <div class="section-heading">
             <div>
-              <p class="guide-kicker">REGRESSION CONFIGURATION</p>
-              <h3>Choose a numeric target and one or more numeric features</h3>
+              <p class="guide-kicker">{{ t('REGRESSION CONFIGURATION', '回归配置') }}</p>
+              <h3>
+                {{
+                  t(
+                    'Choose a numeric target and one or more numeric features',
+                    '选择一个数值目标列和一个或多个数值特征'
+                  )
+                }}
+              </h3>
             </div>
             <el-tag v-if="columnInspection" type="success" effect="plain">
-              {{ numericColumns.length }} numeric columns detected
+              {{ numericColumns.length }} {{ t('numeric columns detected', '个数值列已识别') }}
             </el-tag>
           </div>
 
           <template v-if="columnInspection">
             <div class="form-grid">
-              <el-form-item label="Model">
-                <el-input model-value="Linear regression" disabled />
+              <el-form-item :label="t('Model', '模型')">
+                <el-input :model-value="t('Linear regression', '线性回归')" disabled />
               </el-form-item>
 
-              <el-form-item label="Test dataset size">
+              <el-form-item :label="t('Test dataset size', '测试集比例')">
                 <el-select v-model="regressionTestSize" :disabled="running">
-                  <el-option label="20% (recommended)" :value="0.2" />
+                  <el-option :label="t('20% (recommended)', '20%（推荐）')" :value="0.2" />
                   <el-option label="25%" :value="0.25" />
                   <el-option label="30%" :value="0.3" />
                   <el-option label="40%" :value="0.4" />
@@ -647,11 +718,11 @@ function formatCell(value: unknown) {
               </el-form-item>
             </div>
 
-            <el-form-item label="Target column">
+            <el-form-item :label="t('Target column', '目标列')">
               <el-select
                 v-model="regressionTarget"
                 filterable
-                placeholder="Select the value to predict"
+                :placeholder="t('Select the value to predict', '选择要预测的值')"
                 :disabled="running"
               >
                 <el-option
@@ -662,18 +733,23 @@ function formatCell(value: unknown) {
                 />
               </el-select>
               <p class="field-help">
-                The target is the numeric value the model will learn to predict.
+                {{
+                  t(
+                    'The target is the numeric value the model will learn to predict.',
+                    '目标列是模型要学习预测的数值。'
+                  )
+                }}
               </p>
             </el-form-item>
 
-            <el-form-item label="Feature columns">
+            <el-form-item :label="t('Feature columns', '特征列')">
               <el-select
                 v-model="regressionFeatures"
                 multiple
                 filterable
                 collapse-tags
                 collapse-tags-tooltip
-                placeholder="Select at least one numeric feature"
+                :placeholder="t('Select at least one numeric feature', '至少选择一个数值特征')"
                 :disabled="running"
               >
                 <el-option
@@ -684,21 +760,36 @@ function formatCell(value: unknown) {
                 />
               </el-select>
               <p class="field-help">
-                The target column is automatically excluded from the feature list.
+                {{
+                  t(
+                    'The target column is automatically excluded from the feature list.',
+                    '目标列会自动从特征列表中排除。'
+                  )
+                }}
               </p>
             </el-form-item>
           </template>
 
           <el-alert
             v-else-if="!datasetFile"
-            title="Choose a dataset first. Numeric columns will be detected automatically."
+            :title="
+              t(
+                'Choose a dataset first. Numeric columns will be detected automatically.',
+                '请先选择数据集，系统将自动识别数值列。'
+              )
+            "
             type="info"
             :closable="false"
             show-icon
           />
 
           <el-alert
-            title="Rows containing missing or infinite values in the selected columns are removed before training. At least 10 complete rows are required. The split uses random state 42 for reproducibility."
+            :title="
+              t(
+                'Rows containing missing or infinite values in the selected columns are removed before training. At least 10 complete rows are required. The split uses random state 42 for reproducibility.',
+                '训练前会删除已选列中含缺失值或无穷值的行。至少需要 10 行完整数据。数据划分使用随机种子 42 以保证可复现性。'
+              )
+            "
             type="info"
             :closable="false"
             show-icon
@@ -708,23 +799,33 @@ function formatCell(value: unknown) {
         <section v-if="isClassification" v-loading="inspectingColumns" class="preprocessing-panel">
           <div class="section-heading">
             <div>
-              <p class="guide-kicker">CLASSIFICATION CONFIGURATION</p>
-              <h3>Choose a label column and one or more numeric features</h3>
+              <p class="guide-kicker">{{ t('CLASSIFICATION CONFIGURATION', '分类配置') }}</p>
+              <h3>
+                {{
+                  t(
+                    'Choose a label column and one or more numeric features',
+                    '选择标签列和一个或多个数值特征'
+                  )
+                }}
+              </h3>
             </div>
             <el-tag v-if="columnInspection" type="success" effect="plain">
-              {{ numericColumns.length }} numeric features available
+              {{ numericColumns.length }} {{ t('numeric features available', '个数值特征可用') }}
             </el-tag>
           </div>
 
           <template v-if="columnInspection">
             <div class="form-grid">
-              <el-form-item label="Model">
-                <el-input model-value="Standardized logistic regression" disabled />
+              <el-form-item :label="t('Model', '模型')">
+                <el-input
+                  :model-value="t('Standardized logistic regression', '标准化逻辑回归')"
+                  disabled
+                />
               </el-form-item>
 
-              <el-form-item label="Test dataset size">
+              <el-form-item :label="t('Test dataset size', '测试集比例')">
                 <el-select v-model="classificationTestSize" :disabled="running">
-                  <el-option label="20% (recommended)" :value="0.2" />
+                  <el-option :label="t('20% (recommended)', '20%（推荐）')" :value="0.2" />
                   <el-option label="25%" :value="0.25" />
                   <el-option label="30%" :value="0.3" />
                   <el-option label="40%" :value="0.4" />
@@ -732,11 +833,11 @@ function formatCell(value: unknown) {
               </el-form-item>
             </div>
 
-            <el-form-item label="Target class column">
+            <el-form-item :label="t('Target class column', '目标类别列')">
               <el-select
                 v-model="classificationTarget"
                 filterable
-                placeholder="Select the label to predict"
+                :placeholder="t('Select the label to predict', '选择要预测的标签')"
                 :disabled="running"
               >
                 <el-option
@@ -747,18 +848,23 @@ function formatCell(value: unknown) {
                 />
               </el-select>
               <p class="field-help">
-                Text and numeric class labels are supported; missing labels are removed.
+                {{
+                  t(
+                    'Text and numeric class labels are supported; missing labels are removed.',
+                    '支持文本和数值类别标签；缺失标签会被删除。'
+                  )
+                }}
               </p>
             </el-form-item>
 
-            <el-form-item label="Numeric feature columns">
+            <el-form-item :label="t('Numeric feature columns', '数值特征列')">
               <el-select
                 v-model="classificationFeatures"
                 multiple
                 filterable
                 collapse-tags
                 collapse-tags-tooltip
-                placeholder="Select at least one numeric feature"
+                :placeholder="t('Select at least one numeric feature', '至少选择一个数值特征')"
                 :disabled="running"
               >
                 <el-option
@@ -769,21 +875,36 @@ function formatCell(value: unknown) {
                 />
               </el-select>
               <p class="field-help">
-                Features are standardized automatically before the classifier is fitted.
+                {{
+                  t(
+                    'Features are standardized automatically before the classifier is fitted.',
+                    '拟合分类器前会自动标准化特征。'
+                  )
+                }}
               </p>
             </el-form-item>
           </template>
 
           <el-alert
             v-else-if="!datasetFile"
-            title="Choose a dataset first. Label and numeric feature columns will be detected automatically."
+            :title="
+              t(
+                'Choose a dataset first. Label and numeric feature columns will be detected automatically.',
+                '请先选择数据集，系统将自动识别标签列和数值特征列。'
+              )
+            "
             type="info"
             :closable="false"
             show-icon
           />
 
           <el-alert
-            title="Incomplete rows are removed before training. At least 12 complete rows and two rows per class are required. The split is stratified and uses random state 42."
+            :title="
+              t(
+                'Incomplete rows are removed before training. At least 12 complete rows and two rows per class are required. The split is stratified and uses random state 42.',
+                '训练前会删除不完整行。至少需要 12 行完整数据，且每类至少有 2 行。数据按类别分层划分，随机种子为 42。'
+              )
+            "
             type="info"
             :closable="false"
             show-icon
@@ -793,21 +914,23 @@ function formatCell(value: unknown) {
         <section v-if="isClustering" v-loading="inspectingColumns" class="preprocessing-panel">
           <div class="section-heading">
             <div>
-              <p class="guide-kicker">CLUSTERING CONFIGURATION</p>
-              <h3>Choose numeric features and the number of clusters</h3>
+              <p class="guide-kicker">{{ t('CLUSTERING CONFIGURATION', '聚类配置') }}</p>
+              <h3>
+                {{ t('Choose numeric features and the number of clusters', '选择数值特征和簇数') }}
+              </h3>
             </div>
             <el-tag v-if="columnInspection" type="success" effect="plain">
-              {{ numericColumns.length }} numeric columns detected
+              {{ numericColumns.length }} {{ t('numeric columns detected', '个数值列已识别') }}
             </el-tag>
           </div>
 
           <template v-if="columnInspection">
             <div class="form-grid">
-              <el-form-item label="Model">
-                <el-input model-value="Standardized K-means" disabled />
+              <el-form-item :label="t('Model', '模型')">
+                <el-input :model-value="t('Standardized K-means', '标准化 K-means')" disabled />
               </el-form-item>
 
-              <el-form-item label="Number of clusters">
+              <el-form-item :label="t('Number of clusters', '簇数')">
                 <el-select v-model="clusterCount" :disabled="running">
                   <el-option
                     v-for="count in 9"
@@ -819,14 +942,14 @@ function formatCell(value: unknown) {
               </el-form-item>
             </div>
 
-            <el-form-item label="Numeric feature columns">
+            <el-form-item :label="t('Numeric feature columns', '数值特征列')">
               <el-select
                 v-model="clusteringFeatures"
                 multiple
                 filterable
                 collapse-tags
                 collapse-tags-tooltip
-                placeholder="Select at least one numeric feature"
+                :placeholder="t('Select at least one numeric feature', '至少选择一个数值特征')"
                 :disabled="running"
               >
                 <el-option
@@ -837,22 +960,36 @@ function formatCell(value: unknown) {
                 />
               </el-select>
               <p class="field-help">
-                Features are standardized for fitting; reported cluster centers use the original
-                units.
+                {{
+                  t(
+                    'Features are standardized for fitting; reported cluster centers use the original units.',
+                    '特征会先标准化再拟合；报告的聚类中心使用原始单位。'
+                  )
+                }}
               </p>
             </el-form-item>
           </template>
 
           <el-alert
             v-else-if="!datasetFile"
-            title="Choose a dataset first. Numeric feature columns will be detected automatically."
+            :title="
+              t(
+                'Choose a dataset first. Numeric feature columns will be detected automatically.',
+                '请先选择数据集，系统将自动识别数值特征列。'
+              )
+            "
             type="info"
             :closable="false"
             show-icon
           />
 
           <el-alert
-            title="Incomplete rows are removed before clustering. At least max(10, 2 × cluster count) complete rows are required. K-means uses random state 42."
+            :title="
+              t(
+                'Incomplete rows are removed before clustering. At least max(10, 2 × cluster count) complete rows are required. K-means uses random state 42.',
+                '聚类前会删除不完整行。至少需要 max(10, 2 × 簇数) 行完整数据。K-means 使用随机种子 42。'
+              )
+            "
             type="info"
             :closable="false"
             show-icon
@@ -879,7 +1016,7 @@ function formatCell(value: unknown) {
             {{ runButtonLabel }}
           </el-button>
           <el-button v-if="serviceState === 'offline'" size="large" @click="loadPage">
-            Retry connection
+            {{ t('Retry connection', '重新连接') }}
           </el-button>
         </div>
       </el-form>
@@ -888,20 +1025,22 @@ function formatCell(value: unknown) {
     <template v-if="result">
       <section class="summary-grid">
         <article class="summary-card">
-          <span>Rows</span>
+          <span>{{ t('Rows', '行数') }}</span>
           <strong>{{ formatNumber(result.summary.rows) }}</strong>
         </article>
         <article class="summary-card">
-          <span>Columns</span>
+          <span>{{ t('Columns', '列数') }}</span>
           <strong>{{ formatNumber(result.summary.columns) }}</strong>
         </article>
         <article class="summary-card" :class="{ warning: result.summary.missing_cells > 0 }">
-          <span>Missing cells</span>
+          <span>{{ t('Missing cells', '缺失单元格') }}</span>
           <strong>{{ formatPercent(result.summary.missing_rate) }}</strong>
-          <small>{{ formatNumber(result.summary.missing_cells) }} cells</small>
+          <small
+            >{{ formatNumber(result.summary.missing_cells) }} {{ t('cells', '个单元格') }}</small
+          >
         </article>
         <article class="summary-card" :class="{ warning: result.summary.duplicate_rows > 0 }">
-          <span>Duplicate rows</span>
+          <span>{{ t('Duplicate rows', '重复行') }}</span>
           <strong>{{ formatNumber(result.summary.duplicate_rows) }}</strong>
         </article>
       </section>
@@ -910,10 +1049,12 @@ function formatCell(value: unknown) {
         <template #header>
           <div class="result-heading">
             <div>
-              <h2>Dataset profile completed</h2>
-              <p>{{ result.source_filename }} · Job ID: {{ result.job_id }}</p>
+              <h2>{{ t('Dataset profile completed', '数据集概览完成') }}</h2>
+              <p>
+                {{ result.source_filename }} · {{ t('Job ID', '任务 ID') }}: {{ result.job_id }}
+              </p>
             </div>
-            <el-tag type="success">SUCCESS</el-tag>
+            <el-tag type="success">{{ t('SUCCESS', '成功') }}</el-tag>
           </div>
         </template>
 
@@ -921,8 +1062,8 @@ function formatCell(value: unknown) {
           <el-alert
             v-for="warning in result.warnings"
             :key="warning"
-            :title="warning"
-            :type="warning.startsWith('未发现') ? 'success' : 'warning'"
+            :title="apiText(warning)"
+            :type="warningIsSuccess(warning) ? 'success' : 'warning'"
             :closable="false"
             show-icon
           />
@@ -931,35 +1072,35 @@ function formatCell(value: unknown) {
         <section class="result-section">
           <div class="section-heading">
             <div>
-              <p class="guide-kicker">COLUMN PROFILE</p>
-              <h3>Column quality and descriptive statistics</h3>
+              <p class="guide-kicker">{{ t('COLUMN PROFILE', '列概览') }}</p>
+              <h3>{{ t('Column quality and descriptive statistics', '列质量与描述性统计') }}</h3>
             </div>
           </div>
           <div class="table-wrap">
             <el-table :data="result.columns" border size="small">
-              <el-table-column prop="name" label="Column" min-width="140" fixed />
-              <el-table-column prop="data_type" label="Type" min-width="95" />
-              <el-table-column prop="non_null" label="Non-null" min-width="90" />
-              <el-table-column prop="missing" label="Missing" min-width="85" />
-              <el-table-column label="Missing rate" min-width="105">
+              <el-table-column prop="name" :label="t('Column', '列')" min-width="140" fixed />
+              <el-table-column prop="data_type" :label="t('Type', '类型')" min-width="95" />
+              <el-table-column prop="non_null" :label="t('Non-null', '非空值')" min-width="90" />
+              <el-table-column prop="missing" :label="t('Missing', '缺失')" min-width="85" />
+              <el-table-column :label="t('Missing rate', '缺失率')" min-width="105">
                 <template #default="scope">{{ formatPercent(scope.row.missing_rate) }}</template>
               </el-table-column>
-              <el-table-column prop="unique" label="Unique" min-width="85" />
-              <el-table-column label="Minimum" min-width="105">
+              <el-table-column prop="unique" :label="t('Unique', '唯一值')" min-width="85" />
+              <el-table-column :label="t('Minimum', '最小值')" min-width="105">
                 <template #default="scope">{{ formatNumber(scope.row.minimum) }}</template>
               </el-table-column>
-              <el-table-column label="Maximum" min-width="105">
+              <el-table-column :label="t('Maximum', '最大值')" min-width="105">
                 <template #default="scope">{{ formatNumber(scope.row.maximum) }}</template>
               </el-table-column>
-              <el-table-column label="Mean" min-width="105">
+              <el-table-column :label="t('Mean', '均值')" min-width="105">
                 <template #default="scope">{{ formatNumber(scope.row.mean) }}</template>
               </el-table-column>
-              <el-table-column label="Std. dev." min-width="105">
+              <el-table-column :label="t('Std. dev.', '标准差')" min-width="105">
                 <template #default="scope">{{
                   formatNumber(scope.row.standard_deviation)
                 }}</template>
               </el-table-column>
-              <el-table-column label="Sample values" min-width="200">
+              <el-table-column :label="t('Sample values', '示例值')" min-width="200">
                 <template #default="scope">
                   {{ scope.row.sample_values.map(formatCell).join(' · ') || '—' }}
                 </template>
@@ -971,8 +1112,8 @@ function formatCell(value: unknown) {
         <section v-if="result.preview.length" class="result-section">
           <div class="section-heading">
             <div>
-              <p class="guide-kicker">DATA PREVIEW</p>
-              <h3>First {{ result.preview.length }} rows</h3>
+              <p class="guide-kicker">{{ t('DATA PREVIEW', '数据预览') }}</p>
+              <h3>{{ t('First', '前') }} {{ result.preview.length }} {{ t('rows', '行') }}</h3>
             </div>
           </div>
           <div class="table-wrap">
@@ -1002,7 +1143,7 @@ function formatCell(value: unknown) {
             :href="artifactUrl(artifact.download_url)"
             download
           >
-            Download JSON report
+            {{ t('Download JSON report', '下载 JSON 报告') }}
           </el-button>
         </div>
       </el-card>
@@ -1011,33 +1152,38 @@ function formatCell(value: unknown) {
     <template v-if="preprocessingResult">
       <section class="summary-grid">
         <article class="summary-card">
-          <span>Rows</span>
+          <span>{{ t('Rows', '行数') }}</span>
           <strong>{{ formatNumber(preprocessingResult.summary.processed_rows) }}</strong>
           <small>
-            {{ formatNumber(preprocessingResult.summary.original_rows) }} original ·
-            {{ formatNumber(preprocessingResult.summary.removed_rows) }} removed
+            {{ formatNumber(preprocessingResult.summary.original_rows) }}
+            {{ t('original', '原始') }} ·
+            {{ formatNumber(preprocessingResult.summary.removed_rows) }}
+            {{ t('removed', '已删除') }}
           </small>
         </article>
         <article class="summary-card">
-          <span>Columns</span>
+          <span>{{ t('Columns', '列数') }}</span>
           <strong>{{ formatNumber(preprocessingResult.summary.processed_columns) }}</strong>
           <small>
-            {{ formatNumber(preprocessingResult.summary.original_columns) }} original ·
-            {{ formatNumber(preprocessingResult.summary.removed_columns) }} removed
+            {{ formatNumber(preprocessingResult.summary.original_columns) }}
+            {{ t('original', '原始') }} ·
+            {{ formatNumber(preprocessingResult.summary.removed_columns) }}
+            {{ t('removed', '已删除') }}
           </small>
         </article>
         <article
           class="summary-card"
           :class="{ warning: preprocessingResult.summary.processed_missing_cells > 0 }"
         >
-          <span>Remaining missing cells</span>
+          <span>{{ t('Remaining missing cells', '剩余缺失单元格') }}</span>
           <strong>{{ formatNumber(preprocessingResult.summary.processed_missing_cells) }}</strong>
           <small>
-            {{ formatNumber(preprocessingResult.summary.original_missing_cells) }} before processing
+            {{ formatNumber(preprocessingResult.summary.original_missing_cells) }}
+            {{ t('before processing', '处理前') }}
           </small>
         </article>
         <article class="summary-card">
-          <span>Filled cells</span>
+          <span>{{ t('Filled cells', '已填充单元格') }}</span>
           <strong>{{ formatNumber(preprocessingResult.summary.filled_cells) }}</strong>
           <small>{{ selectedStrategy?.label }}</small>
         </article>
@@ -1047,25 +1193,25 @@ function formatCell(value: unknown) {
         <template #header>
           <div class="result-heading">
             <div>
-              <h2>Data preprocessing completed</h2>
+              <h2>{{ t('Data preprocessing completed', '数据预处理完成') }}</h2>
               <p>
-                {{ preprocessingResult.source_filename }} · Job ID:
+                {{ preprocessingResult.source_filename }} · {{ t('Job ID', '任务 ID') }}:
                 {{ preprocessingResult.job_id }}
               </p>
             </div>
-            <el-tag type="success">SUCCESS</el-tag>
+            <el-tag type="success">{{ t('SUCCESS', '成功') }}</el-tag>
           </div>
         </template>
 
         <div class="result-meta">
           <div>
-            <span>Missing-value rule</span>
+            <span>{{ t('Missing-value rule', '缺失值规则') }}</span>
             <strong>{{
               selectedStrategy?.label || formatLabel(preprocessingResult.missing_strategy)
             }}</strong>
           </div>
           <div>
-            <span>Selected columns</span>
+            <span>{{ t('Selected columns', '已选列') }}</span>
             <div class="selected-column-tags">
               <el-tag
                 v-for="column in preprocessingResult.selected_columns"
@@ -1083,8 +1229,8 @@ function formatCell(value: unknown) {
           <el-alert
             v-for="warning in preprocessingResult.warnings"
             :key="warning"
-            :title="warning"
-            :type="warning.includes('没有缺失单元格') ? 'success' : 'warning'"
+            :title="apiText(warning)"
+            :type="warningIsSuccess(warning) ? 'success' : 'warning'"
             :closable="false"
             show-icon
           />
@@ -1093,8 +1239,11 @@ function formatCell(value: unknown) {
         <section v-if="preprocessingResult.preview.length" class="result-section">
           <div class="section-heading">
             <div>
-              <p class="guide-kicker">PROCESSED DATA PREVIEW</p>
-              <h3>First {{ preprocessingResult.preview.length }} rows</h3>
+              <p class="guide-kicker">{{ t('PROCESSED DATA PREVIEW', '处理后数据预览') }}</p>
+              <h3>
+                {{ t('First', '前') }} {{ preprocessingResult.preview.length }}
+                {{ t('rows', '行') }}
+              </h3>
             </div>
           </div>
           <div class="table-wrap">
@@ -1130,8 +1279,8 @@ function formatCell(value: unknown) {
           >
             {{
               artifact.name.endsWith('.csv')
-                ? 'Download processed CSV'
-                : 'Download processing record'
+                ? t('Download processed CSV', '下载处理后 CSV')
+                : t('Download processing record', '下载处理记录')
             }}
           </el-button>
         </div>
@@ -1143,29 +1292,32 @@ function formatCell(value: unknown) {
         <article class="summary-card">
           <span>R²</span>
           <strong>{{ formatNumber(regressionResult.metrics.r2, 6) }}</strong>
-          <small>Test dataset</small>
+          <small>{{ t('Test dataset', '测试数据集') }}</small>
         </article>
         <article class="summary-card">
-          <span>Mean absolute error</span>
+          <span>{{ t('Mean absolute error', '平均绝对误差') }}</span>
           <strong>
             {{ formatNumber(regressionResult.metrics.mean_absolute_error, 6) }}
           </strong>
-          <small>Lower is better</small>
+          <small>{{ t('Lower is better', '越低越好') }}</small>
         </article>
         <article class="summary-card">
-          <span>Root mean squared error</span>
+          <span>{{ t('Root mean squared error', '均方根误差') }}</span>
           <strong>
             {{ formatNumber(regressionResult.metrics.root_mean_squared_error, 6) }}
           </strong>
-          <small>Lower is better</small>
+          <small>{{ t('Lower is better', '越低越好') }}</small>
         </article>
         <article class="summary-card">
-          <span>Train / test rows</span>
+          <span>{{ t('Train / test rows', '训练 / 测试行数') }}</span>
           <strong>
             {{ regressionResult.summary.train_rows }} /
             {{ regressionResult.summary.test_rows }}
           </strong>
-          <small> {{ regressionResult.summary.dropped_rows }} incomplete rows removed </small>
+          <small>
+            {{ regressionResult.summary.dropped_rows }}
+            {{ t('incomplete rows removed', '行不完整数据已删除') }}
+          </small>
         </article>
       </section>
 
@@ -1173,23 +1325,23 @@ function formatCell(value: unknown) {
         <template #header>
           <div class="result-heading">
             <div>
-              <h2>Linear regression completed</h2>
+              <h2>{{ t('Linear regression completed', '线性回归完成') }}</h2>
               <p>
-                {{ regressionResult.source_filename }} · Job ID:
+                {{ regressionResult.source_filename }} · {{ t('Job ID', '任务 ID') }}:
                 {{ regressionResult.job_id }}
               </p>
             </div>
-            <el-tag type="success">SUCCESS</el-tag>
+            <el-tag type="success">{{ t('SUCCESS', '成功') }}</el-tag>
           </div>
         </template>
 
         <div class="result-meta regression-meta">
           <div>
-            <span>Target column</span>
+            <span>{{ t('Target column', '目标列') }}</span>
             <strong>{{ regressionResult.target_column }}</strong>
           </div>
           <div>
-            <span>Feature columns</span>
+            <span>{{ t('Feature columns', '特征列') }}</span>
             <div class="selected-column-tags">
               <el-tag
                 v-for="column in regressionResult.feature_columns"
@@ -1202,16 +1354,17 @@ function formatCell(value: unknown) {
             </div>
           </div>
           <div>
-            <span>Reproducible split</span>
+            <span>{{ t('Reproducible split', '可复现划分') }}</span>
             <strong>
-              {{ formatPercent(regressionResult.test_size) }} test · random state
+              {{ formatPercent(regressionResult.test_size) }} {{ t('test', '测试集') }} ·
+              {{ t('random state', '随机种子') }}
               {{ regressionResult.random_state }}
             </strong>
           </div>
         </div>
 
         <div class="equation-card">
-          <span>Fitted equation</span>
+          <span>{{ t('Fitted equation', '拟合方程') }}</span>
           <code>{{ regressionResult.equation }}</code>
         </div>
 
@@ -1219,8 +1372,8 @@ function formatCell(value: unknown) {
           <el-alert
             v-for="warning in regressionResult.warnings"
             :key="warning"
-            :title="warning"
-            :type="warning.includes('均可用于回归') ? 'success' : 'warning'"
+            :title="apiText(warning)"
+            :type="warningIsSuccess(warning) ? 'success' : 'warning'"
             :closable="false"
             show-icon
           />
@@ -1229,16 +1382,18 @@ function formatCell(value: unknown) {
         <section class="result-section">
           <div class="section-heading">
             <div>
-              <p class="guide-kicker">MODEL COEFFICIENTS</p>
-              <h3>Feature effects in the fitted linear model</h3>
+              <p class="guide-kicker">{{ t('MODEL COEFFICIENTS', '模型系数') }}</p>
+              <h3>
+                {{ t('Feature effects in the fitted linear model', '特征在拟合线性模型中的影响') }}
+              </h3>
             </div>
             <el-tag type="info" effect="plain">
-              Intercept: {{ formatNumber(regressionResult.intercept, 6) }}
+              {{ t('Intercept', '截距') }}: {{ formatNumber(regressionResult.intercept, 6) }}
             </el-tag>
           </div>
           <el-table :data="regressionResult.coefficients" border size="small">
-            <el-table-column prop="feature" label="Feature" min-width="180" />
-            <el-table-column label="Coefficient" min-width="160">
+            <el-table-column prop="feature" :label="t('Feature', '特征')" min-width="180" />
+            <el-table-column :label="t('Coefficient', '系数')" min-width="160">
               <template #default="scope">
                 {{ formatNumber(scope.row.coefficient, 8) }}
               </template>
@@ -1249,8 +1404,8 @@ function formatCell(value: unknown) {
         <section v-if="regressionResult.preview.length" class="result-section">
           <div class="section-heading">
             <div>
-              <p class="guide-kicker">TEST PREDICTIONS</p>
-              <h3>Actual values, predictions and residuals</h3>
+              <p class="guide-kicker">{{ t('TEST PREDICTIONS', '测试集预测') }}</p>
+              <h3>{{ t('Actual values, predictions and residuals', '实际值、预测值和残差') }}</h3>
             </div>
           </div>
           <div class="table-wrap">
@@ -1292,8 +1447,8 @@ function formatCell(value: unknown) {
           >
             {{
               artifact.name.endsWith('.csv')
-                ? 'Download predictions CSV'
-                : 'Download regression report'
+                ? t('Download predictions CSV', '下载预测 CSV')
+                : t('Download regression report', '下载回归报告')
             }}
           </el-button>
         </div>
@@ -1303,30 +1458,33 @@ function formatCell(value: unknown) {
     <template v-if="classificationResult">
       <section class="summary-grid">
         <article class="summary-card">
-          <span>Accuracy</span>
+          <span>{{ t('Accuracy', '准确率') }}</span>
           <strong>{{ formatPercent(classificationResult.metrics.accuracy) }}</strong>
-          <small>Test dataset</small>
+          <small>{{ t('Test dataset', '测试数据集') }}</small>
         </article>
         <article class="summary-card">
           <span>Macro F1</span>
           <strong>{{ formatPercent(classificationResult.metrics.f1_macro) }}</strong>
-          <small>Equal weight per class</small>
+          <small>{{ t('Equal weight per class', '各类别等权重') }}</small>
         </article>
         <article class="summary-card">
-          <span>Macro precision / recall</span>
+          <span>{{ t('Macro precision / recall', '宏平均精确率 / 召回率') }}</span>
           <strong>
             {{ formatPercent(classificationResult.metrics.precision_macro) }} /
             {{ formatPercent(classificationResult.metrics.recall_macro) }}
           </strong>
-          <small>Test dataset</small>
+          <small>{{ t('Test dataset', '测试数据集') }}</small>
         </article>
         <article class="summary-card">
-          <span>Train / test rows</span>
+          <span>{{ t('Train / test rows', '训练 / 测试行数') }}</span>
           <strong>
             {{ classificationResult.summary.train_rows }} /
             {{ classificationResult.summary.test_rows }}
           </strong>
-          <small> {{ classificationResult.summary.dropped_rows }} incomplete rows removed </small>
+          <small>
+            {{ classificationResult.summary.dropped_rows }}
+            {{ t('incomplete rows removed', '行不完整数据已删除') }}
+          </small>
         </article>
       </section>
 
@@ -1334,23 +1492,23 @@ function formatCell(value: unknown) {
         <template #header>
           <div class="result-heading">
             <div>
-              <h2>Logistic classification completed</h2>
+              <h2>{{ t('Logistic classification completed', '逻辑分类完成') }}</h2>
               <p>
-                {{ classificationResult.source_filename }} · Job ID:
+                {{ classificationResult.source_filename }} · {{ t('Job ID', '任务 ID') }}:
                 {{ classificationResult.job_id }}
               </p>
             </div>
-            <el-tag type="success">SUCCESS</el-tag>
+            <el-tag type="success">{{ t('SUCCESS', '成功') }}</el-tag>
           </div>
         </template>
 
         <div class="result-meta regression-meta">
           <div>
-            <span>Target class</span>
+            <span>{{ t('Target class', '目标类别') }}</span>
             <strong>{{ classificationResult.target_column }}</strong>
           </div>
           <div>
-            <span>Feature columns</span>
+            <span>{{ t('Feature columns', '特征列') }}</span>
             <div class="selected-column-tags">
               <el-tag
                 v-for="column in classificationResult.feature_columns"
@@ -1363,10 +1521,11 @@ function formatCell(value: unknown) {
             </div>
           </div>
           <div>
-            <span>Classes and split</span>
+            <span>{{ t('Classes and split', '类别与数据划分') }}</span>
             <strong>
               {{ classificationResult.classes.join(' · ') }} ·
-              {{ formatPercent(classificationResult.test_size) }} test · random state
+              {{ formatPercent(classificationResult.test_size) }} {{ t('test', '测试集') }} ·
+              {{ t('random state', '随机种子') }}
               {{ classificationResult.random_state }}
             </strong>
           </div>
@@ -1376,8 +1535,8 @@ function formatCell(value: unknown) {
           <el-alert
             v-for="warning in classificationResult.warnings"
             :key="warning"
-            :title="warning"
-            :type="warning.includes('均可用于分类') ? 'success' : 'warning'"
+            :title="apiText(warning)"
+            :type="warningIsSuccess(warning) ? 'success' : 'warning'"
             :closable="false"
             show-icon
           />
@@ -1386,22 +1545,34 @@ function formatCell(value: unknown) {
         <section class="result-section">
           <div class="section-heading">
             <div>
-              <p class="guide-kicker">CONFUSION MATRIX</p>
-              <h3>Actual and predicted class counts</h3>
+              <p class="guide-kicker">{{ t('CONFUSION MATRIX', '混淆矩阵') }}</p>
+              <h3>{{ t('Actual and predicted class counts', '实际类别与预测类别计数') }}</h3>
             </div>
           </div>
           <el-table :data="classificationResult.confusion_matrix" border size="small">
-            <el-table-column prop="actual_class" label="Actual class" min-width="160" />
-            <el-table-column prop="predicted_class" label="Predicted class" min-width="160" />
-            <el-table-column prop="count" label="Rows" min-width="100" />
+            <el-table-column
+              prop="actual_class"
+              :label="t('Actual class', '实际类别')"
+              min-width="160"
+            />
+            <el-table-column
+              prop="predicted_class"
+              :label="t('Predicted class', '预测类别')"
+              min-width="160"
+            />
+            <el-table-column prop="count" :label="t('Rows', '行数')" min-width="100" />
           </el-table>
         </section>
 
         <section v-if="classificationResult.preview.length" class="result-section">
           <div class="section-heading">
             <div>
-              <p class="guide-kicker">TEST PREDICTIONS</p>
-              <h3>Actual class, predicted class and correctness</h3>
+              <p class="guide-kicker">{{ t('TEST PREDICTIONS', '测试集预测') }}</p>
+              <h3>
+                {{
+                  t('Actual class, predicted class and correctness', '实际类别、预测类别和判定结果')
+                }}
+              </h3>
             </div>
           </div>
           <div class="table-wrap">
@@ -1437,8 +1608,8 @@ function formatCell(value: unknown) {
           >
             {{
               artifact.name.endsWith('.csv')
-                ? 'Download predictions CSV'
-                : 'Download classification report'
+                ? t('Download predictions CSV', '下载预测 CSV')
+                : t('Download classification report', '下载分类报告')
             }}
           </el-button>
         </div>
@@ -1448,26 +1619,29 @@ function formatCell(value: unknown) {
     <template v-if="clusteringResult">
       <section class="summary-grid">
         <article class="summary-card">
-          <span>Silhouette score</span>
+          <span>{{ t('Silhouette score', '轮廓系数') }}</span>
           <strong>{{ formatNumber(clusteringResult.metrics.silhouette_score, 6) }}</strong>
-          <small>Higher is better</small>
+          <small>{{ t('Higher is better', '越高越好') }}</small>
         </article>
         <article class="summary-card">
-          <span>Davies–Bouldin score</span>
+          <span>{{ t('Davies–Bouldin score', 'Davies–Bouldin 指标') }}</span>
           <strong>{{ formatNumber(clusteringResult.metrics.davies_bouldin_score, 6) }}</strong>
-          <small>Lower is better</small>
+          <small>{{ t('Lower is better', '越低越好') }}</small>
         </article>
         <article class="summary-card">
-          <span>Calinski–Harabasz score</span>
+          <span>{{ t('Calinski–Harabasz score', 'Calinski–Harabasz 指标') }}</span>
           <strong>
             {{ formatNumber(clusteringResult.metrics.calinski_harabasz_score, 3) }}
           </strong>
-          <small>Higher is better</small>
+          <small>{{ t('Higher is better', '越高越好') }}</small>
         </article>
         <article class="summary-card">
-          <span>Usable rows</span>
+          <span>{{ t('Usable rows', '可用行数') }}</span>
           <strong>{{ formatNumber(clusteringResult.summary.usable_rows) }}</strong>
-          <small> {{ clusteringResult.summary.dropped_rows }} incomplete rows removed </small>
+          <small>
+            {{ clusteringResult.summary.dropped_rows }}
+            {{ t('incomplete rows removed', '行不完整数据已删除') }}
+          </small>
         </article>
       </section>
 
@@ -1475,23 +1649,23 @@ function formatCell(value: unknown) {
         <template #header>
           <div class="result-heading">
             <div>
-              <h2>K-means clustering completed</h2>
+              <h2>{{ t('K-means clustering completed', 'K-means 聚类完成') }}</h2>
               <p>
-                {{ clusteringResult.source_filename }} · Job ID:
+                {{ clusteringResult.source_filename }} · {{ t('Job ID', '任务 ID') }}:
                 {{ clusteringResult.job_id }}
               </p>
             </div>
-            <el-tag type="success">SUCCESS</el-tag>
+            <el-tag type="success">{{ t('SUCCESS', '成功') }}</el-tag>
           </div>
         </template>
 
         <div class="result-meta regression-meta">
           <div>
-            <span>Clusters</span>
+            <span>{{ t('Clusters', '簇数') }}</span>
             <strong>{{ clusteringResult.cluster_count }}</strong>
           </div>
           <div>
-            <span>Feature columns</span>
+            <span>{{ t('Feature columns', '特征列') }}</span>
             <div class="selected-column-tags">
               <el-tag
                 v-for="column in clusteringResult.feature_columns"
@@ -1504,8 +1678,11 @@ function formatCell(value: unknown) {
             </div>
           </div>
           <div>
-            <span>Reproducibility</span>
-            <strong>Standardized input · random state {{ clusteringResult.random_state }}</strong>
+            <span>{{ t('Reproducibility', '可复现性') }}</span>
+            <strong
+              >{{ t('Standardized input', '标准化输入') }} · {{ t('random state', '随机种子') }}
+              {{ clusteringResult.random_state }}</strong
+            >
           </div>
         </div>
 
@@ -1513,8 +1690,8 @@ function formatCell(value: unknown) {
           <el-alert
             v-for="warning in clusteringResult.warnings"
             :key="warning"
-            :title="warning"
-            :type="warning.includes('均可用于聚类') ? 'success' : 'warning'"
+            :title="apiText(warning)"
+            :type="warningIsSuccess(warning) ? 'success' : 'warning'"
             :closable="false"
             show-icon
           />
@@ -1523,26 +1700,33 @@ function formatCell(value: unknown) {
         <section class="result-section">
           <div class="section-heading">
             <div>
-              <p class="guide-kicker">CLUSTER SIZES</p>
-              <h3>Rows assigned to each cluster</h3>
+              <p class="guide-kicker">{{ t('CLUSTER SIZES', '簇大小') }}</p>
+              <h3>{{ t('Rows assigned to each cluster', '分配到各簇的行数') }}</h3>
             </div>
           </div>
           <el-table :data="clusteringResult.cluster_sizes" border size="small">
-            <el-table-column prop="cluster" label="Cluster" min-width="130" />
-            <el-table-column prop="rows" label="Rows" min-width="130" />
+            <el-table-column prop="cluster" :label="t('Cluster', '簇')" min-width="130" />
+            <el-table-column prop="rows" :label="t('Rows', '行数')" min-width="130" />
           </el-table>
         </section>
 
         <section class="result-section">
           <div class="section-heading">
             <div>
-              <p class="guide-kicker">CLUSTER CENTERS</p>
-              <h3>Centers converted back to original feature units</h3>
+              <p class="guide-kicker">{{ t('CLUSTER CENTERS', '聚类中心') }}</p>
+              <h3>
+                {{
+                  t(
+                    'Centers converted back to original feature units',
+                    '已转换回原始特征单位的聚类中心'
+                  )
+                }}
+              </h3>
             </div>
           </div>
           <div class="table-wrap">
             <el-table :data="clusteringResult.cluster_centers" border size="small">
-              <el-table-column prop="cluster" label="Cluster" min-width="100" fixed />
+              <el-table-column prop="cluster" :label="t('Cluster', '簇')" min-width="100" fixed />
               <el-table-column
                 v-for="column in clusteringResult.feature_columns"
                 :key="column"
@@ -1560,8 +1744,11 @@ function formatCell(value: unknown) {
         <section v-if="clusteringResult.preview.length" class="result-section">
           <div class="section-heading">
             <div>
-              <p class="guide-kicker">CLUSTER ASSIGNMENTS</p>
-              <h3>First {{ clusteringResult.preview.length }} usable rows</h3>
+              <p class="guide-kicker">{{ t('CLUSTER ASSIGNMENTS', '聚类分配') }}</p>
+              <h3>
+                {{ t('First', '前') }} {{ clusteringResult.preview.length }}
+                {{ t('usable rows', '行可用数据') }}
+              </h3>
             </div>
           </div>
           <div class="table-wrap">
@@ -1603,8 +1790,8 @@ function formatCell(value: unknown) {
           >
             {{
               artifact.name.endsWith('.csv')
-                ? 'Download assignments CSV'
-                : 'Download clustering report'
+                ? t('Download assignments CSV', '下载聚类分配 CSV')
+                : t('Download clustering report', '下载聚类报告')
             }}
           </el-button>
         </div>

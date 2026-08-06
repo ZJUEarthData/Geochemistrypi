@@ -1,15 +1,75 @@
 <script lang="ts" setup>
+import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
+
+import { locale, setLocale, t } from '@/i18n'
+
+const moreMenu = ref<HTMLDetailsElement | null>(null)
+
+function toggleLocale() {
+  setLocale(locale.value === 'en' ? 'zh' : 'en')
+}
+
+function closeMoreMenu() {
+  if (moreMenu.value) moreMenu.value.open = false
+}
 </script>
 
 <template>
   <nav class="nav-bar">
-    <RouterLink class="logo" to="/"><img src="@/assets/imgs/logo.png" /></RouterLink>
+    <div class="brand-tools">
+      <RouterLink class="logo" to="/">
+        <img src="@/assets/imgs/logo.png" :alt="t('Geochemistry Pi', '地球化学π')" />
+      </RouterLink>
+      <button
+        class="language-toggle"
+        type="button"
+        :aria-label="t('Switch to Chinese', '切换为英文')"
+        @click="toggleLocale"
+      >
+        <span class="language-icon" aria-hidden="true">A/文</span>
+        <span>{{ locale === 'en' ? '中文' : 'English' }}</span>
+      </button>
+    </div>
     <div class="nav-link">
       <div class="module-links">
-        <RouterLink to="/online"><span class="link-start">Chemical modeling</span></RouterLink>
-        <RouterLink to="/data-mining"><span class="link-start">Data mining</span></RouterLink>
+        <RouterLink to="/online">
+          <span class="link-start">{{ t('Chemical modeling', '化学建模') }}</span>
+        </RouterLink>
+        <RouterLink to="/data-mining">
+          <span class="link-start">{{ t('Data mining', '数据挖掘') }}</span>
+        </RouterLink>
       </div>
+      <details ref="moreMenu" class="more-menu">
+        <summary>{{ t('More', '更多') }}</summary>
+        <div class="more-menu-panel">
+          <a
+            href="https://github.com/ZJUEarthData/geochemistrypi/"
+            target="_blank"
+            rel="noopener noreferrer"
+            @click="closeMoreMenu"
+          >
+            GitHub
+          </a>
+          <a
+            href="https://geochemistrypi.readthedocs.io/en/latest/"
+            target="_blank"
+            rel="noopener noreferrer"
+            @click="closeMoreMenu"
+          >
+            {{ t('Documentation', '使用文档') }}
+          </a>
+          <RouterLink to="/guide" @click="closeMoreMenu">
+            {{ t('About us', '关于我们') }}
+          </RouterLink>
+          <RouterLink to="/" @click="closeMoreMenu">
+            {{ t('Search', '搜索') }}
+          </RouterLink>
+          <RouterLink to="/" @click="closeMoreMenu">
+            {{ t('Account', '用户中心') }}
+          </RouterLink>
+        </div>
+      </details>
       <a href="https://github.com/ZJUEarthData/geochemistrypi/" target="_blank"
         ><i
           class="el-icon"
@@ -30,7 +90,7 @@ import { RouterLink } from 'vue-router'
         >Github</a
       >
       <a href="https://geochemistrypi.readthedocs.io/en/latest/" target="_blank">Docs</a>
-      <RouterLink to="/guide">About us</RouterLink>
+      <RouterLink to="/guide">{{ t('About us', '关于我们') }}</RouterLink>
       <!-- <RouterLink to="/"><span class="link-start">Get started</span></RouterLink>
       <RouterLink to="/">Sign in</RouterLink> -->
       <RouterLink to="/"
@@ -67,21 +127,124 @@ import { RouterLink } from 'vue-router'
 <style lang="scss" scoped>
 .nav-bar {
   display: flex;
+  position: relative;
+  z-index: 100;
   background: #000;
   height: 60px;
   align-items: center;
   justify-content: space-between;
   padding: 0 20px;
 
+  .brand-tools {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    flex-shrink: 0;
+  }
+
   .logo {
+    display: flex;
+
     img {
       height: 60px;
+    }
+  }
+
+  .language-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 112px;
+    height: 34px;
+    padding: 0 13px;
+    border: 1px solid #707070;
+    border-radius: 999px;
+    color: #fff;
+    background: #171717;
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease;
+
+    &:hover,
+    &:focus-visible {
+      border-color: #f25b28;
+      background: #292929;
+      outline: none;
+    }
+
+    .language-icon {
+      color: #f25b28;
+      font-weight: 700;
     }
   }
 
   .nav-link {
     display: flex;
     align-items: center;
+
+    .more-menu {
+      display: none;
+      position: relative;
+
+      summary {
+        height: 36px;
+        padding: 0 13px;
+        border: 1px solid #f25b28;
+        border-radius: 4px;
+        color: #fff;
+        line-height: 34px;
+        font-size: 15px;
+        cursor: pointer;
+        list-style: none;
+        white-space: nowrap;
+
+        &::-webkit-details-marker {
+          display: none;
+        }
+
+        &::after {
+          margin-left: 7px;
+          content: '▾';
+        }
+      }
+
+      &[open] summary {
+        background: #f25b28;
+      }
+
+      .more-menu-panel {
+        display: grid;
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        min-width: 190px;
+        overflow: hidden;
+        border: 1px solid #374151;
+        border-radius: 8px;
+        background: #111827;
+        box-shadow: 0 12px 28px rgb(0 0 0 / 28%);
+
+        a {
+          margin: 0;
+          padding: 11px 14px;
+          color: #fff;
+          line-height: 1.25;
+          font-size: 14px;
+          white-space: nowrap;
+
+          &:hover,
+          &:focus-visible {
+            background: #263244;
+            color: #ff8b63;
+            outline: none;
+            transform: none;
+          }
+        }
+      }
+    }
 
     .module-links {
       display: flex;
@@ -116,40 +279,129 @@ import { RouterLink } from 'vue-router'
         line-height: 32px;
         border-radius: 4px;
         display: inline-block;
+        white-space: nowrap;
       }
     }
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 1240px) {
   .nav-bar {
-    height: 52px;
-    padding: 0 10px;
+    padding: 0 14px;
+
+    .brand-tools {
+      gap: 14px;
+    }
 
     .logo img {
-      width: 112px;
-      height: 42px;
+      width: 150px;
       object-fit: contain;
     }
 
+    .language-toggle {
+      min-width: 88px;
+      padding: 0 10px;
+    }
+
     .nav-link {
+      gap: 8px;
+
+      .more-menu {
+        display: block;
+      }
+
       .module-links {
-        gap: 4px;
         margin-right: 0;
 
         a {
-          font-size: 12px;
-
-          .link-start {
-            height: 30px;
-            padding: 0 6px;
-            line-height: 28px;
-          }
+          font-size: 16px;
         }
       }
 
       > a {
         display: none;
+      }
+    }
+  }
+}
+
+@media (max-width: 900px) {
+  .nav-bar {
+    height: auto;
+    min-height: 88px;
+    flex-wrap: wrap;
+    align-content: center;
+    padding: 4px 10px 8px;
+
+    .brand-tools {
+      width: 100%;
+      gap: 10px;
+    }
+
+    .logo img {
+      width: 104px;
+      height: 42px;
+      object-fit: contain;
+    }
+
+    .language-toggle {
+      min-width: 48px;
+      height: 30px;
+      padding: 0 8px;
+      font-size: 12px;
+
+      .language-icon {
+        display: none;
+      }
+    }
+
+    .nav-link {
+      width: 100%;
+      gap: 4px;
+
+      .module-links {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        width: 100%;
+        gap: 4px;
+        margin-right: 0;
+
+        a {
+          justify-content: stretch;
+          font-size: 12px;
+
+          .link-start {
+            height: 30px;
+            width: 100%;
+            max-width: none;
+            padding: 0 5px;
+            line-height: 28px;
+            text-align: center;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+        }
+      }
+
+      .more-menu {
+        flex: 0 0 auto;
+
+        summary {
+          height: 30px;
+          padding: 0 8px;
+          line-height: 28px;
+          font-size: 12px;
+
+          &::after {
+            margin-left: 4px;
+          }
+        }
+
+        .more-menu-panel {
+          top: calc(100% + 6px);
+          min-width: 160px;
+        }
       }
     }
   }

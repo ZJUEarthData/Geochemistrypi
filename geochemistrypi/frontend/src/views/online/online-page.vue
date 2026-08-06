@@ -10,6 +10,13 @@ import {
   type ArtifactResponse,
   type TaskCatalogItem
 } from '@/api/online'
+import {
+  apiText,
+  chemicalMethodDescription,
+  chemicalMethodFormula,
+  chemicalMethodStatus,
+  t
+} from '@/i18n'
 
 type ServiceState = 'checking' | 'online' | 'offline'
 
@@ -73,12 +80,17 @@ async function loadPage() {
     const catalog = await getCatalog()
     tasks.value = catalog.tasks
     selectedTask.value =
-      availableTasks.value.find((task) => task.methods.some((method) => method.status === 'verified'))?.name ||
+      availableTasks.value.find((task) =>
+        task.methods.some((method) => method.status === 'verified')
+      )?.name ||
       availableTasks.value[0]?.name ||
       ''
   } catch (error) {
     serviceState.value = 'offline'
-    errorMessage.value = error instanceof Error ? error.message : 'Cannot connect to the backend service.'
+    errorMessage.value =
+      error instanceof Error
+        ? error.message
+        : t('Cannot connect to the backend service.', '无法连接后端服务。')
   } finally {
     loadingCatalog.value = false
   }
@@ -93,7 +105,10 @@ function onFileChange(event: Event) {
   if (file && !/\.(xlsx|csv)$/i.test(file.name)) {
     datasetFile.value = null
     input.value = ''
-    errorMessage.value = 'Chemical Modeling supports .xlsx and .csv files.'
+    errorMessage.value = t(
+      'Chemical Modeling supports .xlsx and .csv files.',
+      '化学建模支持 .xlsx 和 .csv 文件。'
+    )
     return
   }
   datasetFile.value = file
@@ -114,10 +129,11 @@ async function submitJob() {
     )
     artifacts.value = result.artifacts
     jobId.value = result.job_id
-    ElMessage.success('Calculation completed')
+    ElMessage.success(t('Calculation completed', '计算完成'))
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : 'Calculation failed.'
-    ElMessage.error('Calculation failed')
+    errorMessage.value =
+      error instanceof Error ? error.message : t('Calculation failed.', '计算失败。')
+    ElMessage.error(t('Calculation failed', '计算失败'))
   } finally {
     running.value = false
   }
@@ -129,7 +145,16 @@ function clearResult() {
 }
 
 function formatLabel(value: string) {
-  return value.replace(/^algo_/, '').replace(/_/g, ' ')
+  const taskLabels: Record<string, [string, string]> = {
+    algo_equilibrium: ['Equilibrium', '化学平衡'],
+    algo_fractionation: ['Isotope fractionation', '同位素分馏'],
+    algo_kinetic: ['Kinetics', '动力学'],
+    algo_solubility: ['Solubility', '溶解度'],
+    algo_thermodynamic: ['Thermodynamics', '热力学'],
+    algo_transport: ['Transport', '传输']
+  }
+  const labels = taskLabels[value]
+  return labels ? t(labels[0], labels[1]) : value.replace(/^algo_/, '').replace(/_/g, ' ')
 }
 
 function formatBytes(bytes: number) {
@@ -138,7 +163,7 @@ function formatBytes(bytes: number) {
 }
 
 function methodStatusLabel(status: 'verified' | 'testing') {
-  return status === 'verified' ? '已验证' : '测试中'
+  return status === 'verified' ? t('Verified', '已验证') : t('Testing', '测试中')
 }
 
 function methodStatusType(status: 'verified' | 'testing') {
@@ -146,8 +171,9 @@ function methodStatusType(status: 'verified' | 'testing') {
 }
 
 function dataTypeLabel(dataType: string) {
-  if (dataType === 'number') return '数值'
-  if (dataType === 'integer') return '整数'
+  if (dataType === 'number') return t('Number', '数值')
+  if (dataType === 'integer') return t('Integer', '整数')
+  if (dataType === 'text') return t('Text', '文本')
   return dataType
 }
 
@@ -162,22 +188,33 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
     <section class="page-heading">
       <div>
         <p class="eyebrow">GEOCHEMISTRY π ONLINE</p>
-        <h1>Chemical modeling</h1>
-        <p class="intro">Select a model, upload an Excel workbook, and download the calculated result.</p>
+        <h1>{{ t('Chemical modeling', '化学建模') }}</h1>
+        <p class="intro">
+          {{
+            t(
+              'Select a model, upload an Excel or CSV file, and download the calculated result.',
+              '选择模型，上传 Excel 或 CSV 文件，然后下载计算结果。'
+            )
+          }}
+        </p>
       </div>
       <div class="service-status" :class="serviceState">
         <span class="status-dot"></span>
-        <span v-if="serviceState === 'checking'">Checking service</span>
-        <span v-else-if="serviceState === 'online'">Backend online</span>
-        <span v-else>Backend offline</span>
+        <span v-if="serviceState === 'checking'">{{ t('Checking service', '正在检查服务') }}</span>
+        <span v-else-if="serviceState === 'online'">{{ t('Backend online', '后端已连接') }}</span>
+        <span v-else>{{ t('Backend offline', '后端离线') }}</span>
       </div>
     </section>
 
     <el-card v-loading="loadingCatalog" class="calculation-card" shadow="never">
       <el-form label-position="top">
         <div class="form-grid">
-          <el-form-item label="Task">
-            <el-select v-model="selectedTask" placeholder="Select a task" :disabled="running">
+          <el-form-item :label="t('Task', '任务')">
+            <el-select
+              v-model="selectedTask"
+              :placeholder="t('Select a task', '选择任务')"
+              :disabled="running"
+            >
               <el-option
                 v-for="task in availableTasks"
                 :key="task.name"
@@ -187,16 +224,20 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
             </el-select>
           </el-form-item>
 
-          <el-form-item label="Method">
-            <el-select v-model="selectedMethod" placeholder="Select a method" :disabled="running">
+          <el-form-item :label="t('Method', '方法')">
+            <el-select
+              v-model="selectedMethod"
+              :placeholder="t('Select a method', '选择方法')"
+              :disabled="running"
+            >
               <el-option
                 v-for="method in availableMethods"
                 :key="method.name"
-                :label="method.description || formatLabel(method.name)"
+                :label="chemicalMethodDescription(method.name, method.description)"
                 :value="method.name"
               >
                 <div class="method-option">
-                  <span>{{ method.description || formatLabel(method.name) }}</span>
+                  <span>{{ chemicalMethodDescription(method.name, method.description) }}</span>
                   <el-tag :type="methodStatusType(method.status)" size="small" effect="plain">
                     {{ methodStatusLabel(method.status) }}
                   </el-tag>
@@ -205,9 +246,18 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
             </el-select>
           </el-form-item>
 
-          <el-form-item label="Element">
-            <el-select v-model="selectedElement" placeholder="Select an element" :disabled="running">
-              <el-option v-for="element in availableElements" :key="element" :label="element" :value="element" />
+          <el-form-item :label="t('Element', '元素')">
+            <el-select
+              v-model="selectedElement"
+              :placeholder="t('Select an element', '选择元素')"
+              :disabled="running"
+            >
+              <el-option
+                v-for="element in availableElements"
+                :key="element"
+                :label="element"
+                :value="element"
+              />
             </el-select>
           </el-form-item>
         </div>
@@ -215,59 +265,83 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
         <section v-if="currentMethod" class="method-guide">
           <div class="method-guide-heading">
             <div>
-              <p class="guide-kicker">算法状态与输入说明</p>
-              <h2>{{ currentMethod.description || formatLabel(currentMethod.name) }}</h2>
+              <p class="guide-kicker">
+                {{ t('METHOD STATUS AND INPUT GUIDE', '算法状态与输入说明') }}
+              </p>
+              <h2>
+                {{ chemicalMethodDescription(currentMethod.name, currentMethod.description) }}
+              </h2>
             </div>
             <el-tag :type="methodStatusType(currentMethod.status)" effect="dark">
               {{ methodStatusLabel(currentMethod.status) }}
             </el-tag>
           </div>
 
-          <p class="status-message">{{ currentMethod.status_message }}</p>
+          <p class="status-message">
+            {{ chemicalMethodStatus(currentMethod.name, currentMethod.status_message) }}
+          </p>
 
           <div v-if="currentMethod.formula" class="formula-row">
-            <span>计算公式</span>
-            <code>{{ currentMethod.formula }}</code>
+            <span>{{ t('Formula', '计算公式') }}</span>
+            <code>{{ chemicalMethodFormula(currentMethod.name, currentMethod.formula) }}</code>
           </div>
 
           <div v-if="currentMethod.input_columns.length" class="input-table-wrap">
             <el-table :data="currentMethod.input_columns" border size="small">
-              <el-table-column prop="name" label="列名" min-width="90">
+              <el-table-column prop="name" :label="t('Column', '列名')" min-width="90">
                 <template #default="scope">
                   <code>{{ scope.row.name }}</code>
-                  <span v-if="scope.row.required" class="required-mark">必填</span>
+                  <span v-if="scope.row.required" class="required-mark">{{
+                    t('Required', '必填')
+                  }}</span>
                 </template>
               </el-table-column>
-              <el-table-column prop="label" label="含义" min-width="130" />
-              <el-table-column prop="description" label="说明" min-width="220" />
-              <el-table-column label="类型" min-width="75">
+              <el-table-column :label="t('Meaning', '含义')" min-width="130">
+                <template #default="scope">{{ apiText(scope.row.label) }}</template>
+              </el-table-column>
+              <el-table-column :label="t('Description', '说明')" min-width="220">
+                <template #default="scope">{{ apiText(scope.row.description) }}</template>
+              </el-table-column>
+              <el-table-column :label="t('Type', '类型')" min-width="75">
                 <template #default="scope">{{ dataTypeLabel(scope.row.data_type) }}</template>
               </el-table-column>
-              <el-table-column label="有效范围" min-width="90">
+              <el-table-column :label="t('Valid range', '有效范围')" min-width="90">
                 <template #default="scope">
                   {{ rangeLabel(scope.row.minimum, scope.row.exclusive_minimum) }}
                 </template>
               </el-table-column>
-              <el-table-column prop="unit" label="单位要求" min-width="180" />
-              <el-table-column prop="example" label="示例" min-width="80" />
+              <el-table-column :label="t('Unit', '单位要求')" min-width="180">
+                <template #default="scope">{{ apiText(scope.row.unit) }}</template>
+              </el-table-column>
+              <el-table-column prop="example" :label="t('Example', '示例')" min-width="80" />
             </el-table>
           </div>
 
           <el-alert
             v-else
-            title="该方法的输入列和单位说明正在整理。"
+            :title="
+              t(
+                'Input-column and unit guidance for this method is being prepared.',
+                '该方法的输入列和单位说明正在整理。'
+              )
+            "
             type="info"
             :closable="false"
             show-icon
           />
 
           <ul v-if="currentMethod.input_notes.length" class="input-notes">
-            <li v-for="note in currentMethod.input_notes" :key="note">{{ note }}</li>
+            <li v-for="note in currentMethod.input_notes" :key="note">{{ apiText(note) }}</li>
           </ul>
 
           <el-alert
             v-if="!currentMethodIsVerified"
-            title="测试中的方法只展示说明，完成验证前不能执行计算。"
+            :title="
+              t(
+                'Methods under testing are shown for reference and cannot run until validation is complete.',
+                '测试中的方法只展示说明，完成验证前不能执行计算。'
+              )
+            "
             type="warning"
             :closable="false"
             show-icon
@@ -275,11 +349,11 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
         </section>
 
         <div v-if="requiredColumns.length && currentMethodIsVerified" class="column-hint">
-          <strong>数据文件必填列</strong>
+          <strong>{{ t('Required data columns', '数据文件必填列') }}</strong>
           <code v-for="column in requiredColumns" :key="column">{{ column }}</code>
         </div>
 
-        <el-form-item label="Dataset (.xlsx or .csv)">
+        <el-form-item :label="t('Dataset (.xlsx or .csv)', '数据文件（.xlsx 或 .csv）')">
           <label class="file-picker" :class="{ disabled: running || !currentMethodIsVerified }">
             <input
               type="file"
@@ -287,8 +361,10 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
               :disabled="running || !currentMethodIsVerified"
               @change="onFileChange"
             />
-            <span class="file-button">Choose data file</span>
-            <span class="file-name">{{ datasetFile?.name || 'No file selected' }}</span>
+            <span class="file-button">{{ t('Choose data file', '选择数据文件') }}</span>
+            <span class="file-name">{{
+              datasetFile?.name || t('No file selected', '未选择文件')
+            }}</span>
           </label>
         </el-form-item>
 
@@ -302,10 +378,24 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
         />
 
         <div class="actions">
-          <el-button type="primary" size="large" :loading="running" :disabled="!canRun" @click="submitJob">
-            {{ running ? 'Calculating…' : currentMethodIsVerified ? 'Start calculation' : '该方法暂不可计算' }}
+          <el-button
+            type="primary"
+            size="large"
+            :loading="running"
+            :disabled="!canRun"
+            @click="submitJob"
+          >
+            {{
+              running
+                ? t('Calculating…', '正在计算…')
+                : currentMethodIsVerified
+                  ? t('Start calculation', '开始计算')
+                  : t('This method is not available yet', '该方法暂不可计算')
+            }}
           </el-button>
-          <el-button v-if="serviceState === 'offline'" size="large" @click="loadPage">Retry connection</el-button>
+          <el-button v-if="serviceState === 'offline'" size="large" @click="loadPage">
+            {{ t('Retry connection', '重新连接') }}
+          </el-button>
         </div>
       </el-form>
     </el-card>
@@ -314,10 +404,10 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
       <template #header>
         <div class="result-heading">
           <div>
-            <h2>Calculation completed</h2>
-            <p>Job ID: {{ jobId }}</p>
+            <h2>{{ t('Calculation completed', '计算完成') }}</h2>
+            <p>{{ t('Job ID', '任务 ID') }}: {{ jobId }}</p>
           </div>
-          <el-tag type="success">SUCCESS</el-tag>
+          <el-tag type="success">{{ t('SUCCESS', '成功') }}</el-tag>
         </div>
       </template>
 
@@ -327,7 +417,7 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
           <span>{{ formatBytes(artifact.size_bytes) }}</span>
         </div>
         <el-button type="success" plain tag="a" :href="artifactUrl(artifact.download_url)" download>
-          Download result
+          {{ t('Download result', '下载结果') }}
         </el-button>
       </div>
     </el-card>
@@ -339,9 +429,11 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
       :closable="false"
       show-icon
     >
-      <template #title>Some algorithms are temporarily unavailable</template>
+      <template #title>{{
+        t('Some algorithms are temporarily unavailable', '部分算法暂时不可用')
+      }}</template>
       <p v-for="task in unavailableTasks" :key="task.name">
-        <strong>{{ formatLabel(task.name) }}:</strong> {{ task.error }}
+        <strong>{{ formatLabel(task.name) }}:</strong> {{ apiText(task.error) }}
       </p>
     </el-alert>
   </main>
@@ -503,7 +595,8 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
   }
 
   .required-mark {
-    margin-left: 6px;
+    display: block;
+    margin-top: 3px;
     color: #dc2626;
     font-size: 11px;
   }
