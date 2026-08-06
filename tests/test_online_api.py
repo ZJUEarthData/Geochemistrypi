@@ -160,14 +160,19 @@ def post_method(
     content: bytes,
     filename: str | None = None,
 ):
+    upload_name = filename or f"{method}.xlsx"
     return client.post(
         "/api/chemical-modeling/run",
         data={"task": task, "method": method, "element": element},
         files={
             "dataset": (
-                filename or f"{method}.xlsx",
+                upload_name,
                 content,
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                (
+                    "text/csv"
+                    if upload_name.lower().endswith(".csv")
+                    else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                ),
             )
         },
     )
@@ -185,7 +190,11 @@ def post_first_order(client: TestClient, content: bytes, filename: str = "kineti
             "dataset": (
                 filename,
                 content,
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                (
+                    "text/csv"
+                    if filename.lower().endswith(".csv")
+                    else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                ),
             )
         },
     )
@@ -1399,6 +1408,26 @@ def test_run_and_download_first_order_result(tmp_path):
     assert round(result.loc[0, "C_t"], 6) == 60.653066
 
 
+def test_run_and_download_first_order_csv_result(tmp_path):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    content = (
+        pd.DataFrame([{"c0": 100.0, "k": 0.1, "t": 5.0}])
+        .to_csv(index=False)
+        .encode("utf-8")
+    )
+
+    response = post_first_order(client, content, filename="kinetic.csv")
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["status"] == "success"
+    result = pd.read_excel(
+        BytesIO(client.get(payload["artifacts"][0]["download_url"]).content)
+    )
+    assert list(result.columns) == ["c0", "k", "t", "C_t"]
+    assert round(result.loc[0, "C_t"], 6) == 60.653066
+
+
 def test_run_and_download_second_order_result_matches_reference_values(tmp_path):
     client = TestClient(create_app(tmp_path / "runtime"))
 
@@ -1703,7 +1732,8 @@ def test_run_hg_internal_standard_matches_bracketed_reference(tmp_path):
     assert sample["D201"] == pytest.approx(24.8)
 
 
-def test_run_mo_double_spike_recovers_known_parameters(tmp_path):
+@pytest.mark.parametrize("source_format", ["xlsx", "csv"])
+def test_run_mo_double_spike_recovers_known_parameters(tmp_path, source_format):
     client = TestClient(create_app(tmp_path / "runtime"))
     masses = (100, 98, 97)
     spike = (0.5, 2.0, 0.7)
@@ -1717,28 +1747,31 @@ def test_run_mo_double_spike_recovers_known_parameters(tmp_path):
         / (95 / mass) ** beta_mix
         for mass, spike_ratio, standard_ratio in zip(masses, spike, standard)
     )
-    workbook = make_named_sheet_workbook(
-        [
-            {
-                "R_100_sp": spike[0],
-                "R_98_sp": spike[1],
-                "R_97_sp": spike[2],
-                "R_100_std": standard[0],
-                "R_98_std": standard[1],
-                "R_97_std": standard[2],
-                "r_100_mix": mixture[0],
-                "r_98_mix": mixture[1],
-                "r_97_mix": mixture[2],
-            }
-        ],
-        "3程序处理_输入常数",
+    rows = [
+        {
+            "R_100_sp": spike[0],
+            "R_98_sp": spike[1],
+            "R_97_sp": spike[2],
+            "R_100_std": standard[0],
+            "R_98_std": standard[1],
+            "R_97_std": standard[2],
+            "r_100_mix": mixture[0],
+            "r_98_mix": mixture[1],
+            "r_97_mix": mixture[2],
+        }
+    ]
+    content = (
+        make_named_sheet_workbook(rows, "3程序处理_输入常数")
+        if source_format == "xlsx"
+        else pd.DataFrame(rows).to_csv(index=False).encode("utf-8")
     )
     response = post_method(
         client,
         task="algo_fractionation",
         method="double_spike",
         element="Mo",
-        content=workbook,
+        content=content,
+        filename=f"double-spike.{source_format}",
     )
     assert response.status_code == 200, response.text
     payload = response.json()
@@ -2026,7 +2059,7 @@ def test_reject_newly_verified_method_boundaries(
     assert expected_message in response.json()["detail"]
 
 
-def test_reject_non_xlsx_upload(tmp_path):
+def test_reject_unsupported_chemical_modeling_upload(tmp_path):
     client = TestClient(create_app(tmp_path / "runtime"))
     response = client.post(
         "/api/chemical-modeling/run",
@@ -2035,10 +2068,17 @@ def test_reject_non_xlsx_upload(tmp_path):
             "method": "first_order",
             "element": "Any",
         },
-        files={"dataset": ("data.csv", b"c0,k,t\n100,0.1,5", "text/csv")},
+        files={"dataset": ("data.txt", b"c0,k,t\n100,0.1,5", "text/plain")},
     )
     assert response.status_code == 422
-    assert "Only .xlsx" in response.json()["detail"]
+    assert response.json()["detail"] == "Chemical Modeling supports only .xlsx and .csv files"
+
+
+def test_reject_non_utf8_chemical_modeling_csv(tmp_path):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    response = post_first_order(client, b"\xff\xfe\x00", filename="data.csv")
+    assert response.status_code == 422
+    assert response.json()["detail"] == "CSV files must use UTF-8 encoding"
 
 
 def test_reject_unreadable_xlsx(tmp_path):
@@ -2052,7 +2092,7 @@ def test_reject_workbook_with_missing_columns(tmp_path):
     client = TestClient(create_app(tmp_path / "runtime"))
     response = post_first_order(client, make_workbook([{"c0": 100, "t": 5}]))
     assert response.status_code == 422
-    assert response.json()["detail"] == "Missing required Excel columns: k"
+    assert response.json()["detail"] == "Missing required dataset columns: k"
 
 
 @pytest.mark.parametrize(

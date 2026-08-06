@@ -11,7 +11,7 @@ The MVP provides:
 - a dynamic chemical-modeling catalog;
 - method-level `verified` and `testing` readiness states;
 - structured input documentation with formulas, columns, meanings, units, types, examples, and notes;
-- `.xlsx` upload with a 10 MB limit;
+- `.xlsx` and UTF-8 `.csv` upload with a 10 MB limit;
 - synchronous calculation in an isolated job directory;
 - result-file download;
 - readable validation errors;
@@ -119,7 +119,7 @@ pnpm start -- --host 127.0.0.1 --port 5173
 2. Select `kinetic`.
 3. Select `First-order kinetics`.
 4. Select `Any`.
-5. Upload an `.xlsx` workbook containing `c0`, `k`, and `t` columns.
+5. Upload an `.xlsx` workbook or UTF-8 `.csv` file containing `c0`, `k`, and `t` columns.
 6. Select **Start calculation**.
 7. Download `first_order_results.xlsx` after completion.
 
@@ -152,7 +152,7 @@ frontend: production build succeeds
 - job metadata exists only in the filesystem and is not stored in a database;
 - there is no user login or per-user authorization in the new lightweight API;
 - uploaded files and results have no automatic retention or cleanup policy;
-- only `.xlsx` is accepted;
+- Chemical Modeling accepts `.xlsx` and comma-delimited UTF-8 `.csv` datasets;
 - verified methods are currently limited to first-order kinetics, second-order kinetics, radioactive decay, Fick diffusion, chromatography plate number, the van't Hoff equation, and the current simplified activity-coefficient model;
 - input documentation for methods other than the four kinetic entries is still being organized;
 - method-specific optional parameters are not yet described by the catalog;

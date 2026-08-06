@@ -24,11 +24,11 @@ from .schemas import ArtifactResponse, InputColumnItem, MethodCatalogItem, RunRe
 
 
 class InvalidDatasetError(ValueError):
-    """Raised when an uploaded workbook cannot be used by the selected method."""
+    """Raised when an uploaded dataset cannot be used by the selected method."""
 
 
 class UploadTooLargeError(ValueError):
-    """Raised when an uploaded workbook exceeds the configured byte limit."""
+    """Raised when an uploaded dataset exceeds the configured byte limit."""
 
 
 class OnlineService:
@@ -113,8 +113,8 @@ class OnlineService:
         content: bytes,
     ) -> RunResponse:
         self.validate_selection(task, method, element)
-        self._validate_upload(filename, content)
-        self._validate_workbook(task, method, content)
+        suffix = self._validate_upload(filename, content)
+        dataframe = self._read_and_validate_dataset(task, method, suffix, content)
 
         job_id = uuid4().hex
         job_dir = self.jobs_dir / job_id
@@ -124,7 +124,15 @@ class OnlineService:
         output_dir.mkdir()
 
         input_path = input_dir / "input.xlsx"
-        input_path.write_bytes(content)
+        if suffix == ".xlsx":
+            input_path.write_bytes(content)
+        else:
+            sheet_name = (
+                "3程序处理_输入常数"
+                if task == "algo_fractionation" and method == "double_spike"
+                else "Sheet1"
+            )
+            dataframe.to_excel(input_path, index=False, sheet_name=sheet_name)
 
         result: Any = run_task_method(
             task,
@@ -157,40 +165,53 @@ class OnlineService:
             raise FileNotFoundError(file_path)
         return candidate
 
-    def _validate_upload(self, filename: str | None, content: bytes) -> None:
+    def _validate_upload(self, filename: str | None, content: bytes) -> str:
         suffix = Path(filename or "").suffix.lower()
-        if suffix != ".xlsx":
-            raise ValueError("Only .xlsx files are supported in the first Online version")
+        if suffix not in {".xlsx", ".csv"}:
+            raise ValueError("Chemical Modeling supports only .xlsx and .csv files")
         if not content:
             raise ValueError("The uploaded file is empty")
         if len(content) > self.max_upload_bytes:
             raise UploadTooLargeError(f"The uploaded file exceeds {self.max_upload_bytes} bytes")
+        return suffix
 
     @staticmethod
-    def _validate_workbook(task: str, method: str, content: bytes) -> None:
+    def _read_and_validate_dataset(
+        task: str,
+        method: str,
+        suffix: str,
+        content: bytes,
+    ) -> pd.DataFrame:
         try:
-            sheet_name: int | str = (
-                "3程序处理_输入常数"
-                if task == "algo_fractionation" and method == "double_spike"
-                else 0
-            )
-            dataframe = pd.read_excel(BytesIO(content), sheet_name=sheet_name)
+            if suffix == ".xlsx":
+                sheet_name: int | str = (
+                    "3程序处理_输入常数"
+                    if task == "algo_fractionation" and method == "double_spike"
+                    else 0
+                )
+                dataframe = pd.read_excel(BytesIO(content), sheet_name=sheet_name)
+            else:
+                dataframe = pd.read_csv(BytesIO(content), encoding="utf-8-sig")
             columns = [str(column) for column in dataframe.columns]
+        except UnicodeDecodeError as exc:
+            raise InvalidDatasetError("CSV files must use UTF-8 encoding") from exc
         except Exception as exc:
-            if task == "algo_fractionation" and method == "double_spike":
+            if suffix == ".xlsx" and task == "algo_fractionation" and method == "double_spike":
                 raise InvalidDatasetError(
                     "Mo double-spike requires worksheet '3程序处理_输入常数'"
                 ) from exc
+            if suffix == ".csv":
+                raise InvalidDatasetError("The uploaded file is not a readable UTF-8 CSV dataset") from exc
             raise InvalidDatasetError("The uploaded file is not a readable .xlsx workbook") from exc
 
         metadata = get_method_metadata(task, method)
         required = [column.name for column in metadata.input_columns if column.required]
         missing = [column for column in required if column not in columns]
         if missing:
-            raise InvalidDatasetError(f"Missing required Excel columns: {', '.join(missing)}")
+            raise InvalidDatasetError(f"Missing required dataset columns: {', '.join(missing)}")
 
         if dataframe.empty:
-            raise InvalidDatasetError("The Excel workbook contains no data rows")
+            raise InvalidDatasetError("The uploaded dataset contains no data rows")
 
         for column in metadata.input_columns:
             if column.name not in dataframe.columns:
@@ -453,6 +474,8 @@ class OnlineService:
                     raise InvalidDatasetError(
                         "van't Hoff parameters produce a result outside the supported numeric range"
                     )
+
+        return dataframe
 
     @staticmethod
     def _collect_artifacts(job_id: str, output_dir: Path) -> list[ArtifactResponse]:

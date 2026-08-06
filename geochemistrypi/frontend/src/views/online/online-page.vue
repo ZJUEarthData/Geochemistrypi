@@ -90,10 +90,10 @@ function onFileChange(event: Event) {
   clearResult()
   errorMessage.value = ''
 
-  if (file && !file.name.toLowerCase().endsWith('.xlsx')) {
+  if (file && !/\.(xlsx|csv)$/i.test(file.name)) {
     datasetFile.value = null
     input.value = ''
-    errorMessage.value = 'The first Online version only supports .xlsx files.'
+    errorMessage.value = 'Chemical Modeling supports .xlsx and .csv files.'
     return
   }
   datasetFile.value = file
@@ -275,19 +275,19 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
         </section>
 
         <div v-if="requiredColumns.length && currentMethodIsVerified" class="column-hint">
-          <strong>Excel 必填列</strong>
+          <strong>数据文件必填列</strong>
           <code v-for="column in requiredColumns" :key="column">{{ column }}</code>
         </div>
 
-        <el-form-item label="Dataset (.xlsx)">
+        <el-form-item label="Dataset (.xlsx or .csv)">
           <label class="file-picker" :class="{ disabled: running || !currentMethodIsVerified }">
             <input
               type="file"
-              accept=".xlsx"
+              accept=".xlsx,.csv"
               :disabled="running || !currentMethodIsVerified"
               @change="onFileChange"
             />
-            <span class="file-button">Choose Excel file</span>
+            <span class="file-button">Choose data file</span>
             <span class="file-name">{{ datasetFile?.name || 'No file selected' }}</span>
           </label>
         </el-form-item>
