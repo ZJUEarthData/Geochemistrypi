@@ -1592,10 +1592,10 @@ class ClassificationPlanCompiler:
             )
         if request.tuning == "manual":
             steps.extend(_model_steps(request))
+            steps.append(InteractionStep("continue_after_hyperparameters", (enter_prompt,), ""))
         model_display = MODEL_DISPLAY_NAMES[request.model.type]
         steps.extend(
             [
-                InteractionStep("continue_after_hyperparameters", (enter_prompt,), ""),
                 InteractionStep(
                     "continue_after_training",
                     (f"{model_display}.joblib", enter_prompt),
@@ -2184,12 +2184,8 @@ class RegressionPlanCompiler:
             )
         if request.tuning == "manual":
             steps.extend(_regression_model_steps(request))
+            steps.append(InteractionStep("continue_after_hyperparameters", (enter_prompt,), ""))
         model_display = REGRESSION_MODEL_DISPLAY_NAMES[request.model.type]
-        steps.extend(
-            [
-                InteractionStep("continue_after_hyperparameters", (enter_prompt,), ""),
-            ]
-        )
         if request.model.type in REGRESSION_MODELS_WITH_INTERACTIVE_PLOT_SELECTION and selected_feature_count >= 2:
             steps.append(
                 InteractionStep(

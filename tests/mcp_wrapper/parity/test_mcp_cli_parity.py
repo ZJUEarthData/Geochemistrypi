@@ -993,7 +993,9 @@ async def test_stdio_mcp_anomaly_detection_matches_direct_public_cli() -> None:
         cli_executable=cli_executable,
     )
 
-    with tempfile.TemporaryDirectory(prefix="gpi-pr8a-anomaly-parity-") as temporary_root:
+    # Keep the managed workspace below legacy Windows path limits. The run
+    # already carries descriptive experiment and artifact names.
+    with tempfile.TemporaryDirectory(prefix="g8a-") as temporary_root:
         parity_root = Path(temporary_root)
         direct_workspace = parity_root / "direct"
         direct_workspace.mkdir()

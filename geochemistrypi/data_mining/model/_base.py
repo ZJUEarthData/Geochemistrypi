@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 import os
+import random
 from abc import ABCMeta, abstractmethod
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -27,6 +28,14 @@ class WorkflowBase(metaclass=ABCMeta):
     X, y = None, None
     X_train, X_test, y_train, y_test = None, None, None, None
     y_test_predict = None
+    default_random_state = 42
+    automl_max_iterations = 20
+    automl_tuning_trials = 8
+    # FLAML 1.0.14 passes an unbounded L2-logistic budget to signal.alarm on
+    # Unix, where it overflows the C integer accepted by the system call. The
+    # fixed max_iter above remains the real search bound; this finite value is
+    # deliberately high enough not to become a wall-clock stopping condition.
+    automl_compatibility_time_budget_seconds = 86_400
 
     @classmethod
     def show_info(cls) -> None:
@@ -44,7 +53,36 @@ class WorkflowBase(metaclass=ABCMeta):
         self.automl = None
         self.ray_best_model = None
         # Set the random state fixed value for reproducibility of the results.
-        self.random_state = 42
+        self.random_state = self.default_random_state
+
+    def _prepare_automl_settings(self, settings: Dict) -> Dict:
+        """Make AutoML searches repeatable across independent CLI processes."""
+        random_seed = self._automl_random_seed()
+        random.seed(random_seed)
+        np.random.seed(random_seed)
+        prepared = dict(settings)
+        # A wall-clock cutoff can end otherwise identical searches on different
+        # machines. Keep it disabled for reproducible trial-based searches. The
+        # FLAML 1.0.14 L2-logistic learner is the sole exception: on Unix it
+        # passes an unbounded value to signal.alarm(), which overflows a C int.
+        if tuple(prepared.get("estimator_list", ())) == ("lrl2",):
+            prepared["time_budget"] = self.automl_compatibility_time_budget_seconds
+        else:
+            prepared.pop("time_budget", None)
+        prepared.setdefault("max_iter", self.automl_max_iterations)
+        prepared.setdefault("seed", random_seed)
+        return prepared
+
+    def _automl_random_seed(self) -> int:
+        """Normalize legacy scalar and single-item sequence seed storage."""
+        value = self.random_state
+        if value is None:
+            value = self.default_random_state
+        if isinstance(value, (list, tuple, np.ndarray)):
+            if len(value) != 1:
+                raise ValueError("AutoML random_state must contain exactly one seed value.")
+            value = value[0]
+        return int(value)
 
     @property
     def image_config(self):
@@ -348,13 +386,18 @@ class TreeWorkflowMixin:
         print(f"-----* {func_name} *-----")  # Feature Importance Diagram
         columns_name = X_train.columns
 
-        # Fix: Added support for MultiOutputRegressor objects
-        if hasattr(trained_model, "estimators_"):
-            # If it's a MultiOutputRegressor, get the feature importance from each estimator and take the average
-            feature_importances = np.mean([est.feature_importances_ for est in trained_model.estimators_], axis=0)
-        else:
-            # Otherwise, directly get the feature importances
+        # Ensemble models such as GradientBoosting expose both a top-level
+        # feature_importances_ vector and an estimators_ array. Prefer the public
+        # top-level vector; only average child estimators for a real
+        # MultiOutputRegressor, which does not expose feature_importances_.
+        if hasattr(trained_model, "feature_importances_"):
             feature_importances = trained_model.feature_importances_
+        else:
+            from sklearn.multioutput import MultiOutputRegressor
+
+            if not isinstance(trained_model, MultiOutputRegressor):
+                raise AttributeError(f"{type(trained_model).__name__} does not expose feature_importances_")
+            feature_importances = np.mean([est.feature_importances_ for est in trained_model.estimators_], axis=0)
 
         data = plot_feature_importance(columns_name, feature_importances, image_config)
         save_fig(f"{func_name} - {algorithm_name}", local_path, mlflow_path)

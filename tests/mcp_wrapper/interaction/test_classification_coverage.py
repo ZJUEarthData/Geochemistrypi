@@ -83,7 +83,9 @@ def test_every_public_cli_model_family_compiles_an_automl_plan_without_manual_pr
     request = _request(_dataset(tmp_path), tuning="automl", model={"type": model_name})
     plan = ClassificationPlanCompiler().compile(request, cli_executable=Path(sys.executable))
 
+    step_ids = {step.id for step in plan.steps}
     assert {step.id: step.response for step in plan.steps}["enable_automl"] == "1"
+    assert "continue_after_hyperparameters" not in step_ids
     assert not any("Hyper-parameters Specification" in anchor for step in plan.steps for anchor in step.output_anchors)
 
 

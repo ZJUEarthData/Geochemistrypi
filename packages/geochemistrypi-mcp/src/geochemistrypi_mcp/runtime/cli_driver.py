@@ -21,6 +21,19 @@ from ..planning.interaction_plan import InteractionPlan, InteractionStep
 
 ANSI_ESCAPE = re.compile(r"\x1b(?:\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1b\\))")
 CAPTURE_DIRECTORY_NAME = ".geochemistrypi-driver"
+DETERMINISTIC_NUMERIC_ENVIRONMENT = {
+    "BLIS_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1",
+    "NUMEXPR_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "VECLIB_MAXIMUM_THREADS": "1",
+}
+# GeochemistryPi writes spreadsheet sidecars beside several planned images.
+# The longest known sidecar is four characters longer than its planned PNG,
+# so reserve that suffix budget before starting a legacy-Windows CLI process.
+WINDOWS_LEGACY_PATH_LIMIT = 260
+WINDOWS_OUTPUT_SIDECAR_MARGIN = 4
 
 
 def _utc_now() -> str:
@@ -338,6 +351,7 @@ class CliInteractionDriver:
         process_environment.update(
             {
                 "COLUMNS": "200",
+                **DETERMINISTIC_NUMERIC_ENVIRONMENT,
                 "LINES": "60",
                 "MPLBACKEND": "Agg",
                 "PYTHONHASHSEED": "0",
@@ -367,10 +381,11 @@ class CliInteractionDriver:
             if os.name == "nt":
                 for relative_path in plan.expected_output_relative_paths:
                     candidate = workspace_path / relative_path
-                    if len(str(candidate)) >= 260:
+                    if len(str(candidate)) + WINDOWS_OUTPUT_SIDECAR_MARGIN >= WINDOWS_LEGACY_PATH_LIMIT:
                         raise WorkspacePathError(
                             "The isolated workspace is too deep for GeochemistryPi's Windows plotting dependencies. "
-                            f"The projected output path is {len(str(candidate))} characters; choose a shorter workspace parent. "
+                            f"The projected output path requires up to {len(str(candidate)) + WINDOWS_OUTPUT_SIDECAR_MARGIN} "
+                            "characters including generated sidecars; choose a shorter workspace parent. "
                             f"Projected path: {candidate}",
                             workspace_path,
                         )

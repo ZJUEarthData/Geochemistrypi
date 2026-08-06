@@ -62,7 +62,7 @@ def display_cross_validation_scores(scores: np.ndarray, score_name: str) -> Dict
         The scores of cross-validation.
     """
     cv_scores = {
-        "Fold Scores": str(scores.tolist()),
+        "Fold Scores": scores.tolist(),
         "Mean": scores.mean(),
         "Standard Deviation": scores.std(),
     }

@@ -81,7 +81,9 @@ def test_supported_regression_automl_plans_omit_manual_prompts(tmp_path: Path, m
         cli_executable=Path(sys.executable),
     )
 
+    step_ids = {step.id for step in plan.steps}
     assert {step.id: step.response for step in plan.steps}["enable_automl"] == "1"
+    assert "continue_after_hyperparameters" not in step_ids
     assert not any("Hyper-parameters Specification" in anchor for step in plan.steps for anchor in step.output_anchors)
 
 

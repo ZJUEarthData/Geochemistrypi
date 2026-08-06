@@ -22,7 +22,7 @@
   },
   "cli_entry_files": {
     "geochemistrypi/cli.py": "d2fc0e802f6951b6a22e5304b6c760f601bb047ad39a5f6fca739f3686bbeca9",
-    "geochemistrypi/data_mining/cli_pipeline.py": "d29d5fb02bd04d51a0d4bc8ec5d24ad74090edd6353e265667092e41dbfd5c99"
+    "geochemistrypi/data_mining/cli_pipeline.py": "089680b189048038bdd89e033e5683e4e9894f9b01f2dca5388542a88c39e894"
   },
   "model": {
     "name": "Logistic Regression",
