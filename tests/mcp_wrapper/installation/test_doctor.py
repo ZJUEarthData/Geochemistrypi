@@ -5,7 +5,7 @@ from pathlib import Path
 
 import geochemistrypi_mcp.lifecycle.doctor as doctor_module
 import pytest
-from geochemistrypi_mcp.config.constants import ISOLATED_CLI_ENVIRONMENT_VARIABLES, SERVER_VERSION
+from geochemistrypi_mcp.config.constants import CLI_VERSION, ISOLATED_CLI_ENVIRONMENT_VARIABLES, SERVER_VERSION
 from geochemistrypi_mcp.lifecycle.doctor import run_doctor
 from geochemistrypi_mcp.lifecycle.setup import SetupPaths
 
@@ -44,7 +44,7 @@ def _prepared_paths(tmp_path: Path) -> SetupPaths:
             {
                 "schema_version": 2,
                 "server_version": SERVER_VERSION,
-                "cli_version": "0.8.0",
+                "cli_version": CLI_VERSION,
                 "compatibility_policy_version": 2,
                 "mcp_python_requires": ">=3.10,<4",
                 "cli_python_requires": ">=3.9,<3.10",
@@ -81,13 +81,13 @@ def test_doctor_checks_both_runtimes_storage_and_real_protocol_boundary(tmp_path
     def runner(command):
         command = tuple(command)
         if command[-1] == "--version":
-            return subprocess.CompletedProcess(command, 0, "Geochemistry Pi 0.8.0\n", "")
+            return subprocess.CompletedProcess(command, 0, f"Geochemistry Pi {CLI_VERSION}\n", "")
         package = "geochemistrypi-mcp" if str(paths.mcp_python) == command[0] else "geochemistrypi"
         python = [3, 11, 9] if package == "geochemistrypi-mcp" else [3, 9, 19]
         return subprocess.CompletedProcess(
             command,
             0,
-            json.dumps({"python": python, "package": SERVER_VERSION if package.endswith("-mcp") else "0.8.0"}),
+            json.dumps({"python": python, "package": SERVER_VERSION if package.endswith("-mcp") else CLI_VERSION}),
             "",
         )
 

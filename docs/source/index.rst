@@ -34,6 +34,7 @@ Welcome to Geochemistry π
    Complete Pull Request <For Developer/A Completed Pull Request.md>
    Add New Model To Framework <For Developer/Add New Model To Framework.md>
    MCP Developer Notes <For Developer/MCP/index.md>
+   v0.8.0 PyPI Artifact Incident <For Developer/v0.8.0 PyPI Artifact Mismatch.md>
    Docs Link <For Developer/Developer Docs link.md>
    Xterm Demo <For Developer/xterm_demo.rst>
 

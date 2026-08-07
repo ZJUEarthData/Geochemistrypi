@@ -17,14 +17,13 @@ from pathlib import Path
 from typing import Callable, Mapping, Sequence
 from zipfile import BadZipFile, ZipFile
 
-from ..config.constants import CLI_PYTHON_REQUIRES, MCP_PYTHON_REQUIRES, MCP_SDK_REQUIRES, PENDING_RELEASE_GATES, PUBLIC_RELEASE_READY, SERVER_VERSION, SUPPORTED_CLI_VERSIONS
+from ..config.constants import CLI_PYTHON_REQUIRES, CLI_VERSION, MCP_PYTHON_REQUIRES, MCP_SDK_REQUIRES, PENDING_RELEASE_GATES, PUBLIC_RELEASE_READY, RELEASE_CHANNEL, SERVER_VERSION
 
-RELEASE_MANIFEST_SCHEMA_VERSION = 1
+RELEASE_MANIFEST_SCHEMA_VERSION = 2
 RELEASE_MANIFEST_FILENAME = "release-manifest.json"
 SIGSTORE_BUNDLE_SUFFIX = ".sigstore.json"
 SIGSTORE_OIDC_ISSUER = "https://token.actions.githubusercontent.com"
 RELEASE_WORKFLOW_IDENTITY_PREFIX = "https://github.com/ZJUEarthData/Geochemistrypi/" ".github/workflows/release.yml@refs/tags/"
-CLI_VERSION = SUPPORTED_CLI_VERSIONS[0]
 EXPECTED_RELEASE_TAG = f"mcp-v{SERVER_VERSION}-cli-v{CLI_VERSION}"
 _SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 _COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$")
@@ -54,6 +53,12 @@ _ARTIFACT_FIELDS = {
     "size_bytes",
     "sha256",
     "requires_python",
+}
+_PUBLICATION_POLICY = {
+    "cli_pypi": "protected-workflow",
+    "mcp_github_release": "protected-workflow",
+    "mcp_registry": "deferred",
+    "artifact_policy": "publish-exact-verified-files-without-rebuilding",
 }
 
 
@@ -199,7 +204,7 @@ def build_release_manifest(
         "schema_version": RELEASE_MANIFEST_SCHEMA_VERSION,
         "release_id": release_id,
         "release_tag": release_tag,
-        "channel": "release-candidate",
+        "channel": RELEASE_CHANNEL,
         "generated_at": generated_at or _generated_at(),
         "source_commit": source_commit,
         "public_release_ready": PUBLIC_RELEASE_READY,
@@ -213,11 +218,7 @@ def build_release_manifest(
             "cli_python_requires": CLI_PYTHON_REQUIRES,
             "mcp_sdk_requires": MCP_SDK_REQUIRES,
         },
-        "publication": {
-            "pypi": "deferred",
-            "mcp_registry": "deferred",
-            "reason": "Publication requires every versioned release gate to have terminal evidence.",
-        },
+        "publication": dict(_PUBLICATION_POLICY),
         "signing": {
             "scheme": "sigstore",
             "oidc_issuer": SIGSTORE_OIDC_ISSUER,
@@ -256,8 +257,8 @@ def _validate_manifest_shape(value: Mapping[str, object]) -> None:
         raise ReleaseError("Release manifest tag does not match the exact supported versions.")
     if value.get("release_id") != f"geochemistrypi-{CLI_VERSION}+mcp-{SERVER_VERSION}":
         raise ReleaseError("Release manifest ID does not match the exact supported versions.")
-    if value.get("channel") != "release-candidate":
-        raise ReleaseError("This installer accepts only the versioned release-candidate channel.")
+    if value.get("channel") != RELEASE_CHANNEL:
+        raise ReleaseError("Release manifest channel does not match this installer's stable compatibility policy.")
     generated_at = value.get("generated_at")
     if not isinstance(generated_at, str):
         raise ReleaseError("Release manifest generated_at must be an ISO-8601 timestamp.")
@@ -287,13 +288,8 @@ def _validate_manifest_shape(value: Mapping[str, object]) -> None:
     if compatibility != expected_compatibility:
         raise ReleaseError("Release manifest compatibility values do not match this installer.")
     publication = value.get("publication")
-    expected_publication = {
-        "pypi": "deferred",
-        "mcp_registry": "deferred",
-        "reason": "Publication requires every versioned release gate to have terminal evidence.",
-    }
-    if publication != expected_publication:
-        raise ReleaseError("Release publication decision must remain explicitly deferred.")
+    if publication != _PUBLICATION_POLICY:
+        raise ReleaseError("Release publication policy must use the protected exact-artifact workflow.")
     signing = value.get("signing")
     expected_identity = RELEASE_WORKFLOW_IDENTITY_PREFIX + EXPECTED_RELEASE_TAG
     expected_signing = {

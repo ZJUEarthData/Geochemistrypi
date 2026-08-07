@@ -10,7 +10,9 @@ AutoML branches, five real CLI aggregate branches, application inference,
 semantic world maps, seeded Time Series analysis, persistent MLflow
 experiments, and an explicitly managed local MLflow UI through stdio MCP.
 It supports verified release-bundle installation as well as repository
-development setup. It is not currently published to PyPI or the MCP Registry.
+development setup. The protected release workflow publishes the CLI to PyPI
+and the signed MCP bundle to GitHub Releases without rebuilding either wheel.
+MCP Registry publication is a separate future distribution target.
 
 The wrapper supports explicit feature and supervised target columns,
 classification label customization, numeric-target regression, target-free
@@ -24,7 +26,7 @@ file.
 ## Environment boundary
 
 The MCP process requires Python 3.10 or newer and the official MCP Python SDK.
-GeochemistryPi 0.8.0 keeps its existing Python 3.9 and Pydantic 1 environment.
+GeochemistryPi 0.8.1 keeps its existing Python 3.9 and Pydantic 1 environment.
 The wrapper starts the public CLI command as a subprocess, so neither process
 has to share incompatible dependencies.
 
@@ -35,18 +37,17 @@ The versioned development compatibility policy is:
 | Private MCP runtime | Python `3.11` exactly; package metadata `>=3.10,<4` |
 | MCP SDK | `==2.0.0` |
 | Private GeochemistryPi CLI runtime | Python `3.9` exactly; package metadata `>=3.9,<3.10` |
-| GeochemistryPi CLI | `0.8.0` |
+| GeochemistryPi CLI | `0.8.1` |
 | Interaction plan | schema 1 |
 | CLI automation input/events | schema 1 |
 | CLI capability manifest | schema 1 |
 | Artifact index | schema 1 |
 
-`get_capabilities` returns this policy, the current resource limits, and the
-remaining release gates. The current channel is `development` and
-`public_release_ready` is false. PyPI and MCP registry publication remain
-deferred until the full PR9I matrix, clean Linux/macOS setup, real-client
-acceptance, previous-bundle upgrade, zero medium-or-higher parity defects,
-signed release evidence, and explicit publication authorization are complete.
+`get_capabilities` returns this policy and the current resource limits. The
+0.2.1 package is the stable bundle channel and reports
+`public_release_ready` only for artifacts published by the protected release
+workflow. MCP Registry publication remains a separate future distribution
+target and does not change the signed GitHub release-bundle installation.
 
 Before execution, the wrapper verifies GeochemistryPi's installed distribution
 version with the Python interpreter that owns the CLI launcher. Windows virtual
@@ -112,7 +113,7 @@ uv run --isolated --no-project --python 3.11 --with-editable packages/geochemist
 The development command creates an MCP Python 3.11 environment and a separate
 GeochemistryPi Python 3.9 environment under the platform-native application
 data directory. It installs both packages from the current clone, verifies the
-0.2.1/0.8.0 version handshake, persists private paths, runs an end-to-end
+0.2.1/0.8.1 version handshake, persists private paths, runs an end-to-end
 doctor, and registers one stable zero-argument server command in detected MCP
 clients. Users never configure either private Python environment or a CLI path.
 The CLI environment accepts third-party dependencies only as prebuilt wheels,
@@ -304,7 +305,7 @@ A minimal clustering request is:
 Clustering exposes the five models in the public menu: KMeans, DBSCAN,
 Agglomerative, AffinityPropagation, and MeanShift. It intentionally has no
 target, train/test split, feature selection, AutoML, or application-data
-inference. OPTICS exists internally in GeochemistryPi 0.8.0 but is not in the
+inference. OPTICS exists internally in GeochemistryPi 0.8.1 but is not in the
 public CLI menu and is therefore not advertised or accepted by MCP. The wrapper
 validates numeric finite features, unique identifiers, model/data-size
 constraints, missing-value resolution, and plot dimensions before execution.
@@ -359,7 +360,7 @@ From the repository root, the cross-platform wrapper suite is:
 uv run --isolated --project packages/geochemistrypi-mcp --extra test python -m pytest tests/mcp_wrapper/installation tests/mcp_wrapper/interaction tests/mcp_wrapper/protocol
 ```
 
-The real parity suite additionally requires a supported GeochemistryPi 0.8.0
+The real parity suite additionally requires a supported GeochemistryPi 0.8.1
 CLI command in `GEOCHEMISTRYPI_CLI_EXECUTABLE`.
 
 ## Tools
@@ -419,7 +420,7 @@ unsupported combinations. `model_selection.mode = "all"` executes the real CLI
 aggregate branch and returns a parent summary plus ordered child results;
 regression multiple-target behavior remains
 outside the validated contract; classification sample balancing is not offered
-because the GeochemistryPi 0.8.0 public CLI does not call its internal balancing
+because the GeochemistryPi 0.8.1 public CLI does not call its internal balancing
 helper; and clustering, decomposition, or anomaly detection does not silently
 inherit supervised controls.
 Application-data inference supports the same validated feature-engineering

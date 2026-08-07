@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "matrix_id": "geochemistrypi-cli-mcp-pr9i-v1",
-  "cli_version": "0.8.0",
+  "cli_version": "0.8.1",
   "comparison_contract": {
     "input_sha256_before_and_after": true,
     "complete_recursive_file_inventory": true,

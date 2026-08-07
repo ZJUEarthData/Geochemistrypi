@@ -11,6 +11,7 @@ from typing import Any
 
 import pytest
 from geochemistrypi_mcp import AnalysisPlanCompiler, AnomalyDetectionRequest, ClassificationRequest, ClusteringRequest, DecompositionRequest, RegressionRequest
+from geochemistrypi_mcp.config.constants import CLI_VERSION
 from geochemistrypi_mcp.config.settings import McpSettings
 from geochemistrypi_mcp.runtime.cli_driver import CliInteractionDriver
 from geochemistrypi_mcp.runtime.runs import RunManager
@@ -203,7 +204,7 @@ def test_full_real_model_parity(case_id: str, task: str, model: str, mode: str, 
         tracking_root=parity_root / "tracking",
         maximum_process_seconds=1800,
     )
-    manager = RunManager(settings, cli_resolver=lambda: (cli_executable, "0.8.0"))
+    manager = RunManager(settings, cli_resolver=lambda: (cli_executable, CLI_VERSION))
     try:
         started = manager.start(scientific_request)
         deadline = time.monotonic() + 1800

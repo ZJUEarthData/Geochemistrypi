@@ -16,7 +16,6 @@ import tempfile
 from pathlib import Path
 from typing import Mapping, Sequence
 
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 MCP_PROJECT = REPOSITORY_ROOT / "packages" / "geochemistrypi-mcp"
 PYTEST_CONFIG = REPOSITORY_ROOT / "tests" / "installed-wheel-pytest.ini"
@@ -149,7 +148,7 @@ def _quality_gate() -> None:
     )
 
 
-def _build_wheels(bundle: Path) -> tuple[Path, Path]:
+def _build_artifacts(cli_dist: Path, bundle: Path) -> tuple[Path, Path]:
     _run(
         (
             "uv",
@@ -163,12 +162,15 @@ def _build_wheels(bundle: Path) -> tuple[Path, Path]:
             "python",
             "-m",
             "build",
+            "--sdist",
             "--wheel",
             "--outdir",
-            bundle,
+            cli_dist,
             REPOSITORY_ROOT,
         )
     )
+    cli_wheel = _only_wheel(cli_dist, "geochemistrypi-*.whl")
+    shutil.copy2(cli_wheel, bundle / cli_wheel.name)
     _run(
         (
             "uv",
@@ -186,6 +188,27 @@ def _build_wheels(bundle: Path) -> tuple[Path, Path]:
             "--outdir",
             bundle,
             MCP_PROJECT,
+        )
+    )
+    _run(
+        (
+            "uv",
+            "run",
+            "--isolated",
+            "--no-project",
+            "--python",
+            "3.11",
+            "--with",
+            "build==1.3.0",
+            "python",
+            MCP_PROJECT / "tools" / "release_artifacts.py",
+            "verify-artifacts",
+            "--repository",
+            REPOSITORY_ROOT,
+            "--cli-dist",
+            cli_dist,
+            "--release-bundle",
+            bundle,
         )
     )
     return _only_wheel(bundle, "geochemistrypi-*.whl"), _only_wheel(bundle, "geochemistrypi_mcp-*.whl")
@@ -408,9 +431,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         print(f"Preflight workspace: {work}")
         _quality_gate()
+        cli_dist = work / "cli distributions PyPI"
         bundle = work / "release bundle 发布候选"
+        cli_dist.mkdir()
         bundle.mkdir()
-        cli_wheel, mcp_wheel = _build_wheels(bundle)
+        cli_wheel, mcp_wheel = _build_artifacts(cli_dist, bundle)
         cli_python, mcp_python, cli_command = _install_candidate_environments(work, cli_wheel, mcp_wheel)
         _installed_tests(cli_python, mcp_python)
         _parity_tests(mcp_python, cli_command, full=not arguments.quick)

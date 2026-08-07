@@ -4,6 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from geochemistrypi_mcp.config.constants import CLI_VERSION
 from geochemistrypi_mcp.config.settings import McpSettings, SettingsError, default_app_root
 
 
@@ -25,12 +26,12 @@ def test_supported_cli_version_uses_the_interpreter_that_owns_the_windows_launch
 
     def fake_run(command, **_kwargs):
         observed_command.extend(command)
-        return SimpleNamespace(stdout="0.8.0\n")
+        return SimpleNamespace(stdout=f"{CLI_VERSION}\n")
 
     monkeypatch.setattr("geochemistrypi_mcp.config.settings.subprocess.run", fake_run)
     settings = McpSettings(runs_root=tmp_path / "runs", cli_executable=executable)
 
-    assert settings.require_supported_cli() == (executable, "0.8.0")
+    assert settings.require_supported_cli() == (executable, CLI_VERSION)
     assert observed_command[0] == str(interpreter)
 
 

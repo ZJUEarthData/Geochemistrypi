@@ -1,4 +1,4 @@
-"""Versioned classification choices exposed by the GeochemistryPi 0.8.0 CLI."""
+"""Versioned classification choices exposed by the GeochemistryPi 0.8.1 CLI."""
 
 from typing import Final
 
@@ -62,6 +62,6 @@ MISSING_VALUE_METHODS: Final[tuple[str, ...]] = (
 )
 
 UNSUPPORTED_INTERACTIONS: Final[tuple[str, ...]] = (
-    "sample_balancing: GeochemistryPi 0.8.0 contains a helper, but its public data-mining workflow does not call it",
+    "sample_balancing: GeochemistryPi 0.8.1 contains a helper, but its public data-mining workflow does not call it",
     "previous_experiment: MCP runs use explicit new experiment and run names so results cannot attach to an ambiguous prior run",
 )

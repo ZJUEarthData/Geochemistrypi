@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "cli_version": "0.8.0",
+  "cli_version": "0.8.1",
   "task": "regression",
   "models": [
     {"id": "linear_regression", "cli_name": "Linear Regression", "automl": false},

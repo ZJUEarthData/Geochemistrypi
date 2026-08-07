@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pytest
 
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 PREFLIGHT_PATH = REPOSITORY_ROOT / "packages" / "geochemistrypi-mcp" / "tools" / "release_preflight.py"
 
@@ -46,12 +45,8 @@ def test_parity_preflight_never_uses_existing_user_state(tmp_path: Path, monkeyp
 
 
 def test_every_real_parity_process_owns_an_explicit_temporary_tracking_root() -> None:
-    representative = (REPOSITORY_ROOT / "tests" / "mcp_wrapper" / "parity" / "test_mcp_cli_parity.py").read_text(
-        encoding="utf-8"
-    )
-    full_matrix = (REPOSITORY_ROOT / "tests" / "mcp_wrapper" / "parity" / "test_full_parity_matrix.py").read_text(
-        encoding="utf-8"
-    )
+    representative = (REPOSITORY_ROOT / "tests" / "mcp_wrapper" / "parity" / "test_mcp_cli_parity.py").read_text(encoding="utf-8")
+    full_matrix = (REPOSITORY_ROOT / "tests" / "mcp_wrapper" / "parity" / "test_full_parity_matrix.py").read_text(encoding="utf-8")
 
     assert representative.count("StdioServerParameters(") == representative.count("env=_stdio_environment(")
     assert representative.count(".compile(") == representative.count("plan = _with_tracking_root(")

@@ -44,7 +44,7 @@ def _wheel(
 
 
 def _bundle(tmp_path: Path) -> Path:
-    _wheel(tmp_path, "geochemistrypi", "0.8.0", CLI_PYTHON_REQUIRES)
+    _wheel(tmp_path, "geochemistrypi", CLI_VERSION, CLI_PYTHON_REQUIRES)
     _wheel(tmp_path, "geochemistrypi-mcp", SERVER_VERSION, MCP_PYTHON_REQUIRES)
     return build_release_manifest(
         tmp_path,
@@ -54,17 +54,22 @@ def _bundle(tmp_path: Path) -> Path:
     )
 
 
-def test_release_manifest_records_exact_versions_hashes_and_deferred_publication(
+def test_release_manifest_records_exact_versions_hashes_and_protected_publication(
     tmp_path: Path,
 ) -> None:
     manifest_path = _bundle(tmp_path)
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert manifest["schema_version"] == 2
     assert manifest["release_tag"] == EXPECTED_RELEASE_TAG
     assert manifest["source_commit"] == "1" * 40
-    assert manifest["public_release_ready"] is False
-    assert manifest["publication"]["pypi"] == "deferred"
+    assert manifest["channel"] == "stable"
+    assert manifest["public_release_ready"] is True
+    assert manifest["pending_release_gates"] == []
+    assert manifest["publication"]["cli_pypi"] == "protected-workflow"
+    assert manifest["publication"]["mcp_github_release"] == "protected-workflow"
     assert manifest["publication"]["mcp_registry"] == "deferred"
+    assert manifest["publication"]["artifact_policy"] == "publish-exact-verified-files-without-rebuilding"
     assert [value["distribution"] for value in manifest["artifacts"]] == [
         "geochemistrypi",
         "geochemistrypi-mcp",
@@ -94,8 +99,23 @@ def test_release_workflow_installs_the_signed_artifact_on_every_supported_os() -
     assert '"geochemistrypi-mcp-setup", "install"' in signed_job
     assert 'run("geochemistrypi-mcp-doctor", "--json")' in signed_job
     assert 'run("geochemistrypi-mcp-setup", "uninstall")' in signed_job
+    assert 'for shard in ("classification-automl", "regression-automl")' in signed_job
+    assert '"-m", "mcp_cli_full_parity"' in signed_job
     assert "--allow-unsigned" not in signed_job
     assert "--release-tag mcp-v" not in engine_workflow
+
+
+def test_release_workflow_builds_once_and_publishes_only_after_final_gates() -> None:
+    release_workflow = (REPOSITORY_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+
+    assert "verify-source --repository . --release-tag" in release_workflow
+    assert "python -m build --sdist --wheel --outdir cli-dist ." in release_workflow
+    assert release_workflow.count("python -m build --sdist --wheel --outdir cli-dist .") == 1
+    assert "verify-artifacts" in release_workflow
+    assert "pypa/gh-action-pypi-publish@release/v1" in release_workflow
+    assert "needs: [build-sign-attest, verify-signed-release]" in release_workflow
+    assert "needs: [build-sign-attest, verify-signed-release, publish-cli-pypi]" in release_workflow
+    assert 'gh release create "${GITHUB_REF_NAME}"' in release_workflow
 
 
 def test_release_bundle_verifies_every_sigstore_identity_and_rejects_tampering(
@@ -168,7 +188,7 @@ def test_release_bundle_fails_closed_for_missing_signatures_and_packaged_tests(
     _wheel(
         unsafe,
         "geochemistrypi",
-        "0.8.0",
+        CLI_VERSION,
         ">=3.9,<3.10",
         packaged_test=True,
     )
@@ -184,7 +204,7 @@ def test_release_bundle_fails_closed_for_missing_signatures_and_packaged_tests(
 def test_release_manifest_rejects_wrong_tag_and_ambiguous_wheel_sets(
     tmp_path: Path,
 ) -> None:
-    _wheel(tmp_path, "geochemistrypi", "0.8.0", CLI_PYTHON_REQUIRES)
+    _wheel(tmp_path, "geochemistrypi", CLI_VERSION, CLI_PYTHON_REQUIRES)
     _wheel(tmp_path, "geochemistrypi-mcp", SERVER_VERSION, MCP_PYTHON_REQUIRES)
     with pytest.raises(ReleaseError, match="exact versions"):
         build_release_manifest(

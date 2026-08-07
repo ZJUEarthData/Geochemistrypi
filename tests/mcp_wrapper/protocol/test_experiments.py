@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 from geochemistrypi_mcp.api.schemas import ClassificationRequest, GetExperimentRequest, ListExperimentsRequest
+from geochemistrypi_mcp.config.constants import CLI_VERSION
 from geochemistrypi_mcp.config.settings import McpSettings
 from geochemistrypi_mcp.runtime.runs import RunManager
 from geochemistrypi_mcp.tracking.experiments import ExperimentManager, ExperimentStoreError
@@ -27,7 +28,7 @@ def _settings(tmp_path: Path) -> McpSettings:
 
 def test_experiment_manager_uses_bounded_core_json_bridge(tmp_path: Path, monkeypatch) -> None:
     settings = _settings(tmp_path)
-    monkeypatch.setattr(McpSettings, "require_supported_cli", lambda self: (self.cli_executable, "0.8.0"))
+    monkeypatch.setattr(McpSettings, "require_supported_cli", lambda self: (self.cli_executable, CLI_VERSION))
     commands = []
 
     def run(command, **kwargs):
@@ -78,7 +79,7 @@ def test_experiment_manager_uses_bounded_core_json_bridge(tmp_path: Path, monkey
 
 def test_experiment_manager_sanitizes_cli_failures(tmp_path: Path, monkeypatch) -> None:
     settings = _settings(tmp_path)
-    monkeypatch.setattr(McpSettings, "require_supported_cli", lambda self: (self.cli_executable, "0.8.0"))
+    monkeypatch.setattr(McpSettings, "require_supported_cli", lambda self: (self.cli_executable, CLI_VERSION))
     monkeypatch.setattr(
         "geochemistrypi_mcp.tracking.experiments.subprocess.run",
         lambda command, **kwargs: subprocess.CompletedProcess(command, 2, "", json.dumps({"error": "Unknown experiment ID"}) + "\n"),
@@ -95,7 +96,7 @@ def test_existing_experiment_name_mismatch_fails_before_dataset_or_cli_execution
     settings = McpSettings(runs_root=tmp_path / "runs", cli_executable=Path(sys.executable))
     manager = RunManager(
         settings,
-        cli_resolver=lambda: (Path(sys.executable), "0.8.0"),
+        cli_resolver=lambda: (Path(sys.executable), CLI_VERSION),
         experiment_manager=MismatchStore(),
     )
     request = ClassificationRequest(

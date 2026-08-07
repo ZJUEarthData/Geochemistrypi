@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "cli_version": "0.8.0",
+  "cli_version": "0.8.1",
   "task": "clustering",
   "execution_owner": "geochemistrypi data-mining",
   "models": [

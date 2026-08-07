@@ -27,7 +27,7 @@ from geochemistrypi_mcp import (
     TimeSeriesPlanCompiler,
     TimeSeriesRequest,
 )
-from geochemistrypi_mcp.config.constants import ISOLATED_CLI_ENVIRONMENT_VARIABLES, SERVER_VERSION
+from geochemistrypi_mcp.config.constants import CLI_VERSION, ISOLATED_CLI_ENVIRONMENT_VARIABLES, SERVER_VERSION
 from geochemistrypi_mcp.config.settings import resolve_cli_interpreter
 from mcp import Client, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -667,7 +667,7 @@ async def test_stdio_mcp_matches_direct_public_cli_and_preserves_protocol() -> N
         assert Path(result["cli_stderr_log"]).is_file()
         assert _load_json(Path(result["interaction_trace"]))["metadata"] == {
             "geochemistrypi_mcp_version": SERVER_VERSION,
-            "geochemistrypi_cli_version": "0.8.0",
+            "geochemistrypi_cli_version": CLI_VERSION,
         }
 
 
