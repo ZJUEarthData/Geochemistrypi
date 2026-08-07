@@ -33,10 +33,6 @@ defineProps<{
           '雪山、绿色草甸与清澈高山溪流'
         )"
       />
-      <figcaption>
-        <span>{{ t('FIELD LANDSCAPE', '野外地貌') }}</span>
-        <small>{{ t('Snowfield · meadow · stream', '雪原 · 草甸 · 溪流') }}</small>
-      </figcaption>
     </figure>
   </aside>
 </template>
@@ -123,31 +119,6 @@ defineProps<{
     object-position: center 42%;
   }
 
-  figcaption {
-    display: grid;
-    position: absolute;
-    right: 12px;
-    bottom: 12px;
-    left: 12px;
-    gap: 3px;
-    padding: 13px 15px;
-    border: 1px solid rgb(255 255 255 / 72%);
-    border-radius: 8px;
-    background: rgb(247 252 251 / 91%);
-    box-shadow: 0 10px 28px rgb(24 68 70 / 14%);
-    letter-spacing: 0.08em;
-
-    span {
-      color: #19444c;
-      font-size: 11px;
-      font-weight: 750;
-    }
-
-    small {
-      color: #638084;
-      font-size: 10px;
-    }
-  }
 }
 
 @media (max-width: 1360px) {

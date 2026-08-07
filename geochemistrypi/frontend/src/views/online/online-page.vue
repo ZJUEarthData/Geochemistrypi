@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 
-import TraceElementChart from '@/components/trace-element-chart.vue'
+import FormulaDisplay from '@/components/formula-display.vue'
 import WorkspaceSidebar from '@/components/workspace-sidebar.vue'
 
 import {
@@ -289,7 +289,10 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
 
           <div v-if="currentMethod.formula" class="formula-row">
             <span>{{ t('Formula', '计算公式') }}</span>
-            <code>{{ chemicalMethodFormula(currentMethod.name, currentMethod.formula) }}</code>
+            <FormulaDisplay
+              :method="currentMethod.name"
+              :fallback="chemicalMethodFormula(currentMethod.name, currentMethod.formula)"
+            />
           </div>
 
           <div v-if="currentMethod.input_columns.length" class="input-table-wrap">
@@ -446,20 +449,6 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
     </section>
 
     <aside class="context-rail">
-      <section class="context-section trace-context">
-        <p class="context-kicker">{{ t('TRACE ELEMENT CONTEXT', '微量元素参照') }}</p>
-        <h2>{{ t('Illustrative PAAS-normalized pattern', 'PAAS 标准化示意曲线') }}</h2>
-        <TraceElementChart />
-        <p class="chart-note">
-          {{
-            t(
-              'A calm visual reference for geochemical pattern recognition.',
-              '用于地球化学配分模式识别的视觉参照。'
-            )
-          }}
-        </p>
-      </section>
-
       <section class="context-section method-context">
         <p class="context-kicker">{{ t('ABOUT THIS METHOD', '关于此方法') }}</p>
         <h2 v-if="currentMethod">
@@ -604,22 +593,17 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
 }
 
 .formula-row {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
   gap: 12px;
   margin-bottom: 14px;
 
-  span {
+  > span {
+    padding-top: 11px;
     color: #64748b;
     font-size: 13px;
     font-weight: 600;
-  }
-
-  code {
-    padding: 5px 9px;
-    border-radius: 5px;
-    color: #9a3412;
-    background: #fff3ed;
   }
 }
 
@@ -941,14 +925,8 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
 .formula-row {
   gap: 14px;
 
-  span {
+  > span {
     color: #55767a;
-  }
-
-  code {
-    border: 1px solid #c8e2df;
-    color: #197e83;
-    background: #ecf6f5;
   }
 }
 
@@ -1151,16 +1129,11 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
   letter-spacing: 0.13em;
 }
 
-.chart-note,
 .method-summary,
 .method-tips {
   color: #607c80;
   line-height: 1.7;
   font-size: 12px;
-}
-
-.chart-note {
-  margin-top: 7px;
 }
 
 .method-tips {
