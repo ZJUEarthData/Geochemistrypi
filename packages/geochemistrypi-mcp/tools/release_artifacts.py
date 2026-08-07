@@ -84,24 +84,8 @@ def release_versions(repository: Path) -> ReleaseVersions:
     cli_project = _project(root / "pyproject.toml")
     mcp_project = _project(root / "packages" / "geochemistrypi-mcp" / "pyproject.toml")
     cli_module = _module_values(root / "geochemistrypi" / "_version.py")
-    constants = _module_values(
-        root
-        / "packages"
-        / "geochemistrypi-mcp"
-        / "src"
-        / "geochemistrypi_mcp"
-        / "config"
-        / "constants.py"
-    )
-    capability_path = (
-        root
-        / "packages"
-        / "geochemistrypi-mcp"
-        / "src"
-        / "geochemistrypi_mcp"
-        / "contracts"
-        / "cli_capability_manifest_v1.json"
-    )
+    constants = _module_values(root / "packages" / "geochemistrypi-mcp" / "src" / "geochemistrypi_mcp" / "config" / "constants.py")
+    capability_path = root / "packages" / "geochemistrypi-mcp" / "src" / "geochemistrypi_mcp" / "contracts" / "cli_capability_manifest_v1.json"
     try:
         capability = json.loads(capability_path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
@@ -118,15 +102,10 @@ def release_versions(repository: Path) -> ReleaseVersions:
     if not cli or any(value != cli for value in cli_values.values()):
         raise ArtifactIntegrityError(f"CLI version declarations disagree: {cli_values}")
     if mcp != str(constants.get("SERVER_VERSION", "")):
-        raise ArtifactIntegrityError(
-            "MCP version declarations disagree: "
-            f"pyproject={mcp!r}, SERVER_VERSION={constants.get('SERVER_VERSION')!r}"
-        )
+        raise ArtifactIntegrityError("MCP version declarations disagree: " f"pyproject={mcp!r}, SERVER_VERSION={constants.get('SERVER_VERSION')!r}")
     supported = constants.get("SUPPORTED_CLI_VERSIONS")
     if supported != (cli,):
-        raise ArtifactIntegrityError(
-            f"MCP must fail closed to exactly CLI {cli}; found SUPPORTED_CLI_VERSIONS={supported!r}"
-        )
+        raise ArtifactIntegrityError(f"MCP must fail closed to exactly CLI {cli}; found SUPPORTED_CLI_VERSIONS={supported!r}")
     return ReleaseVersions(
         cli=cli,
         mcp=mcp,
@@ -140,9 +119,7 @@ def verify_clean_tagged_source(repository: Path, release_tag: str) -> ReleaseVer
     root = repository.expanduser().resolve()
     versions = release_versions(root)
     if release_tag != versions.release_tag:
-        raise ArtifactIntegrityError(
-            f"Release Tag {release_tag!r} does not match source versions; expected {versions.release_tag!r}."
-        )
+        raise ArtifactIntegrityError(f"Release Tag {release_tag!r} does not match source versions; expected {versions.release_tag!r}.")
 
     def git(*arguments: str) -> str:
         completed = subprocess.run(
@@ -166,16 +143,11 @@ def verify_clean_tagged_source(repository: Path, release_tag: str) -> ReleaseVer
     for tag in (versions.cli_tag, release_tag):
         tag_type = git("cat-file", "-t", f"refs/tags/{tag}")
         if tag_type != "tag":
-            raise ArtifactIntegrityError(
-                f"Release Tag {tag} must be annotated; found Git object type {tag_type!r}."
-            )
+            raise ArtifactIntegrityError(f"Release Tag {tag} must be annotated; found Git object type {tag_type!r}.")
     cli_tagged = git("rev-parse", f"{versions.cli_tag}^{{}}")
     release_tagged = git("rev-parse", f"{release_tag}^{{}}")
     if head != cli_tagged or head != release_tagged:
-        raise ArtifactIntegrityError(
-            "The CLI and MCP release Tags must resolve to the exact build commit: "
-            f"HEAD={head}, {versions.cli_tag}={cli_tagged}, {release_tag}={release_tagged}."
-        )
+        raise ArtifactIntegrityError("The CLI and MCP release Tags must resolve to the exact build commit: " f"HEAD={head}, {versions.cli_tag}={cli_tagged}, {release_tag}={release_tagged}.")
     return versions
 
 
@@ -218,11 +190,7 @@ def _metadata_from_wheel(path: Path) -> tuple[Mapping[str, str], tuple[str, ...]
             if len(metadata_names) != 1:
                 raise ArtifactIntegrityError(f"CLI wheel must contain one top-level METADATA file: {path.name}")
             message = BytesParser(policy=default).parsebytes(archive.read(metadata_names[0]))
-            package_files = {
-                name: archive.read(name)
-                for name in names
-                if name.startswith("geochemistrypi/") and not name.endswith("/")
-            }
+            package_files = {name: archive.read(name) for name in names if name.startswith("geochemistrypi/") and not name.endswith("/")}
     except (BadZipFile, KeyError, OSError) as exc:
         raise ArtifactIntegrityError(f"Cannot inspect CLI wheel {path}: {exc}") from exc
     fields = {
@@ -285,18 +253,14 @@ def _verify_metadata(
     if canonicalize_name(fields["name"]) != canonicalize_name(expected_name):
         raise ArtifactIntegrityError(f"{label} project name does not match pyproject.toml.")
     if fields["version"] != expected_version:
-        raise ArtifactIntegrityError(
-            f"{label} version {fields['version']!r} does not match pyproject.toml {expected_version!r}."
-        )
+        raise ArtifactIntegrityError(f"{label} version {fields['version']!r} does not match pyproject.toml {expected_version!r}.")
     try:
         observed_python = SpecifierSet(fields["requires_python"])
         required_python = SpecifierSet(expected_python)
     except InvalidSpecifier as exc:
         raise ArtifactIntegrityError(f"{label} contains invalid Requires-Python metadata: {exc}") from exc
     if observed_python != required_python:
-        raise ArtifactIntegrityError(
-            f"{label} Requires-Python {fields['requires_python']!r} does not match {expected_python!r}."
-        )
+        raise ArtifactIntegrityError(f"{label} Requires-Python {fields['requires_python']!r} does not match {expected_python!r}.")
     expected_dependencies = project.get("dependencies")
     if not isinstance(expected_dependencies, list) or not all(isinstance(value, str) for value in expected_dependencies):
         raise ArtifactIntegrityError("CLI pyproject.toml dependencies must be a list of requirement strings.")
@@ -327,22 +291,17 @@ def verify_cli_artifacts(
     bundle = release_bundle.expanduser().resolve()
     versions = release_versions(root)
     if release_tag != versions.release_tag:
-        raise ArtifactIntegrityError(
-            f"Release Tag {release_tag!r} does not match source versions; expected {versions.release_tag!r}."
-        )
+        raise ArtifactIntegrityError(f"Release Tag {release_tag!r} does not match source versions; expected {versions.release_tag!r}.")
     wheels = sorted(cli_dist.glob("*.whl"))
     sdists = sorted(cli_dist.glob("*.tar.gz"))
     unexpected = sorted(path.name for path in cli_dist.iterdir() if path.is_file() and path not in {*wheels, *sdists})
     if len(wheels) != 1 or len(sdists) != 1 or unexpected:
         raise ArtifactIntegrityError(
-            "CLI publication directory must contain exactly one wheel and one sdist; "
-            f"wheels={[path.name for path in wheels]}, sdists={[path.name for path in sdists]}, unexpected={unexpected}."
+            "CLI publication directory must contain exactly one wheel and one sdist; " f"wheels={[path.name for path in wheels]}, sdists={[path.name for path in sdists]}, unexpected={unexpected}."
         )
     bundle_wheels = sorted(bundle.glob("geochemistrypi-*.whl"))
     if len(bundle_wheels) != 1:
-        raise ArtifactIntegrityError(
-            f"MCP release bundle must contain exactly one CLI wheel; found {[path.name for path in bundle_wheels]}."
-        )
+        raise ArtifactIntegrityError(f"MCP release bundle must contain exactly one CLI wheel; found {[path.name for path in bundle_wheels]}.")
     if wheels[0].name != bundle_wheels[0].name or _sha256(wheels[0]) != _sha256(bundle_wheels[0]):
         raise ArtifactIntegrityError("MCP bundle CLI wheel is not byte-for-byte identical to the PyPI CLI wheel.")
 
@@ -389,10 +348,7 @@ def main(argv: Sequence[str] | None = None) -> None:
                 arguments.release_bundle,
                 release_tag,
             )
-            print(
-                "Verified exact CLI wheel/sdist metadata, source bytes, and MCP bundle reuse for "
-                f"CLI {versions.cli} and MCP {versions.mcp}."
-            )
+            print("Verified exact CLI wheel/sdist metadata, source bytes, and MCP bundle reuse for " f"CLI {versions.cli} and MCP {versions.mcp}.")
     except ArtifactIntegrityError as exc:
         print(f"GeochemistryPi release artifact verification failed: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc

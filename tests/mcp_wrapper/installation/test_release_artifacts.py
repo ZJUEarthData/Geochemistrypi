@@ -25,13 +25,7 @@ verify_clean_tagged_source = release_artifacts.verify_clean_tagged_source
 def _write_project(root: Path) -> tuple[Path, Path, str]:
     cli_version = "0.8.1"
     mcp_version = "0.2.1"
-    pyproject = (
-        "[project]\n"
-        'name = "geochemistrypi"\n'
-        f'version = "{cli_version}"\n'
-        'requires-python = ">=3.9,<3.10"\n'
-        'dependencies = ["flaml==1.0.14", "ray==2.2.0"]\n'
-    )
+    pyproject = "[project]\n" 'name = "geochemistrypi"\n' f'version = "{cli_version}"\n' 'requires-python = ">=3.9,<3.10"\n' 'dependencies = ["flaml==1.0.14", "ray==2.2.0"]\n'
     (root / "pyproject.toml").write_text(pyproject, encoding="utf-8")
     package = root / "geochemistrypi"
     package.mkdir()
@@ -47,9 +41,7 @@ def _write_project(root: Path) -> tuple[Path, Path, str]:
     constants = mcp_root / "src" / "geochemistrypi_mcp" / "config"
     constants.mkdir(parents=True)
     (constants / "constants.py").write_text(
-        f'CLI_VERSION = "{cli_version}"\n'
-        "SUPPORTED_CLI_VERSIONS = (CLI_VERSION,)\n"
-        f'SERVER_VERSION = "{mcp_version}"\n',
+        f'CLI_VERSION = "{cli_version}"\n' "SUPPORTED_CLI_VERSIONS = (CLI_VERSION,)\n" f'SERVER_VERSION = "{mcp_version}"\n',
         encoding="utf-8",
     )
     contracts = constants.parent / "contracts"
