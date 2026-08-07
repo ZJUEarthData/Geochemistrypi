@@ -86,3 +86,89 @@ jobs:
       # Deliberately no PyPI, MCP Registry, or GitHub Release publication step.
       # Publication remains a separately authorized gate after all acceptance
       # evidence has passed for this exact signed bundle.
+
+  verify-signed-release:
+    name: Signed install (${{ matrix.os }})
+    needs: build-sign-attest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        # The CLI remains Python 3.9-only.  Its legacy scientific stack is
+        # currently supported on Intel macOS, so do not imply arm64 support
+        # until a native arm64 release candidate passes this same gate.
+        os: [ubuntu-latest, windows-latest, macos-15-intel]
+
+    steps:
+      - name: Download the exact signed release candidate
+        uses: actions/download-artifact@v4
+        with:
+          name: geochemistrypi-${{ github.ref_name }}
+          path: release-bundle
+
+      - name: Set up the public installer runtime
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install the pinned bootstrap tool
+        run: python -m pip install uv==0.11.7
+
+      - name: Verify and install the downloaded signed bundle as a normal user
+        shell: python
+        run: |
+          import os
+          from pathlib import Path
+          import subprocess
+
+          bundle = Path("release-bundle").resolve()
+          files = {path.name for path in bundle.iterdir() if path.is_file()}
+          wheels = sorted(bundle.glob("*.whl"))
+          signatures = sorted(bundle.glob("*.sigstore.json"))
+          if len(wheels) != 2 or len(signatures) != 3 or len(files) != 6:
+              raise SystemExit(
+                  "Signed bundle must contain exactly two wheels, one manifest, "
+                  f"and three Sigstore bundles; found {sorted(files)}"
+              )
+          if "release-manifest.json" not in files:
+              raise SystemExit("Signed bundle is missing release-manifest.json")
+
+          mcp_wheel = next(bundle.glob("geochemistrypi_mcp-*.whl"))
+          requirement = f"geochemistrypi-mcp[release] @ {mcp_wheel.as_uri()}"
+          isolated = [
+              "uv", "run", "--isolated", "--no-project", "--python", "3.11",
+              "--with", requirement,
+          ]
+          environment = os.environ.copy()
+          environment["GEOCHEMISTRYPI_MCP_APP_ROOT"] = str(
+              Path(os.environ["RUNNER_TEMP"]) / "GeochemistryPi public acceptance 用户数据"
+          )
+          environment["SQLALCHEMY_DATABASE_URL"] = ""
+
+          def run(*arguments):
+              subprocess.check_call([*isolated, *arguments], env=environment)
+
+          run("geochemistrypi-mcp-release", "verify", "--bundle", str(bundle))
+          run(
+              "geochemistrypi-mcp-setup", "install",
+              "--bundle", str(bundle), "--client", "standard",
+          )
+          run("geochemistrypi-mcp-setup", "install", "--client", "standard")
+
+          app_root = Path(environment["GEOCHEMISTRYPI_MCP_APP_ROOT"])
+          run_artifact = app_root / "runs" / "release-user-data" / "result.json"
+          tracking_artifact = app_root / "tracking" / "release-user-data" / "meta.yaml"
+          run_artifact.parent.mkdir(parents=True, exist_ok=True)
+          tracking_artifact.parent.mkdir(parents=True, exist_ok=True)
+          run_artifact.write_text('{"preserved": true}\n', encoding="utf-8")
+          tracking_artifact.write_text("name: preserved\n", encoding="utf-8")
+
+          run("geochemistrypi-mcp-setup", "repair", "--client", "standard")
+          run("geochemistrypi-mcp-doctor", "--json")
+          run("geochemistrypi-mcp-setup", "uninstall")
+
+          if run_artifact.read_text(encoding="utf-8") != '{"preserved": true}\n':
+              raise SystemExit("Uninstall changed user run data")
+          if tracking_artifact.read_text(encoding="utf-8") != "name: preserved\n":
+              raise SystemExit("Uninstall changed user tracking data")

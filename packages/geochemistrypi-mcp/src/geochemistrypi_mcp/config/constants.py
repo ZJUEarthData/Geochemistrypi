@@ -1,7 +1,7 @@
 """Versioned compatibility constants for the wrapper boundary."""
 
 SERVER_NAME = "GeochemistryPi MCP"
-SERVER_VERSION = "0.2.0"
+SERVER_VERSION = "0.2.1"
 SUPPORTED_CLI_VERSIONS = ("0.8.0",)
 INTERACTION_PLAN_VERSION = 1
 CLI_AUTOMATION_CONTRACT_VERSION = 1

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import geochemistrypi_mcp.lifecycle.doctor as doctor_module
 import pytest
-from geochemistrypi_mcp.config.constants import ISOLATED_CLI_ENVIRONMENT_VARIABLES
+from geochemistrypi_mcp.config.constants import ISOLATED_CLI_ENVIRONMENT_VARIABLES, SERVER_VERSION
 from geochemistrypi_mcp.lifecycle.doctor import run_doctor
 from geochemistrypi_mcp.lifecycle.setup import SetupPaths
 
@@ -43,7 +43,7 @@ def _prepared_paths(tmp_path: Path) -> SetupPaths:
         json.dumps(
             {
                 "schema_version": 2,
-                "server_version": "0.2.0",
+                "server_version": SERVER_VERSION,
                 "cli_version": "0.8.0",
                 "compatibility_policy_version": 2,
                 "mcp_python_requires": ">=3.10,<4",
@@ -87,7 +87,7 @@ def test_doctor_checks_both_runtimes_storage_and_real_protocol_boundary(tmp_path
         return subprocess.CompletedProcess(
             command,
             0,
-            json.dumps({"python": python, "package": "0.2.0" if package.endswith("-mcp") else "0.8.0"}),
+            json.dumps({"python": python, "package": SERVER_VERSION if package.endswith("-mcp") else "0.8.0"}),
             "",
         )
 

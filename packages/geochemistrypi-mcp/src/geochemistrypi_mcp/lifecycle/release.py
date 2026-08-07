@@ -339,6 +339,13 @@ def _verify_signature(
         "sigstore",
         "verify",
         "identity",
+        # Release bundles already contain all transparency-log material needed
+        # for verification.  Offline mode makes verification deterministic on
+        # every supported desktop OS and avoids a TUF metadata refresh that can
+        # require elevated symlink privileges on Windows or fail behind a
+        # proxy.  Identity, issuer, hashes, and bundle contents are still
+        # verified by Sigstore; this does not weaken the trust policy.
+        "--offline",
         str(artifact),
         "--bundle",
         str(bundle),

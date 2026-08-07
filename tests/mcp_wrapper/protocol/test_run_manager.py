@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import sys
 import time
@@ -6,7 +7,7 @@ from pathlib import Path
 
 import psutil
 import pytest
-from geochemistrypi_mcp import CliInteractionDriver, InteractionPlan, InteractionStep
+from geochemistrypi_mcp import CliInteractionDriver, InteractionPlan, InteractionStep, WorkspacePathError
 from geochemistrypi_mcp.api.schemas import BuiltInDatasetReference, ClassificationRequest, ClusteringRequest, DecompositionRequest, RandomForestSettings, TimeSeriesRequest
 from geochemistrypi_mcp.config.settings import McpSettings
 from geochemistrypi_mcp.contracts.classification import MODEL_DISPLAY_NAMES as CLASSIFICATION_MODEL_DISPLAY_NAMES
@@ -138,6 +139,35 @@ def test_validate_analysis_previews_workload_without_creating_run_or_process(tmp
         assert preview.analysis_process_started is False
         assert "inference will be skipped" in " ".join(preview.warnings)
         assert not manager.settings.runs_root.exists()
+    finally:
+        manager.close()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows legacy path budget regression")
+def test_validate_and_start_reject_unsafe_output_paths_before_creating_a_run(tmp_path: Path) -> None:
+    script = tmp_path / "never-started.py"
+    script.write_text("raise AssertionError('must not start')\n", encoding="utf-8")
+    dataset = _dataset(tmp_path)
+    manager = _manager(tmp_path, script)
+    original_compile = manager.plan_compiler.compile
+
+    def compile_with_unsafe_output(request, cli_executable=None):
+        plan = original_compile(request, cli_executable=cli_executable)
+        return InteractionPlan(
+            schema_version=plan.schema_version,
+            name=plan.name,
+            public_command=plan.public_command,
+            steps=plan.steps,
+            expected_output_relative_paths=("x" * 260,),
+        )
+
+    manager.plan_compiler.compile = compile_with_unsafe_output
+    try:
+        with pytest.raises(WorkspacePathError, match="before the CLI starts"):
+            manager.validate(_request(dataset))
+        with pytest.raises(WorkspacePathError, match="No CLI process was started"):
+            manager.start(_request(dataset))
+        assert not list(manager.settings.runs_root.glob("run-*"))
     finally:
         manager.close()
 

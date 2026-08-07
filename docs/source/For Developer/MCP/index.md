@@ -143,7 +143,26 @@ configuration without deleting scientific results.
 Local verification covers Python 3.9 CLI tests, MCP interaction and protocol
 tests, installed-wheel tests, parity scenarios, formatting, linting, and wheel
 content inspection. The release workflows add Windows, Linux, and macOS gates,
-sharded real-model parity, artifact signing, and attestations.
+sharded real-model parity, artifact signing, and attestations. Before opening a
+release PR, run the cross-platform preflight from the repository root:
+
+```text
+uv run --isolated --no-project --python 3.11 python packages/geochemistrypi-mcp/tools/release_preflight.py
+```
+
+The default command includes all seven slow full-model parity shards. During
+iteration, `--quick` skips only those shards; it is not release evidence. The
+preflight writes wheels, private environments, and lifecycle state to a system
+temporary directory, never to the repository or the user's real Agent
+configuration. On failure it retains that directory for diagnosis.
+
+The Tag workflow downloads the final signed artifact into clean ordinary-user
+jobs on Windows, Linux, and Intel macOS. Each job verifies the Sigstore bundles
+offline against the pinned GitHub workflow identity, installs the exact wheels
+under a path containing spaces and non-ASCII characters, runs Doctor, repairs
+the installation, uninstalls it, and confirms scientific run/tracking data was
+preserved. Native macOS arm64 is not claimed until that same final-artifact
+gate is available and green on arm64.
 
 Local success is not a public-release claim. A release is ready only after all
 required remote jobs finish successfully and the generated artifacts satisfy

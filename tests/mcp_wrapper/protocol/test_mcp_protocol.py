@@ -15,6 +15,7 @@ from geochemistrypi_mcp.api.schemas import (
     RunStatusResponse,
     StartAnalysisResponse,
 )
+from geochemistrypi_mcp.config.constants import SERVER_VERSION
 from geochemistrypi_mcp.config.settings import McpSettings
 from geochemistrypi_mcp.server import SERVER_INSTRUCTIONS, create_server
 from mcp import Client, StdioServerParameters
@@ -390,4 +391,4 @@ async def test_real_stdio_server_reserves_stdout_for_protocol_after_tool_error(
         assert "does not exist" in failed.content[0].text
         after = await client.call_tool("get_capabilities", {})
         assert after.is_error is False
-        assert after.structured_content["server_version"] == "0.2.0"
+        assert after.structured_content["server_version"] == SERVER_VERSION

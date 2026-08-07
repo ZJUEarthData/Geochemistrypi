@@ -63,16 +63,33 @@ wheel, packaged repository tests, a size or SHA-256 mismatch, an untrusted
 workflow identity, or a missing signature before changing the installed
 runtime.
 
-Install [uv](https://docs.astral.sh/uv/), then bootstrap setup from the MCP
-wheel in the downloaded bundle. Replace the example URI and bundle directory
-with absolute paths:
+The intended scientist-facing installation is natural language. Download and
+extract the signed release bundle, then give its folder to any supported Agent:
 
 ```text
-uvx --python 3.11 --from "geochemistrypi-mcp[release] @ file:///ABSOLUTE/PATH/geochemistrypi_mcp-0.2.0-py3-none-any.whl" geochemistrypi-mcp-setup install --bundle /ABSOLUTE/PATH/release-bundle
+请从这个文件夹安装 GeochemistryPi MCP：<发布包文件夹的绝对路径>。
+请先验证发布签名，自动配置我正在使用的 MCP 客户端，安装后运行健康检查。
+如果失败，不要跳过签名校验，请用普通用户能理解的语言告诉我原因和解决办法。
+```
+
+This prompt is operating-system neutral. The Agent should locate the MCP wheel
+inside the bundle and run the verified setup command below; scientists should
+not need to construct a Python environment, file URI, or client JSON by hand.
+An explicit model or analysis parameter supplied by the scientist always takes
+precedence over automatic defaults.
+
+For manual or diagnostic use, install [uv](https://docs.astral.sh/uv/), then
+bootstrap setup from the MCP wheel in the downloaded bundle. Replace the
+example URI and bundle directory with absolute paths:
+
+```text
+uvx --python 3.11 --from "geochemistrypi-mcp[release] @ file:///ABSOLUTE/PATH/geochemistrypi_mcp-0.2.1-py3-none-any.whl" geochemistrypi-mcp-setup install --bundle /ABSOLUTE/PATH/release-bundle
 ```
 
 Windows file URIs use forward slashes, for example
-`file:///D:/Downloads/release-bundle/geochemistrypi_mcp-0.2.0-py3-none-any.whl`.
+`file:///D:/Downloads/release-bundle/geochemistrypi_mcp-0.2.1-py3-none-any.whl`.
+Linux and macOS use a URI such as
+`file:///home/user/Downloads/release-bundle/geochemistrypi_mcp-0.2.1-py3-none-any.whl`.
 Unsigned bundles fail closed. `--allow-unsigned-bundle` exists only for local
 release-candidate testing and is recorded permanently in the install
 manifest; it is not a production verification mode.
@@ -95,7 +112,7 @@ uv run --isolated --no-project --python 3.11 --with-editable packages/geochemist
 The development command creates an MCP Python 3.11 environment and a separate
 GeochemistryPi Python 3.9 environment under the platform-native application
 data directory. It installs both packages from the current clone, verifies the
-0.2.0/0.8.0 version handshake, persists private paths, runs an end-to-end
+0.2.1/0.8.0 version handshake, persists private paths, runs an end-to-end
 doctor, and registers one stable zero-argument server command in detected MCP
 clients. Users never configure either private Python environment or a CLI path.
 The CLI environment accepts third-party dependencies only as prebuilt wheels,
@@ -188,8 +205,8 @@ is never killed.
 
 ```text
 uv run --isolated --no-project --python 3.11 --with-editable packages/geochemistrypi-mcp geochemistrypi-mcp-setup repair
-uvx --python 3.11 --from "geochemistrypi-mcp[release] @ file:///ABSOLUTE/PATH/geochemistrypi_mcp-0.2.0-py3-none-any.whl" geochemistrypi-mcp-setup upgrade --bundle /ABSOLUTE/PATH/new-release-bundle
-uvx --python 3.11 --from "geochemistrypi-mcp[release] @ file:///ABSOLUTE/PATH/geochemistrypi_mcp-0.2.0-py3-none-any.whl" geochemistrypi-mcp-setup rollback
+uvx --python 3.11 --from "geochemistrypi-mcp[release] @ file:///ABSOLUTE/PATH/geochemistrypi_mcp-0.2.1-py3-none-any.whl" geochemistrypi-mcp-setup upgrade --bundle /ABSOLUTE/PATH/new-release-bundle
+uvx --python 3.11 --from "geochemistrypi-mcp[release] @ file:///ABSOLUTE/PATH/geochemistrypi_mcp-0.2.1-py3-none-any.whl" geochemistrypi-mcp-setup rollback
 uv run --isolated --no-project --python 3.11 --with-editable packages/geochemistrypi-mcp geochemistrypi-mcp-setup uninstall
 ```
 
