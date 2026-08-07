@@ -2,6 +2,8 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 
+import WorkspaceSidebar from '@/components/workspace-sidebar.vue'
+
 import {
   getDataMiningCatalog,
   preprocessDataset,
@@ -470,7 +472,10 @@ function formatCell(value: unknown) {
 </script>
 
 <template>
-  <main class="data-mining-page">
+  <main class="data-mining-workbench">
+    <WorkspaceSidebar active="data-mining" />
+
+    <section class="data-mining-page">
     <section class="page-heading">
       <div>
         <p class="eyebrow">GEOCHEMISTRY π ONLINE</p>
@@ -580,10 +585,14 @@ function formatCell(value: unknown) {
               :disabled="running || !currentFeatureIsVerified"
               @change="onFileChange"
             />
-            <span class="file-button">{{ t('Choose dataset', '选择数据集') }}</span>
-            <span class="file-name">{{
-              datasetFile?.name || t('No file selected', '未选择文件')
-            }}</span>
+            <el-icon class="upload-icon"><UploadFilled /></el-icon>
+            <span class="file-copy">
+              <strong class="file-button">{{ t('Choose dataset', '选择数据集') }}</strong>
+              <small>{{ t('Drop an XLSX or CSV file here, or click to browse.', '拖放 XLSX 或 CSV 文件到此处，或点击浏览。') }}</small>
+              <em class="file-name">{{
+                datasetFile?.name || t('No file selected', '未选择文件')
+              }}</em>
+            </span>
           </label>
         </el-form-item>
 
@@ -1797,6 +1806,55 @@ function formatCell(value: unknown) {
         </div>
       </el-card>
     </template>
+    </section>
+
+    <aside class="insight-rail">
+      <section class="insight-section">
+        <p class="insight-kicker">{{ t('ANALYSIS PIPELINE', '分析流程') }}</p>
+        <h2>{{ t('From field data to evidence', '从野外数据到可验证证据') }}</h2>
+        <ol class="pipeline-list">
+          <li>
+            <el-icon><UploadFilled /></el-icon>
+            <div>
+              <strong>{{ t('Upload', '上传') }}</strong>
+              <span>{{ t('XLSX or CSV field dataset', 'XLSX 或 CSV 野外数据集') }}</span>
+            </div>
+          </li>
+          <li>
+            <el-icon><Search /></el-icon>
+            <div>
+              <strong>{{ t('Inspect', '检查') }}</strong>
+              <span>{{ t('Types, missing values and ranges', '类型、缺失值与数值范围') }}</span>
+            </div>
+          </li>
+          <li>
+            <el-icon><SetUp /></el-icon>
+            <div>
+              <strong>{{ t('Model', '建模') }}</strong>
+              <span>{{ t('Prepare, regress, classify or cluster', '预处理、回归、分类或聚类') }}</span>
+            </div>
+          </li>
+          <li>
+            <el-icon><Download /></el-icon>
+            <div>
+              <strong>{{ t('Export', '导出') }}</strong>
+              <span>{{ t('Traceable tables and reports', '可追溯的数据表与报告') }}</span>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <section v-if="currentFeature" class="insight-section current-insight">
+        <p class="insight-kicker">{{ t('CURRENT FUNCTION', '当前功能') }}</p>
+        <h2>{{ dataMiningFeatureDescription(currentFeature.name, currentFeature.description) }}</h2>
+        <p>{{ apiText(currentFeature.status_message) }}</p>
+        <div v-if="currentFeature.outputs.length" class="rail-outputs">
+          <span v-for="output in currentFeature.outputs" :key="output">
+            {{ apiText(output) }}
+          </span>
+        </div>
+      </section>
+    </aside>
   </main>
 </template>
 
@@ -2211,10 +2269,408 @@ function formatCell(value: unknown) {
   }
 }
 
+/* Shared alpine daylight system for the data-mining workspace. */
+.data-mining-workbench {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr) 330px;
+  min-height: calc(100vh - 72px);
+  color: #244c54;
+  background: #f1f8f7;
+}
+
+.data-mining-page {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 30px 30px 60px;
+  background: #f4faf9;
+}
+
+.page-heading {
+  margin-bottom: 17px;
+
+  h1 {
+    margin: 5px 0 7px;
+    color: #173f47;
+    line-height: 1.15;
+    font-size: clamp(34px, 3vw, 46px);
+    letter-spacing: -0.035em;
+  }
+
+  .eyebrow {
+    color: #d86149;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+  }
+
+  .intro {
+    color: #617d82;
+    font-size: 15px;
+  }
+}
+
+.service-status {
+  margin-top: 7px;
+  border-color: #cfe2df;
+  color: #4d6d72;
+  background: #fff;
+
+  &.online .status-dot {
+    background: #67c996;
+    box-shadow: 0 0 0 4px rgb(103 201 150 / 14%);
+  }
+}
+
+.workflow-card,
+.result-card {
+  min-width: 0;
+  border: 1px solid #d6e6e3;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 14px 36px rgb(38 91 91 / 7%);
+}
+
+.workflow-card :deep(.el-card__body) {
+  padding: 20px;
+}
+
+:deep(.el-form-item__label) {
+  padding-bottom: 7px;
+  color: #4e6f74;
+  line-height: 1.3;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+:deep(.el-select__wrapper) {
+  min-height: 42px;
+  border: 1px solid #c7dcda;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: none;
+
+  .el-select__selected-item,
+  .el-select__placeholder,
+  .el-select__caret {
+    color: #244d55;
+  }
+
+  &:hover {
+    border-color: #78afb0;
+  }
+
+  &.is-focused {
+    border-color: #df6e55;
+    box-shadow: 0 0 0 2px rgb(223 110 85 / 10%);
+  }
+}
+
+.feature-guide,
+.preprocessing-panel {
+  border-color: #c9dfdb;
+  border-radius: 9px;
+  background: #edf7f5;
+}
+
+.feature-guide-heading h2,
+.preprocessing-panel .section-heading h3,
+.result-section h3 {
+  color: #173f47;
+}
+
+.guide-kicker {
+  color: #5c8588;
+  letter-spacing: 0.12em;
+}
+
+.status-message,
+.field-help,
+.selection-tools {
+  color: #607c80;
+}
+
+.format-tags,
+.output-list,
+.selected-column-tags,
+.rail-outputs {
+  :deep(.el-tag),
+  > span {
+    border-color: #bfddd8;
+    color: #317a7d;
+    background: #f8fcfb;
+  }
+}
+
+.file-picker {
+  align-items: center;
+  justify-content: center;
+  gap: 17px;
+  min-height: 112px;
+  padding: 18px 24px;
+  border: 1px dashed #86b8b5;
+  border-radius: 9px;
+  color: #294f56;
+  background: #fff;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+
+  &:hover,
+  &:focus-within {
+    border-color: #4f9fa0;
+    background: #f0f8f6;
+  }
+
+  .upload-icon {
+    flex: 0 0 auto;
+    color: #4f9fa0;
+    font-size: 38px;
+  }
+
+  .file-copy {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .file-button {
+    align-self: auto;
+    display: block;
+    padding: 0;
+    color: #173f47;
+    background: transparent;
+    font-size: 16px;
+    font-weight: 650;
+  }
+
+  small {
+    color: #6b8589;
+    font-size: 12px;
+  }
+
+  .file-name {
+    padding: 0;
+    overflow: hidden;
+    color: #197e83;
+    font-size: 12px;
+    font-style: normal;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.actions {
+  justify-content: flex-end;
+
+  :deep(.el-button--primary) {
+    min-width: 178px;
+    min-height: 44px;
+    border-color: #d86149;
+    border-radius: 6px;
+    background: #d86149;
+    font-weight: 650;
+
+    &:hover,
+    &:focus-visible {
+      border-color: #e1745d;
+      background: #e1745d;
+    }
+
+    &.is-disabled {
+      border-color: #c7d5d3;
+      background: #b7c6c4;
+    }
+  }
+}
+
+.summary-card,
+.result-meta,
+.equation-card,
+.artifact-row {
+  border-color: #d6e6e3;
+  background: #fff;
+}
+
+.summary-card {
+  box-shadow: 0 10px 26px rgb(38 91 91 / 5%);
+
+  strong {
+    color: #287453;
+  }
+}
+
+.result-card .result-heading h2 {
+  color: #287453;
+}
+
+.result-meta,
+.artifact-row {
+  background: #edf7f5;
+}
+
+:deep(.el-table) {
+  --el-table-bg-color: #fff;
+  --el-table-tr-bg-color: #fff;
+  --el-table-header-bg-color: #e8f3f1;
+  --el-table-row-hover-bg-color: #f2f8f7;
+  --el-table-border-color: #d5e5e2;
+  --el-table-header-text-color: #4f6f74;
+  --el-table-text-color: #294f56;
+}
+
+.insight-rail {
+  position: sticky;
+  top: 72px;
+  align-self: start;
+  height: calc(100vh - 72px);
+  overflow-y: auto;
+  border-left: 1px solid #d7e7e4;
+  background: #eaf5f2;
+  scrollbar-width: thin;
+  scrollbar-color: #9cbab7 transparent;
+}
+
+.insight-section {
+  padding: 32px 26px 30px;
+  border-bottom: 1px solid #d3e5e1;
+
+  h2 {
+    margin: 7px 0 15px;
+    color: #173f47;
+    line-height: 1.45;
+    font-size: 16px;
+    font-weight: 650;
+  }
+
+  > p:not(.insight-kicker) {
+    color: #607c80;
+    line-height: 1.7;
+    font-size: 12px;
+  }
+}
+
+.insight-kicker {
+  margin: 0;
+  color: #5c8588;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.13em;
+}
+
+.pipeline-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    align-items: center;
+    gap: 12px;
+    min-height: 62px;
+    padding: 10px 12px;
+    border: 1px solid #d2e5e1;
+    border-radius: 8px;
+    background: rgb(255 255 255 / 66%);
+  }
+
+  .el-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    color: #318b8e;
+    background: #dff0ed;
+    font-size: 17px;
+  }
+
+  div {
+    display: grid;
+    gap: 2px;
+  }
+
+  strong {
+    color: #244c54;
+    font-size: 13px;
+  }
+
+  span {
+    color: #6a8588;
+    line-height: 1.45;
+    font-size: 11px;
+  }
+}
+
+.rail-outputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 18px;
+
+  span {
+    padding: 5px 8px;
+    border: 1px solid #bfddd8;
+    border-radius: 999px;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 1360px) {
+  .data-mining-workbench {
+    grid-template-columns: 210px minmax(0, 1fr) 300px;
+  }
+
+  .data-mining-page {
+    padding-right: 26px;
+    padding-left: 26px;
+  }
+
+  .insight-section {
+    padding-right: 22px;
+    padding-left: 22px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .data-mining-workbench {
+    grid-template-columns: 190px minmax(0, 1fr);
+  }
+
+  .insight-rail {
+    position: static;
+    grid-column: 2;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: auto;
+    border-top: 1px solid #d7e7e4;
+    border-left: 0;
+  }
+
+  .insight-section {
+    border-right: 1px solid #d3e5e1;
+  }
+}
+
+@media (max-width: 820px) {
+  .data-mining-workbench {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .insight-rail {
+    grid-column: 1;
+    grid-template-columns: 1fr;
+  }
+
+  .insight-section {
+    border-right: 0;
+  }
+}
+
 @media (max-width: 760px) {
   .data-mining-page {
-    width: min(100% - 24px, 1080px);
-    padding-top: 28px;
+    width: 100%;
+    padding: 28px 20px 42px;
   }
 
   .page-heading {
@@ -2239,10 +2695,8 @@ function formatCell(value: unknown) {
     flex-direction: column;
   }
 
-  .file-picker .file-button,
-  .file-picker .file-name {
-    min-height: 42px;
-    justify-content: center;
+  .file-picker .file-copy {
+    text-align: center;
   }
 
   .table-wrap :deep(.el-table) {

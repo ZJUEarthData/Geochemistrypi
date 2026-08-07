@@ -2,6 +2,9 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 
+import TraceElementChart from '@/components/trace-element-chart.vue'
+import WorkspaceSidebar from '@/components/workspace-sidebar.vue'
+
 import {
   artifactUrl,
   getCatalog,
@@ -184,7 +187,10 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
 </script>
 
 <template>
-  <main class="online-page">
+  <main class="online-workbench">
+    <WorkspaceSidebar active="online" />
+
+    <section class="online-page">
     <section class="page-heading">
       <div>
         <p class="eyebrow">GEOCHEMISTRY π ONLINE</p>
@@ -288,7 +294,7 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
 
           <div v-if="currentMethod.input_columns.length" class="input-table-wrap">
             <el-table :data="currentMethod.input_columns" border size="small">
-              <el-table-column prop="name" :label="t('Column', '列名')" min-width="90">
+              <el-table-column prop="name" :label="t('Column', '列名')" min-width="70">
                 <template #default="scope">
                   <code>{{ scope.row.name }}</code>
                   <span v-if="scope.row.required" class="required-mark">{{
@@ -296,24 +302,24 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
                   }}</span>
                 </template>
               </el-table-column>
-              <el-table-column :label="t('Meaning', '含义')" min-width="130">
+              <el-table-column :label="t('Meaning', '含义')" min-width="96">
                 <template #default="scope">{{ apiText(scope.row.label) }}</template>
               </el-table-column>
-              <el-table-column :label="t('Description', '说明')" min-width="220">
+              <el-table-column :label="t('Description', '说明')" min-width="150">
                 <template #default="scope">{{ apiText(scope.row.description) }}</template>
               </el-table-column>
-              <el-table-column :label="t('Type', '类型')" min-width="75">
+              <el-table-column :label="t('Type', '类型')" min-width="56">
                 <template #default="scope">{{ dataTypeLabel(scope.row.data_type) }}</template>
               </el-table-column>
-              <el-table-column :label="t('Valid range', '有效范围')" min-width="90">
+              <el-table-column :label="t('Valid range', '有效范围')" min-width="68">
                 <template #default="scope">
                   {{ rangeLabel(scope.row.minimum, scope.row.exclusive_minimum) }}
                 </template>
               </el-table-column>
-              <el-table-column :label="t('Unit', '单位要求')" min-width="180">
+              <el-table-column :label="t('Unit', '单位要求')" min-width="110">
                 <template #default="scope">{{ apiText(scope.row.unit) }}</template>
               </el-table-column>
-              <el-table-column prop="example" :label="t('Example', '示例')" min-width="80" />
+              <el-table-column prop="example" :label="t('Example', '示例')" min-width="56" />
             </el-table>
           </div>
 
@@ -329,10 +335,6 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
             :closable="false"
             show-icon
           />
-
-          <ul v-if="currentMethod.input_notes.length" class="input-notes">
-            <li v-for="note in currentMethod.input_notes" :key="note">{{ apiText(note) }}</li>
-          </ul>
 
           <el-alert
             v-if="!currentMethodIsVerified"
@@ -353,7 +355,7 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
           <code v-for="column in requiredColumns" :key="column">{{ column }}</code>
         </div>
 
-        <el-form-item :label="t('Dataset (.xlsx or .csv)', '数据文件（.xlsx 或 .csv）')">
+        <el-form-item class="dataset-field" :label="t('Upload dataset', '上传数据集')">
           <label class="file-picker" :class="{ disabled: running || !currentMethodIsVerified }">
             <input
               type="file"
@@ -361,10 +363,15 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
               :disabled="running || !currentMethodIsVerified"
               @change="onFileChange"
             />
-            <span class="file-button">{{ t('Choose data file', '选择数据文件') }}</span>
-            <span class="file-name">{{
-              datasetFile?.name || t('No file selected', '未选择文件')
-            }}</span>
+            <el-icon class="upload-icon"><UploadFilled /></el-icon>
+            <span class="upload-copy">
+              <strong>{{ t('Upload dataset', '上传数据集') }}</strong>
+              <small>{{
+                t('Drag and drop an XLSX or CSV file here, or click to browse.',
+                  '拖放 XLSX 或 CSV 文件到此处，或点击浏览。')
+              }}</small>
+              <em>{{ datasetFile?.name || t('No file selected', '未选择文件') }}</em>
+            </span>
           </label>
         </el-form-item>
 
@@ -436,6 +443,41 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
         <strong>{{ formatLabel(task.name) }}:</strong> {{ apiText(task.error) }}
       </p>
     </el-alert>
+    </section>
+
+    <aside class="context-rail">
+      <section class="context-section trace-context">
+        <p class="context-kicker">{{ t('TRACE ELEMENT CONTEXT', '微量元素参照') }}</p>
+        <h2>{{ t('Illustrative PAAS-normalized pattern', 'PAAS 标准化示意曲线') }}</h2>
+        <TraceElementChart />
+        <p class="chart-note">
+          {{
+            t(
+              'A calm visual reference for geochemical pattern recognition.',
+              '用于地球化学配分模式识别的视觉参照。'
+            )
+          }}
+        </p>
+      </section>
+
+      <section class="context-section method-context">
+        <p class="context-kicker">{{ t('ABOUT THIS METHOD', '关于此方法') }}</p>
+        <h2 v-if="currentMethod">
+          {{ chemicalMethodDescription(currentMethod.name, currentMethod.description) }}
+        </h2>
+        <p v-if="currentMethod" class="method-summary">
+          {{ chemicalMethodStatus(currentMethod.name, currentMethod.status_message) }}
+        </p>
+        <div v-if="currentMethod?.input_notes.length" class="method-tips">
+          <h3>{{ t('Before you run', '运行前检查') }}</h3>
+          <ul>
+            <li v-for="note in currentMethod.input_notes.slice(0, 3)" :key="note">
+              {{ apiText(note) }}
+            </li>
+          </ul>
+        </div>
+      </section>
+    </aside>
   </main>
 </template>
 
@@ -586,7 +628,7 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
   overflow-x: auto;
 
   :deep(.el-table) {
-    min-width: 850px;
+    min-width: 650px;
   }
 
   code {
@@ -755,6 +797,468 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
   .file-picker .file-name {
     min-height: 42px;
     justify-content: center;
+  }
+}
+
+/* Alpine daylight theme: calm geochemical analysis with a fresh field-note palette. */
+.online-workbench {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr) 330px;
+  min-height: calc(100vh - 72px);
+  color: #244c54;
+  background: #f1f8f7;
+}
+
+.online-page {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 30px 30px 56px;
+  background: #f4faf9;
+}
+
+.page-heading {
+  margin-bottom: 17px;
+
+  h1 {
+    margin: 5px 0 7px;
+    color: #173f47;
+    line-height: 1.15;
+    font-size: clamp(34px, 3vw, 46px);
+    font-weight: 650;
+    letter-spacing: -0.035em;
+  }
+
+  .eyebrow {
+    color: #d86149;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+  }
+
+  .intro {
+    max-width: 680px;
+    color: #617d82;
+    font-size: 15px;
+  }
+}
+
+.service-status {
+  margin-top: 7px;
+  border-color: #cfe2df;
+  color: #4d6d72;
+  background: #fff;
+
+  &.online .status-dot {
+    background: #67d0a2;
+    box-shadow: 0 0 0 4px rgb(103 208 162 / 14%);
+  }
+}
+
+.calculation-card,
+.result-card {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+
+  :deep(.el-card__body) {
+    padding: 0;
+  }
+}
+
+.form-grid {
+  gap: 18px;
+
+  :deep(.el-form-item) {
+    margin-bottom: 0;
+  }
+}
+
+:deep(.el-form-item__label) {
+  padding-bottom: 7px;
+  color: #4e6f74;
+  line-height: 1.3;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+:deep(.el-select__wrapper) {
+  min-height: 42px;
+  border: 1px solid #c7dcda;
+  border-radius: 5px;
+  background: #fff;
+  box-shadow: none;
+
+  .el-select__selected-item,
+  .el-select__placeholder,
+  .el-select__caret {
+    color: #244d55;
+  }
+
+  &:hover {
+    border-color: #78afb0;
+  }
+
+  &.is-focused {
+    border-color: #df6e55;
+    box-shadow: 0 0 0 2px rgb(223 110 85 / 10%);
+  }
+}
+
+.method-guide {
+  margin: 2px 0 16px;
+  padding: 20px;
+  border-color: #c9dfdb;
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 14px 36px rgb(38 91 91 / 7%);
+}
+
+.method-guide-heading {
+  h2 {
+    color: #173f47;
+    font-size: 22px;
+  }
+
+  .guide-kicker {
+    color: #5c8588;
+    letter-spacing: 0.12em;
+  }
+
+  :deep(.el-tag--success) {
+    border-color: #9fd4ba;
+    color: #287453;
+    background: #edf8f2;
+  }
+}
+
+.status-message {
+  max-width: 720px;
+  margin: 10px 0 14px;
+  color: #5f797d;
+  font-size: 13px;
+}
+
+.formula-row {
+  gap: 14px;
+
+  span {
+    color: #55767a;
+  }
+
+  code {
+    border: 1px solid #c8e2df;
+    color: #197e83;
+    background: #ecf6f5;
+  }
+}
+
+.input-table-wrap {
+  border: 1px solid #d5e5e2;
+  border-radius: 3px;
+
+  :deep(.el-table) {
+    --el-table-bg-color: transparent;
+    --el-table-tr-bg-color: transparent;
+    --el-table-header-bg-color: #e8f3f1;
+    --el-table-row-hover-bg-color: #f2f8f7;
+    --el-table-border-color: #d5e5e2;
+    --el-table-header-text-color: #4f6f74;
+    --el-table-text-color: #294f56;
+    min-width: 650px;
+    background: transparent;
+
+    &::before,
+    .el-table__inner-wrapper::before {
+      background: #d5e5e2;
+    }
+
+    th.el-table__cell,
+    td.el-table__cell {
+      padding: 7px 0;
+      background: transparent;
+    }
+
+    .cell {
+      padding-right: 6px;
+      padding-left: 6px;
+    }
+  }
+
+  code {
+    color: #197e83;
+  }
+
+  .required-mark {
+    color: #d86149;
+  }
+}
+
+.input-notes {
+  padding-left: 18px;
+  color: #607c80;
+  line-height: 1.7;
+  list-style: disc;
+}
+
+.column-hint {
+  gap: 9px;
+  margin-bottom: 14px;
+  color: #557479;
+  background: #eaf5f2;
+
+  code {
+    border-color: #bcdad6;
+    color: #197e83;
+    background: #f8fcfb;
+  }
+}
+
+.dataset-field {
+  margin-top: 8px;
+}
+
+.file-picker {
+  justify-content: center;
+  gap: 18px;
+  min-height: 112px;
+  padding: 18px 24px;
+  border: 1px dashed #86b8b5;
+  border-radius: 7px;
+  color: #294f56;
+  background: #fff;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+
+  &:hover,
+  &:focus-within {
+    border-color: #4f9fa0;
+    background: #f0f8f6;
+  }
+
+  .upload-icon {
+    flex: 0 0 auto;
+    color: #4f9fa0;
+    font-size: 38px;
+  }
+
+  .upload-copy {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+
+    strong {
+      color: #173f47;
+      font-size: 16px;
+      font-weight: 650;
+    }
+
+    small {
+      color: #6b8589;
+      font-size: 12px;
+    }
+
+    em {
+      overflow: hidden;
+      color: #197e83;
+      font-size: 12px;
+      font-style: normal;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+}
+
+.message-block,
+.unavailable-note {
+  border-color: #edc6bc;
+  background: #fff4f1;
+}
+
+.actions {
+  justify-content: flex-end;
+  padding-top: 4px;
+
+  :deep(.el-button--primary) {
+    min-width: 188px;
+    height: 46px;
+    border-color: #ee6b52;
+    border-radius: 5px;
+    background: #d95f4b;
+    font-weight: 650;
+
+    &:hover,
+    &:focus-visible {
+      border-color: #f17d67;
+      background: #e56a54;
+    }
+
+    &.is-disabled {
+      border-color: #c8d6d4;
+      background: #b8c8c6;
+      opacity: 0.6;
+    }
+  }
+}
+
+.result-card {
+  margin-top: 22px;
+  padding: 18px;
+  border: 1px solid #c7dfd8;
+  border-radius: 7px;
+  background: #fff;
+
+  h2 {
+    color: #287453;
+  }
+
+  p,
+  span {
+    color: #607c80;
+  }
+}
+
+.context-rail {
+  position: sticky;
+  top: 72px;
+  align-self: start;
+  height: calc(100vh - 72px);
+  overflow-y: auto;
+  border-left: 1px solid #d7e7e4;
+  background: #eaf5f2;
+  scrollbar-width: thin;
+  scrollbar-color: #9cbab7 transparent;
+}
+
+.context-section {
+  padding: 34px 26px 30px;
+  border-bottom: 1px solid #d3e5e1;
+
+  h2 {
+    margin: 7px 0 12px;
+    color: #173f47;
+    line-height: 1.45;
+    font-size: 16px;
+    font-weight: 620;
+  }
+}
+
+.context-kicker {
+  margin: 0;
+  color: #5c8588;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+}
+
+.chart-note,
+.method-summary,
+.method-tips {
+  color: #607c80;
+  line-height: 1.7;
+  font-size: 12px;
+}
+
+.chart-note {
+  margin-top: 7px;
+}
+
+.method-tips {
+  margin-top: 24px;
+
+  h3 {
+    margin-bottom: 10px;
+    color: #244c54;
+    font-size: 13px;
+    font-weight: 650;
+  }
+
+  ul {
+    display: grid;
+    gap: 9px;
+    padding-left: 17px;
+    list-style: disc;
+  }
+}
+
+@media (max-width: 1360px) {
+  .online-workbench {
+    grid-template-columns: 210px minmax(0, 1fr) 300px;
+  }
+
+  .online-page {
+    padding-right: 26px;
+    padding-left: 26px;
+  }
+
+  .context-section {
+    padding-right: 22px;
+    padding-left: 22px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .online-workbench {
+    grid-template-columns: 190px minmax(0, 1fr);
+  }
+
+  .context-rail {
+    position: static;
+    grid-column: 2;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: auto;
+    border-top: 1px solid rgb(151 208 214 / 22%);
+    border-left: 0;
+  }
+
+  .context-section {
+    border-right: 1px solid rgb(151 208 214 / 18%);
+  }
+}
+
+@media (max-width: 820px) {
+  .online-workbench {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .online-page {
+    width: 100%;
+    padding: 28px 20px 42px;
+  }
+
+  .context-rail {
+    grid-column: 1;
+    grid-template-columns: 1fr;
+  }
+
+  .context-section {
+    border-right: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .page-heading h1 {
+    font-size: 34px;
+  }
+
+  .method-guide {
+    padding: 16px;
+  }
+
+  .file-picker {
+    align-items: center;
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .actions :deep(.el-button--primary) {
+    width: 100%;
   }
 }
 </style>
