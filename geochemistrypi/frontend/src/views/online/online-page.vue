@@ -2,6 +2,8 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 
+import FormulaDisplay from '@/components/formula-display.vue'
+
 import {
   artifactUrl,
   getCatalog,
@@ -283,7 +285,10 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
 
           <div v-if="currentMethod.formula" class="formula-row">
             <span>{{ t('Formula', '计算公式') }}</span>
-            <code>{{ chemicalMethodFormula(currentMethod.name, currentMethod.formula) }}</code>
+            <FormulaDisplay
+              :method="currentMethod.name"
+              :fallback="chemicalMethodFormula(currentMethod.name, currentMethod.formula)"
+            />
           </div>
 
           <div v-if="currentMethod.input_columns.length" class="input-table-wrap">
@@ -562,22 +567,17 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
 }
 
 .formula-row {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
   gap: 12px;
   margin-bottom: 14px;
 
-  span {
+  > span {
+    padding-top: 11px;
     color: #64748b;
     font-size: 13px;
     font-weight: 600;
-  }
-
-  code {
-    padding: 5px 9px;
-    border-radius: 5px;
-    color: #9a3412;
-    background: #fff3ed;
   }
 }
 

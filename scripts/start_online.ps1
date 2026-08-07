@@ -8,6 +8,9 @@ $ErrorActionPreference = 'Stop'
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $frontendRoot = Join-Path $projectRoot 'geochemistrypi\frontend'
+$frontendManifest = Join-Path $frontendRoot 'package.json'
+$frontendLockFile = Join-Path $frontendRoot 'pnpm-lock.yaml'
+$frontendDependencyStamp = Join-Path $frontendRoot 'node_modules\.online-dependencies.sha256'
 $runtimeRoot = Join-Path $projectRoot 'runtime'
 $logsRoot = Join-Path $runtimeRoot 'logs'
 $stateFile = Join-Path $runtimeRoot 'online-processes.json'
@@ -172,10 +175,10 @@ function Install-FrontendDependencies([string]$nodeExecutable) {
         $bundledPnpm = Join-Path $userProfilePath '.cache\codex-runtimes\codex-primary-runtime\dependencies\bin\fallback\pnpm.cmd'
         $npmCommand = Get-Command npm -ErrorAction SilentlyContinue
         if ($pnpmCommand) {
-            & $pnpmCommand.Source install
+            & $pnpmCommand.Source install --frozen-lockfile
         }
         elseif (Test-Path -LiteralPath $bundledPnpm) {
-            & $bundledPnpm install
+            & $bundledPnpm install --frozen-lockfile
         }
         elseif ($npmCommand) {
             & $npmCommand.Source install
@@ -190,6 +193,38 @@ function Install-FrontendDependencies([string]$nodeExecutable) {
     finally {
         $env:Path = $originalProcessPath
     }
+}
+
+function Get-FrontendDependencyFingerprint {
+    $manifestHash = (Get-FileHash -LiteralPath $frontendManifest -Algorithm SHA256).Hash
+    $lockHash = if (Test-Path -LiteralPath $frontendLockFile) {
+        (Get-FileHash -LiteralPath $frontendLockFile -Algorithm SHA256).Hash
+    }
+    else {
+        'NO-LOCKFILE'
+    }
+    return "$manifestHash`:$lockHash"
+}
+
+function Stop-FrontendForDependencySync([string]$expectedViteEntry) {
+    $connection = Get-NetTCPConnection -State Listen -LocalPort 5173 -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+    if (-not $connection) {
+        return
+    }
+
+    $processInfo = Get-CimInstance Win32_Process -Filter "ProcessId=$($connection.OwningProcess)"
+    $isExpectedViteProcess =
+        $processInfo -and
+        $processInfo.CommandLine -and
+        $processInfo.CommandLine.IndexOf($expectedViteEntry, [StringComparison]::OrdinalIgnoreCase) -ge 0
+    if (-not $isExpectedViteProcess) {
+        throw 'Frontend dependencies changed, but port 5173 is occupied by an unrelated process. Stop it and try again.'
+    }
+
+    Write-Host 'Frontend dependencies changed. Restarting the Vue server safely...' -ForegroundColor Yellow
+    Stop-Process -Id $connection.OwningProcess
+    Wait-Process -Id $connection.OwningProcess -Timeout 5 -ErrorAction SilentlyContinue
 }
 
 function Test-BackendReady {
@@ -268,11 +303,24 @@ if (-not $runtimeImportsReady) {
 
 $nodeExecutable = Resolve-OnlineNode
 $viteEntry = Join-Path $frontendRoot 'node_modules\vite\bin\vite.js'
-if (-not (Test-Path -LiteralPath $viteEntry)) {
+$currentDependencyFingerprint = Get-FrontendDependencyFingerprint
+$installedDependencyFingerprint = if (Test-Path -LiteralPath $frontendDependencyStamp) {
+    (Get-Content -LiteralPath $frontendDependencyStamp -Raw).Trim()
+}
+else {
+    ''
+}
+$frontendDependenciesNeedInstall =
+    -not (Test-Path -LiteralPath $viteEntry) -or
+    $installedDependencyFingerprint -ne $currentDependencyFingerprint
+
+if ($frontendDependenciesNeedInstall) {
     if ($SkipInstall) {
-        throw 'Frontend dependencies are missing. Run without -SkipInstall to install them.'
+        throw 'Frontend dependencies are missing or outdated. Run without -SkipInstall to synchronize them.'
     }
-    Write-Host 'Installing frontend dependencies...'
+
+    Stop-FrontendForDependencySync $viteEntry
+    Write-Host 'Synchronizing frontend dependencies...'
     Push-Location $frontendRoot
     try {
         Install-FrontendDependencies $nodeExecutable
@@ -280,6 +328,13 @@ if (-not (Test-Path -LiteralPath $viteEntry)) {
     finally {
         Pop-Location
     }
+
+    $viteCache = Join-Path $frontendRoot 'node_modules\.vite'
+    if (Test-Path -LiteralPath $viteCache) {
+        Remove-Item -LiteralPath $viteCache -Recurse -Force
+    }
+    Get-FrontendDependencyFingerprint |
+        Set-Content -LiteralPath $frontendDependencyStamp -Encoding UTF8
 }
 
 $state = [ordered]@{
