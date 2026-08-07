@@ -20,6 +20,11 @@ const router = createRouter({
       component: () => import('../views/data-mining/data-mining-page.vue')
     },
     {
+      path: '/login',
+      name: 'login',
+      component: () => import('../views/auth/auth-page.vue')
+    },
+    {
       path: '/guide',
       name: 'guide',
       component: () => import('../views/guide/guide-index.vue')
