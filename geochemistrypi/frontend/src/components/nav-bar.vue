@@ -65,8 +65,8 @@ function closeMoreMenu() {
           <RouterLink to="/" @click="closeMoreMenu">
             {{ t('Search', '搜索') }}
           </RouterLink>
-          <RouterLink to="/" @click="closeMoreMenu">
-            {{ t('Account', '用户中心') }}
+          <RouterLink class="account-menu-link" to="/login" @click="closeMoreMenu">
+            {{ t('Login / Register', '登录 / 注册') }}
           </RouterLink>
         </div>
       </details>
@@ -91,6 +91,9 @@ function closeMoreMenu() {
       >
       <a href="https://geochemistrypi.readthedocs.io/en/latest/" target="_blank">Docs</a>
       <RouterLink to="/guide">{{ t('About us', '关于我们') }}</RouterLink>
+      <RouterLink class="account-link" to="/login">
+        {{ t('Login / Register', '登录 / 注册') }}
+      </RouterLink>
       <!-- <RouterLink to="/"><span class="link-start">Get started</span></RouterLink>
       <RouterLink to="/">Sign in</RouterLink> -->
       <RouterLink to="/"
