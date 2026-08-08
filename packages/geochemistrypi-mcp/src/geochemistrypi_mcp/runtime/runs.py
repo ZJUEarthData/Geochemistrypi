@@ -45,7 +45,7 @@ from ..data.inspector import sha256_file, snapshot_dataset
 from ..planning.interaction_plan import AnalysisPlanCompiler, InteractionPlan
 from ..tracking.experiments import ExperimentManager
 from .artifacts import discover_artifacts
-from .cli_driver import CliInteractionDriver, CliRunCancelledError
+from .cli_driver import CliInteractionDriver, CliRunCancelledError, validate_workspace_path
 
 _RUN_ID = re.compile(r"^run-[0-9a-f]{16}$")
 _TERMINAL_STATES = {"succeeded", "partial_failure", "failed", "cancelled"}
@@ -374,6 +374,8 @@ class RunManager:
             }
         )
         plan = self.plan_compiler.compile(execution_request, cli_executable=cli_executable)
+        validation_paths = RunPaths.create(self.settings.runs_root, "run-0000000000000000")
+        validate_workspace_path(plan, validation_paths.workspace)
         inspection = inspect_local_dataset(
             DatasetInspectionRequest(dataset_path=snapshot.resolved_path, sample_rows=0),
             self.settings,
@@ -507,6 +509,7 @@ class RunManager:
             )
         run_id = _new_run_id()
         paths = RunPaths.create(self.settings.runs_root, run_id)
+        validate_workspace_path(plan, paths.workspace)
         created_at = _utc_now()
         request_record = {
             "schema_version": 1,

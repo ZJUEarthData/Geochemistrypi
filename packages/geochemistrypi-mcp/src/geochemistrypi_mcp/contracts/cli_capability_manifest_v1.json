@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "manifest_id": "geochemistrypi-cli-0.8.0-pr9i",
-  "cli_version": "0.8.0",
+  "manifest_id": "geochemistrypi-cli-0.8.1-pr9i",
+  "cli_version": "0.8.1",
   "automation_contract_version": 1,
   "declarations": {
     "commands": {

@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from dataclasses import replace
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -26,7 +27,7 @@ from geochemistrypi_mcp import (
     TimeSeriesPlanCompiler,
     TimeSeriesRequest,
 )
-from geochemistrypi_mcp.config.constants import ISOLATED_CLI_ENVIRONMENT_VARIABLES
+from geochemistrypi_mcp.config.constants import CLI_VERSION, ISOLATED_CLI_ENVIRONMENT_VARIABLES, SERVER_VERSION
 from geochemistrypi_mcp.config.settings import resolve_cli_interpreter
 from mcp import Client, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -83,6 +84,37 @@ def _worksheet_values(path: Path) -> list[tuple[Any, ...]]:
         workbook.close()
 
 
+def _with_tracking_root(plan: Any, tracking_root: Path):
+    """Keep direct CLI parity runs out of the user's default MLflow store."""
+    if "data-mining" not in plan.public_command:
+        return plan
+    root = tracking_root.resolve()
+    root.mkdir(parents=True, exist_ok=True)
+    assert "--tracking-root" not in plan.public_command
+    return replace(
+        plan,
+        public_command=(*plan.public_command, "--tracking-root", str(root)),
+    )
+
+
+def _stdio_environment(
+    cli_executable: Path,
+    root: Path,
+    *,
+    tracking_root: Path | None = None,
+) -> dict[str, str]:
+    """Give every stdio parity server a complete isolated user-state root."""
+    state_root = root.resolve()
+    return {
+        "GEOCHEMISTRYPI_CLI_EXECUTABLE": str(cli_executable),
+        "GEOCHEMISTRYPI_MCP_APP_ROOT": str(state_root / "app"),
+        "GEOCHEMISTRYPI_MCP_RUNS_ROOT": str(state_root / "runs"),
+        "GEOCHEMISTRYPI_MCP_TRACKING_ROOT": str((tracking_root or state_root / "tracking").resolve()),
+        "GEOCHEMISTRYPI_MCP_SERVICE_STATE_ROOT": str(state_root / "service-state"),
+        "MPLBACKEND": "Agg",
+    }
+
+
 @pytest.mark.anyio
 @pytest.mark.mcp_cli_parity
 async def test_stdio_mcp_attaches_a_real_run_to_an_existing_experiment(
@@ -136,12 +168,11 @@ async def test_stdio_mcp_attaches_a_real_run_to_an_existing_experiment(
     parameters = StdioServerParameters(
         command=sys.executable,
         args=["-m", "geochemistrypi_mcp"],
-        env={
-            "GEOCHEMISTRYPI_CLI_EXECUTABLE": str(cli_executable),
-            "GEOCHEMISTRYPI_MCP_RUNS_ROOT": str(parity_root / "runs"),
-            "GEOCHEMISTRYPI_MCP_TRACKING_ROOT": str(tracking_root),
-            "MPLBACKEND": "Agg",
-        },
+        env=_stdio_environment(
+            cli_executable,
+            parity_root,
+            tracking_root=tracking_root,
+        ),
     )
     async with Client(stdio_client(parameters)) as client:
         listed = await client.call_tool("list_experiments", {"maximum_experiments": 10})
@@ -204,6 +235,7 @@ async def test_stdio_mcp_time_series_matches_noninteractive_public_cli(
         fit_curve=False,
     )
     plan = TimeSeriesPlanCompiler().compile(request, cli_executable=cli_executable)
+    plan = _with_tracking_root(plan, tmp_path / "direct-time-series-tracking")
     assert plan.steps == ()
     direct_workspace = tmp_path / "direct-time-series"
     direct_workspace.mkdir()
@@ -234,11 +266,7 @@ async def test_stdio_mcp_time_series_matches_noninteractive_public_cli(
     parameters = StdioServerParameters(
         command=sys.executable,
         args=["-m", "geochemistrypi_mcp"],
-        env={
-            "GEOCHEMISTRYPI_CLI_EXECUTABLE": str(cli_executable),
-            "GEOCHEMISTRYPI_MCP_RUNS_ROOT": str(tmp_path / "time-series-runs"),
-            "MPLBACKEND": "Agg",
-        },
+        env=_stdio_environment(cli_executable, tmp_path / "time-series-state"),
     )
     async with Client(stdio_client(parameters)) as client:
         started = await client.call_tool("start_analysis", request.model_dump(mode="json"))
@@ -294,6 +322,7 @@ async def test_stdio_mcp_anomaly_all_models_matches_real_cli_aggregate(
         model_selection={"mode": "all", "tuning": "manual"},
     )
     plan = AnalysisPlanCompiler().compile(analysis_request, cli_executable=cli_executable)
+    plan = _with_tracking_root(plan, parity_root / "direct-tracking")
     assert next(step for step in plan.steps if step.id == "all_models").response == "3"
     direct_workspace = parity_root / "direct-anomaly-all"
     direct_workspace.mkdir()
@@ -325,11 +354,7 @@ async def test_stdio_mcp_anomaly_all_models_matches_real_cli_aggregate(
     parameters = StdioServerParameters(
         command=sys.executable,
         args=["-m", "geochemistrypi_mcp"],
-        env={
-            "GEOCHEMISTRYPI_CLI_EXECUTABLE": str(cli_executable),
-            "GEOCHEMISTRYPI_MCP_RUNS_ROOT": str(parity_root / "r"),
-            "MPLBACKEND": "Agg",
-        },
+        env=_stdio_environment(cli_executable, parity_root / "mcp-state"),
     )
     mcp_payload = analysis_request.model_dump(mode="json")
     mcp_payload.pop("model", None)
@@ -381,10 +406,7 @@ async def test_stdio_mcp_lists_and_inspects_every_installed_builtin_dataset(
     parameters = StdioServerParameters(
         command=sys.executable,
         args=["-m", "geochemistrypi_mcp"],
-        env={
-            "GEOCHEMISTRYPI_CLI_EXECUTABLE": str(cli_executable),
-            "GEOCHEMISTRYPI_MCP_RUNS_ROOT": str(tmp_path / "runs"),
-        },
+        env=_stdio_environment(cli_executable, tmp_path / "dataset-state"),
     )
 
     async with Client(stdio_client(parameters)) as client:
@@ -456,6 +478,7 @@ async def test_stdio_mcp_classification_application_feature_engineering_matches_
         request,
         cli_executable=cli_executable,
     )
+    plan = _with_tracking_root(plan, tmp_path / "direct-tracking")
     direct_workspace = tmp_path / "direct"
     direct_workspace.mkdir()
     direct_environment = os.environ.copy()
@@ -487,10 +510,7 @@ async def test_stdio_mcp_classification_application_feature_engineering_matches_
         server_parameters = StdioServerParameters(
             command=sys.executable,
             args=["-m", "geochemistrypi_mcp"],
-            env={
-                "GEOCHEMISTRYPI_CLI_EXECUTABLE": str(cli_executable),
-                "GEOCHEMISTRYPI_MCP_RUNS_ROOT": str(Path(short_root) / "runs"),
-            },
+            env=_stdio_environment(cli_executable, Path(short_root)),
         )
         async with Client(stdio_client(server_parameters)) as client:
             started = await client.call_tool(
@@ -570,6 +590,7 @@ async def test_stdio_mcp_matches_direct_public_cli_and_preserves_protocol() -> N
 
     with tempfile.TemporaryDirectory(prefix="gpi-pr2-") as temporary_root:
         parity_root = Path(temporary_root)
+        plan = _with_tracking_root(plan, parity_root / "direct-tracking")
         direct_workspace = parity_root / "direct"
         direct_workspace.mkdir()
         direct_environment = os.environ.copy()
@@ -600,10 +621,7 @@ async def test_stdio_mcp_matches_direct_public_cli_and_preserves_protocol() -> N
         server_parameters = StdioServerParameters(
             command=sys.executable,
             args=["-m", "geochemistrypi_mcp"],
-            env={
-                "GEOCHEMISTRYPI_CLI_EXECUTABLE": str(cli_executable),
-                "GEOCHEMISTRYPI_MCP_RUNS_ROOT": str(parity_root / "runs"),
-            },
+            env=_stdio_environment(cli_executable, parity_root / "mcp-state"),
         )
         async with Client(stdio_client(server_parameters)) as client:
             capabilities = await client.call_tool("get_capabilities", {})
@@ -648,8 +666,8 @@ async def test_stdio_mcp_matches_direct_public_cli_and_preserves_protocol() -> N
         assert Path(result["cli_stdout_log"]).is_file()
         assert Path(result["cli_stderr_log"]).is_file()
         assert _load_json(Path(result["interaction_trace"]))["metadata"] == {
-            "geochemistrypi_mcp_version": "0.2.0",
-            "geochemistrypi_cli_version": "0.8.0",
+            "geochemistrypi_mcp_version": SERVER_VERSION,
+            "geochemistrypi_cli_version": CLI_VERSION,
         }
 
 
@@ -681,6 +699,7 @@ async def test_stdio_mcp_regression_matches_direct_cli_with_application_data() -
             model={"type": "linear_regression"},
         )
         plan = RegressionPlanCompiler().compile(request, cli_executable=cli_executable)
+        plan = _with_tracking_root(plan, parity_root / "direct-tracking")
 
         direct_workspace = parity_root / "direct"
         direct_workspace.mkdir()
@@ -712,10 +731,7 @@ async def test_stdio_mcp_regression_matches_direct_cli_with_application_data() -
         server_parameters = StdioServerParameters(
             command=sys.executable,
             args=["-m", "geochemistrypi_mcp"],
-            env={
-                "GEOCHEMISTRYPI_CLI_EXECUTABLE": str(cli_executable),
-                "GEOCHEMISTRYPI_MCP_RUNS_ROOT": str(parity_root / "runs"),
-            },
+            env=_stdio_environment(cli_executable, parity_root / "mcp-state"),
         )
         async with Client(stdio_client(server_parameters)) as client:
             started = await client.call_tool("start_analysis", request.model_dump(mode="json"))
@@ -779,6 +795,7 @@ async def test_stdio_mcp_clustering_matches_direct_public_cli() -> None:
 
     with tempfile.TemporaryDirectory(prefix="gpi-pr6-clustering-parity-") as temporary_root:
         parity_root = Path(temporary_root)
+        plan = _with_tracking_root(plan, parity_root / "direct-tracking")
         direct_workspace = parity_root / "direct"
         direct_workspace.mkdir()
         direct_environment = os.environ.copy()
@@ -809,10 +826,7 @@ async def test_stdio_mcp_clustering_matches_direct_public_cli() -> None:
         server_parameters = StdioServerParameters(
             command=sys.executable,
             args=["-m", "geochemistrypi_mcp"],
-            env={
-                "GEOCHEMISTRYPI_CLI_EXECUTABLE": str(cli_executable),
-                "GEOCHEMISTRYPI_MCP_RUNS_ROOT": str(parity_root / "runs"),
-            },
+            env=_stdio_environment(cli_executable, parity_root / "mcp-state"),
         )
         async with Client(stdio_client(server_parameters)) as client:
             started = await client.call_tool(
@@ -886,6 +900,7 @@ async def test_stdio_mcp_decomposition_matches_direct_public_cli() -> None:
 
     with tempfile.TemporaryDirectory(prefix="gpi-pr7-decomposition-parity-") as temporary_root:
         parity_root = Path(temporary_root)
+        plan = _with_tracking_root(plan, parity_root / "direct-tracking")
         direct_workspace = parity_root / "direct"
         direct_workspace.mkdir()
         direct_environment = os.environ.copy()
@@ -916,10 +931,7 @@ async def test_stdio_mcp_decomposition_matches_direct_public_cli() -> None:
         server_parameters = StdioServerParameters(
             command=sys.executable,
             args=["-m", "geochemistrypi_mcp"],
-            env={
-                "GEOCHEMISTRYPI_CLI_EXECUTABLE": str(cli_executable),
-                "GEOCHEMISTRYPI_MCP_RUNS_ROOT": str(parity_root / "runs"),
-            },
+            env=_stdio_environment(cli_executable, parity_root / "mcp-state"),
         )
         async with Client(stdio_client(server_parameters)) as client:
             started = await client.call_tool(
@@ -997,6 +1009,7 @@ async def test_stdio_mcp_anomaly_detection_matches_direct_public_cli() -> None:
     # already carries descriptive experiment and artifact names.
     with tempfile.TemporaryDirectory(prefix="g8a-") as temporary_root:
         parity_root = Path(temporary_root)
+        plan = _with_tracking_root(plan, parity_root / "direct-tracking")
         direct_workspace = parity_root / "direct"
         direct_workspace.mkdir()
         direct_environment = os.environ.copy()
@@ -1027,10 +1040,7 @@ async def test_stdio_mcp_anomaly_detection_matches_direct_public_cli() -> None:
         server_parameters = StdioServerParameters(
             command=sys.executable,
             args=["-m", "geochemistrypi_mcp"],
-            env={
-                "GEOCHEMISTRYPI_CLI_EXECUTABLE": str(cli_executable),
-                "GEOCHEMISTRYPI_MCP_RUNS_ROOT": str(parity_root / "runs"),
-            },
+            env=_stdio_environment(cli_executable, parity_root / "mcp-state"),
         )
         async with Client(stdio_client(server_parameters)) as client:
             started = await client.call_tool(

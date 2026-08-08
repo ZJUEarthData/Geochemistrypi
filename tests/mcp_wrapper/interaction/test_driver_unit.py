@@ -444,7 +444,7 @@ def test_driver_rejects_an_output_path_that_windows_plotting_cannot_save(tmp_pat
         expected_output_relative_paths=("x" * 260,),
     )
 
-    with pytest.raises(WorkspacePathError, match="choose a shorter workspace parent"):
+    with pytest.raises(WorkspacePathError, match="Shorten the experiment or run name"):
         CliInteractionDriver(prompt_timeout_seconds=1, process_timeout_seconds=2).run(plan, workspace_parent=tmp_path / "runs")
 
 
@@ -462,8 +462,10 @@ def test_driver_reserves_windows_path_space_for_generated_spreadsheet_sidecars(t
     )
 
     assert len(str(workspace / relative_path)) == 259
-    with pytest.raises(WorkspacePathError, match="including generated sidecars"):
+    with pytest.raises(WorkspacePathError, match="including generated sidecars") as raised:
         CliInteractionDriver(prompt_timeout_seconds=1, process_timeout_seconds=2).run(plan, workspace=workspace)
+    assert "No CLI process was started and no input data was changed" in str(raised.value)
+    assert not workspace.exists()
 
 
 def test_driver_package_does_not_import_machine_learning_implementations() -> None:

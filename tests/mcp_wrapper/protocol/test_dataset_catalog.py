@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 from geochemistrypi_mcp.api.schemas import BuiltInDatasetReference, DesktopDatasetReference, ListDatasetsRequest
+from geochemistrypi_mcp.config.constants import CLI_VERSION
 from geochemistrypi_mcp.data.catalog import DatasetCatalog, DatasetCatalogError
 
 
@@ -42,7 +43,7 @@ def _catalog(entries, source="builtin", desktop_root=None) -> str:
 
 
 def _service(monkeypatch, stdout: str, returncode: int = 0) -> DatasetCatalog:
-    settings = SimpleNamespace(require_supported_cli=lambda: (Path("C:/fake/geochemistrypi.exe"), "0.8.0"))
+    settings = SimpleNamespace(require_supported_cli=lambda: (Path("C:/fake/geochemistrypi.exe"), CLI_VERSION))
     monkeypatch.setattr(
         "geochemistrypi_mcp.data.catalog.subprocess.run",
         lambda *args, **kwargs: subprocess.CompletedProcess(args[0], returncode, stdout=stdout, stderr="catalog error" if returncode else ""),

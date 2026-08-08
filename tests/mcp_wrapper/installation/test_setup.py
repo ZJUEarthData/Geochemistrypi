@@ -6,8 +6,8 @@ from pathlib import Path
 import geochemistrypi_mcp.lifecycle.setup as setup_runtime
 import pytest
 from geochemistrypi_mcp.config.clients import ClientLocations
-from geochemistrypi_mcp.config.constants import ISOLATED_CLI_ENVIRONMENT_VARIABLES
-from geochemistrypi_mcp.lifecycle.release import ReleaseBundle
+from geochemistrypi_mcp.config.constants import ISOLATED_CLI_ENVIRONMENT_VARIABLES, SERVER_VERSION
+from geochemistrypi_mcp.lifecycle.release import CLI_VERSION, EXPECTED_RELEASE_TAG, ReleaseBundle
 from geochemistrypi_mcp.lifecycle.setup import SetupError, SetupManager, SetupPaths, SourceLayout, _remove_tree, _rmtree_onerror
 
 
@@ -31,7 +31,7 @@ def _manager(tmp_path: Path, doctor_healthy: bool = True):
         paths=paths,
         sources=_source_layout(tmp_path),
         locations=locations,
-        validator=lambda _: ("0.2.0", "0.8.0"),
+        validator=lambda _: (SERVER_VERSION, CLI_VERSION),
         doctor=lambda _: (doctor_healthy, "simulated doctor"),
         runtime_inventory=lambda _: {
             "mcp": {"count": 10, "sha256": "1" * 64},
@@ -54,13 +54,13 @@ def _release_bundle(tmp_path: Path) -> ReleaseBundle:
     root = tmp_path / "release-bundle"
     root.mkdir()
     manifest_path = root / "release-manifest.json"
-    cli_wheel = root / "geochemistrypi-0.8.0-py3-none-any.whl"
-    mcp_wheel = root / "geochemistrypi_mcp-0.2.0-py3-none-any.whl"
+    cli_wheel = root / f"geochemistrypi-{CLI_VERSION}-py3-none-any.whl"
+    mcp_wheel = root / f"geochemistrypi_mcp-{SERVER_VERSION}-py3-none-any.whl"
     cli_wheel.write_text("cli-wheel", encoding="utf-8")
     mcp_wheel.write_text("mcp-wheel", encoding="utf-8")
     manifest = {
-        "release_id": "geochemistrypi-0.8.0+mcp-0.2.0",
-        "release_tag": "mcp-v0.2.0-cli-v0.8.0",
+        "release_id": f"geochemistrypi-{CLI_VERSION}+mcp-{SERVER_VERSION}",
+        "release_tag": EXPECTED_RELEASE_TAG,
         "artifacts": [
             {"filename": cli_wheel.name},
             {"filename": mcp_wheel.name},

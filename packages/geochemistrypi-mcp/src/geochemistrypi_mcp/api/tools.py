@@ -22,6 +22,7 @@ from ..config.constants import (
     MCP_SDK_REQUIRES,
     PENDING_RELEASE_GATES,
     PUBLIC_RELEASE_READY,
+    RELEASE_CHANNEL,
     SERVER_NAME,
     SERVER_VERSION,
     SUPPORTED_CLI_VERSIONS,
@@ -332,7 +333,7 @@ def build_tool_handlers(
             supported_clients=SUPPORTED_CLIENTS,
             compatibility=CompatibilityPolicy(
                 schema_version=COMPATIBILITY_POLICY_VERSION,
-                release_channel="development",
+                release_channel=RELEASE_CHANNEL,
                 public_release_ready=PUBLIC_RELEASE_READY,
                 mcp_python_requires=MCP_PYTHON_REQUIRES,
                 cli_python_requires=CLI_PYTHON_REQUIRES,
@@ -422,8 +423,8 @@ def build_tool_handlers(
             notes=(
                 "PR9 covers semantic world maps, seeded Time Series analysis, and isolated "
                 "all-models aggregates in addition to every single-model family offered by "
-                "the GeochemistryPi 0.8.0 public CLI.",
-                "The compatibility policy remains in the development release channel until every PR9 release gate passes.",
+                "the GeochemistryPi 0.8.1 public CLI.",
+                "The stable compatibility policy is published only by the protected workflow after every required release gate passes.",
                 "The existing GeochemistryPi CLI creates every scientific result and original output file.",
                 "Unsupported or scientifically invalid combinations are rejected before the CLI starts.",
                 "Use inspect_dataset when column roles are not already known.",

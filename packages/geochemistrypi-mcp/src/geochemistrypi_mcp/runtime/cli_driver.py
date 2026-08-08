@@ -215,6 +215,25 @@ class WorkspacePathError(CliDriverError):
     """Raised before execution when legacy Windows libraries cannot save outputs."""
 
 
+def validate_workspace_path(plan: InteractionPlan, workspace: Path) -> None:
+    """Reject an unsafe Windows workspace without creating files or processes."""
+    if os.name != "nt":
+        return
+    workspace_path = Path(workspace).expanduser().resolve()
+    for relative_path in plan.expected_output_relative_paths:
+        candidate = workspace_path / relative_path
+        required = len(str(candidate)) + WINDOWS_OUTPUT_SIDECAR_MARGIN
+        if required >= WINDOWS_LEGACY_PATH_LIMIT:
+            raise WorkspacePathError(
+                "The managed workspace would exceed the Windows compatibility path budget before the CLI starts. "
+                f"The projected output path requires up to {required} characters including generated sidecars. "
+                "Shorten the experiment or run name, or choose a shorter workspace parent/private application path, then retry. "
+                "No CLI process was started and no input data was changed. "
+                f"Projected path: {candidate}",
+                workspace_path,
+            )
+
+
 def _ordered_anchor_end(output: str, anchors: Tuple[str, ...], cursor: int) -> Optional[int]:
     position = cursor
     for anchor in anchors:
@@ -314,6 +333,7 @@ class CliInteractionDriver:
             workspace_path = Path(tempfile.mkdtemp(prefix="gpi-", dir=str(parent) if parent else None)).resolve()
         else:
             workspace_path = Path(workspace).expanduser().resolve()
+            validate_workspace_path(plan, workspace_path)
             workspace_path.mkdir(parents=True, exist_ok=True)
         capture_path = Path(capture_directory).expanduser().resolve() if capture_directory else workspace_path / CAPTURE_DIRECTORY_NAME
         capture_path.mkdir(parents=True, exist_ok=True)
@@ -378,17 +398,8 @@ class CliInteractionDriver:
         try:
             if cancellation_event is not None and cancellation_event.is_set():
                 raise CliRunCancelledError("The run was cancelled before the CLI process started.", workspace_path)
-            if os.name == "nt":
-                for relative_path in plan.expected_output_relative_paths:
-                    candidate = workspace_path / relative_path
-                    if len(str(candidate)) + WINDOWS_OUTPUT_SIDECAR_MARGIN >= WINDOWS_LEGACY_PATH_LIMIT:
-                        raise WorkspacePathError(
-                            "The isolated workspace is too deep for GeochemistryPi's Windows plotting dependencies. "
-                            f"The projected output path requires up to {len(str(candidate)) + WINDOWS_OUTPUT_SIDECAR_MARGIN} "
-                            "characters including generated sidecars; choose a shorter workspace parent. "
-                            f"Projected path: {candidate}",
-                            workspace_path,
-                        )
+            if workspace is None:
+                validate_workspace_path(plan, workspace_path)
             creation_options: Dict[str, Any] = {}
             if os.name == "nt":
                 creation_options["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP

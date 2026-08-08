@@ -15,6 +15,7 @@ from geochemistrypi_mcp.api.schemas import (
     RunStatusResponse,
     StartAnalysisResponse,
 )
+from geochemistrypi_mcp.config.constants import CLI_VERSION, SERVER_VERSION
 from geochemistrypi_mcp.config.settings import McpSettings
 from geochemistrypi_mcp.server import SERVER_INSTRUCTIONS, create_server
 from mcp import Client, StdioServerParameters
@@ -101,7 +102,7 @@ class FakeRunManager:
             cli_stdout_log="C:/managed/wrapper/stdout.log",
             cli_stderr_log="C:/managed/wrapper/stderr.log",
             cli_exit_code=0,
-            cli_version="0.8.0",
+            cli_version=CLI_VERSION,
             input_sha256="0" * 64,
             input_hash_verified=True,
             reported_metrics={"bounded_text_guard": "x" * 5000},
@@ -208,25 +209,17 @@ async def test_tool_discovery_strict_validation_and_structured_results(
         ]
         assert capabilities.structured_content["compatibility"] == {
             "schema_version": 2,
-            "release_channel": "development",
-            "public_release_ready": False,
+            "release_channel": "stable",
+            "public_release_ready": True,
             "mcp_python_requires": ">=3.10,<4",
             "cli_python_requires": ">=3.9,<3.10",
             "mcp_sdk_requires": "==2.0.0",
-            "supported_cli_versions": ["0.8.0"],
+            "supported_cli_versions": [CLI_VERSION],
             "interaction_plan_version": 1,
             "cli_automation_contract_version": 1,
             "artifact_index_schema_version": 1,
             "target_operating_systems": ["windows", "linux", "macos"],
-            "pending_release_gates": [
-                "full_pr9i_matrix_on_required_platforms",
-                "clean_linux_and_macos_setup_acceptance",
-                "real_client_natural_language_acceptance",
-                "upgrade_from_last_published_bundle",
-                "no_medium_or_higher_parity_defects",
-                "signed_release_manifest_and_hashes",
-                "pypi_and_mcp_registry_publication_authorization",
-            ],
+            "pending_release_gates": [],
         }
         assert capabilities.structured_content["resource_limits"] == {
             "maximum_dataset_bytes": 536870912,
@@ -390,4 +383,4 @@ async def test_real_stdio_server_reserves_stdout_for_protocol_after_tool_error(
         assert "does not exist" in failed.content[0].text
         after = await client.call_tool("get_capabilities", {})
         assert after.is_error is False
-        assert after.structured_content["server_version"] == "0.2.0"
+        assert after.structured_content["server_version"] == SERVER_VERSION

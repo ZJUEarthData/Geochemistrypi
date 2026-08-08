@@ -16,6 +16,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.8.1] — 2026-08-07
+
+### Fixed
+
++ Restored the Python 3.9 dependency constraints required by the validated
+  FLAML and Ray AutoML implementation.
++ Added reproducible, clean-checkout release verification so PyPI metadata and
+  packaged source must match the tagged repository contents.
++ Paired the CLI release with GeochemistryPi MCP 0.2.1 and its signed
+  cross-platform installation bundle.
+
+### Changed
+
++ Python 3.9 is the only supported CLI runtime for this compatibility release.
++ Users of the mismatched 0.8.0 PyPI artifact should upgrade to 0.8.1 in a
+  clean environment.
+
+---
+
 ## [0.9.0] — Trailer
 
 ### Added
@@ -330,6 +349,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version Links
 
 + [Unreleased](https://github.com/ZJUEarthData/geochemistrypi)
++ [0.8.1](https://github.com/ZJUEarthData/Geochemistrypi/compare/v0.8.0...v0.8.1)
 + [0.8.0](https://github.com/ZJUEarthData/Geochemistrypi/compare/v0.7.0...v0.8.0)
 + [0.7.0](https://github.com/ZJUEarthData/Geochemistrypi/compare/v0.6.1...v0.7.0)
 + [0.6.1](https://github.com/ZJUEarthData/geochemistrypi/compare/v0.6.0...v0.6.1)

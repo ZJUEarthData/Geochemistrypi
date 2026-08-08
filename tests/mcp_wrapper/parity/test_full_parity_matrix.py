@@ -5,11 +5,13 @@ import json
 import math
 import os
 import time
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
 import pytest
 from geochemistrypi_mcp import AnalysisPlanCompiler, AnomalyDetectionRequest, ClassificationRequest, ClusteringRequest, DecompositionRequest, RegressionRequest
+from geochemistrypi_mcp.config.constants import CLI_VERSION
 from geochemistrypi_mcp.config.settings import McpSettings
 from geochemistrypi_mcp.runtime.cli_driver import CliInteractionDriver
 from geochemistrypi_mcp.runtime.runs import RunManager
@@ -105,8 +107,11 @@ def _assert_outputs_equal(direct: Path, wrapped: Path) -> None:
 
 def _request(case_id: str, task: str, model: str, mode: str):
     common = {
-        "experiment_name": "PR9I " + hashlib.sha1(case_id.encode()).hexdigest()[:8],
-        "run_name": "Direct MCP Parity",
+        # Full model names already exercise the CLI's longest generated output
+        # paths. Keep test-owned display names short so pytest's temporary path
+        # hierarchy does not consume the user's Windows path budget.
+        "experiment_name": "P" + hashlib.sha1(case_id.encode()).hexdigest()[:8],
+        "run_name": "R",
     }
     if task == "classification":
         values = dict(
@@ -169,7 +174,7 @@ def test_full_matrix_inventory_is_complete_and_has_scientific_comparison_rules()
 
 @pytest.mark.mcp_cli_full_parity
 @pytest.mark.parametrize("case_id,task,model,mode", _cases(), ids=lambda value: value if isinstance(value, str) else None)
-def test_full_real_model_parity(case_id: str, task: str, model: str, mode: str, tmp_path: Path) -> None:
+def test_full_real_model_parity(case_id: str, task: str, model: str, mode: str, tmp_path_factory: pytest.TempPathFactory) -> None:
     if os.environ.get("GEOCHEMISTRYPI_FULL_PARITY") != "1":
         pytest.skip("Set GEOCHEMISTRYPI_FULL_PARITY=1 only in the scheduled or release-candidate full matrix.")
     shard = os.environ.get("GEOCHEMISTRYPI_PARITY_SHARD")
@@ -177,21 +182,29 @@ def test_full_real_model_parity(case_id: str, task: str, model: str, mode: str, 
     if shard and shard != expected_shard:
         pytest.skip(f"Scenario belongs to shard {expected_shard}.")
     cli_executable = Path(os.environ["GEOCHEMISTRYPI_CLI_EXECUTABLE"]).resolve()
+    parity_root = tmp_path_factory.mktemp("p")
     scientific_request = _request(case_id, task, model, mode)
     source = scientific_request.training_dataset_path
     input_hash = _sha256(source)
     plan = AnalysisPlanCompiler().compile(scientific_request, cli_executable=cli_executable)
-    direct_workspace = tmp_path / "direct"
+    direct_tracking_root = (parity_root / "direct-tracking").resolve()
+    direct_tracking_root.mkdir(parents=True, exist_ok=True)
+    assert "--tracking-root" not in plan.public_command
+    plan = replace(
+        plan,
+        public_command=(*plan.public_command, "--tracking-root", str(direct_tracking_root)),
+    )
+    direct_workspace = parity_root / "direct"
     direct_result = CliInteractionDriver(process_timeout_seconds=1800, automation_mode=True).run(plan, workspace=direct_workspace)
     assert direct_result.returncode == 0
 
     settings = McpSettings(
-        runs_root=tmp_path / "runs",
+        runs_root=parity_root / "runs",
         cli_executable=cli_executable,
-        tracking_root=tmp_path / "tracking",
+        tracking_root=parity_root / "tracking",
         maximum_process_seconds=1800,
     )
-    manager = RunManager(settings, cli_resolver=lambda: (cli_executable, "0.8.0"))
+    manager = RunManager(settings, cli_resolver=lambda: (cli_executable, CLI_VERSION))
     try:
         started = manager.start(scientific_request)
         deadline = time.monotonic() + 1800

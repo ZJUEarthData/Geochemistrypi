@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "geochemistrypi"
-version = "0.8.0"
+version = "0.8.1"
 authors = [
   { name="Can He", email="sanyhew1097618435@163.com"},
   { name="Jianhao Sun", email="sjh20171502@gmail.com"},

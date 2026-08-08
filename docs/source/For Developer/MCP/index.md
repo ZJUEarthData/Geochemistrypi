@@ -143,7 +143,41 @@ configuration without deleting scientific results.
 Local verification covers Python 3.9 CLI tests, MCP interaction and protocol
 tests, installed-wheel tests, parity scenarios, formatting, linting, and wheel
 content inspection. The release workflows add Windows, Linux, and macOS gates,
-sharded real-model parity, artifact signing, and attestations.
+sharded real-model parity, artifact signing, and attestations. Before opening a
+release PR, run the cross-platform preflight from the repository root:
+
+```text
+uv run --isolated --no-project --python 3.11 python packages/geochemistrypi-mcp/tools/release_preflight.py
+```
+
+The default command includes all seven slow full-model parity shards. During
+iteration, `--quick` skips only those shards; it is not release evidence. The
+preflight writes wheels, private environments, and lifecycle state to a system
+temporary directory, never to the repository or the user's real Agent
+configuration. On failure it retains that directory for diagnosis.
+
+The Tag workflow downloads the final signed artifact into clean ordinary-user
+jobs on Windows, Linux, and Intel macOS. Each job verifies the Sigstore bundles
+offline against the pinned GitHub workflow identity, installs the exact wheels
+under a path containing spaces and non-ASCII characters, runs Doctor, repairs
+the installation, runs the installed CLI through the classification and
+regression AutoML parity shards, uninstalls it, and confirms scientific
+run/tracking data was preserved. Native macOS arm64 is not claimed until that
+same final-artifact gate is available and green on arm64.
+
+The CLI wheel and source distribution are built once from the clean tagged
+checkout. Release verification compares their version, Python requirement,
+dependency metadata, packaged `pyproject.toml` content, and packaged source bytes with
+that checkout. The CLI wheel placed in the MCP bundle must be byte-for-byte
+identical to the wheel later sent to PyPI. After all signed-artifact jobs pass,
+the protected `pypi` environment authorizes publication of those exact CLI
+files; the same workflow then creates the permanent GitHub Release containing
+the signed MCP bundle. No publication job rebuilds a package.
+
+The annotated CLI Tag `v0.8.1` and annotated bundle Tag
+`mcp-v0.2.1-cli-v0.8.1` must be pushed together and resolve to the same commit.
+The release workflow fails before building or publishing if either Tag is
+missing, lightweight, or points elsewhere.
 
 Local success is not a public-release claim. A release is ready only after all
 required remote jobs finish successfully and the generated artifacts satisfy

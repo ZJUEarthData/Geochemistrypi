@@ -109,7 +109,7 @@ jobs:
         run: |
           python -m build --wheel --outdir release-bundle .
           python -m build --wheel --outdir release-bundle packages/geochemistrypi-mcp
-          geochemistrypi-mcp-release build-manifest --dist release-bundle --release-tag mcp-v0.2.0-cli-v0.8.0 --source-commit "${{ github.sha }}"
+          geochemistrypi-mcp-release build-manifest --dist release-bundle --source-commit "${{ github.sha }}"
           geochemistrypi-mcp-release verify --bundle release-bundle --allow-unsigned
 
       - name: Verify both production wheels exclude repository tests
@@ -246,6 +246,7 @@ jobs:
       - name: Compare direct CLI and stdio MCP outputs
         env:
           GEOCHEMISTRYPI_CLI_EXECUTABLE: ${{ github.workspace }}/.engine-venv/bin/geochemistrypi
+          GEOCHEMISTRYPI_MCP_APP_ROOT: ${{ runner.temp }}/geochemistrypi-mcp-parity
           SQLALCHEMY_DATABASE_URL: ""
         run: python -m pytest -m mcp_cli_parity tests/mcp_wrapper/parity
 
@@ -293,6 +294,7 @@ jobs:
       - name: Install MCP package and run shard
         env:
           GEOCHEMISTRYPI_CLI_EXECUTABLE: ${{ github.workspace }}/.engine-venv/bin/geochemistrypi
+          GEOCHEMISTRYPI_MCP_APP_ROOT: ${{ runner.temp }}/geochemistrypi-mcp-full-parity-${{ matrix.shard }}
           GEOCHEMISTRYPI_FULL_PARITY: "1"
           GEOCHEMISTRYPI_PARITY_SHARD: ${{ matrix.shard }}
           SQLALCHEMY_DATABASE_URL: ""

@@ -1,4 +1,4 @@
-"""Versioned decomposition choices exposed by the GeochemistryPi 0.8.0 CLI."""
+"""Versioned decomposition choices exposed by the GeochemistryPi 0.8.1 CLI."""
 
 from typing import Final
 
@@ -29,7 +29,7 @@ UNSUPPORTED_INTERACTIONS: Final[tuple[str, ...]] = (
     "decomposition.application_data: the public CLI does not perform inference for decomposition tasks",
     "decomposition.target_column: decomposition operates on features without a supervised target",
     "decomposition.automl: the public CLI does not expose AutoML for decomposition",
-    "decomposition.keep_missing_values: GeochemistryPi 0.8.0 exposes no decomposition model when missing values remain unprocessed",
+    "decomposition.keep_missing_values: GeochemistryPi 0.8.1 exposes no decomposition model when missing values remain unprocessed",
     "decomposition.feature_selection: the public decomposition branch does not offer supervised feature selection",
     "decomposition.previous_experiment: MCP runs use explicit new experiment and run names",
 )
