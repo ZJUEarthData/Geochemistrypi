@@ -17,9 +17,10 @@ jobs:
 
     steps:
       - name: Check out the tagged source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
+          fetch-tags: true
           persist-credentials: false
 
       - name: Set up release verification Python
@@ -134,7 +135,7 @@ jobs:
 
     steps:
       - name: Check out the tagged acceptance tests
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
         with:
           persist-credentials: false
 
