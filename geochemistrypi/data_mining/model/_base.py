@@ -84,6 +84,19 @@ class WorkflowBase(metaclass=ABCMeta):
             value = value[0]
         return int(value)
 
+    def _automl_mlp_configurations(self) -> List[Dict[str, int]]:
+        """Generate a fixed-size, serial MLP search without worker processes."""
+        generator = np.random.RandomState(self._automl_random_seed())
+        return [
+            {
+                "l1": int(generator.randint(1, 20)),
+                "l2": int(generator.randint(1, 30)),
+                "l3": int(generator.randint(1, 20)),
+                "batch": int(generator.randint(20, 100)),
+            }
+            for _ in range(self.automl_tuning_trials)
+        ]
+
     @property
     def image_config(self):
         return {

@@ -18,6 +18,7 @@ from mcp.client.stdio import stdio_client
 
 from ..config.constants import CLI_PYTHON_REQUIRES, COMPATIBILITY_POLICY_VERSION, ISOLATED_CLI_ENVIRONMENT_VARIABLES, MCP_PYTHON_REQUIRES, MCP_SDK_REQUIRES, SERVER_VERSION, SUPPORTED_CLI_VERSIONS
 from ..config.settings import SETTINGS_FILE_ENV, SETTINGS_SCHEMA_VERSION, resolve_cli_interpreter
+from .console import configure_utf8_console
 from .release import SIGSTORE_BUNDLE_SUFFIX, ReleaseError, verify_release_bundle
 from .setup import MANIFEST_SCHEMA_VERSION, SetupPaths
 
@@ -376,6 +377,12 @@ def _validate_cli_runtime(output: str) -> str:
     return f"Python {value['python']}; geochemistrypi {package_version}."
 
 
+def _validate_cli_scientific_runtime(output: str) -> str:
+    if output != "scientific-runtime-ready":
+        raise ValueError("CLI scientific runtime returned an invalid import handshake.")
+    return "Scientific CLI modules and their native dependencies import successfully."
+
+
 async def _probe_protocol(paths: SetupPaths) -> tuple[bool, str]:
     parameters = StdioServerParameters(
         command=str(paths.server_command),
@@ -442,6 +449,18 @@ def run_doctor(
                 _validate_cli_runtime,
             )
         )
+        checks.append(
+            _command_result(
+                runner,
+                (
+                    str(cli_python),
+                    "-c",
+                    "import geochemistrypi.data_mining.cli_pipeline; " "print('scientific-runtime-ready')",
+                ),
+                "cli-scientific-runtime",
+                _validate_cli_scientific_runtime,
+            )
+        )
     checks.append(
         _command_result(
             runner,
@@ -466,6 +485,7 @@ def _parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> None:
     """Run diagnostics without ever writing protocol data to stdout."""
+    configure_utf8_console()
     arguments = _parser().parse_args(argv)
     report = run_doctor()
     if arguments.json:

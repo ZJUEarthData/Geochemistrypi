@@ -121,6 +121,39 @@ def test_automation_plan_supports_noninteractive_commands(tmp_path: Path) -> Non
     assert events["events"] == []
 
 
+def test_scientific_import_failures_are_recorded_by_the_automation_contract(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    plan_path = tmp_path / "plan.json"
+    events_path = tmp_path / "events.json"
+    _write_plan(plan_path, [])
+    original_import = builtins.__import__
+
+    def failing_import(name, *args, **kwargs):
+        if name.endswith("data_mining.cli_pipeline"):
+            raise RuntimeError("native scientific dependency is unavailable")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", failing_import)
+
+    with pytest.raises(RuntimeError, match="native scientific dependency is unavailable"):
+        cli_module._run_cli_pipeline(
+            training_data_path="unused.csv",
+            application_data_path="",
+            data_source_name="DATA",
+            automation_plan=str(plan_path.resolve()),
+            automation_events=str(events_path.resolve()),
+        )
+
+    events = json.loads(events_path.read_text(encoding="utf-8"))
+    assert events["status"] == "failed"
+    assert events["error"] == {
+        "type": "RuntimeError",
+        "message": "native scientific dependency is unavailable",
+    }
+
+
 def test_data_mining_tracking_options_require_safe_stable_selection(tmp_path: Path, monkeypatch) -> None:
     runner = CliRunner()
     missing_root = runner.invoke(

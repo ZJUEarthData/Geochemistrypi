@@ -21,7 +21,7 @@
     "openpyxl": "3.0.10"
   },
   "cli_entry_files": {
-    "geochemistrypi/cli.py": "d2fc0e802f6951b6a22e5304b6c760f601bb047ad39a5f6fca739f3686bbeca9",
+    "geochemistrypi/cli.py": "9e98bdda3bf3da085d851f7ccb581dab981315cdb20706cc2a7959ec5df4c36b",
     "geochemistrypi/data_mining/cli_pipeline.py": "089680b189048038bdd89e033e5683e4e9894f9b01f2dca5388542a88c39e894"
   },
   "model": {

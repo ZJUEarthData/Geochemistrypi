@@ -100,13 +100,16 @@ def _run_cli_pipeline(
     tracking_root: str = "",
     existing_experiment_id: str = "",
 ) -> None:
-    from .data_mining.cli_pipeline import cli_pipeline
-    from .data_mining.enum_ import DataSource
-    from .data_mining.plot.map_plot import WorldMapConfiguration
-
-    parsed_world_map_config = WorldMapConfiguration.from_json(world_map_config) if world_map_config else None
-
     def execute() -> None:
+        # Keep scientific imports inside the automation boundary.  If a native
+        # dependency is missing or incompatible, the CLI now emits a structured
+        # failure document instead of leaving the MCP driver with only a missing
+        # events-file symptom.
+        from .data_mining.cli_pipeline import cli_pipeline
+        from .data_mining.enum_ import DataSource
+        from .data_mining.plot.map_plot import WorldMapConfiguration
+
+        parsed_world_map_config = WorldMapConfiguration.from_json(world_map_config) if world_map_config else None
         cli_pipeline(
             training_data_path=training_data_path,
             application_data_path=application_data_path,

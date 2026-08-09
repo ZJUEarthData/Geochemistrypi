@@ -30,6 +30,7 @@ from ..config.settings import (
     SettingsError,
     default_app_root,
 )
+from .console import configure_utf8_console
 from .release import ReleaseBundle, ReleaseError, verify_release_bundle
 
 MCP_PYTHON_VERSION = "3.11"
@@ -1077,6 +1078,7 @@ def _windows_external_bootstrap_guidance(
 
 def main(argv: Sequence[str] | None = None) -> None:
     """Run the administrative lifecycle command without starting MCP stdio."""
+    configure_utf8_console()
     raw_arguments = tuple(argv) if argv is not None else tuple(sys.argv[1:])
     arguments = _parser().parse_args(raw_arguments)
     try:

@@ -64,6 +64,11 @@ wheel, packaged repository tests, a size or SHA-256 mismatch, an untrusted
 workflow identity, or a missing signature before changing the installed
 runtime.
 
+On macOS, GeochemistryPi's XGBoost runtime requires the system OpenMP library.
+Install it once with `brew install libomp` before setup. The installer Doctor
+checks the complete scientific import path and reports this prerequisite
+directly if it is missing; Windows and Linux require no equivalent step.
+
 The intended scientist-facing installation is natural language. Download and
 extract the signed release bundle, then give its folder to any supported Agent:
 
@@ -182,10 +187,11 @@ On macOS or Linux:
 ~/.local/state/geochemistrypi-mcp/environments/mcp/bin/geochemistrypi-mcp-doctor
 ```
 
-The doctor performs nine checks: persisted paths and all six resource limits;
+The doctor performs ten checks: persisted paths and all six resource limits;
 the exact CLI/MCP compatibility manifest; release-manifest and wheel hashes;
 both installed distribution-inventory hashes; writable managed storage; exact
-private Python/package versions; the public CLI command; zero-argument MCP
+private Python/package versions; the public CLI command; the complete
+scientific CLI import path (including native dependencies); zero-argument MCP
 startup; and the 13 expected tools. It also rejects a claimed rollback whose
 private snapshot is missing. Add `--json` for machine-readable output.
 

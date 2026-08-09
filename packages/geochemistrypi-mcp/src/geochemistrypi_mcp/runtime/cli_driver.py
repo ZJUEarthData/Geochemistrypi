@@ -44,6 +44,19 @@ def _normalize_console_output(value: str) -> str:
     return ANSI_ESCAPE.sub("", value).replace("\r", "").replace("\f", "\n")
 
 
+def _diagnostic_tail(parts: List[str], limit: int = 2000) -> str:
+    """Return a bounded single-line process diagnostic suitable for an error."""
+    normalized = " ".join(_normalize_console_output("".join(parts)).split())
+    if len(normalized) > limit:
+        return "..." + normalized[-limit:]
+    return normalized
+
+
+def _process_failure_message(prefix: str, stderr_parts: List[str], stdout_parts: List[str]) -> str:
+    diagnostic = _diagnostic_tail(stderr_parts) or _diagnostic_tail(stdout_parts)
+    return f"{prefix} Process diagnostic: {diagnostic}" if diagnostic else prefix
+
+
 def _write_text_atomically(path: Path, value: str) -> None:
     """Publish a complete capture file without exposing a partial write."""
     with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=path.parent, prefix=f".{path.name}.", suffix=".tmp", delete=False) as stream:
@@ -437,7 +450,14 @@ class CliInteractionDriver:
                 if cancellation_event is not None and cancellation_event.is_set():
                     raise CliRunCancelledError("The run was cancelled by request.", workspace_path)
                 if now - started_monotonic > self.process_timeout_seconds:
-                    raise PromptTimeoutError(f"CLI process exceeded the {self.process_timeout_seconds:g}-second total timeout.", workspace_path)
+                    raise PromptTimeoutError(
+                        _process_failure_message(
+                            f"CLI process exceeded the {self.process_timeout_seconds:g}-second total timeout.",
+                            stderr_parts,
+                            stdout_parts,
+                        ),
+                        workspace_path,
+                    )
                 if not self.automation_mode and step_index < len(plan.steps):
                     expected = plan.steps[step_index]
                     prompt_timeout = expected.timeout_seconds or self.prompt_timeout_seconds
@@ -497,13 +517,35 @@ class CliInteractionDriver:
 
             returncode = process.wait()
             if self.automation_mode:
-                completed_step_ids, interaction_events = _load_automation_events(automation_events_path, plan, workspace_path)
+                if automation_events_path.is_file():
+                    completed_step_ids, interaction_events = _load_automation_events(automation_events_path, plan, workspace_path)
+                elif returncode != 0:
+                    raise CliProcessError(
+                        _process_failure_message(
+                            f"CLI exited with code {returncode} before producing automation events.",
+                            stderr_parts,
+                            stdout_parts,
+                        ),
+                        workspace_path,
+                    )
+                else:
+                    raise CliProcessError(
+                        "CLI exited successfully without producing automation events.",
+                        workspace_path,
+                    )
                 step_index = len(completed_step_ids)
             elif step_index != len(plan.steps):
                 unused = [step.id for step in plan.steps[step_index:]]
                 raise UnusedResponsesError(f"CLI exited with code {returncode} before consuming {len(unused)} planned responses: {unused}", workspace_path)
             if returncode != 0:
-                raise CliProcessError(f"CLI consumed the interaction plan but exited with code {returncode}.", workspace_path)
+                raise CliProcessError(
+                    _process_failure_message(
+                        f"CLI consumed the interaction plan but exited with code {returncode}.",
+                        stderr_parts,
+                        stdout_parts,
+                    ),
+                    workspace_path,
+                )
         except BaseException as exc:
             error = exc
             if process is not None:
