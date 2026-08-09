@@ -15,6 +15,4 @@ def test_lifecycle_console_handles_unicode_paths_under_a_legacy_code_page(
     print("D:/GeochemistryPi/用户数据")
     legacy_stdout.flush()
 
-    assert raw.getvalue().decode("utf-8").splitlines() == [
-        "D:/GeochemistryPi/用户数据"
-    ]
+    assert raw.getvalue().decode("utf-8").splitlines() == ["D:/GeochemistryPi/用户数据"]
