@@ -156,13 +156,22 @@ preflight writes wheels, private environments, and lifecycle state to a system
 temporary directory, never to the repository or the user's real Agent
 configuration. On failure it retains that directory for diagnosis.
 
+A manually dispatched Engine baseline also builds one unsigned candidate and
+installs that exact candidate on Windows, Linux, and Intel macOS. Classification
+and regression AutoML run as independent matrix jobs, so a failure or timeout
+cannot hide the result of another platform or branch. The candidate is never
+published and accepts unsigned files only inside this pre-Tag test gate.
+
 The Tag workflow downloads the final signed artifact into clean ordinary-user
-jobs on Windows, Linux, and Intel macOS. Each job verifies the Sigstore bundles
-offline against the pinned GitHub workflow identity, installs the exact wheels
-under a path containing spaces and non-ASCII characters, runs Doctor, repairs
-the installation, runs the installed CLI through the classification and
-regression AutoML parity shards, uninstalls it, and confirms scientific
-run/tracking data was preserved. Native macOS arm64 is not claimed until that
+jobs on Windows, Linux, and Intel macOS. The lifecycle jobs verify the Sigstore
+bundles offline against the pinned GitHub workflow identity, install the exact
+wheels under a path containing spaces and non-ASCII characters, run Doctor,
+repair and uninstall the installation, and confirm scientific run/tracking data
+was preserved. Separate platform-and-shard jobs run the installed CLI through
+classification and regression AutoML before publication is unlocked. macOS
+jobs install the XGBoost prerequisite with `brew install libomp`; Doctor also
+checks the complete scientific import path so a missing native dependency is
+reported before analysis begins. Native macOS arm64 is not claimed until that
 same final-artifact gate is available and green on arm64.
 
 The CLI wheel and source distribution are built once from the clean tagged

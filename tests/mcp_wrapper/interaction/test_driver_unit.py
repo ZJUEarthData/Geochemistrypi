@@ -10,6 +10,7 @@ from geochemistrypi_mcp import (
     ClassificationPlanCompiler,
     ClassificationRequest,
     CliInteractionDriver,
+    CliProcessError,
     InteractionPlan,
     InteractionStep,
     PlanCompilationError,
@@ -380,6 +381,26 @@ print('automation completed', flush=True)
     assert trace["events"][0]["response"] == "alpha"
     assert "--automation-plan" in trace["command"]
     assert "OLD FIRST PROMPT" not in result.stdout_path.read_text(encoding="utf-8")
+
+
+def test_driver_surfaces_process_diagnostic_when_automation_never_starts(
+    tmp_path: Path,
+) -> None:
+    script = _fake_script(
+        tmp_path,
+        "import sys\nprint('native dependency could not be loaded', file=sys.stderr)\nraise SystemExit(17)\n",
+    )
+
+    with pytest.raises(
+        CliProcessError,
+        match="exited with code 17 before producing automation events.*native dependency could not be loaded",
+    ) as captured:
+        CliInteractionDriver(process_timeout_seconds=10, automation_mode=True).run(
+            _plan(script, ()),
+            workspace_parent=tmp_path / "runs",
+        )
+
+    assert "native dependency could not be loaded" in (captured.value.capture_directory / "stderr.log").read_text(encoding="utf-8")
 
 
 def test_driver_fails_on_a_known_prompt_arriving_out_of_order(tmp_path: Path) -> None:

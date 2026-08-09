@@ -18,6 +18,7 @@ from typing import Callable, Mapping, Sequence
 from zipfile import BadZipFile, ZipFile
 
 from ..config.constants import CLI_PYTHON_REQUIRES, CLI_VERSION, MCP_PYTHON_REQUIRES, MCP_SDK_REQUIRES, PENDING_RELEASE_GATES, PUBLIC_RELEASE_READY, RELEASE_CHANNEL, SERVER_VERSION
+from .console import configure_utf8_console
 
 RELEASE_MANIFEST_SCHEMA_VERSION = 2
 RELEASE_MANIFEST_FILENAME = "release-manifest.json"
@@ -490,6 +491,7 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> None:
+    configure_utf8_console()
     arguments = _parser().parse_args(argv)
     try:
         if arguments.action == "build-manifest":

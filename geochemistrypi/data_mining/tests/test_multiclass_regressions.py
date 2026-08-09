@@ -405,23 +405,18 @@ def test_regression_cross_validation_scores_remain_numeric_in_json_output() -> N
     assert all(isinstance(value, float) for value in result["Fold Scores"])
 
 
-@pytest.mark.parametrize(
-    ("tuning_method", "metric", "mode"),
-    [
-        (MLPClassification.ray_tune, "score", "max"),
-        (MLPRegression.ray_tune, "mean_loss", "min"),
-    ],
-)
-def test_mlp_automl_uses_seeded_fixed_serial_trials(tuning_method, metric: str, mode: str) -> None:
-    source = inspect.getsource(tuning_method)
+@pytest.mark.parametrize("workflow", [MLPClassification(), MLPRegression()])
+def test_mlp_automl_uses_seeded_fixed_in_process_trials(workflow) -> None:
+    first = workflow._automl_mlp_configurations()
+    second = workflow._automl_mlp_configurations()
 
-    assert "time_budget_s" not in source
-    assert "max_concurrent=1" in source
-    assert "num_samples=self.automl_tuning_trials" in source
-    assert f'metric="{metric}"' in source
-    assert f'mode="{mode}"' in source
-    assert "seed=random_state" in source
-    assert "random_state=random_state" in source
+    assert first == second
+    assert len(first) == workflow.automl_tuning_trials
+    assert all(1 <= config["l1"] < 20 for config in first)
+    assert all(1 <= config["l2"] < 30 for config in first)
+    assert all(1 <= config["l3"] < 20 for config in first)
+    assert all(20 <= config["batch"] < 100 for config in first)
+    assert "from ray" not in inspect.getsource(workflow.ray_tune)
 
 
 @pytest.mark.parametrize(

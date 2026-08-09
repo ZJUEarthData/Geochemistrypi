@@ -1,6 +1,4 @@
 typer==0.7.0
-ray==2.2.0
-ray[tune]
 optuna==3.1.1
 pydantic<2.0.0
 scikit-learn==1.1.3

@@ -82,6 +82,8 @@ def test_doctor_checks_both_runtimes_storage_and_real_protocol_boundary(tmp_path
         command = tuple(command)
         if command[-1] == "--version":
             return subprocess.CompletedProcess(command, 0, f"Geochemistry Pi {CLI_VERSION}\n", "")
+        if "scientific-runtime-ready" in command[-1]:
+            return subprocess.CompletedProcess(command, 0, "scientific-runtime-ready\n", "")
         package = "geochemistrypi-mcp" if str(paths.mcp_python) == command[0] else "geochemistrypi"
         python = [3, 11, 9] if package == "geochemistrypi-mcp" else [3, 9, 19]
         return subprocess.CompletedProcess(
@@ -99,7 +101,7 @@ def test_doctor_checks_both_runtimes_storage_and_real_protocol_boundary(tmp_path
     )
 
     assert report.healthy is True
-    assert report.summary == "Doctor: healthy (9/9 checks passed)."
+    assert report.summary == "Doctor: healthy (10/10 checks passed)."
     assert {check.name for check in report.checks} == {
         "settings",
         "install-manifest",
@@ -108,6 +110,7 @@ def test_doctor_checks_both_runtimes_storage_and_real_protocol_boundary(tmp_path
         "managed-storage",
         "mcp-runtime",
         "cli-runtime",
+        "cli-scientific-runtime",
         "cli-command",
         "mcp-protocol",
     }
@@ -120,6 +123,8 @@ def test_doctor_reports_version_and_protocol_failures_without_crashing(tmp_path:
         command = tuple(command)
         if command[-1] == "--version":
             return subprocess.CompletedProcess(command, 0, "Geochemistry Pi 0.7.0\n", "")
+        if "scientific-runtime-ready" in command[-1]:
+            return subprocess.CompletedProcess(command, 1, "", "libomp is unavailable")
         package = "geochemistrypi-mcp" if str(paths.mcp_python) == command[0] else "geochemistrypi"
         return subprocess.CompletedProcess(
             command,
@@ -139,6 +144,7 @@ def test_doctor_reports_version_and_protocol_failures_without_crashing(tmp_path:
     failed = {check.name: check.detail for check in report.checks if not check.healthy}
     assert "does not match" in failed["mcp-runtime"]
     assert "must use Python 3.9" in failed["cli-runtime"]
+    assert failed["cli-scientific-runtime"] == "libomp is unavailable"
     assert failed["mcp-protocol"] == "server did not initialize"
 
 

@@ -2044,12 +2044,8 @@ class MLPRegression(RegressionWorkflowBase):
         self.naming = MLPRegression.name
 
     def ray_tune(self, X_train: pd.DataFrame, X_test: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame) -> None:
-        """The customized MLP of the combinations of Ray, FLAML and Scikit-learn framework."""
+        """Select a deterministic MLP configuration in the current process."""
 
-        from ray import tune
-        from ray.air import session
-        from ray.tune.search import ConcurrencyLimiter
-        from ray.tune.search.flaml import BlendSearch
         from sklearn.metrics import mean_squared_error
 
         random_state = self._automl_random_seed()
@@ -2058,51 +2054,16 @@ class MLPRegression(RegressionWorkflowBase):
             """The customized model by Scikit-learn framework."""
             return MLPRegressor(hidden_layer_sizes=(l1, l2, l3), batch_size=batch, random_state=random_state)
 
-        def evaluate(l1: int, l2: int, l3: int, batch: int) -> float:
-            """The evaluation function by simulating a long-running ML experiment
-            to get the model's performance at every epoch."""
-            regr = customized_model(l1, l2, l3, batch)
+        scored_models = []
+        for config in self._automl_mlp_configurations():
+            regr = customized_model(**config)
             regr.fit(X_train, y_train)
             y_pred = regr.predict(X_test)
             mse = mean_squared_error(y_test, y_pred)
-            rmse = np.sqrt(mse)  # Use RMSE score
-            return rmse
+            scored_models.append((float(np.sqrt(mse)), config))
 
-        def objective(config: Dict) -> None:
-            """Evaluate one deterministic MLP configuration and report its RMSE."""
-            score = evaluate(config["l1"], config["l2"], config["l3"], config["batch"])
-            session.report({"mean_loss": score})
-
-        # Search space: The critical assumption is that the optimal hyper-parameters live within this space.
-        search_config = {
-            "l1": tune.randint(1, 20),
-            "l2": tune.randint(1, 30),
-            "l3": tune.randint(1, 20),
-            "batch": tune.randint(20, 100),
-        }
-
-        # Use a seeded, fixed-size, serial search so repeated scientific runs
-        # evaluate the same configurations in the same order.
-        algo = BlendSearch(metric="mean_loss", mode="min", space=search_config, seed=random_state)
-        algo = ConcurrencyLimiter(algo, max_concurrent=1)
-
-        # Use Ray Tune to  run the experiment to "min"imize the “mean_loss” of the "objective"
-        # by searching "search_config" via "algo", "num_samples" times.
-        tuner = tune.Tuner(
-            objective,
-            tune_config=tune.TuneConfig(
-                metric="mean_loss",
-                mode="min",
-                search_alg=algo,
-                num_samples=self.automl_tuning_trials,
-            ),
-            param_space={},
-        )
-        results = tuner.fit()
-
-        # The hyper-parameters found to minimize the mean loss of the defined objective and the corresponding model.
-        best_result = results.get_best_result(metric="mean_loss", mode="min")
-        self.ray_best_model = customized_model(best_result.config["l1"], best_result.config["l2"], best_result.config["l3"], best_result.config["batch"])
+        _, best_config = min(scored_models, key=lambda item: item[0])
+        self.ray_best_model = customized_model(**best_config)
 
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:

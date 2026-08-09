@@ -91,17 +91,28 @@ def test_release_version_has_one_canonical_package_value() -> None:
 def test_release_workflow_installs_the_signed_artifact_on_every_supported_os() -> None:
     release_workflow = (REPOSITORY_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
     engine_workflow = (REPOSITORY_ROOT / ".github" / "workflows" / "geochemistrypi.yml").read_text(encoding="utf-8")
-    signed_job = release_workflow.split("  verify-signed-release:", maxsplit=1)[1]
+    signed_install = release_workflow.split("  verify-signed-install:", maxsplit=1)[1].split("  verify-signed-parity:", maxsplit=1)[0]
+    signed_parity = release_workflow.split("  verify-signed-parity:", maxsplit=1)[1].split("  publish-cli-pypi:", maxsplit=1)[0]
 
-    assert "os: [ubuntu-latest, windows-latest, macos-15-intel]" in signed_job
-    assert "uses: actions/download-artifact@v4" in signed_job
-    assert 'run("geochemistrypi-mcp-release", "verify", "--bundle", str(bundle))' in signed_job
-    assert '"geochemistrypi-mcp-setup", "install"' in signed_job
-    assert 'run("geochemistrypi-mcp-doctor", "--json")' in signed_job
-    assert 'run("geochemistrypi-mcp-setup", "uninstall")' in signed_job
-    assert 'for shard in ("classification-automl", "regression-automl")' in signed_job
-    assert '"-m", "mcp_cli_full_parity"' in signed_job
-    assert "--allow-unsigned" not in signed_job
+    assert "os: [ubuntu-latest, windows-latest, macos-15-intel]" in signed_install
+    assert "uses: actions/download-artifact@v8.0.1" in signed_install
+    assert 'run("geochemistrypi-mcp-release", "verify", "--bundle", str(bundle))' in signed_install
+    assert '"geochemistrypi-mcp-setup", "install"' in signed_install
+    assert 'run("geochemistrypi-mcp-doctor", "--json")' in signed_install
+    assert 'run("geochemistrypi-mcp-setup", "uninstall")' in signed_install
+    assert "--allow-unsigned" not in signed_install
+
+    assert "os: [ubuntu-latest, windows-latest, macos-15-intel]" in signed_parity
+    assert "shard: [classification-automl, regression-automl]" in signed_parity
+    assert '"-m", "mcp_cli_full_parity"' in signed_parity
+    assert '"-c", str(workspace / "tests" / "installed-wheel-pytest.ini")' in signed_parity
+    assert 'cwd=os.environ["RUNNER_TEMP"]' in signed_parity
+    assert "--allow-unsigned" not in signed_parity
+
+    assert "release-candidate-build:" in engine_workflow
+    assert "release-candidate-parity:" in engine_workflow
+    assert "shard: [classification-automl, regression-automl]" in engine_workflow
+    assert "GeochemistryPi public acceptance 用户数据" in engine_workflow
     assert "--release-tag mcp-v" not in engine_workflow
 
 
@@ -113,9 +124,18 @@ def test_release_workflow_builds_once_and_publishes_only_after_final_gates() -> 
     assert release_workflow.count("python -m build --sdist --wheel --outdir cli-dist .") == 1
     assert "verify-artifacts" in release_workflow
     assert "pypa/gh-action-pypi-publish@release/v1" in release_workflow
-    assert "needs: [build-sign-attest, verify-signed-release]" in release_workflow
-    assert "needs: [build-sign-attest, verify-signed-release, publish-cli-pypi]" in release_workflow
+    assert "needs: [build-sign-attest, verify-signed-install, verify-signed-parity]" in release_workflow
+    assert "needs: [build-sign-attest, verify-signed-install, verify-signed-parity, publish-cli-pypi]" in release_workflow
     assert 'gh release create "${GITHUB_REF_NAME}"' in release_workflow
+
+
+def test_workflows_use_node24_action_generations() -> None:
+    workflows = "\n".join(path.read_text(encoding="utf-8") for path in (REPOSITORY_ROOT / ".github" / "workflows").glob("*.yml"))
+
+    assert "actions/checkout@v4" not in workflows
+    assert "actions/setup-python@v5" not in workflows
+    assert "actions/upload-artifact@v4" not in workflows
+    assert "actions/download-artifact@v4" not in workflows
 
 
 def test_release_bundle_verifies_every_sigstore_identity_and_rejects_tampering(
