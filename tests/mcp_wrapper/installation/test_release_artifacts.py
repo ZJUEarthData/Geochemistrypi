@@ -1,5 +1,6 @@
 import importlib.util
 import io
+import re
 import shutil
 import subprocess
 import sys
@@ -190,6 +191,19 @@ def test_release_source_requires_annotated_cli_and_mcp_tags_on_same_commit(tmp_p
 
     assert _git(repository, "rev-parse", f"{versions.cli_tag}^{{}}") == commit
     assert _git(repository, "rev-parse", f"{versions.release_tag}^{{}}") == commit
+
+
+def test_release_workflow_preserves_annotated_tag_objects() -> None:
+    workflow = (REPOSITORY_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    checkout_versions = re.findall(r"actions/checkout@v(\d+)\.(\d+)\.(\d+)", workflow)
+
+    assert checkout_versions
+    assert all(tuple(int(part) for part in version) >= (6, 0, 2) for version in checkout_versions)
+
+    tagged_checkout = workflow.split("- name: Check out the tagged source", 1)[1].split("- name: Set up release verification Python", 1)[0]
+    assert "fetch-depth: 0" in tagged_checkout
+    assert "fetch-tags: true" in tagged_checkout
+    assert "release_artifacts.py verify-source" in workflow
 
 
 def test_release_source_rejects_cli_tag_on_a_different_commit(tmp_path: Path) -> None:
