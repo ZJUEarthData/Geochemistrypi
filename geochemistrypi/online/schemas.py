@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 class HealthResponse(BaseModel):
     status: str
     service: str
+    version: str
 
 
 class InputColumnItem(BaseModel):

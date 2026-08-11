@@ -15,6 +15,7 @@ const props = defineProps<{
   status: string
   statusTone?: StatusTone
   jobId?: string
+  softwareVersion?: string
 }>()
 
 const dimensions = computed(() => {
@@ -67,7 +68,7 @@ const missingValue = computed(() =>
       </div>
       <div class="summary-item wide">
         <dt>{{ t('Software version', '软件版本') }}</dt>
-        <dd class="mono">Geochemistry π 0.7.0</dd>
+        <dd class="mono">Geochemistry π {{ softwareVersion || '—' }}</dd>
       </div>
     </dl>
   </section>

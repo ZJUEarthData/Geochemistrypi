@@ -26,6 +26,7 @@ import { apiText, dataMiningFeatureDescription, t, warningIsSuccess } from '@/i1
 type ServiceState = 'checking' | 'online' | 'offline'
 
 const serviceState = ref<ServiceState>('checking')
+const softwareVersion = ref('')
 const loadingCatalog = ref(true)
 const running = ref(false)
 const inspectingColumns = ref(false)
@@ -328,7 +329,8 @@ async function loadPage() {
   loadingCatalog.value = true
   errorMessage.value = ''
   try {
-    await getHealth()
+    const health = await getHealth()
+    softwareVersion.value = health.version
     serviceState.value = 'online'
     const catalog = await getDataMiningCatalog()
     features.value = catalog.features
@@ -1937,6 +1939,7 @@ function formatCell(value: unknown) {
         :status="runSummaryStatus"
         :status-tone="runSummaryTone"
         :job-id="activeJobId"
+        :software-version="softwareVersion"
       />
     </aside>
   </main>

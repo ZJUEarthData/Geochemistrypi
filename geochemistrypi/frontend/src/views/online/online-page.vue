@@ -26,6 +26,7 @@ import {
 type ServiceState = 'checking' | 'online' | 'offline'
 
 const serviceState = ref<ServiceState>('checking')
+const softwareVersion = ref('')
 const loadingCatalog = ref(true)
 const inspectingDataset = ref(false)
 const running = ref(false)
@@ -114,7 +115,8 @@ async function loadPage() {
   loadingCatalog.value = true
   errorMessage.value = ''
   try {
-    await getHealth()
+    const health = await getHealth()
+    softwareVersion.value = health.version
     serviceState.value = 'online'
     const catalog = await getCatalog()
     tasks.value = catalog.tasks
@@ -555,6 +557,7 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
         :status="runSummaryStatus"
         :status-tone="runSummaryTone"
         :job-id="jobId"
+        :software-version="softwareVersion"
       />
     </aside>
   </main>

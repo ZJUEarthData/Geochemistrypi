@@ -5,6 +5,8 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from geochemistrypi._version import __version__
+
 from .data_mining_service import DataMiningService
 from .router import create_router
 from .service import OnlineService
@@ -16,7 +18,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 def create_app(runtime_dir: Path | None = None) -> FastAPI:
     app = FastAPI(
         title="Geochemistry Pi Online",
-        version="0.1.0",
+        version=__version__,
         description="Minimal Online API for Geochemistry Pi chemical modeling and data mining.",
     )
     app.add_middleware(

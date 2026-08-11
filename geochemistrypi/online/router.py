@@ -6,6 +6,8 @@ import json
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
 
+from geochemistrypi._version import __version__
+
 from .data_mining_service import DataMiningService
 from .schemas import (
     CatalogResponse,
@@ -29,7 +31,11 @@ def create_router(
 
     @router.get("/health", response_model=HealthResponse, tags=["system"])
     async def health() -> HealthResponse:
-        return HealthResponse(status="ok", service="geochemistrypi-online")
+        return HealthResponse(
+            status="ok",
+            service="geochemistrypi-online",
+            version=__version__,
+        )
 
     @router.get(
         "/chemical-modeling/catalog",
