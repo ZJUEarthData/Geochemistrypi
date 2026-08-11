@@ -22,7 +22,9 @@ function closeMoreMenu() {
         <img class="logo-mark" src="@/assets/imgs/onlyLogo.png" alt="" />
         <span class="logo-copy">
           <strong>Geochemistry π</strong>
-          <small>{{ t('A PYTHON FRAMEWORK FOR GEOCHEMISTRY', '面向地球化学的 PYTHON 框架') }}</small>
+          <small>{{
+            t('A PYTHON FRAMEWORK FOR GEOCHEMISTRY', '面向地球化学的 PYTHON 框架')
+          }}</small>
         </span>
       </RouterLink>
       <button
@@ -308,11 +310,41 @@ function closeMoreMenu() {
 @media (max-width: 1120px) {
   .nav-bar {
     grid-template-columns: 1fr auto;
+    grid-template-rows: 72px 52px;
     padding: 0 20px;
   }
 
+  .brand-tools {
+    grid-row: 1;
+    grid-column: 1;
+  }
+
   .module-links {
-    display: none;
+    display: flex;
+    grid-row: 2;
+    grid-column: 1 / -1;
+    align-self: stretch;
+    gap: 30px;
+    margin: 0 -20px;
+    padding: 0 20px;
+    overflow-x: auto;
+    border-top: 1px solid var(--nav-border);
+    background: #123e4a;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    a {
+      flex: 0 0 auto;
+      min-height: 52px;
+    }
+  }
+
+  .utility-links {
+    grid-row: 1;
+    grid-column: 2;
   }
 
   .utility-links > a:not(.icon-link) {
@@ -327,7 +359,12 @@ function closeMoreMenu() {
 @media (max-width: 640px) {
   .nav-bar {
     min-height: 64px;
+    grid-template-rows: 64px 50px;
     padding: 0 14px;
+  }
+
+  .brand-tools {
+    gap: 10px;
   }
 
   .logo .logo-mark {
@@ -357,6 +394,23 @@ function closeMoreMenu() {
 
   .utility-links {
     gap: 10px;
+  }
+
+  .module-links {
+    gap: 24px;
+    margin: 0 -14px;
+    padding: 0 20px;
+
+    a {
+      min-height: 50px;
+      font-size: 15px;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .utility-links .icon-link {
+    display: none;
   }
 }
 </style>

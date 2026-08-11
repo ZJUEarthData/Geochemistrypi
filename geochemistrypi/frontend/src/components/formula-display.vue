@@ -9,7 +9,7 @@ const props = defineProps<{
 }>()
 
 const formulas: Record<string, string> = {
-  mass_balance: String.raw`\sum_{i=1}^{n} c_i=m_{\mathrm{total}},\qquad \left|\sum_{i=1}^{n}c_i-m_{\mathrm{total}}\right|<1\times10^{-6}`,
+  mass_balance: String.raw`\begin{aligned}\sum_{i=1}^{n}c_i&=m_{\mathrm{total}}\\[2pt]\left|\sum_{i=1}^{n}c_i-m_{\mathrm{total}}\right|&<1\times10^{-6}\end{aligned}`,
   precipitation_dissolution: String.raw`\mathrm{SI}=\log_{10}\!\left(\frac{\mathrm{IAP}}{K_{\mathrm{sp}}}\right)`,
   ion_exchange: String.raw`R_{\mathrm{ex}}=K_{\mathrm{sel}}\frac{C_{A,\mathrm{eq}}}{C_{B,\mathrm{eq}}}`,
   mass_action: String.raw`K=\frac{\prod_j c_{j,\mathrm{product}}^{\nu_j}}{\prod_k c_{k,\mathrm{reactant}}^{\lvert\nu_k\rvert}}`,
@@ -28,7 +28,7 @@ const formulas: Record<string, string> = {
   vanthoff: String.raw`K_2=K_1\exp\!\left[-\frac{\Delta H}{R}\left(\frac{1}{T_2}-\frac{1}{T_1}\right)\right]`,
   fick_diffusion: String.raw`J=-D\frac{\mathrm dc}{\mathrm dx}`,
   advection_dispersion: String.raw`C(x,t)=\frac{C_0}{2\sqrt{\pi Dt}}\exp\!\left[-\frac{(x-vt)^2}{4Dt}\right]`,
-  chromatography: String.raw`N=\left(\frac{t_R}{\sigma}\right)^2`,
+  chromatography: String.raw`N=\left(\frac{t_R}{\sigma}\right)^2`
 }
 
 const renderedFormula = computed(() => {
@@ -39,7 +39,7 @@ const renderedFormula = computed(() => {
     displayMode: true,
     throwOnError: false,
     strict: false,
-    output: 'htmlAndMathml',
+    output: 'htmlAndMathml'
   })
 })
 </script>
@@ -53,6 +53,7 @@ const renderedFormula = computed(() => {
 
 <style scoped lang="scss">
 .formula-display {
+  container-type: inline-size;
   min-width: 0;
   max-width: 100%;
   overflow-x: auto;
@@ -64,7 +65,9 @@ const renderedFormula = computed(() => {
 }
 
 .formula-math {
-  min-width: max-content;
+  width: max-content;
+  min-width: 0;
+  max-width: none;
 }
 
 :deep(.katex-display) {
@@ -73,12 +76,23 @@ const renderedFormula = computed(() => {
 }
 
 :deep(.katex) {
-  font-size: 1.08em;
+  font-family: 'STIX Two Math', 'Cambria Math', 'Times New Roman', serif;
+  font-size: clamp(0.78em, 2.2cqi, 1.08em);
 }
 
 .formula-fallback {
   color: inherit;
   font-family: 'Cambria Math', 'STIX Two Math', 'Times New Roman', serif;
   white-space: normal;
+}
+
+@media (max-width: 560px) {
+  .formula-display {
+    padding: 9px 10px;
+  }
+
+  :deep(.katex) {
+    font-size: clamp(0.72em, 3.4vw, 0.92em);
+  }
 }
 </style>
