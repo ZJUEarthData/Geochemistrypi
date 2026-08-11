@@ -9,14 +9,18 @@ import {
   getDataMiningCatalog,
   preprocessDataset,
   profileDataset,
+  runAnomalyDetection,
   runClassification,
   runClustering,
+  runDimensionalityReduction,
   runRegression,
+  type AnomalyDetectionResponse,
   type ClassificationResponse,
   type ClusteringResponse,
   type DataPreprocessingResponse,
   type DataMiningFeatureItem,
   type DatasetProfileResponse,
+  type DimensionalityReductionResponse,
   type MissingValueStrategy,
   type RegressionResponse
 } from '@/api/data-mining'
@@ -39,6 +43,8 @@ const preprocessingResult = ref<DataPreprocessingResponse | null>(null)
 const regressionResult = ref<RegressionResponse | null>(null)
 const classificationResult = ref<ClassificationResponse | null>(null)
 const clusteringResult = ref<ClusteringResponse | null>(null)
+const dimensionalityReductionResult = ref<DimensionalityReductionResponse | null>(null)
+const anomalyDetectionResult = ref<AnomalyDetectionResponse | null>(null)
 const selectedColumns = ref<string[]>([])
 const missingStrategy = ref<MissingValueStrategy>('keep')
 const regressionTarget = ref('')
@@ -52,6 +58,11 @@ const classificationModel = ref('logistic_regression')
 const clusteringFeatures = ref<string[]>([])
 const clusterCount = ref(3)
 const clusteringModel = ref('kmeans')
+const dimensionalityReductionFeatures = ref<string[]>([])
+const dimensionalityReductionModel = ref('pca')
+const componentCount = ref(2)
+const anomalyDetectionFeatures = ref<string[]>([])
+const anomalyDetectionModel = ref('isolation_forest')
 const errorMessage = ref('')
 
 const missingStrategyOptions = computed<
@@ -108,6 +119,10 @@ const isPreprocessing = computed(() => selectedFeature.value === 'data_preproces
 const isRegression = computed(() => selectedFeature.value === 'regression')
 const isClassification = computed(() => selectedFeature.value === 'classification')
 const isClustering = computed(() => selectedFeature.value === 'clustering')
+const isDimensionalityReduction = computed(
+  () => selectedFeature.value === 'dimensionality_reduction'
+)
+const isAnomalyDetection = computed(() => selectedFeature.value === 'anomaly_detection')
 const previewColumns = computed(() => Object.keys(result.value?.preview[0] || {}))
 const preprocessingPreviewColumns = computed(() =>
   Object.keys(preprocessingResult.value?.preview[0] || {})
@@ -120,6 +135,12 @@ const classificationPreviewColumns = computed(() =>
 )
 const clusteringPreviewColumns = computed(() =>
   Object.keys(clusteringResult.value?.preview[0] || {})
+)
+const dimensionalityReductionPreviewColumns = computed(() =>
+  Object.keys(dimensionalityReductionResult.value?.preview[0] || {})
+)
+const anomalyDetectionPreviewColumns = computed(() =>
+  Object.keys(anomalyDetectionResult.value?.preview[0] || {})
 )
 const numericColumns = computed(
   () =>
@@ -144,6 +165,16 @@ const selectedClusteringMethod = computed(() =>
 )
 const clusteringUsesClusterCount = computed(
   () => selectedClusteringMethod.value?.uses_cluster_count ?? true
+)
+const dimensionalityReductionMethodOptions = computed(() => currentFeature.value?.methods || [])
+const selectedDimensionalityReductionMethod = computed(() =>
+  dimensionalityReductionMethodOptions.value.find(
+    (method) => method.name === dimensionalityReductionModel.value
+  )
+)
+const anomalyDetectionMethodOptions = computed(() => currentFeature.value?.methods || [])
+const selectedAnomalyDetectionMethod = computed(() =>
+  anomalyDetectionMethodOptions.value.find((method) => method.name === anomalyDetectionModel.value)
 )
 const selectedStrategy = computed(() =>
   missingStrategyOptions.value.find((option) => option.value === missingStrategy.value)
@@ -175,6 +206,15 @@ const canRun = computed(() => {
   if (isClustering.value) {
     return clusteringFeatures.value.length > 0 && !inspectingColumns.value
   }
+  if (isDimensionalityReduction.value) {
+    return (
+      dimensionalityReductionFeatures.value.length >= componentCount.value &&
+      !inspectingColumns.value
+    )
+  }
+  if (isAnomalyDetection.value) {
+    return anomalyDetectionFeatures.value.length > 0 && !inspectingColumns.value
+  }
   return selectedFeature.value === 'dataset_profile'
 })
 const runButtonLabel = computed(() => {
@@ -182,6 +222,8 @@ const runButtonLabel = computed(() => {
     if (isPreprocessing.value) return t('Processing…', '正在处理…')
     if (isRegression.value || isClassification.value) return t('Training…', '正在训练…')
     if (isClustering.value) return t('Clustering…', '正在聚类…')
+    if (isDimensionalityReduction.value) return t('Reducing dimensions…', '正在降维…')
+    if (isAnomalyDetection.value) return t('Detecting anomalies…', '正在检测异常…')
     return t('Analyzing…', '正在分析…')
   }
   if (!currentFeatureIsVerified.value)
@@ -190,6 +232,8 @@ const runButtonLabel = computed(() => {
   if (isRegression.value) return t('Run regression', '运行回归')
   if (isClassification.value) return t('Run classification', '运行分类')
   if (isClustering.value) return t('Run clustering', '运行聚类')
+  if (isDimensionalityReduction.value) return t('Run dimensionality reduction', '运行降维')
+  if (isAnomalyDetection.value) return t('Run anomaly detection', '运行异常检测')
   return t('Analyze dataset', '分析数据集')
 })
 
@@ -199,7 +243,9 @@ const operationCompleted = computed(() =>
     preprocessingResult.value ||
     regressionResult.value ||
     classificationResult.value ||
-    clusteringResult.value
+    clusteringResult.value ||
+    dimensionalityReductionResult.value ||
+    anomalyDetectionResult.value
   )
 )
 
@@ -210,6 +256,8 @@ const activeJobId = computed(
     regressionResult.value?.job_id ||
     classificationResult.value?.job_id ||
     clusteringResult.value?.job_id ||
+    dimensionalityReductionResult.value?.job_id ||
+    anomalyDetectionResult.value?.job_id ||
     columnInspection.value?.job_id ||
     ''
 )
@@ -273,11 +321,24 @@ const runSummaryParameters = computed(() => {
   if (isClustering.value) {
     const parameters = [
       `${t('Model', '模型')}: ${selectedClusteringMethod.value?.display_name || clusteringModel.value}`,
-      `${t('Features', '特征')}: ${clusteringFeatures.value.length}`,
+      `${t('Features', '特征')}: ${clusteringFeatures.value.length}`
     ]
     if (clusteringUsesClusterCount.value) parameters.push(`k: ${clusterCount.value}`)
     else parameters.push(t('Cluster count: automatic', '簇数：自动估计'))
     return parameters
+  }
+  if (isDimensionalityReduction.value) {
+    return [
+      `${t('Model', '模型')}: ${selectedDimensionalityReductionMethod.value?.display_name || dimensionalityReductionModel.value}`,
+      `${t('Features', '特征')}: ${dimensionalityReductionFeatures.value.length}`,
+      `${t('Components', '维度')}: ${componentCount.value}`
+    ]
+  }
+  if (isAnomalyDetection.value) {
+    return [
+      `${t('Model', '模型')}: ${selectedAnomalyDetectionMethod.value?.display_name || anomalyDetectionModel.value}`,
+      `${t('Features', '特征')}: ${anomalyDetectionFeatures.value.length}`
+    ]
   }
   return [`${t('Scope', '范围')}: ${t('Full dataset', '完整数据集')}`]
 })
@@ -292,6 +353,8 @@ watch(selectedFeature, async () => {
   classificationTarget.value = ''
   classificationFeatures.value = []
   clusteringFeatures.value = []
+  dimensionalityReductionFeatures.value = []
+  anomalyDetectionFeatures.value = []
   if (datasetFile.value) {
     await inspectDatasetColumns()
   }
@@ -355,6 +418,29 @@ watch(clusterCount, () => {
 watch(clusteringModel, () => {
   clusteringResult.value = null
 })
+watch(
+  dimensionalityReductionFeatures,
+  () => {
+    dimensionalityReductionResult.value = null
+  },
+  { deep: true }
+)
+watch(dimensionalityReductionModel, () => {
+  dimensionalityReductionResult.value = null
+})
+watch(componentCount, () => {
+  dimensionalityReductionResult.value = null
+})
+watch(
+  anomalyDetectionFeatures,
+  () => {
+    anomalyDetectionResult.value = null
+  },
+  { deep: true }
+)
+watch(anomalyDetectionModel, () => {
+  anomalyDetectionResult.value = null
+})
 onMounted(loadPage)
 
 async function loadPage() {
@@ -393,6 +479,8 @@ async function onFileChange(event: Event) {
   classificationTarget.value = ''
   classificationFeatures.value = []
   clusteringFeatures.value = []
+  dimensionalityReductionFeatures.value = []
+  anomalyDetectionFeatures.value = []
   errorMessage.value = ''
 
   if (file && !/\.(xlsx|csv)$/i.test(file.name)) {
@@ -421,6 +509,8 @@ async function inspectDatasetColumns() {
   classificationTarget.value = ''
   classificationFeatures.value = []
   clusteringFeatures.value = []
+  dimensionalityReductionFeatures.value = []
+  anomalyDetectionFeatures.value = []
   errorMessage.value = ''
   try {
     columnInspection.value = await profileDataset(datasetFile.value)
@@ -463,6 +553,26 @@ async function inspectDatasetColumns() {
           '聚类至少需要一个数值特征列。'
         )
       }
+    } else if (isDimensionalityReduction.value) {
+      dimensionalityReductionFeatures.value = columnInspection.value.columns
+        .filter((column) => column.data_type === 'number')
+        .map((column) => column.name)
+      if (dimensionalityReductionFeatures.value.length < 2) {
+        errorMessage.value = t(
+          'Dimensionality reduction requires at least two numeric feature columns.',
+          '降维至少需要两个数值特征列。'
+        )
+      }
+    } else if (isAnomalyDetection.value) {
+      anomalyDetectionFeatures.value = columnInspection.value.columns
+        .filter((column) => column.data_type === 'number')
+        .map((column) => column.name)
+      if (anomalyDetectionFeatures.value.length === 0) {
+        errorMessage.value = t(
+          'Anomaly detection requires at least one numeric feature column.',
+          '异常检测至少需要一个数值特征列。'
+        )
+      }
     }
   } catch (error) {
     errorMessage.value =
@@ -496,9 +606,7 @@ async function submitJob() {
         regressionTestSize.value,
         regressionModel.value
       )
-      ElMessage.success(
-        `${regressionResult.value.model_display_name} ${t('completed', '已完成')}`
-      )
+      ElMessage.success(`${regressionResult.value.model_display_name} ${t('completed', '已完成')}`)
     } else if (isClassification.value) {
       classificationResult.value = await runClassification(
         datasetFile.value,
@@ -517,8 +625,25 @@ async function submitJob() {
         clusterCount.value,
         clusteringModel.value
       )
+      ElMessage.success(`${clusteringResult.value.model_display_name} ${t('completed', '已完成')}`)
+    } else if (isDimensionalityReduction.value) {
+      dimensionalityReductionResult.value = await runDimensionalityReduction(
+        datasetFile.value,
+        dimensionalityReductionFeatures.value,
+        componentCount.value,
+        dimensionalityReductionModel.value
+      )
       ElMessage.success(
-        `${clusteringResult.value.model_display_name} ${t('completed', '已完成')}`
+        `${dimensionalityReductionResult.value.model_display_name} ${t('completed', '已完成')}`
+      )
+    } else if (isAnomalyDetection.value) {
+      anomalyDetectionResult.value = await runAnomalyDetection(
+        datasetFile.value,
+        anomalyDetectionFeatures.value,
+        anomalyDetectionModel.value
+      )
+      ElMessage.success(
+        `${anomalyDetectionResult.value.model_display_name} ${t('completed', '已完成')}`
       )
     } else {
       result.value = await profileDataset(datasetFile.value)
@@ -541,6 +666,8 @@ function clearResult() {
   regressionResult.value = null
   classificationResult.value = null
   clusteringResult.value = null
+  dimensionalityReductionResult.value = null
+  anomalyDetectionResult.value = null
 }
 
 function selectAllColumns() {
@@ -855,9 +982,8 @@ function formatCell(value: unknown) {
                   </el-select>
                   <p class="field-help">
                     {{
-                      regressionMethodOptions.find(
-                        (method) => method.name === regressionModel
-                      )?.description
+                      regressionMethodOptions.find((method) => method.name === regressionModel)
+                        ?.description
                     }}
                   </p>
                 </el-form-item>
@@ -1176,6 +1302,197 @@ function formatCell(value: unknown) {
                 t(
                   'Incomplete rows are removed before clustering. At least max(10, 2 × cluster count) complete rows are required. K-means uses random state 42.',
                   '聚类前会删除不完整行。至少需要 max(10, 2 × 簇数) 行完整数据。K-means 使用随机种子 42。'
+                )
+              "
+              type="info"
+              :closable="false"
+              show-icon
+            />
+          </section>
+
+          <section
+            v-if="isDimensionalityReduction"
+            v-loading="inspectingColumns"
+            class="preprocessing-panel"
+          >
+            <div class="section-heading">
+              <div>
+                <p class="guide-kicker">
+                  {{ t('DIMENSIONALITY REDUCTION CONFIGURATION', '降维配置') }}
+                </p>
+                <h3>
+                  {{
+                    t(
+                      'Choose numeric features, an algorithm and output dimensions',
+                      '选择数值特征、降维算法和输出维度'
+                    )
+                  }}
+                </h3>
+              </div>
+              <el-tag v-if="columnInspection" type="success" effect="plain">
+                {{ numericColumns.length }} {{ t('numeric columns detected', '个数值列已识别') }}
+              </el-tag>
+            </div>
+
+            <template v-if="columnInspection">
+              <div class="form-grid">
+                <el-form-item :label="t('Model', '模型')">
+                  <el-select v-model="dimensionalityReductionModel" :disabled="running">
+                    <el-option
+                      v-for="method in dimensionalityReductionMethodOptions"
+                      :key="method.name"
+                      :label="method.display_name"
+                      :value="method.name"
+                    />
+                  </el-select>
+                  <p class="field-help">{{ selectedDimensionalityReductionMethod?.description }}</p>
+                </el-form-item>
+
+                <el-form-item :label="t('Output dimensions', '输出维度')">
+                  <el-select v-model="componentCount" :disabled="running">
+                    <el-option :label="t('2 dimensions', '二维')" :value="2" />
+                    <el-option :label="t('3 dimensions', '三维')" :value="3" />
+                  </el-select>
+                </el-form-item>
+              </div>
+
+              <el-form-item :label="t('Numeric feature columns', '数值特征列')">
+                <el-select
+                  v-model="dimensionalityReductionFeatures"
+                  multiple
+                  filterable
+                  collapse-tags
+                  collapse-tags-tooltip
+                  :placeholder="t('Select at least two numeric features', '至少选择两个数值特征')"
+                  :disabled="running"
+                >
+                  <el-option
+                    v-for="column in numericColumns"
+                    :key="column"
+                    :label="column"
+                    :value="column"
+                  />
+                </el-select>
+                <p class="field-help">
+                  {{
+                    t(
+                      'Features are standardized automatically. PCA also reports explained variance.',
+                      '特征会自动标准化；PCA 还会报告解释方差。'
+                    )
+                  }}
+                </p>
+              </el-form-item>
+            </template>
+
+            <el-alert
+              v-else-if="!datasetFile"
+              :title="
+                t(
+                  'Choose a dataset first. Numeric feature columns will be detected automatically.',
+                  '请先选择数据集，系统将自动识别数值特征列。'
+                )
+              "
+              type="info"
+              :closable="false"
+              show-icon
+            />
+
+            <el-alert
+              :title="
+                t(
+                  'Incomplete rows are removed. T-SNE is limited to 5,000 complete rows and MDS to 2,000 rows to protect the local service.',
+                  '不完整行会被删除。为保护本地服务，T-SNE 最多处理 5,000 行完整数据，MDS 最多处理 2,000 行。'
+                )
+              "
+              type="info"
+              :closable="false"
+              show-icon
+            />
+          </section>
+
+          <section
+            v-if="isAnomalyDetection"
+            v-loading="inspectingColumns"
+            class="preprocessing-panel"
+          >
+            <div class="section-heading">
+              <div>
+                <p class="guide-kicker">
+                  {{ t('ANOMALY DETECTION CONFIGURATION', '异常检测配置') }}
+                </p>
+                <h3>
+                  {{
+                    t(
+                      'Choose numeric features and an anomaly detector',
+                      '选择数值特征和异常检测算法'
+                    )
+                  }}
+                </h3>
+              </div>
+              <el-tag v-if="columnInspection" type="success" effect="plain">
+                {{ numericColumns.length }} {{ t('numeric columns detected', '个数值列已识别') }}
+              </el-tag>
+            </div>
+
+            <template v-if="columnInspection">
+              <el-form-item :label="t('Model', '模型')">
+                <el-select v-model="anomalyDetectionModel" :disabled="running">
+                  <el-option
+                    v-for="method in anomalyDetectionMethodOptions"
+                    :key="method.name"
+                    :label="method.display_name"
+                    :value="method.name"
+                  />
+                </el-select>
+                <p class="field-help">{{ selectedAnomalyDetectionMethod?.description }}</p>
+              </el-form-item>
+
+              <el-form-item :label="t('Numeric feature columns', '数值特征列')">
+                <el-select
+                  v-model="anomalyDetectionFeatures"
+                  multiple
+                  filterable
+                  collapse-tags
+                  collapse-tags-tooltip
+                  :placeholder="t('Select at least one numeric feature', '至少选择一个数值特征')"
+                  :disabled="running"
+                >
+                  <el-option
+                    v-for="column in numericColumns"
+                    :key="column"
+                    :label="column"
+                    :value="column"
+                  />
+                </el-select>
+                <p class="field-help">
+                  {{
+                    t(
+                      'Features are standardized automatically; higher reported scores indicate stronger anomalies.',
+                      '特征会自动标准化；报告的分数越大，表示异常程度越高。'
+                    )
+                  }}
+                </p>
+              </el-form-item>
+            </template>
+
+            <el-alert
+              v-else-if="!datasetFile"
+              :title="
+                t(
+                  'Choose a dataset first. Numeric feature columns will be detected automatically.',
+                  '请先选择数据集，系统将自动识别数值特征列。'
+                )
+              "
+              type="info"
+              :closable="false"
+              show-icon
+            />
+
+            <el-alert
+              :title="
+                t(
+                  'At least 10 complete rows are required. The automatic contamination threshold follows each v0.8 algorithm default.',
+                  '至少需要 10 行完整数据；自动异常比例阈值遵循各 v0.8 算法默认设置。'
                 )
               "
               type="info"
@@ -2010,6 +2327,327 @@ function formatCell(value: unknown) {
                 artifact.name.endsWith('.csv')
                   ? t('Download assignments CSV', '下载聚类分配 CSV')
                   : t('Download clustering report', '下载聚类报告')
+              }}
+            </el-button>
+          </div>
+        </el-card>
+      </template>
+
+      <template v-if="dimensionalityReductionResult">
+        <section class="summary-grid">
+          <article class="summary-card">
+            <span>{{ t('Method', '方法') }}</span>
+            <strong>{{ dimensionalityReductionResult.model_display_name }}</strong>
+            <small>{{ t('Standardized numeric input', '标准化数值输入') }}</small>
+          </article>
+          <article class="summary-card">
+            <span>{{ t('Output dimensions', '输出维度') }}</span>
+            <strong>{{ dimensionalityReductionResult.component_count }}</strong>
+            <small>
+              {{ dimensionalityReductionResult.summary.feature_count }}
+              {{ t('input features', '个输入特征') }}
+            </small>
+          </article>
+          <article class="summary-card">
+            <span
+              v-if="dimensionalityReductionResult.metrics.total_explained_variance_ratio !== null"
+            >
+              {{ t('Total explained variance', '总解释方差') }}
+            </span>
+            <span v-else-if="dimensionalityReductionResult.metrics.kl_divergence !== null">
+              KL divergence
+            </span>
+            <span v-else>MDS stress</span>
+            <strong
+              v-if="dimensionalityReductionResult.metrics.total_explained_variance_ratio !== null"
+            >
+              {{
+                formatPercent(dimensionalityReductionResult.metrics.total_explained_variance_ratio)
+              }}
+            </strong>
+            <strong v-else-if="dimensionalityReductionResult.metrics.kl_divergence !== null">
+              {{ formatNumber(dimensionalityReductionResult.metrics.kl_divergence, 6) }}
+            </strong>
+            <strong v-else>{{
+              formatNumber(dimensionalityReductionResult.metrics.stress, 6)
+            }}</strong>
+            <small>{{ t('Model diagnostic', '模型诊断值') }}</small>
+          </article>
+          <article class="summary-card">
+            <span>{{ t('Usable rows', '可用行数') }}</span>
+            <strong>{{ formatNumber(dimensionalityReductionResult.summary.usable_rows) }}</strong>
+            <small>
+              {{ dimensionalityReductionResult.summary.dropped_rows }}
+              {{ t('incomplete rows removed', '行不完整数据已删除') }}
+            </small>
+          </article>
+        </section>
+
+        <el-card class="result-card" shadow="never">
+          <template #header>
+            <div class="result-heading">
+              <div>
+                <h2>
+                  {{ dimensionalityReductionResult.model_display_name }}
+                  {{ t('completed', '已完成') }}
+                </h2>
+                <p>
+                  {{ dimensionalityReductionResult.source_filename }} ·
+                  {{ t('Job ID', '任务 ID') }}: {{ dimensionalityReductionResult.job_id }}
+                </p>
+              </div>
+              <el-tag type="success">{{ t('SUCCESS', '成功') }}</el-tag>
+            </div>
+          </template>
+
+          <div class="result-meta regression-meta">
+            <div>
+              <span>{{ t('Feature columns', '特征列') }}</span>
+              <div class="selected-column-tags">
+                <el-tag
+                  v-for="column in dimensionalityReductionResult.feature_columns"
+                  :key="column"
+                  size="small"
+                  effect="plain"
+                >
+                  {{ column }}
+                </el-tag>
+              </div>
+            </div>
+            <div v-if="dimensionalityReductionResult.metrics.explained_variance_ratio.length">
+              <span>{{ t('Explained variance by component', '各维度解释方差') }}</span>
+              <strong>
+                {{
+                  dimensionalityReductionResult.metrics.explained_variance_ratio
+                    .map((value) => formatPercent(value))
+                    .join(' · ')
+                }}
+              </strong>
+            </div>
+            <div>
+              <span>{{ t('Reproducibility', '可复现性') }}</span>
+              <strong>
+                {{ t('Standardized input', '标准化输入') }} · {{ t('random state', '随机种子') }}
+                {{ dimensionalityReductionResult.random_state }}
+              </strong>
+            </div>
+          </div>
+
+          <div class="warning-list">
+            <el-alert
+              v-for="warning in dimensionalityReductionResult.warnings"
+              :key="warning"
+              :title="apiText(warning)"
+              :type="warningIsSuccess(warning) ? 'success' : 'warning'"
+              :closable="false"
+              show-icon
+            />
+          </div>
+
+          <section v-if="dimensionalityReductionResult.preview.length" class="result-section">
+            <div class="section-heading">
+              <div>
+                <p class="guide-kicker">{{ t('REDUCED COORDINATES', '降维坐标') }}</p>
+                <h3>
+                  {{ t('First', '前') }} {{ dimensionalityReductionResult.preview.length }}
+                  {{ t('usable rows', '行可用数据') }}
+                </h3>
+              </div>
+            </div>
+            <div class="table-wrap desktop-data-table">
+              <el-table :data="dimensionalityReductionResult.preview" border size="small">
+                <el-table-column
+                  v-for="column in dimensionalityReductionPreviewColumns"
+                  :key="column"
+                  :prop="column"
+                  :label="formatLabel(column)"
+                  min-width="140"
+                >
+                  <template #default="scope">
+                    {{
+                      typeof scope.row[column] === 'number'
+                        ? formatNumber(scope.row[column], 8)
+                        : formatCell(scope.row[column])
+                    }}
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+            <MobileFieldCards :rows="dimensionalityReductionResult.preview" />
+          </section>
+
+          <div
+            v-for="artifact in dimensionalityReductionResult.artifacts"
+            :key="artifact.download_url"
+            class="artifact-row"
+          >
+            <div>
+              <strong>{{ artifact.name }}</strong>
+              <span>{{ formatBytes(artifact.size_bytes) }}</span>
+            </div>
+            <el-button
+              type="success"
+              plain
+              tag="a"
+              :href="artifactUrl(artifact.download_url)"
+              download
+            >
+              {{
+                artifact.name.endsWith('.csv')
+                  ? t('Download coordinates CSV', '下载降维坐标 CSV')
+                  : t('Download dimensionality reduction report', '下载降维报告')
+              }}
+            </el-button>
+          </div>
+        </el-card>
+      </template>
+
+      <template v-if="anomalyDetectionResult">
+        <section class="summary-grid">
+          <article class="summary-card">
+            <span>{{ t('Anomaly rows', '异常行数') }}</span>
+            <strong>{{ formatNumber(anomalyDetectionResult.summary.anomaly_rows) }}</strong>
+            <small>
+              {{
+                formatPercent(
+                  anomalyDetectionResult.summary.anomaly_rows /
+                    anomalyDetectionResult.summary.usable_rows
+                )
+              }}
+              {{ t('of usable rows', '占可用数据') }}
+            </small>
+          </article>
+          <article class="summary-card">
+            <span>{{ t('Normal rows', '正常行数') }}</span>
+            <strong>{{ formatNumber(anomalyDetectionResult.summary.normal_rows) }}</strong>
+            <small>{{ t('Algorithm classification', '算法判定') }}</small>
+          </article>
+          <article class="summary-card">
+            <span>{{ t('Maximum anomaly score', '最高异常分数') }}</span>
+            <strong>{{ formatNumber(anomalyDetectionResult.score_summary.maximum, 6) }}</strong>
+            <small>{{ t('Higher means more anomalous', '数值越大越异常') }}</small>
+          </article>
+          <article class="summary-card">
+            <span>{{ t('Usable rows', '可用行数') }}</span>
+            <strong>{{ formatNumber(anomalyDetectionResult.summary.usable_rows) }}</strong>
+            <small>
+              {{ anomalyDetectionResult.summary.dropped_rows }}
+              {{ t('incomplete rows removed', '行不完整数据已删除') }}
+            </small>
+          </article>
+        </section>
+
+        <el-card class="result-card" shadow="never">
+          <template #header>
+            <div class="result-heading">
+              <div>
+                <h2>
+                  {{ anomalyDetectionResult.model_display_name }} {{ t('completed', '已完成') }}
+                </h2>
+                <p>
+                  {{ anomalyDetectionResult.source_filename }} · {{ t('Job ID', '任务 ID') }}:
+                  {{ anomalyDetectionResult.job_id }}
+                </p>
+              </div>
+              <el-tag type="success">{{ t('SUCCESS', '成功') }}</el-tag>
+            </div>
+          </template>
+
+          <div class="result-meta regression-meta">
+            <div>
+              <span>{{ t('Feature columns', '特征列') }}</span>
+              <div class="selected-column-tags">
+                <el-tag
+                  v-for="column in anomalyDetectionResult.feature_columns"
+                  :key="column"
+                  size="small"
+                  effect="plain"
+                >
+                  {{ column }}
+                </el-tag>
+              </div>
+            </div>
+            <div>
+              <span>{{ t('Score range', '分数范围') }}</span>
+              <strong>
+                {{ formatNumber(anomalyDetectionResult.score_summary.minimum, 6) }} –
+                {{ formatNumber(anomalyDetectionResult.score_summary.maximum, 6) }}
+              </strong>
+            </div>
+            <div>
+              <span>{{ t('Reproducibility', '可复现性') }}</span>
+              <strong>
+                {{ t('Standardized input', '标准化输入') }} ·
+                <template v-if="anomalyDetectionResult.random_state !== null">
+                  {{ t('random state', '随机种子') }} {{ anomalyDetectionResult.random_state }}
+                </template>
+                <template v-else>{{ t('deterministic fit', '确定性拟合') }}</template>
+              </strong>
+            </div>
+          </div>
+
+          <div class="warning-list">
+            <el-alert
+              v-for="warning in anomalyDetectionResult.warnings"
+              :key="warning"
+              :title="apiText(warning)"
+              :type="warningIsSuccess(warning) ? 'success' : 'warning'"
+              :closable="false"
+              show-icon
+            />
+          </div>
+
+          <section v-if="anomalyDetectionResult.preview.length" class="result-section">
+            <div class="section-heading">
+              <div>
+                <p class="guide-kicker">{{ t('HIGHEST ANOMALY SCORES', '最高异常分数') }}</p>
+                <h3>
+                  {{ t('Rows ranked from most to least anomalous', '按异常程度从高到低排列') }}
+                </h3>
+              </div>
+            </div>
+            <div class="table-wrap desktop-data-table">
+              <el-table :data="anomalyDetectionResult.preview" border size="small">
+                <el-table-column
+                  v-for="column in anomalyDetectionPreviewColumns"
+                  :key="column"
+                  :prop="column"
+                  :label="formatLabel(column)"
+                  min-width="140"
+                >
+                  <template #default="scope">
+                    {{
+                      typeof scope.row[column] === 'number'
+                        ? formatNumber(scope.row[column], 8)
+                        : formatCell(scope.row[column])
+                    }}
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+            <MobileFieldCards :rows="anomalyDetectionResult.preview" />
+          </section>
+
+          <div
+            v-for="artifact in anomalyDetectionResult.artifacts"
+            :key="artifact.download_url"
+            class="artifact-row"
+          >
+            <div>
+              <strong>{{ artifact.name }}</strong>
+              <span>{{ formatBytes(artifact.size_bytes) }}</span>
+            </div>
+            <el-button
+              type="success"
+              plain
+              tag="a"
+              :href="artifactUrl(artifact.download_url)"
+              download
+            >
+              {{
+                artifact.name.endsWith('.csv')
+                  ? t('Download anomaly results CSV', '下载异常检测结果 CSV')
+                  : t('Download anomaly detection report', '下载异常检测报告')
               }}
             </el-button>
           </div>

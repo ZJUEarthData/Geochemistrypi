@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable
+from typing import Any, Callable
 
 from sklearn.base import ClassifierMixin, ClusterMixin, RegressorMixin
 from sklearn.cluster import (
@@ -18,8 +18,10 @@ from sklearn.ensemble import (
     AdaBoostClassifier,
     ExtraTreesClassifier,
     GradientBoostingClassifier,
+    IsolationForest,
     RandomForestClassifier,
 )
+from sklearn.decomposition import PCA
 from sklearn.linear_model import (
     BayesianRidge,
     ElasticNet,
@@ -29,7 +31,8 @@ from sklearn.linear_model import (
     Ridge,
     SGDClassifier,
 )
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.manifold import MDS, TSNE
+from sklearn.neighbors import KNeighborsClassifier, LocalOutlierFactor
 from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.preprocessing import PolynomialFeatures
@@ -61,6 +64,23 @@ class ClusteringModelDefinition:
     description: str
     uses_cluster_count: bool
     factory: Callable[[int], ClusterMixin]
+
+
+@dataclass(frozen=True)
+class DimensionalityReductionModelDefinition:
+    name: str
+    display_name: str
+    description: str
+    max_rows: int | None
+    factory: Callable[[int, int], Any]
+
+
+@dataclass(frozen=True)
+class AnomalyDetectionModelDefinition:
+    name: str
+    display_name: str
+    description: str
+    factory: Callable[[int], Any]
 
 
 REGRESSION_MODELS: dict[str, RegressionModelDefinition] = {
@@ -275,6 +295,98 @@ CLUSTERING_MODELS: dict[str, ClusteringModelDefinition] = {
 }
 
 
+DIMENSIONALITY_REDUCTION_MODELS: dict[
+    str, DimensionalityReductionModelDefinition
+] = {
+    definition.name: definition
+    for definition in (
+        DimensionalityReductionModelDefinition(
+            name="pca",
+            display_name="PCA",
+            description=(
+                "Linear principal component analysis with explained-variance "
+                "diagnostics."
+            ),
+            max_rows=None,
+            factory=lambda component_count, _sample_count: PCA(
+                n_components=component_count,
+                random_state=42,
+            ),
+        ),
+        DimensionalityReductionModelDefinition(
+            name="tsne",
+            display_name="T-SNE",
+            description=(
+                "Nonlinear neighborhood embedding with an automatically bounded "
+                "perplexity."
+            ),
+            max_rows=5_000,
+            factory=lambda component_count, sample_count: TSNE(
+                n_components=component_count,
+                perplexity=min(30.0, max(2.0, (sample_count - 1) / 3.0)),
+                learning_rate="auto",
+                init="pca",
+                random_state=42,
+                method="barnes_hut",
+            ),
+        ),
+        DimensionalityReductionModelDefinition(
+            name="mds",
+            display_name="MDS",
+            description=(
+                "Metric multidimensional scaling that preserves pairwise distances."
+            ),
+            max_rows=2_000,
+            factory=lambda component_count, _sample_count: MDS(
+                n_components=component_count,
+                metric=True,
+                n_init=4,
+                max_iter=300,
+                eps=1e-3,
+                n_jobs=None,
+                random_state=42,
+                dissimilarity="euclidean",
+            ),
+        ),
+    )
+}
+
+
+ANOMALY_DETECTION_MODELS: dict[str, AnomalyDetectionModelDefinition] = {
+    definition.name: definition
+    for definition in (
+        AnomalyDetectionModelDefinition(
+            name="isolation_forest",
+            display_name="Isolation Forest",
+            description=(
+                "Tree-based global anomaly detection using the v0.8 default "
+                "automatic contamination threshold."
+            ),
+            factory=lambda _sample_count: IsolationForest(
+                n_estimators=100,
+                max_samples="auto",
+                contamination="auto",
+                n_jobs=-1,
+                random_state=42,
+            ),
+        ),
+        AnomalyDetectionModelDefinition(
+            name="local_outlier_factor",
+            display_name="Local Outlier Factor",
+            description=(
+                "Local-density anomaly detection using up to 20 nearest neighbors."
+            ),
+            factory=lambda sample_count: LocalOutlierFactor(
+                n_neighbors=min(20, sample_count - 1),
+                contamination="auto",
+                novelty=False,
+                n_jobs=-1,
+            ),
+        ),
+    )
+}
+
+
 def get_regression_model(name: str) -> RegressionModelDefinition:
     try:
         return REGRESSION_MODELS[name]
@@ -305,6 +417,29 @@ def get_clustering_model(name: str) -> ClusteringModelDefinition:
         ) from exc
 
 
+def get_dimensionality_reduction_model(
+    name: str,
+) -> DimensionalityReductionModelDefinition:
+    try:
+        return DIMENSIONALITY_REDUCTION_MODELS[name]
+    except KeyError as exc:
+        choices = ", ".join(DIMENSIONALITY_REDUCTION_MODELS)
+        raise ValueError(
+            f"Unknown dimensionality reduction model '{name}'. "
+            f"Choose one of: {choices}"
+        ) from exc
+
+
+def get_anomaly_detection_model(name: str) -> AnomalyDetectionModelDefinition:
+    try:
+        return ANOMALY_DETECTION_MODELS[name]
+    except KeyError as exc:
+        choices = ", ".join(ANOMALY_DETECTION_MODELS)
+        raise ValueError(
+            f"Unknown anomaly detection model '{name}'. Choose one of: {choices}"
+        ) from exc
+
+
 def extract_linear_parameters(
     fitted_model: RegressorMixin | Pipeline,
     feature_names: list[str],
@@ -326,14 +461,20 @@ def extract_linear_parameters(
 
 
 __all__ = [
+    "ANOMALY_DETECTION_MODELS",
+    "AnomalyDetectionModelDefinition",
     "CLASSIFICATION_MODELS",
     "ClassificationModelDefinition",
     "CLUSTERING_MODELS",
     "ClusteringModelDefinition",
+    "DIMENSIONALITY_REDUCTION_MODELS",
+    "DimensionalityReductionModelDefinition",
     "REGRESSION_MODELS",
     "RegressionModelDefinition",
     "extract_linear_parameters",
+    "get_anomaly_detection_model",
     "get_classification_model",
     "get_clustering_model",
+    "get_dimensionality_reduction_model",
     "get_regression_model",
 ]

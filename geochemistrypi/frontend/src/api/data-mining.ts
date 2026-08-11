@@ -222,6 +222,70 @@ export interface ClusteringResponse {
   artifacts: ArtifactResponse[]
 }
 
+export interface DimensionalityReductionSummary {
+  original_rows: number
+  usable_rows: number
+  dropped_rows: number
+  feature_count: number
+  component_count: number
+}
+
+export interface DimensionalityReductionMetrics {
+  explained_variance_ratio: number[]
+  cumulative_explained_variance_ratio: number[]
+  total_explained_variance_ratio: number | null
+  kl_divergence: number | null
+  stress: number | null
+}
+
+export interface DimensionalityReductionResponse {
+  job_id: string
+  status: string
+  message: string
+  source_filename: string
+  model: string
+  model_display_name: string
+  feature_columns: string[]
+  component_count: number
+  random_state: number
+  summary: DimensionalityReductionSummary
+  metrics: DimensionalityReductionMetrics
+  preview: Record<string, unknown>[]
+  warnings: string[]
+  artifacts: ArtifactResponse[]
+}
+
+export interface AnomalyDetectionSummary {
+  original_rows: number
+  usable_rows: number
+  dropped_rows: number
+  feature_count: number
+  normal_rows: number
+  anomaly_rows: number
+}
+
+export interface AnomalyScoreSummary {
+  minimum: number
+  maximum: number
+  mean: number
+}
+
+export interface AnomalyDetectionResponse {
+  job_id: string
+  status: string
+  message: string
+  source_filename: string
+  model: string
+  model_display_name: string
+  feature_columns: string[]
+  random_state: number | null
+  summary: AnomalyDetectionSummary
+  score_summary: AnomalyScoreSummary
+  preview: Record<string, unknown>[]
+  warnings: string[]
+  artifacts: ArtifactResponse[]
+}
+
 async function parseResponse<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => null)
   if (!response.ok) {
@@ -320,4 +384,38 @@ export async function runClustering(
     body: form
   })
   return parseResponse<ClusteringResponse>(response)
+}
+
+export async function runDimensionalityReduction(
+  dataset: File,
+  featureColumns: string[],
+  componentCount: number,
+  model: string = 'pca'
+): Promise<DimensionalityReductionResponse> {
+  const form = new FormData()
+  form.append('dataset', dataset)
+  form.append('feature_columns', JSON.stringify(featureColumns))
+  form.append('component_count', String(componentCount))
+  form.append('model', model)
+  const response = await fetch(`${API_BASE_URL}/api/data-mining/dimensionality-reduction`, {
+    method: 'POST',
+    body: form
+  })
+  return parseResponse<DimensionalityReductionResponse>(response)
+}
+
+export async function runAnomalyDetection(
+  dataset: File,
+  featureColumns: string[],
+  model: string = 'isolation_forest'
+): Promise<AnomalyDetectionResponse> {
+  const form = new FormData()
+  form.append('dataset', dataset)
+  form.append('feature_columns', JSON.stringify(featureColumns))
+  form.append('model', model)
+  const response = await fetch(`${API_BASE_URL}/api/data-mining/anomaly-detection`, {
+    method: 'POST',
+    body: form
+  })
+  return parseResponse<AnomalyDetectionResponse>(response)
 }

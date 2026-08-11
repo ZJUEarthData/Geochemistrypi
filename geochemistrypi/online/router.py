@@ -10,12 +10,14 @@ from geochemistrypi._version import __version__
 
 from .data_mining_service import DataMiningService
 from .schemas import (
+    AnomalyDetectionResponse,
     CatalogResponse,
     ClassificationResponse,
     ClusteringResponse,
     DataMiningCatalogResponse,
     DataPreprocessingResponse,
     DatasetProfileResponse,
+    DimensionalityReductionResponse,
     HealthResponse,
     RegressionResponse,
     RunResponse,
@@ -265,6 +267,97 @@ def create_router(
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Clustering failed: {type(exc).__name__}: {exc}",
+            ) from exc
+        finally:
+            await dataset.close()
+
+    @router.post(
+        "/data-mining/dimensionality-reduction",
+        response_model=DimensionalityReductionResponse,
+        tags=["data-mining"],
+    )
+    async def run_dimensionality_reduction(
+        model: str = Form("pca"),
+        feature_columns: str = Form(...),
+        component_count: int = Form(2),
+        dataset: UploadFile = File(...),
+    ) -> DimensionalityReductionResponse:
+        content = await dataset.read(data_mining_service.max_upload_bytes + 1)
+        try:
+            try:
+                parsed_features = json.loads(feature_columns)
+            except json.JSONDecodeError as exc:
+                raise InvalidDatasetError(
+                    "Feature columns must be a valid JSON list"
+                ) from exc
+            return await asyncio.to_thread(
+                data_mining_service.run_dimensionality_reduction,
+                filename=dataset.filename,
+                content=content,
+                feature_columns=parsed_features,
+                component_count=component_count,
+                model_name=model,
+            )
+        except UploadTooLargeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                detail=str(exc),
+            ) from exc
+        except (InvalidDatasetError, ValueError, TypeError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=str(exc),
+            ) from exc
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=(
+                    "Dimensionality reduction failed: "
+                    f"{type(exc).__name__}: {exc}"
+                ),
+            ) from exc
+        finally:
+            await dataset.close()
+
+    @router.post(
+        "/data-mining/anomaly-detection",
+        response_model=AnomalyDetectionResponse,
+        tags=["data-mining"],
+    )
+    async def run_anomaly_detection(
+        model: str = Form("isolation_forest"),
+        feature_columns: str = Form(...),
+        dataset: UploadFile = File(...),
+    ) -> AnomalyDetectionResponse:
+        content = await dataset.read(data_mining_service.max_upload_bytes + 1)
+        try:
+            try:
+                parsed_features = json.loads(feature_columns)
+            except json.JSONDecodeError as exc:
+                raise InvalidDatasetError(
+                    "Feature columns must be a valid JSON list"
+                ) from exc
+            return await asyncio.to_thread(
+                data_mining_service.run_anomaly_detection,
+                filename=dataset.filename,
+                content=content,
+                feature_columns=parsed_features,
+                model_name=model,
+            )
+        except UploadTooLargeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                detail=str(exc),
+            ) from exc
+        except (InvalidDatasetError, ValueError, TypeError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=str(exc),
+            ) from exc
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Anomaly detection failed: {type(exc).__name__}: {exc}",
             ) from exc
         finally:
             await dataset.close()

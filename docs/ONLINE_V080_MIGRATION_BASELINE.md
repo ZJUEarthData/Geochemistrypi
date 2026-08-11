@@ -67,3 +67,18 @@ Online 使用后端模型注册表动态提供以下已验证方法：
 - OPTICS
 
 请求继续使用 `/api/data-mining/clustering`，新增可选表单字段 `model`。K-Means 和 Agglomerative 使用 `cluster_count`；其余方法自动估计簇数。密度聚类产生的标签 `-1` 作为噪声单独统计，聚类指标和中心不包含噪声点，CSV 分配结果仍保留完整标签以便审计。
+
+## 已接入 Online 的 v0.8 降维方法
+
+- PCA
+- T-SNE
+- MDS
+
+请求使用 `/api/data-mining/dimensionality-reduction`，表单字段包括 `model`、`feature_columns`、`component_count` 和 `dataset`。当前开放二维与三维输出，所有数值特征先进行标准化。CSV 保存来源行、原始特征和低维坐标；JSON 报告分别记录 PCA 解释方差、T-SNE KL 散度或 MDS stress。为防止本地 Online 服务因二次复杂度计算失去响应，T-SNE 限制为最多 5,000 个完整样品，MDS 限制为最多 2,000 个完整样品。
+
+## 已接入 Online 的 v0.8 异常检测方法
+
+- Isolation Forest
+- Local Outlier Factor
+
+请求使用 `/api/data-mining/anomaly-detection`，表单字段包括 `model`、`feature_columns` 和 `dataset`。输出为逐行正常/异常标签与异常分数；Online 将两种算法的分数方向统一为“数值越大越异常”，但不同算法的绝对分数不能直接比较。CSV 保留来源行、原始特征、标签和分数，JSON 报告记录正常/异常行数、分数范围和高异常分数样品预览。

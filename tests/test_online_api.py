@@ -479,6 +479,17 @@ def make_clustering_csv() -> bytes:
     return ("\n".join(rows) + "\n").encode("utf-8")
 
 
+def make_unsupervised_csv() -> bytes:
+    rows = ["X1,X2,X3"]
+    for value in range(40):
+        rows.append(
+            f"{(value % 10) * 0.1},{((value * 3) % 11) * 0.1},"
+            f"{((value * 7) % 13) * 0.1}"
+        )
+    rows.extend(["20,20,20", "-20,-18,-22"])
+    return ("\n".join(rows) + "\n").encode("utf-8")
+
+
 def test_data_mining_catalog_starts_with_verified_dataset_profile(tmp_path):
     client = TestClient(create_app(tmp_path / "runtime"))
     response = client.get("/api/data-mining/catalog")
@@ -490,6 +501,8 @@ def test_data_mining_catalog_starts_with_verified_dataset_profile(tmp_path):
         "regression",
         "classification",
         "clustering",
+        "dimensionality_reduction",
+        "anomaly_detection",
     ]
     assert features[0]["status"] == "verified"
     assert features[0]["input_formats"] == [".xlsx", ".csv"]
@@ -556,6 +569,27 @@ def test_data_mining_catalog_starts_with_verified_dataset_profile(tmp_path):
         False,
         False,
         False,
+    ]
+    assert [method["name"] for method in features[5]["methods"]] == [
+        "pca",
+        "tsne",
+        "mds",
+    ]
+    assert features[5]["outputs"] == [
+        "低维坐标预览",
+        "模型诊断指标",
+        "降维结果 CSV",
+        "JSON 模型报告",
+    ]
+    assert [method["name"] for method in features[6]["methods"]] == [
+        "isolation_forest",
+        "local_outlier_factor",
+    ]
+    assert features[6]["outputs"] == [
+        "正常/异常样品统计",
+        "异常分数与标签",
+        "异常检测结果 CSV",
+        "JSON 模型报告",
     ]
 
 
@@ -1582,10 +1616,253 @@ def test_reject_invalid_clustering_configuration(
 
 
 @pytest.mark.parametrize(
+    ("model_name", "display_name", "metric_name"),
+    [
+        ("pca", "PCA", "total_explained_variance_ratio"),
+        ("tsne", "T-SNE", "kl_divergence"),
+        ("mds", "MDS", "stress"),
+    ],
+)
+def test_v080_dimensionality_reduction_registry_runs_verified_models(
+    tmp_path,
+    model_name,
+    display_name,
+    metric_name,
+):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    response = client.post(
+        "/api/data-mining/dimensionality-reduction",
+        data={
+            "model": model_name,
+            "feature_columns": json.dumps(["X1", "X2", "X3"]),
+            "component_count": "2",
+        },
+        files={
+            "dataset": (
+                "unsupervised.csv",
+                make_unsupervised_csv(),
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["model"] == model_name
+    assert payload["model_display_name"] == display_name
+    assert payload["component_count"] == 2
+    assert payload["random_state"] == 42
+    assert payload["summary"] == {
+        "original_rows": 42,
+        "usable_rows": 42,
+        "dropped_rows": 0,
+        "feature_count": 3,
+        "component_count": 2,
+    }
+    assert payload["metrics"][metric_name] is not None
+    assert len(payload["preview"]) == 20
+    assert set(payload["preview"][0]) == {
+        "source_row",
+        "component_1",
+        "component_2",
+    }
+    assert [artifact["name"] for artifact in payload["artifacts"]] == [
+        "dimensionality_reduction_coordinates.csv",
+        "dimensionality_reduction_report.json",
+    ]
+
+    coordinates_download = client.get(payload["artifacts"][0]["download_url"])
+    assert coordinates_download.status_code == 200
+    coordinates = pd.read_csv(BytesIO(coordinates_download.content))
+    assert list(coordinates.columns) == [
+        "source_row",
+        "X1",
+        "X2",
+        "X3",
+        "component_1",
+        "component_2",
+    ]
+    assert len(coordinates) == 42
+
+    report_download = client.get(payload["artifacts"][1]["download_url"])
+    assert report_download.status_code == 200
+    report = json.loads(report_download.content.decode("utf-8"))
+    assert report["report_version"] == "v080-dimensionality-reduction-v1"
+    assert report["model"] == model_name
+    assert report["summary"]["component_count"] == 2
+
+
+@pytest.mark.parametrize("model_name", ["pca", "tsne", "mds"])
+def test_v080_dimensionality_reduction_supports_three_dimensions(
+    tmp_path,
+    model_name,
+):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    response = client.post(
+        "/api/data-mining/dimensionality-reduction",
+        data={
+            "model": model_name,
+            "feature_columns": json.dumps(["X1", "X2", "X3"]),
+            "component_count": "3",
+        },
+        files={"dataset": ("dataset.csv", make_unsupervised_csv(), "text/csv")},
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["component_count"] == 3
+    assert set(payload["preview"][0]) == {
+        "source_row",
+        "component_1",
+        "component_2",
+        "component_3",
+    }
+
+
+@pytest.mark.parametrize(
+    ("model_name", "display_name"),
+    [
+        ("isolation_forest", "Isolation Forest"),
+        ("local_outlier_factor", "Local Outlier Factor"),
+    ],
+)
+def test_v080_anomaly_detection_registry_runs_verified_models(
+    tmp_path,
+    model_name,
+    display_name,
+):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    response = client.post(
+        "/api/data-mining/anomaly-detection",
+        data={
+            "model": model_name,
+            "feature_columns": json.dumps(["X1", "X2", "X3"]),
+        },
+        files={
+            "dataset": (
+                "unsupervised.csv",
+                make_unsupervised_csv(),
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["model"] == model_name
+    assert payload["model_display_name"] == display_name
+    assert payload["random_state"] == (
+        42 if model_name == "isolation_forest" else None
+    )
+    assert payload["summary"]["original_rows"] == 42
+    assert payload["summary"]["usable_rows"] == 42
+    assert payload["summary"]["dropped_rows"] == 0
+    assert payload["summary"]["feature_count"] == 3
+    assert (
+        payload["summary"]["normal_rows"] + payload["summary"]["anomaly_rows"]
+        == 42
+    )
+    assert payload["summary"]["anomaly_rows"] >= 1
+    assert payload["score_summary"]["maximum"] >= payload["score_summary"]["mean"]
+    assert payload["score_summary"]["mean"] >= payload["score_summary"]["minimum"]
+    assert len(payload["preview"]) == 20
+    assert set(payload["preview"][0]) == {
+        "source_row",
+        "anomaly_label",
+        "is_anomaly",
+        "anomaly_score",
+    }
+    preview_scores = [row["anomaly_score"] for row in payload["preview"]]
+    assert preview_scores == sorted(preview_scores, reverse=True)
+    assert [artifact["name"] for artifact in payload["artifacts"]] == [
+        "anomaly_detection_results.csv",
+        "anomaly_detection_report.json",
+    ]
+
+    results_download = client.get(payload["artifacts"][0]["download_url"])
+    assert results_download.status_code == 200
+    results = pd.read_csv(BytesIO(results_download.content))
+    assert list(results.columns) == [
+        "source_row",
+        "X1",
+        "X2",
+        "X3",
+        "anomaly_label",
+        "is_anomaly",
+        "anomaly_score",
+    ]
+    assert len(results) == 42
+
+    report_download = client.get(payload["artifacts"][1]["download_url"])
+    assert report_download.status_code == 200
+    report = json.loads(report_download.content.decode("utf-8"))
+    assert report["report_version"] == "v080-anomaly-detection-v1"
+    assert report["model"] == model_name
+    assert report["summary"]["anomaly_rows"] == payload["summary"]["anomaly_rows"]
+
+
+@pytest.mark.parametrize(
+    ("endpoint", "data", "expected_message"),
+    [
+        (
+            "/api/data-mining/dimensionality-reduction",
+            {
+                "model": "unknown_reducer",
+                "feature_columns": json.dumps(["X1", "X2"]),
+                "component_count": "2",
+            },
+            "Unknown dimensionality reduction model",
+        ),
+        (
+            "/api/data-mining/dimensionality-reduction",
+            {
+                "model": "pca",
+                "feature_columns": json.dumps(["X1", "X2", "X3"]),
+                "component_count": "4",
+            },
+            "Component count must be 2 or 3",
+        ),
+        (
+            "/api/data-mining/dimensionality-reduction",
+            {
+                "model": "pca",
+                "feature_columns": json.dumps(["X1", "X2"]),
+                "component_count": "3",
+            },
+            "Component count cannot exceed the number of selected features",
+        ),
+        (
+            "/api/data-mining/anomaly-detection",
+            {
+                "model": "unknown_detector",
+                "feature_columns": json.dumps(["X1", "X2"]),
+            },
+            "Unknown anomaly detection model",
+        ),
+    ],
+)
+def test_reject_invalid_v080_unsupervised_model_configuration(
+    tmp_path,
+    endpoint,
+    data,
+    expected_message,
+):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    response = client.post(
+        endpoint,
+        data=data,
+        files={"dataset": ("dataset.csv", make_unsupervised_csv(), "text/csv")},
+    )
+    assert response.status_code == 422
+    assert expected_message in response.json()["detail"]
+
+
+@pytest.mark.parametrize(
     "endpoint",
     [
         "/api/data-mining/classification",
         "/api/data-mining/clustering",
+        "/api/data-mining/dimensionality-reduction",
+        "/api/data-mining/anomaly-detection",
     ],
 )
 def test_reject_malformed_modeling_feature_list(tmp_path, endpoint):
@@ -1593,7 +1870,7 @@ def test_reject_malformed_modeling_feature_list(tmp_path, endpoint):
     data = {"feature_columns": "not-json"}
     if endpoint.endswith("classification"):
         data.update({"target_column": "Class", "test_size": "0.2"})
-    else:
+    elif endpoint.endswith("clustering"):
         data.update({"cluster_count": "3"})
     response = client.post(
         endpoint,

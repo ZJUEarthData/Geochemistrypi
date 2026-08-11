@@ -29,15 +29,22 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 from .data_mining_models import (
+    ANOMALY_DETECTION_MODELS,
     CLASSIFICATION_MODELS,
     CLUSTERING_MODELS,
+    DIMENSIONALITY_REDUCTION_MODELS,
     REGRESSION_MODELS,
     extract_linear_parameters,
+    get_anomaly_detection_model,
     get_classification_model,
     get_clustering_model,
+    get_dimensionality_reduction_model,
     get_regression_model,
 )
 from .schemas import (
+    AnomalyDetectionResponse,
+    AnomalyDetectionSummary,
+    AnomalyScoreSummary,
     ArtifactResponse,
     ClassificationConfusionItem,
     ClassificationMetrics,
@@ -56,6 +63,9 @@ from .schemas import (
     DataPreprocessingSummary,
     DatasetProfileResponse,
     DatasetProfileSummary,
+    DimensionalityReductionMetrics,
+    DimensionalityReductionResponse,
+    DimensionalityReductionSummary,
     RegressionCoefficientItem,
     RegressionMetrics,
     RegressionResponse,
@@ -176,6 +186,56 @@ class DataMiningService:
                             uses_cluster_count=definition.uses_cluster_count,
                         )
                         for definition in CLUSTERING_MODELS.values()
+                    ],
+                ),
+                DataMiningFeatureItem(
+                    name="dimensionality_reduction",
+                    description="Dimensionality reduction",
+                    status="verified",
+                    status_message=(
+                        "已接入 v0.8 PCA、T-SNE 和 MDS，完成数值特征标准化、"
+                        "二维/三维低维坐标、PCA 解释方差、T-SNE KL 散度、"
+                        "MDS stress 以及结果下载验证。"
+                    ),
+                    input_formats=[".xlsx", ".csv"],
+                    outputs=[
+                        "低维坐标预览",
+                        "模型诊断指标",
+                        "降维结果 CSV",
+                        "JSON 模型报告",
+                    ],
+                    methods=[
+                        DataMiningMethodItem(
+                            name=definition.name,
+                            display_name=definition.display_name,
+                            description=definition.description,
+                        )
+                        for definition in DIMENSIONALITY_REDUCTION_MODELS.values()
+                    ],
+                ),
+                DataMiningFeatureItem(
+                    name="anomaly_detection",
+                    description="Anomaly detection",
+                    status="verified",
+                    status_message=(
+                        "已接入 v0.8 Isolation Forest 和 Local Outlier Factor，"
+                        "完成数值特征标准化、逐行异常标签、统一方向异常分数、"
+                        "异常样品预览和结果下载验证。"
+                    ),
+                    input_formats=[".xlsx", ".csv"],
+                    outputs=[
+                        "正常/异常样品统计",
+                        "异常分数与标签",
+                        "异常检测结果 CSV",
+                        "JSON 模型报告",
+                    ],
+                    methods=[
+                        DataMiningMethodItem(
+                            name=definition.name,
+                            display_name=definition.display_name,
+                            description=definition.description,
+                        )
+                        for definition in ANOMALY_DETECTION_MODELS.values()
                     ],
                 ),
             ]
@@ -1131,6 +1191,418 @@ class DataMiningService:
                         f"{assignments_path.name}"
                     ),
                     size_bytes=assignments_path.stat().st_size,
+                ),
+                ArtifactResponse(
+                    name=report_path.name,
+                    download_url=(
+                        f"/api/data-mining/jobs/{job_id}/files/{report_path.name}"
+                    ),
+                    size_bytes=report_path.stat().st_size,
+                ),
+            ],
+        )
+
+    def run_dimensionality_reduction(
+        self,
+        *,
+        filename: str | None,
+        content: bytes,
+        feature_columns: list[str],
+        component_count: int = 2,
+        model_name: str = "pca",
+    ) -> DimensionalityReductionResponse:
+        try:
+            model_definition = get_dimensionality_reduction_model(model_name)
+        except ValueError as exc:
+            raise InvalidDatasetError(str(exc)) from exc
+        suffix = self._validate_upload(filename, content)
+        dataframe = self._read_dataframe(suffix, content)
+        self._validate_dataframe(dataframe)
+        dataframe.columns = [str(column) for column in dataframe.columns]
+
+        features = self._validate_selected_columns(dataframe, feature_columns)
+        if component_count not in {2, 3}:
+            raise InvalidDatasetError("Component count must be 2 or 3")
+        non_numeric = [
+            column
+            for column in features
+            if not pd.api.types.is_numeric_dtype(dataframe[column])
+            or pd.api.types.is_bool_dtype(dataframe[column])
+        ]
+        if non_numeric:
+            raise InvalidDatasetError(
+                "Dimensionality reduction requires numeric feature columns: "
+                + ", ".join(non_numeric)
+            )
+
+        model_data = (
+            dataframe.loc[:, features]
+            .replace([np.inf, -np.inf], np.nan)
+            .dropna(axis=0, how="any")
+        )
+        usable_rows = int(model_data.shape[0])
+        dropped_rows = int(dataframe.shape[0] - usable_rows)
+        minimum_rows = max(5, component_count + 1)
+        if usable_rows < minimum_rows:
+            raise InvalidDatasetError(
+                "Dimensionality reduction requires at least "
+                f"{minimum_rows} complete numeric rows"
+            )
+        if (
+            model_definition.max_rows is not None
+            and usable_rows > model_definition.max_rows
+        ):
+            raise InvalidDatasetError(
+                f"{model_definition.display_name} supports at most "
+                f"{model_definition.max_rows:,} complete rows in Online mode"
+            )
+        if component_count > len(features):
+            raise InvalidDatasetError(
+                "Component count cannot exceed the number of selected features"
+            )
+
+        feature_data = model_data.astype(float)
+        distinct_rows = int(
+            np.unique(feature_data.to_numpy(dtype=float), axis=0).shape[0]
+        )
+        if distinct_rows < 2:
+            raise InvalidDatasetError(
+                "Dimensionality reduction requires at least two distinct "
+                "feature rows"
+            )
+
+        scaler = StandardScaler()
+        scaled_features = scaler.fit_transform(feature_data)
+        model = model_definition.factory(component_count, usable_rows)
+        reduced_values = np.asarray(
+            model.fit_transform(scaled_features),
+            dtype=float,
+        )
+        if reduced_values.shape != (usable_rows, component_count):
+            raise InvalidDatasetError(
+                f"{model_definition.display_name} returned an unexpected output shape"
+            )
+        if not np.isfinite(reduced_values).all():
+            raise InvalidDatasetError(
+                f"{model_definition.display_name} returned non-finite coordinates"
+            )
+
+        explained_values = getattr(model, "explained_variance_ratio_", None)
+        explained_variance_ratio = (
+            [float(value) for value in explained_values]
+            if explained_values is not None
+            else []
+        )
+        cumulative_explained_variance_ratio = (
+            [float(value) for value in np.cumsum(explained_variance_ratio)]
+            if explained_variance_ratio
+            else []
+        )
+        kl_divergence_value = getattr(model, "kl_divergence_", None)
+        stress_value = getattr(model, "stress_", None)
+        metrics = DimensionalityReductionMetrics(
+            explained_variance_ratio=explained_variance_ratio,
+            cumulative_explained_variance_ratio=(
+                cumulative_explained_variance_ratio
+            ),
+            total_explained_variance_ratio=(
+                float(sum(explained_variance_ratio))
+                if explained_variance_ratio
+                else None
+            ),
+            kl_divergence=(
+                float(kl_divergence_value)
+                if kl_divergence_value is not None
+                and math.isfinite(float(kl_divergence_value))
+                else None
+            ),
+            stress=(
+                float(stress_value)
+                if stress_value is not None
+                and math.isfinite(float(stress_value))
+                else None
+            ),
+        )
+
+        reduced_frame = feature_data.copy()
+        reduced_frame.insert(
+            0,
+            "source_row",
+            [
+                int(index) + 2
+                if isinstance(index, (int, np.integer))
+                else str(index)
+                for index in reduced_frame.index
+            ],
+        )
+        for component_index in range(component_count):
+            reduced_frame[f"component_{component_index + 1}"] = reduced_values[
+                :, component_index
+            ]
+        reduced_frame = reduced_frame.sort_values("source_row")
+        preview_columns = ["source_row"] + [
+            f"component_{index + 1}" for index in range(component_count)
+        ]
+        preview = [
+            {
+                str(column): self._json_value(value)
+                for column, value in row.items()
+            }
+            for row in reduced_frame.loc[:, preview_columns]
+            .head(20)
+            .to_dict(orient="records")
+        ]
+        warnings = [
+            f"降维前删除了 {dropped_rows} 行含缺失值或无穷值的记录。"
+            if dropped_rows
+            else "所有数据行均可用于降维。"
+        ]
+        if model_name in {"tsne", "mds"}:
+            warnings.append(
+                f"{model_definition.display_name} 坐标用于相对结构解释，"
+                "坐标轴本身没有原始地球化学单位。"
+            )
+        summary = DimensionalityReductionSummary(
+            original_rows=int(dataframe.shape[0]),
+            usable_rows=usable_rows,
+            dropped_rows=dropped_rows,
+            feature_count=len(features),
+            component_count=component_count,
+        )
+
+        job_id = uuid4().hex
+        output_dir = self.jobs_dir / job_id / "output"
+        output_dir.mkdir(parents=True)
+        coordinates_path = output_dir / "dimensionality_reduction_coordinates.csv"
+        report_path = output_dir / "dimensionality_reduction_report.json"
+        reduced_frame.to_csv(coordinates_path, index=False, encoding="utf-8-sig")
+        report_payload = {
+            "report_version": "v080-dimensionality-reduction-v1",
+            "created_utc": datetime.now(timezone.utc).isoformat(),
+            "source_filename": Path(filename or "dataset").name,
+            "model": model_name,
+            "model_display_name": model_definition.display_name,
+            "feature_columns": features,
+            "component_count": component_count,
+            "random_state": 42,
+            "summary": summary.model_dump(),
+            "metrics": metrics.model_dump(),
+            "coordinate_preview": preview,
+            "warnings": warnings,
+        }
+        report_path.write_text(
+            json.dumps(report_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+        return DimensionalityReductionResponse(
+            job_id=job_id,
+            status="success",
+            message=f"{model_definition.display_name} completed",
+            source_filename=Path(filename or "dataset").name,
+            model=model_name,
+            model_display_name=model_definition.display_name,
+            feature_columns=features,
+            component_count=component_count,
+            random_state=42,
+            summary=summary,
+            metrics=metrics,
+            preview=preview,
+            warnings=warnings,
+            artifacts=[
+                ArtifactResponse(
+                    name=coordinates_path.name,
+                    download_url=(
+                        f"/api/data-mining/jobs/{job_id}/files/"
+                        f"{coordinates_path.name}"
+                    ),
+                    size_bytes=coordinates_path.stat().st_size,
+                ),
+                ArtifactResponse(
+                    name=report_path.name,
+                    download_url=(
+                        f"/api/data-mining/jobs/{job_id}/files/{report_path.name}"
+                    ),
+                    size_bytes=report_path.stat().st_size,
+                ),
+            ],
+        )
+
+    def run_anomaly_detection(
+        self,
+        *,
+        filename: str | None,
+        content: bytes,
+        feature_columns: list[str],
+        model_name: str = "isolation_forest",
+    ) -> AnomalyDetectionResponse:
+        try:
+            model_definition = get_anomaly_detection_model(model_name)
+        except ValueError as exc:
+            raise InvalidDatasetError(str(exc)) from exc
+        suffix = self._validate_upload(filename, content)
+        dataframe = self._read_dataframe(suffix, content)
+        self._validate_dataframe(dataframe)
+        dataframe.columns = [str(column) for column in dataframe.columns]
+
+        features = self._validate_selected_columns(dataframe, feature_columns)
+        non_numeric = [
+            column
+            for column in features
+            if not pd.api.types.is_numeric_dtype(dataframe[column])
+            or pd.api.types.is_bool_dtype(dataframe[column])
+        ]
+        if non_numeric:
+            raise InvalidDatasetError(
+                "Anomaly detection requires numeric feature columns: "
+                + ", ".join(non_numeric)
+            )
+
+        model_data = (
+            dataframe.loc[:, features]
+            .replace([np.inf, -np.inf], np.nan)
+            .dropna(axis=0, how="any")
+        )
+        usable_rows = int(model_data.shape[0])
+        dropped_rows = int(dataframe.shape[0] - usable_rows)
+        if usable_rows < 10:
+            raise InvalidDatasetError(
+                "Anomaly detection requires at least 10 complete numeric rows"
+            )
+        feature_data = model_data.astype(float)
+        distinct_rows = int(
+            np.unique(feature_data.to_numpy(dtype=float), axis=0).shape[0]
+        )
+        if distinct_rows < 2:
+            raise InvalidDatasetError(
+                "Anomaly detection requires at least two distinct feature rows"
+            )
+
+        scaler = StandardScaler()
+        scaled_features = scaler.fit_transform(feature_data)
+        model = model_definition.factory(usable_rows)
+        labels = np.asarray(model.fit_predict(scaled_features), dtype=int)
+        if model_name == "local_outlier_factor":
+            anomaly_scores = -np.asarray(
+                model.negative_outlier_factor_,
+                dtype=float,
+            )
+        else:
+            anomaly_scores = -np.asarray(
+                model.decision_function(scaled_features),
+                dtype=float,
+            )
+        if not np.isfinite(anomaly_scores).all():
+            raise InvalidDatasetError(
+                f"{model_definition.display_name} returned non-finite anomaly scores"
+            )
+
+        anomaly_mask = labels == -1
+        anomaly_rows = int(np.sum(anomaly_mask))
+        normal_rows = int(usable_rows - anomaly_rows)
+        score_summary = AnomalyScoreSummary(
+            minimum=float(np.min(anomaly_scores)),
+            maximum=float(np.max(anomaly_scores)),
+            mean=float(np.mean(anomaly_scores)),
+        )
+        detection_frame = feature_data.copy()
+        detection_frame.insert(
+            0,
+            "source_row",
+            [
+                int(index) + 2
+                if isinstance(index, (int, np.integer))
+                else str(index)
+                for index in detection_frame.index
+            ],
+        )
+        detection_frame["anomaly_label"] = np.where(
+            anomaly_mask,
+            "anomaly",
+            "normal",
+        )
+        detection_frame["is_anomaly"] = anomaly_mask
+        detection_frame["anomaly_score"] = anomaly_scores
+        detection_frame = detection_frame.sort_values("source_row")
+        preview_columns = [
+            "source_row",
+            "anomaly_label",
+            "is_anomaly",
+            "anomaly_score",
+        ]
+        preview_frame = detection_frame.sort_values(
+            "anomaly_score",
+            ascending=False,
+        ).loc[:, preview_columns]
+        preview = [
+            {
+                str(column): self._json_value(value)
+                for column, value in row.items()
+            }
+            for row in preview_frame.head(20).to_dict(orient="records")
+        ]
+        warnings = [
+            f"异常检测前删除了 {dropped_rows} 行含缺失值或无穷值的记录。"
+            if dropped_rows
+            else "所有数据行均可用于异常检测。"
+        ]
+        warnings.append(
+            "异常分数已统一为数值越大越异常；不同算法之间的绝对分数不可直接比较。"
+        )
+        summary = AnomalyDetectionSummary(
+            original_rows=int(dataframe.shape[0]),
+            usable_rows=usable_rows,
+            dropped_rows=dropped_rows,
+            feature_count=len(features),
+            normal_rows=normal_rows,
+            anomaly_rows=anomaly_rows,
+        )
+
+        job_id = uuid4().hex
+        output_dir = self.jobs_dir / job_id / "output"
+        output_dir.mkdir(parents=True)
+        results_path = output_dir / "anomaly_detection_results.csv"
+        report_path = output_dir / "anomaly_detection_report.json"
+        detection_frame.to_csv(results_path, index=False, encoding="utf-8-sig")
+        report_payload = {
+            "report_version": "v080-anomaly-detection-v1",
+            "created_utc": datetime.now(timezone.utc).isoformat(),
+            "source_filename": Path(filename or "dataset").name,
+            "model": model_name,
+            "model_display_name": model_definition.display_name,
+            "feature_columns": features,
+            "random_state": 42 if model_name == "isolation_forest" else None,
+            "summary": summary.model_dump(),
+            "score_summary": score_summary.model_dump(),
+            "anomaly_preview": preview,
+            "warnings": warnings,
+        }
+        report_path.write_text(
+            json.dumps(report_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+        return AnomalyDetectionResponse(
+            job_id=job_id,
+            status="success",
+            message=f"{model_definition.display_name} completed",
+            source_filename=Path(filename or "dataset").name,
+            model=model_name,
+            model_display_name=model_definition.display_name,
+            feature_columns=features,
+            random_state=42 if model_name == "isolation_forest" else None,
+            summary=summary,
+            score_summary=score_summary,
+            preview=preview,
+            warnings=warnings,
+            artifacts=[
+                ArtifactResponse(
+                    name=results_path.name,
+                    download_url=(
+                        f"/api/data-mining/jobs/{job_id}/files/"
+                        f"{results_path.name}"
+                    ),
+                    size_bytes=results_path.stat().st_size,
                 ),
                 ArtifactResponse(
                     name=report_path.name,

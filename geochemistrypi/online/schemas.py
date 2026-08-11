@@ -281,3 +281,69 @@ class ClusteringResponse(BaseModel):
     preview: list[dict[str, Any]]
     warnings: list[str] = Field(default_factory=list)
     artifacts: list[ArtifactResponse] = Field(default_factory=list)
+
+
+class DimensionalityReductionSummary(BaseModel):
+    original_rows: int
+    usable_rows: int
+    dropped_rows: int
+    feature_count: int
+    component_count: int
+
+
+class DimensionalityReductionMetrics(BaseModel):
+    explained_variance_ratio: list[float] = Field(default_factory=list)
+    cumulative_explained_variance_ratio: list[float] = Field(
+        default_factory=list
+    )
+    total_explained_variance_ratio: float | None = None
+    kl_divergence: float | None = None
+    stress: float | None = None
+
+
+class DimensionalityReductionResponse(BaseModel):
+    job_id: str
+    status: str
+    message: str
+    source_filename: str
+    model: str
+    model_display_name: str
+    feature_columns: list[str]
+    component_count: int
+    random_state: int
+    summary: DimensionalityReductionSummary
+    metrics: DimensionalityReductionMetrics
+    preview: list[dict[str, Any]]
+    warnings: list[str] = Field(default_factory=list)
+    artifacts: list[ArtifactResponse] = Field(default_factory=list)
+
+
+class AnomalyDetectionSummary(BaseModel):
+    original_rows: int
+    usable_rows: int
+    dropped_rows: int
+    feature_count: int
+    normal_rows: int
+    anomaly_rows: int
+
+
+class AnomalyScoreSummary(BaseModel):
+    minimum: float
+    maximum: float
+    mean: float
+
+
+class AnomalyDetectionResponse(BaseModel):
+    job_id: str
+    status: str
+    message: str
+    source_filename: str
+    model: str
+    model_display_name: str
+    feature_columns: list[str]
+    random_state: int | None = None
+    summary: AnomalyDetectionSummary
+    score_summary: AnomalyScoreSummary
+    preview: list[dict[str, Any]]
+    warnings: list[str] = Field(default_factory=list)
+    artifacts: list[ArtifactResponse] = Field(default_factory=list)

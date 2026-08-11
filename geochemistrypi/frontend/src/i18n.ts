@@ -131,7 +131,9 @@ const dataMiningDescriptions: Record<string, [string, string]> = {
   data_preprocessing: ['Data preprocessing', '数据预处理'],
   regression: ['Regression', '回归'],
   classification: ['Classification', '分类'],
-  clustering: ['Clustering', '聚类']
+  clustering: ['Clustering', '聚类'],
+  dimensionality_reduction: ['Dimensionality reduction', '降维'],
+  anomaly_detection: ['Anomaly detection', '异常检测']
 }
 
 export function dataMiningFeatureDescription(name: string, source: string) {
@@ -168,6 +170,13 @@ const exactEnglish: Record<string, string> = {
   聚类指标: 'Clustering metrics',
   簇大小与中心: 'Cluster sizes and centers',
   '聚类结果 CSV': 'Cluster-assignment CSV',
+  低维坐标预览: 'Reduced-coordinate preview',
+  模型诊断指标: 'Model diagnostics',
+  '降维结果 CSV': 'Reduced-coordinate CSV',
+  正常异常样品统计: 'Normal/anomalous sample counts',
+  '正常/异常样品统计': 'Normal/anomalous sample counts',
+  异常分数与标签: 'Anomaly scores and labels',
+  '异常检测结果 CSV': 'Anomaly-detection CSV',
   '已完成 Excel/CSV 上传、数据类型识别、缺失值、重复行、唯一值、数值统计、预览和 JSON 报告下载验证。':
     'Verified Excel/CSV upload, data-type detection, missing values, duplicate rows, unique values, numerical statistics, preview, and JSON report download.',
   '已完成列选择、缺失值处理、结果预览、CSV 数据下载和 JSON 处理记录验证。':
@@ -178,6 +187,10 @@ const exactEnglish: Record<string, string> = {
     'Verified v0.8 Logistic Regression, SVM, Decision Tree, Random Forest, Extra-Trees, MLP, Gradient Boosting, KNN, SGD, and AdaBoost with stratified train/test splitting, Accuracy/Precision/Recall/F1, a confusion matrix, and result downloads.',
   '已接入 v0.8 K-Means、DBSCAN、Agglomerative、Affinity Propagation、Mean Shift 和 OPTICS，完成标准化、噪声识别、三项聚类评价指标、聚类中心和结果下载验证。':
     'Verified v0.8 K-Means, DBSCAN, Agglomerative Clustering, Affinity Propagation, Mean Shift, and OPTICS with standardization, noise detection, three evaluation metrics, cluster centers, and result downloads.',
+  '已接入 v0.8 PCA、T-SNE 和 MDS，完成数值特征标准化、二维/三维低维坐标、PCA 解释方差、T-SNE KL 散度、MDS stress 以及结果下载验证。':
+    'Verified v0.8 PCA, T-SNE, and MDS with numeric-feature standardization, two- or three-dimensional coordinates, PCA explained variance, T-SNE KL divergence, MDS stress, and result downloads.',
+  '已接入 v0.8 Isolation Forest 和 Local Outlier Factor，完成数值特征标准化、逐行异常标签、统一方向异常分数、异常样品预览和结果下载验证。':
+    'Verified v0.8 Isolation Forest and Local Outlier Factor with numeric-feature standardization, row-level labels, consistently oriented anomaly scores, anomaly preview, and result downloads.',
   总质量或总浓度: 'Total mass or concentration',
   '需要与同一行所有物种浓度之和进行比较的总量。':
     'Total to compare with the sum of all species concentrations in the same row.',
@@ -505,6 +518,21 @@ export function apiText(source: string | null | undefined) {
       (count) =>
         `${count} rows containing missing or infinite values were removed before clustering.`
     ],
+    [
+      /^降维前删除了 (\d+) 行含缺失值或无穷值的记录。$/,
+      (count) =>
+        `${count} rows containing missing or infinite values were removed before dimensionality reduction.`
+    ],
+    [
+      /^异常检测前删除了 (\d+) 行含缺失值或无穷值的记录。$/,
+      (count) =>
+        `${count} rows containing missing or infinite values were removed before anomaly detection.`
+    ],
+    [
+      /^(T-SNE|MDS) 坐标用于相对结构解释，坐标轴本身没有原始地球化学单位。$/,
+      (model) =>
+        `${model} coordinates describe relative structure; their axes do not retain the original geochemical units.`
+    ],
     [/^发现 (\d+) 行完全重复记录。$/, (count) => `Found ${count} completely duplicate rows.`],
     [
       /^数值列中发现 (\d+) 个无穷大值。$/,
@@ -529,6 +557,10 @@ export function apiText(source: string | null | undefined) {
     '所有数据行均可用于回归。': 'All data rows can be used for regression.',
     '所有数据行均可用于分类。': 'All data rows can be used for classification.',
     '所有数据行均可用于聚类。': 'All data rows can be used for clustering.',
+    '所有数据行均可用于降维。': 'All data rows can be used for dimensionality reduction.',
+    '所有数据行均可用于异常检测。': 'All data rows can be used for anomaly detection.',
+    '异常分数已统一为数值越大越异常；不同算法之间的绝对分数不可直接比较。':
+      'Scores are oriented so that higher values indicate stronger anomalies; absolute scores are not directly comparable across algorithms.',
     'Silhouette 指标使用固定随机种子抽样 10,000 行计算。':
       'The silhouette score was calculated from a fixed-seed sample of 10,000 rows.',
     '未发现高缺失率、完全重复、常量列或无穷大值问题。':
@@ -552,6 +584,8 @@ export function warningIsSuccess(source: string) {
     '均可用于回归',
     '均可用于分类',
     '均可用于聚类',
+    '均可用于降维',
+    '均可用于异常检测',
     '未发现'
   ].some((message) => source.includes(message))
 }
