@@ -506,6 +506,15 @@ def test_data_mining_catalog_starts_with_verified_dataset_profile(tmp_path):
         "预测结果 CSV",
         "JSON 模型报告",
     ]
+    assert [method["name"] for method in features[2]["methods"]] == [
+        "linear_regression",
+        "polynomial_regression",
+        "lasso_regression",
+        "elastic_net",
+        "bayesian_ridge_regression",
+        "ridge_regression",
+    ]
+    assert all(method["status"] == "verified" for method in features[2]["methods"])
     assert all(feature["status"] == "verified" for feature in features)
     assert features[3]["outputs"] == [
         "分类指标",
@@ -865,6 +874,80 @@ def test_linear_regression_returns_metrics_coefficients_and_downloads(tmp_path):
     assert report["report_version"] == "linear-regression-v1"
     assert report["random_state"] == 42
     assert report["metrics"]["r2"] == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize(
+    ("model_name", "expected_display_name", "minimum_coefficients"),
+    [
+        ("linear_regression", "Linear Regression", 2),
+        ("polynomial_regression", "Polynomial Regression", 5),
+        ("lasso_regression", "Lasso Regression", 2),
+        ("elastic_net", "Elastic Net", 2),
+        ("bayesian_ridge_regression", "Bayesian Ridge Regression", 2),
+        ("ridge_regression", "Ridge Regression", 2),
+    ],
+)
+def test_v080_regression_model_registry_runs_verified_models(
+    tmp_path,
+    model_name,
+    expected_display_name,
+    minimum_coefficients,
+):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    response = client.post(
+        "/api/data-mining/regression",
+        data={
+            "model": model_name,
+            "target_column": "Target",
+            "feature_columns": json.dumps(["X1", "X2"]),
+            "test_size": "0.25",
+        },
+        files={
+            "dataset": (
+                "regression.csv",
+                make_linear_regression_csv(),
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["model"] == model_name
+    assert payload["model_display_name"] == expected_display_name
+    assert len(payload["coefficients"]) >= minimum_coefficients
+    assert payload["metrics"]["mean_absolute_error"] >= 0
+    assert payload["metrics"]["root_mean_squared_error"] >= 0
+    assert payload["equation"].startswith("Target =")
+
+    report = client.get(payload["artifacts"][1]["download_url"])
+    assert report.status_code == 200
+    report_payload = json.loads(report.content.decode("utf-8"))
+    assert report_payload["model"] == model_name
+    assert report_payload["model_display_name"] == expected_display_name
+
+
+def test_reject_unknown_regression_model(tmp_path):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    response = client.post(
+        "/api/data-mining/regression",
+        data={
+            "model": "unknown_regressor",
+            "target_column": "Target",
+            "feature_columns": json.dumps(["X1", "X2"]),
+            "test_size": "0.2",
+        },
+        files={
+            "dataset": (
+                "regression.csv",
+                make_linear_regression_csv(),
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 422
+    assert "Unknown regression model" in response.json()["detail"]
 
 
 def test_linear_regression_drops_incomplete_rows_before_split(tmp_path):

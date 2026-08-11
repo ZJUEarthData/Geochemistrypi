@@ -59,6 +59,13 @@ class RunResponse(BaseModel):
     artifacts: list[ArtifactResponse]
 
 
+class DataMiningMethodItem(BaseModel):
+    name: str
+    display_name: str
+    description: str
+    status: Literal["verified", "testing"] = "verified"
+
+
 class DataMiningFeatureItem(BaseModel):
     name: str
     description: str
@@ -66,6 +73,7 @@ class DataMiningFeatureItem(BaseModel):
     status_message: str
     input_formats: list[str] = Field(default_factory=list)
     outputs: list[str] = Field(default_factory=list)
+    methods: list[DataMiningMethodItem] = Field(default_factory=list)
 
 
 class DataMiningCatalogResponse(BaseModel):
@@ -170,7 +178,8 @@ class RegressionResponse(BaseModel):
     status: str
     message: str
     source_filename: str
-    model: Literal["linear_regression"]
+    model: str
+    model_display_name: str
     target_column: str
     feature_columns: list[str]
     test_size: float

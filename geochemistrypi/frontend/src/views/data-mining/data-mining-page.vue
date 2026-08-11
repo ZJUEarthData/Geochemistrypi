@@ -44,6 +44,7 @@ const missingStrategy = ref<MissingValueStrategy>('keep')
 const regressionTarget = ref('')
 const regressionFeatures = ref<string[]>([])
 const regressionTestSize = ref(0.2)
+const regressionModel = ref('linear_regression')
 const classificationTarget = ref('')
 const classificationFeatures = ref<string[]>([])
 const classificationTestSize = ref(0.2)
@@ -127,6 +128,7 @@ const numericColumns = computed(
 const regressionFeatureOptions = computed(() =>
   numericColumns.value.filter((column) => column !== regressionTarget.value)
 )
+const regressionMethodOptions = computed(() => currentFeature.value?.methods || [])
 const classificationTargetColumns = computed(
   () => columnInspection.value?.columns.map((column) => column.name) || []
 )
@@ -238,6 +240,10 @@ const runSummaryParameters = computed(() => {
   if (isRegression.value) {
     return [
       `${t('Target', '目标')}: ${regressionTarget.value || '—'}`,
+      `${t('Model', '模型')}: ${
+        regressionMethodOptions.value.find((method) => method.name === regressionModel.value)
+          ?.display_name || regressionModel.value
+      }`,
       `${t('Features', '特征')}: ${regressionFeatures.value.length}`,
       `${t('Test size', '测试集')}: ${formatPercent(regressionTestSize.value)}`
     ]
@@ -294,6 +300,9 @@ watch(
   { deep: true }
 )
 watch(regressionTestSize, () => {
+  regressionResult.value = null
+})
+watch(regressionModel, () => {
   regressionResult.value = null
 })
 watch(classificationTarget, (target) => {
@@ -460,9 +469,12 @@ async function submitJob() {
         datasetFile.value,
         regressionTarget.value,
         regressionFeatures.value,
-        regressionTestSize.value
+        regressionTestSize.value,
+        regressionModel.value
       )
-      ElMessage.success(t('Linear regression completed', '线性回归完成'))
+      ElMessage.success(
+        `${regressionResult.value.model_display_name} ${t('completed', '已完成')}`
+      )
     } else if (isClassification.value) {
       classificationResult.value = await runClassification(
         datasetFile.value,
@@ -803,7 +815,21 @@ function formatCell(value: unknown) {
             <template v-if="columnInspection">
               <div class="form-grid">
                 <el-form-item :label="t('Model', '模型')">
-                  <el-input :model-value="t('Linear regression', '线性回归')" disabled />
+                  <el-select v-model="regressionModel" :disabled="running">
+                    <el-option
+                      v-for="method in regressionMethodOptions"
+                      :key="method.name"
+                      :label="method.display_name"
+                      :value="method.name"
+                    />
+                  </el-select>
+                  <p class="field-help">
+                    {{
+                      regressionMethodOptions.find(
+                        (method) => method.name === regressionModel
+                      )?.description
+                    }}
+                  </p>
                 </el-form-item>
 
                 <el-form-item :label="t('Test dataset size', '测试集比例')">
@@ -1436,7 +1462,7 @@ function formatCell(value: unknown) {
           <template #header>
             <div class="result-heading">
               <div>
-                <h2>{{ t('Linear regression completed', '线性回归完成') }}</h2>
+                <h2>{{ regressionResult.model_display_name }} {{ t('completed', '已完成') }}</h2>
                 <p>
                   {{ regressionResult.source_filename }} · {{ t('Job ID', '任务 ID') }}:
                   {{ regressionResult.job_id }}

@@ -26,3 +26,16 @@ pnpm type-check
 ## 依赖边界
 
 当前 Online 环境继续使用 Python 3.12 与现代 FastAPI/Pydantic/scikit-learn 依赖。官方 v0.8.0 的完整 CLI 训练栈仍带有 Python 3.9 时代的固定依赖（MLflow、Ray、FLAML、Pydantic 1 等），本阶段不强行降级 Online 环境。后续应逐项升级这些依赖并为每个模型建立可复现测试，之后再让 Online API 直接调用全部 v0.8.0 训练工作流。
+
+## 已接入 Online 的 v0.8 回归方法
+
+Online 使用后端模型注册表动态提供以下已验证方法：
+
+- Linear Regression
+- Polynomial Regression（二阶）
+- Lasso Regression
+- Elastic Net
+- Bayesian Ridge Regression
+- Ridge Regression
+
+请求仍使用 `/api/data-mining/regression`，新增可选表单字段 `model`。未提供时默认使用 `linear_regression`，因此旧版调用方式保持兼容。模型名称、显示名称、指标、方程、系数和预测均写入版本化 JSON 报告。

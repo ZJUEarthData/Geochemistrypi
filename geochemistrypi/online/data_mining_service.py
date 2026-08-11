@@ -13,7 +13,7 @@ from uuid import uuid4
 import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
-from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     accuracy_score,
     calinski_harabasz_score,
@@ -31,6 +31,11 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
+from .data_mining_models import (
+    REGRESSION_MODELS,
+    extract_linear_parameters,
+    get_regression_model,
+)
 from .schemas import (
     ArtifactResponse,
     ClassificationConfusionItem,
@@ -45,6 +50,7 @@ from .schemas import (
     ColumnProfileItem,
     DataMiningCatalogResponse,
     DataMiningFeatureItem,
+    DataMiningMethodItem,
     DataPreprocessingResponse,
     DataPreprocessingSummary,
     DatasetProfileResponse,
@@ -114,11 +120,20 @@ class DataMiningService:
                     description="Regression",
                     status="verified",
                     status_message=(
-                        "已完成数值特征线性回归、固定随机种子训练测试划分、"
+                        "已接入 v0.8 线性、二阶多项式、Lasso、Elastic Net、"
+                        "Bayesian Ridge 和 Ridge 回归，并完成固定随机种子训练测试划分、"
                         "R²/MAE/RMSE、系数、预测结果和报告下载验证。"
                     ),
                     input_formats=[".xlsx", ".csv"],
                     outputs=["回归指标", "模型系数", "预测结果 CSV", "JSON 模型报告"],
+                    methods=[
+                        DataMiningMethodItem(
+                            name=definition.name,
+                            display_name=definition.display_name,
+                            description=definition.description,
+                        )
+                        for definition in REGRESSION_MODELS.values()
+                    ],
                 ),
                 DataMiningFeatureItem(
                     name="classification",
@@ -366,7 +381,12 @@ class DataMiningService:
         target_column: str,
         feature_columns: list[str],
         test_size: float = 0.2,
+        model_name: str = "linear_regression",
     ) -> RegressionResponse:
+        try:
+            model_definition = get_regression_model(model_name)
+        except ValueError as exc:
+            raise InvalidDatasetError(str(exc)) from exc
         suffix = self._validate_upload(filename, content)
         dataframe = self._read_dataframe(suffix, content)
         self._validate_dataframe(dataframe)
@@ -443,7 +463,7 @@ class DataMiningService:
             random_state=42,
         )
 
-        model = LinearRegression()
+        model = model_definition.factory()
         model.fit(features_train, target_train)
         predicted = model.predict(features_test)
         mae = float(mean_absolute_error(target_test, predicted))
@@ -466,14 +486,21 @@ class DataMiningService:
         else:
             warnings.append("所有数据行均可用于回归。")
 
+        intercept, coefficient_names, coefficient_values = extract_linear_parameters(
+            model,
+            features,
+        )
         coefficients = [
             RegressionCoefficientItem(
                 feature=feature,
                 coefficient=float(coefficient),
             )
-            for feature, coefficient in zip(features, model.coef_, strict=True)
+            for feature, coefficient in zip(
+                coefficient_names,
+                coefficient_values,
+                strict=True,
+            )
         ]
-        intercept = float(model.intercept_)
         equation = self._build_regression_equation(
             target_column=target_column,
             intercept=intercept,
@@ -524,10 +551,15 @@ class DataMiningService:
             encoding="utf-8-sig",
         )
         report_payload = {
-            "report_version": "linear-regression-v1",
+            "report_version": (
+                "linear-regression-v1"
+                if model_name == "linear_regression"
+                else "v080-regression-v1"
+            ),
             "created_utc": datetime.now(timezone.utc).isoformat(),
             "source_filename": Path(filename or "dataset").name,
-            "model": "linear_regression",
+            "model": model_name,
+            "model_display_name": model_definition.display_name,
             "target_column": target_column,
             "feature_columns": features,
             "test_size": test_size,
@@ -551,9 +583,10 @@ class DataMiningService:
         return RegressionResponse(
             job_id=job_id,
             status="success",
-            message="Linear regression completed",
+            message=f"{model_definition.display_name} completed",
             source_filename=Path(filename or "dataset").name,
-            model="linear_regression",
+            model=model_name,
+            model_display_name=model_definition.display_name,
             target_column=target_column,
             feature_columns=features,
             test_size=test_size,

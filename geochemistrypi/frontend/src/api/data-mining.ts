@@ -2,6 +2,13 @@ import { API_BASE_URL, type ArtifactResponse } from '@/api/online'
 
 export type DataMiningStatus = 'verified' | 'testing'
 
+export interface DataMiningMethodItem {
+  name: string
+  display_name: string
+  description: string
+  status: DataMiningStatus
+}
+
 export interface DataMiningFeatureItem {
   name: string
   description: string
@@ -9,6 +16,7 @@ export interface DataMiningFeatureItem {
   status_message: string
   input_formats: string[]
   outputs: string[]
+  methods: DataMiningMethodItem[]
 }
 
 export interface DataMiningCatalogResponse {
@@ -109,7 +117,8 @@ export interface RegressionResponse {
   status: string
   message: string
   source_filename: string
-  model: 'linear_regression'
+  model: string
+  model_display_name: string
   target_column: string
   feature_columns: string[]
   test_size: number
@@ -254,13 +263,15 @@ export async function runRegression(
   dataset: File,
   targetColumn: string,
   featureColumns: string[],
-  testSize: number
+  testSize: number,
+  model: string = 'linear_regression'
 ): Promise<RegressionResponse> {
   const form = new FormData()
   form.append('dataset', dataset)
   form.append('target_column', targetColumn)
   form.append('feature_columns', JSON.stringify(featureColumns))
   form.append('test_size', String(testSize))
+  form.append('model', model)
   const response = await fetch(`${API_BASE_URL}/api/data-mining/regression`, {
     method: 'POST',
     body: form
