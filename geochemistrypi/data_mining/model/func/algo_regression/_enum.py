@@ -81,3 +81,8 @@ class GradientBoostingSpecialFunction(Enum):
 
 class PolynomialSpecialFunction(Enum):
     POLYNOMIAL_REGRESSION_FORMULA = "Polynomial Regression Formula"
+
+
+class AdaBoostSpecialFunction(Enum):
+    FEATURE_IMPORTANCE_DIAGRAM = "Feature Importance Diagram"
+    SINGLE_TREE_DIAGRAM = "Single Tree Diagram"
