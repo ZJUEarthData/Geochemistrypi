@@ -5,7 +5,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from sklearn.base import ClassifierMixin, RegressorMixin
+from sklearn.base import ClassifierMixin, ClusterMixin, RegressorMixin
+from sklearn.cluster import (
+    DBSCAN,
+    OPTICS,
+    AffinityPropagation,
+    AgglomerativeClustering,
+    KMeans,
+    MeanShift,
+)
 from sklearn.ensemble import (
     AdaBoostClassifier,
     ExtraTreesClassifier,
@@ -44,6 +52,15 @@ class ClassificationModelDefinition:
     display_name: str
     description: str
     factory: Callable[[], ClassifierMixin | Pipeline]
+
+
+@dataclass(frozen=True)
+class ClusteringModelDefinition:
+    name: str
+    display_name: str
+    description: str
+    uses_cluster_count: bool
+    factory: Callable[[int], ClusterMixin]
 
 
 REGRESSION_MODELS: dict[str, RegressionModelDefinition] = {
@@ -196,6 +213,68 @@ CLASSIFICATION_MODELS: dict[str, ClassificationModelDefinition] = {
 }
 
 
+CLUSTERING_MODELS: dict[str, ClusteringModelDefinition] = {
+    definition.name: definition
+    for definition in (
+        ClusteringModelDefinition(
+            name="kmeans",
+            display_name="K-Means",
+            description="Centroid-based clustering with a user-selected number of clusters.",
+            uses_cluster_count=True,
+            factory=lambda cluster_count: KMeans(
+                n_clusters=cluster_count,
+                random_state=42,
+                n_init=10,
+            ),
+        ),
+        ClusteringModelDefinition(
+            name="dbscan",
+            display_name="DBSCAN",
+            description="Density-based clustering with automatic noise detection.",
+            uses_cluster_count=False,
+            factory=lambda _cluster_count: DBSCAN(eps=0.3, min_samples=3),
+        ),
+        ClusteringModelDefinition(
+            name="agglomerative",
+            display_name="Agglomerative Clustering",
+            description="Hierarchical clustering with a user-selected number of clusters.",
+            uses_cluster_count=True,
+            factory=lambda cluster_count: AgglomerativeClustering(
+                n_clusters=cluster_count
+            ),
+        ),
+        ClusteringModelDefinition(
+            name="affinity_propagation",
+            display_name="Affinity Propagation",
+            description="Exemplar-based clustering that estimates cluster count automatically.",
+            uses_cluster_count=False,
+            factory=lambda _cluster_count: AffinityPropagation(
+                damping=0.85,
+                random_state=42,
+            ),
+        ),
+        ClusteringModelDefinition(
+            name="mean_shift",
+            display_name="Mean Shift",
+            description="Mode-seeking clustering that estimates cluster count automatically.",
+            uses_cluster_count=False,
+            factory=lambda _cluster_count: MeanShift(),
+        ),
+        ClusteringModelDefinition(
+            name="optics",
+            display_name="OPTICS",
+            description="Density-ordering clustering with automatic noise detection.",
+            uses_cluster_count=False,
+            factory=lambda _cluster_count: OPTICS(
+                min_samples=3,
+                xi=0.05,
+                min_cluster_size=0.1,
+            ),
+        ),
+    )
+}
+
+
 def get_regression_model(name: str) -> RegressionModelDefinition:
     try:
         return REGRESSION_MODELS[name]
@@ -213,6 +292,16 @@ def get_classification_model(name: str) -> ClassificationModelDefinition:
         choices = ", ".join(CLASSIFICATION_MODELS)
         raise ValueError(
             f"Unknown classification model '{name}'. Choose one of: {choices}"
+        ) from exc
+
+
+def get_clustering_model(name: str) -> ClusteringModelDefinition:
+    try:
+        return CLUSTERING_MODELS[name]
+    except KeyError as exc:
+        choices = ", ".join(CLUSTERING_MODELS)
+        raise ValueError(
+            f"Unknown clustering model '{name}'. Choose one of: {choices}"
         ) from exc
 
 
@@ -239,9 +328,12 @@ def extract_linear_parameters(
 __all__ = [
     "CLASSIFICATION_MODELS",
     "ClassificationModelDefinition",
+    "CLUSTERING_MODELS",
+    "ClusteringModelDefinition",
     "REGRESSION_MODELS",
     "RegressionModelDefinition",
     "extract_linear_parameters",
     "get_classification_model",
+    "get_clustering_model",
     "get_regression_model",
 ]

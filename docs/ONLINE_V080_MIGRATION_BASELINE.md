@@ -56,3 +56,14 @@ Online 使用后端模型注册表动态提供以下已验证方法：
 - AdaBoost
 
 请求继续使用 `/api/data-mining/classification`，新增可选表单字段 `model`；未提供时默认使用 `logistic_regression`。XGBoost 暂不标记为可用，待其现代可选依赖和模型安全边界单独完成验证后再加入注册表。
+
+## 已接入 Online 的 v0.8 聚类方法
+
+- K-Means
+- DBSCAN
+- Agglomerative Clustering
+- Affinity Propagation
+- Mean Shift
+- OPTICS
+
+请求继续使用 `/api/data-mining/clustering`，新增可选表单字段 `model`。K-Means 和 Agglomerative 使用 `cluster_count`；其余方法自动估计簇数。密度聚类产生的标签 `-1` 作为噪声单独统计，聚类指标和中心不包含噪声点，CSV 分配结果仍保留完整标签以便审计。

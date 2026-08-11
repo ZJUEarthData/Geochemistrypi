@@ -541,6 +541,22 @@ def test_data_mining_catalog_starts_with_verified_dataset_profile(tmp_path):
         "聚类结果 CSV",
         "JSON 模型报告",
     ]
+    assert [method["name"] for method in features[4]["methods"]] == [
+        "kmeans",
+        "dbscan",
+        "agglomerative",
+        "affinity_propagation",
+        "mean_shift",
+        "optics",
+    ]
+    assert [method["uses_cluster_count"] for method in features[4]["methods"]] == [
+        True,
+        False,
+        True,
+        False,
+        False,
+        False,
+    ]
 
 
 def test_profile_excel_dataset_returns_quality_summary_and_json_report(tmp_path):
@@ -1368,8 +1384,11 @@ def test_kmeans_clustering_returns_metrics_centers_and_downloads(tmp_path):
     payload = response.json()
     assert payload["status"] == "success"
     assert payload["model"] == "kmeans"
+    assert payload["model_display_name"] == "K-Means"
     assert payload["feature_columns"] == ["X1", "X2"]
     assert payload["cluster_count"] == 3
+    assert payload["requested_cluster_count"] == 3
+    assert payload["noise_rows"] == 0
     assert payload["random_state"] == 42
     assert payload["summary"] == {
         "original_rows": 30,
@@ -1406,6 +1425,85 @@ def test_kmeans_clustering_returns_metrics_centers_and_downloads(tmp_path):
     assert report["report_version"] == "kmeans-clustering-v1"
     assert report["random_state"] == 42
     assert report["summary"]["cluster_count"] == 3
+
+
+@pytest.mark.parametrize(
+    ("model_name", "expected_display_name", "uses_cluster_count"),
+    [
+        ("kmeans", "K-Means", True),
+        ("dbscan", "DBSCAN", False),
+        ("agglomerative", "Agglomerative Clustering", True),
+        ("affinity_propagation", "Affinity Propagation", False),
+        ("mean_shift", "Mean Shift", False),
+        ("optics", "OPTICS", False),
+    ],
+)
+def test_v080_clustering_registry_runs_verified_models(
+    tmp_path,
+    model_name,
+    expected_display_name,
+    uses_cluster_count,
+):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    response = client.post(
+        "/api/data-mining/clustering",
+        data={
+            "model": model_name,
+            "feature_columns": json.dumps(["X1", "X2"]),
+            "cluster_count": "3",
+        },
+        files={
+            "dataset": (
+                "clustering.csv",
+                make_clustering_csv(),
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["model"] == model_name
+    assert payload["model_display_name"] == expected_display_name
+    assert payload["cluster_count"] >= 2
+    assert payload["requested_cluster_count"] == (3 if uses_cluster_count else None)
+    assert sum(item["rows"] for item in payload["cluster_sizes"]) == 30
+    assert len(payload["cluster_centers"]) == payload["cluster_count"]
+    assert payload["metrics"]["silhouette_score"] > -1
+    assert payload["metrics"]["davies_bouldin_score"] >= 0
+    assert payload["metrics"]["calinski_harabasz_score"] >= 0
+    if model_name == "optics":
+        assert payload["noise_rows"] > 0
+        assert any(item["cluster"] == -1 for item in payload["cluster_sizes"])
+
+    report = client.get(payload["artifacts"][1]["download_url"])
+    assert report.status_code == 200
+    report_payload = json.loads(report.content.decode("utf-8"))
+    assert report_payload["model"] == model_name
+    assert report_payload["model_display_name"] == expected_display_name
+    assert report_payload["noise_rows"] == payload["noise_rows"]
+
+
+def test_reject_unknown_clustering_model(tmp_path):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    response = client.post(
+        "/api/data-mining/clustering",
+        data={
+            "model": "unknown_clusterer",
+            "feature_columns": json.dumps(["X1", "X2"]),
+            "cluster_count": "3",
+        },
+        files={
+            "dataset": (
+                "clustering.csv",
+                make_clustering_csv(),
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 422
+    assert "Unknown clustering model" in response.json()["detail"]
 
 
 def test_clustering_drops_incomplete_rows(tmp_path):

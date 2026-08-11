@@ -7,6 +7,7 @@ export interface DataMiningMethodItem {
   display_name: string
   description: string
   status: DataMiningStatus
+  uses_cluster_count: boolean
 }
 
 export interface DataMiningFeatureItem {
@@ -205,9 +206,12 @@ export interface ClusteringResponse {
   status: string
   message: string
   source_filename: string
-  model: 'kmeans'
+  model: string
+  model_display_name: string
   feature_columns: string[]
   cluster_count: number
+  requested_cluster_count: number | null
+  noise_rows: number
   random_state: number
   summary: ClusteringSummary
   metrics: ClusteringMetrics
@@ -303,12 +307,14 @@ export async function runClassification(
 export async function runClustering(
   dataset: File,
   featureColumns: string[],
-  clusterCount: number
+  clusterCount: number,
+  model: string = 'kmeans'
 ): Promise<ClusteringResponse> {
   const form = new FormData()
   form.append('dataset', dataset)
   form.append('feature_columns', JSON.stringify(featureColumns))
   form.append('cluster_count', String(clusterCount))
+  form.append('model', model)
   const response = await fetch(`${API_BASE_URL}/api/data-mining/clustering`, {
     method: 'POST',
     body: form

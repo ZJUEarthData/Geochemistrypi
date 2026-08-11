@@ -230,6 +230,7 @@ def create_router(
         tags=["data-mining"],
     )
     async def run_clustering(
+        model: str = Form("kmeans"),
         feature_columns: str = Form(...),
         cluster_count: int = Form(3),
         dataset: UploadFile = File(...),
@@ -248,6 +249,7 @@ def create_router(
                 content=content,
                 feature_columns=parsed_features,
                 cluster_count=cluster_count,
+                model_name=model,
             )
         except UploadTooLargeError as exc:
             raise HTTPException(

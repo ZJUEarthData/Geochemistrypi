@@ -51,6 +51,7 @@ const classificationTestSize = ref(0.2)
 const classificationModel = ref('logistic_regression')
 const clusteringFeatures = ref<string[]>([])
 const clusterCount = ref(3)
+const clusteringModel = ref('kmeans')
 const errorMessage = ref('')
 
 const missingStrategyOptions = computed<
@@ -137,6 +138,13 @@ const classificationFeatureOptions = computed(() =>
   numericColumns.value.filter((column) => column !== classificationTarget.value)
 )
 const classificationMethodOptions = computed(() => currentFeature.value?.methods || [])
+const clusteringMethodOptions = computed(() => currentFeature.value?.methods || [])
+const selectedClusteringMethod = computed(() =>
+  clusteringMethodOptions.value.find((method) => method.name === clusteringModel.value)
+)
+const clusteringUsesClusterCount = computed(
+  () => selectedClusteringMethod.value?.uses_cluster_count ?? true
+)
 const selectedStrategy = computed(() =>
   missingStrategyOptions.value.find((option) => option.value === missingStrategy.value)
 )
@@ -263,10 +271,13 @@ const runSummaryParameters = computed(() => {
     ]
   }
   if (isClustering.value) {
-    return [
+    const parameters = [
+      `${t('Model', '模型')}: ${selectedClusteringMethod.value?.display_name || clusteringModel.value}`,
       `${t('Features', '特征')}: ${clusteringFeatures.value.length}`,
-      `k: ${clusterCount.value}`
     ]
+    if (clusteringUsesClusterCount.value) parameters.push(`k: ${clusterCount.value}`)
+    else parameters.push(t('Cluster count: automatic', '簇数：自动估计'))
+    return parameters
   }
   return [`${t('Scope', '范围')}: ${t('Full dataset', '完整数据集')}`]
 })
@@ -339,6 +350,9 @@ watch(
   { deep: true }
 )
 watch(clusterCount, () => {
+  clusteringResult.value = null
+})
+watch(clusteringModel, () => {
   clusteringResult.value = null
 })
 onMounted(loadPage)
@@ -500,9 +514,12 @@ async function submitJob() {
       clusteringResult.value = await runClustering(
         datasetFile.value,
         clusteringFeatures.value,
-        clusterCount.value
+        clusterCount.value,
+        clusteringModel.value
       )
-      ElMessage.success(t('K-means clustering completed', 'K-means 聚类完成'))
+      ElMessage.success(
+        `${clusteringResult.value.model_display_name} ${t('completed', '已完成')}`
+      )
     } else {
       result.value = await profileDataset(datasetFile.value)
       ElMessage.success(t('Dataset profile completed', '数据集概览完成'))
@@ -1069,7 +1086,7 @@ function formatCell(value: unknown) {
                 <p class="guide-kicker">{{ t('CLUSTERING CONFIGURATION', '聚类配置') }}</p>
                 <h3>
                   {{
-                    t('Choose numeric features and the number of clusters', '选择数值特征和簇数')
+                    t('Choose numeric features and a clustering method', '选择数值特征和聚类方法')
                   }}
                 </h3>
               </div>
@@ -1081,11 +1098,23 @@ function formatCell(value: unknown) {
             <template v-if="columnInspection">
               <div class="form-grid">
                 <el-form-item :label="t('Model', '模型')">
-                  <el-input :model-value="t('Standardized K-means', '标准化 K-means')" disabled />
+                  <el-select v-model="clusteringModel" :disabled="running">
+                    <el-option
+                      v-for="method in clusteringMethodOptions"
+                      :key="method.name"
+                      :label="method.display_name"
+                      :value="method.name"
+                    />
+                  </el-select>
+                  <p class="field-help">{{ selectedClusteringMethod?.description }}</p>
                 </el-form-item>
 
                 <el-form-item :label="t('Number of clusters', '簇数')">
-                  <el-select v-model="clusterCount" :disabled="running">
+                  <el-select
+                    v-if="clusteringUsesClusterCount"
+                    v-model="clusterCount"
+                    :disabled="running"
+                  >
                     <el-option
                       v-for="count in 9"
                       :key="count + 1"
@@ -1093,6 +1122,11 @@ function formatCell(value: unknown) {
                       :value="count + 1"
                     />
                   </el-select>
+                  <el-input
+                    v-else
+                    :model-value="t('Estimated automatically', '由算法自动估计')"
+                    disabled
+                  />
                 </el-form-item>
               </div>
 
@@ -1825,7 +1859,7 @@ function formatCell(value: unknown) {
           <template #header>
             <div class="result-heading">
               <div>
-                <h2>{{ t('K-means clustering completed', 'K-means 聚类完成') }}</h2>
+                <h2>{{ clusteringResult.model_display_name }} {{ t('completed', '已完成') }}</h2>
                 <p>
                   {{ clusteringResult.source_filename }} · {{ t('Job ID', '任务 ID') }}:
                   {{ clusteringResult.job_id }}
@@ -1839,6 +1873,9 @@ function formatCell(value: unknown) {
             <div>
               <span>{{ t('Clusters', '簇数') }}</span>
               <strong>{{ clusteringResult.cluster_count }}</strong>
+              <small v-if="clusteringResult.noise_rows">
+                {{ clusteringResult.noise_rows }} {{ t('noise rows', '行噪声数据') }}
+              </small>
             </div>
             <div>
               <span>{{ t('Feature columns', '特征列') }}</span>

@@ -64,6 +64,7 @@ class DataMiningMethodItem(BaseModel):
     display_name: str
     description: str
     status: Literal["verified", "testing"] = "verified"
+    uses_cluster_count: bool = False
 
 
 class DataMiningFeatureItem(BaseModel):
@@ -266,9 +267,12 @@ class ClusteringResponse(BaseModel):
     status: str
     message: str
     source_filename: str
-    model: Literal["kmeans"]
+    model: str
+    model_display_name: str
     feature_columns: list[str]
     cluster_count: int
+    requested_cluster_count: int | None = None
+    noise_rows: int = 0
     random_state: int
     summary: ClusteringSummary
     metrics: ClusteringMetrics

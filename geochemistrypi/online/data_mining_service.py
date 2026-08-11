@@ -12,7 +12,6 @@ from uuid import uuid4
 
 import numpy as np
 import pandas as pd
-from sklearn.cluster import KMeans
 from sklearn.metrics import (
     accuracy_score,
     calinski_harabasz_score,
@@ -31,9 +30,11 @@ from sklearn.preprocessing import StandardScaler
 
 from .data_mining_models import (
     CLASSIFICATION_MODELS,
+    CLUSTERING_MODELS,
     REGRESSION_MODELS,
     extract_linear_parameters,
     get_classification_model,
+    get_clustering_model,
     get_regression_model,
 )
 from .schemas import (
@@ -161,11 +162,21 @@ class DataMiningService:
                     description="Clustering",
                     status="verified",
                     status_message=(
-                        "已完成数值特征标准化、K-means 聚类、簇数设置、"
-                        "三项聚类评价指标、聚类中心和结果下载验证。"
+                        "已接入 v0.8 K-Means、DBSCAN、Agglomerative、"
+                        "Affinity Propagation、Mean Shift 和 OPTICS，完成标准化、"
+                        "噪声识别、三项聚类评价指标、聚类中心和结果下载验证。"
                     ),
                     input_formats=[".xlsx", ".csv"],
                     outputs=["聚类指标", "簇大小与中心", "聚类结果 CSV", "JSON 模型报告"],
+                    methods=[
+                        DataMiningMethodItem(
+                            name=definition.name,
+                            display_name=definition.display_name,
+                            description=definition.description,
+                            uses_cluster_count=definition.uses_cluster_count,
+                        )
+                        for definition in CLUSTERING_MODELS.values()
+                    ],
                 ),
             ]
         )
@@ -881,7 +892,12 @@ class DataMiningService:
         content: bytes,
         feature_columns: list[str],
         cluster_count: int = 3,
+        model_name: str = "kmeans",
     ) -> ClusteringResponse:
+        try:
+            model_definition = get_clustering_model(model_name)
+        except ValueError as exc:
+            raise InvalidDatasetError(str(exc)) from exc
         suffix = self._validate_upload(filename, content)
         dataframe = self._read_dataframe(suffix, content)
         self._validate_dataframe(dataframe)
@@ -914,51 +930,73 @@ class DataMiningService:
         )
         usable_rows = int(model_data.shape[0])
         dropped_rows = int(dataframe.shape[0] - usable_rows)
-        minimum_rows = max(10, cluster_count * 2)
+        minimum_rows = (
+            max(10, cluster_count * 2)
+            if model_definition.uses_cluster_count
+            else 10
+        )
         if usable_rows < minimum_rows:
             raise InvalidDatasetError(
                 "Clustering requires at least "
-                f"{minimum_rows} complete numeric rows for {cluster_count} clusters"
+                f"{minimum_rows} complete numeric rows"
             )
 
         feature_data = model_data.astype(float)
         distinct_rows = int(
             np.unique(feature_data.to_numpy(dtype=float), axis=0).shape[0]
         )
-        if distinct_rows < cluster_count:
+        required_distinct_rows = (
+            cluster_count if model_definition.uses_cluster_count else 2
+        )
+        if distinct_rows < required_distinct_rows:
+            if model_definition.uses_cluster_count:
+                raise InvalidDatasetError(
+                    "The dataset must contain at least as many distinct feature "
+                    f"rows as clusters for {model_definition.display_name}"
+                )
             raise InvalidDatasetError(
-                "The dataset must contain at least as many distinct feature rows "
-                "as clusters"
+                "The dataset must contain at least two distinct feature rows for "
+                f"{model_definition.display_name}"
             )
 
         scaler = StandardScaler()
         scaled_features = scaler.fit_transform(feature_data)
-        model = KMeans(
-            n_clusters=cluster_count,
-            random_state=42,
-            n_init=10,
-        )
+        model = model_definition.factory(cluster_count)
         labels = model.fit_predict(scaled_features)
-        if int(np.unique(labels).shape[0]) != cluster_count:
+        unique_labels = sorted(int(value) for value in np.unique(labels))
+        valid_cluster_labels = [label for label in unique_labels if label != -1]
+        actual_cluster_count = len(valid_cluster_labels)
+        noise_rows = int(np.sum(labels == -1))
+        if model_definition.uses_cluster_count and actual_cluster_count != cluster_count:
             raise InvalidDatasetError(
-                "K-means could not produce the requested number of distinct clusters"
+                f"{model_definition.display_name} could not produce the requested "
+                "number of distinct clusters"
+            )
+        metric_mask = labels != -1
+        metric_rows = int(np.sum(metric_mask))
+        if actual_cluster_count < 2 or metric_rows <= actual_cluster_count:
+            raise InvalidDatasetError(
+                f"{model_definition.display_name} produced fewer than two usable "
+                "clusters. Try different data or model parameters."
             )
 
-        silhouette_sample_size = min(10_000, usable_rows)
+        metric_features = scaled_features[metric_mask]
+        metric_labels = labels[metric_mask]
+        silhouette_sample_size = min(10_000, metric_rows)
         metrics = ClusteringMetrics(
             silhouette_score=float(
                 silhouette_score(
-                    scaled_features,
-                    labels,
+                    metric_features,
+                    metric_labels,
                     sample_size=silhouette_sample_size,
                     random_state=42,
                 )
             ),
             davies_bouldin_score=float(
-                davies_bouldin_score(scaled_features, labels)
+                davies_bouldin_score(metric_features, metric_labels)
             ),
             calinski_harabasz_score=float(
-                calinski_harabasz_score(scaled_features, labels)
+                calinski_harabasz_score(metric_features, metric_labels)
             ),
         )
         cluster_sizes = [
@@ -966,9 +1004,9 @@ class DataMiningService:
                 cluster=cluster,
                 rows=int(np.sum(labels == cluster)),
             )
-            for cluster in range(cluster_count)
+            for cluster in unique_labels
         ]
-        centers_original = scaler.inverse_transform(model.cluster_centers_)
+        original_values = feature_data.to_numpy(dtype=float)
         cluster_centers = [
             ClusterCenterItem(
                 cluster=cluster,
@@ -976,12 +1014,12 @@ class DataMiningService:
                     feature: float(value)
                     for feature, value in zip(
                         features,
-                        centers_original[cluster],
+                        original_values[labels == cluster].mean(axis=0),
                         strict=True,
                     )
                 },
             )
-            for cluster in range(cluster_count)
+            for cluster in valid_cluster_labels
         ]
 
         assignment_frame = feature_data.copy()
@@ -1009,16 +1047,21 @@ class DataMiningService:
             if dropped_rows
             else "所有数据行均可用于聚类。"
         ]
-        if usable_rows > silhouette_sample_size:
+        if metric_rows > 10_000:
             warnings.append(
                 "Silhouette 指标使用固定随机种子抽样 10,000 行计算。"
+            )
+        if noise_rows:
+            warnings.append(
+                f"{model_definition.display_name} 将 {noise_rows} 行识别为噪声；"
+                "聚类指标和中心不包含这些噪声行。"
             )
         summary = ClusteringSummary(
             original_rows=int(dataframe.shape[0]),
             usable_rows=usable_rows,
             dropped_rows=dropped_rows,
             feature_count=len(features),
-            cluster_count=cluster_count,
+            cluster_count=actual_cluster_count,
         )
 
         job_id = uuid4().hex
@@ -1032,12 +1075,21 @@ class DataMiningService:
             encoding="utf-8-sig",
         )
         report_payload = {
-            "report_version": "kmeans-clustering-v1",
+            "report_version": (
+                "kmeans-clustering-v1"
+                if model_name == "kmeans"
+                else "v080-clustering-v1"
+            ),
             "created_utc": datetime.now(timezone.utc).isoformat(),
             "source_filename": Path(filename or "dataset").name,
-            "model": "kmeans",
+            "model": model_name,
+            "model_display_name": model_definition.display_name,
             "feature_columns": features,
-            "cluster_count": cluster_count,
+            "cluster_count": actual_cluster_count,
+            "requested_cluster_count": (
+                cluster_count if model_definition.uses_cluster_count else None
+            ),
+            "noise_rows": noise_rows,
             "random_state": 42,
             "summary": summary.model_dump(),
             "metrics": metrics.model_dump(),
@@ -1054,11 +1106,16 @@ class DataMiningService:
         return ClusteringResponse(
             job_id=job_id,
             status="success",
-            message="K-means clustering completed",
+            message=f"{model_definition.display_name} completed",
             source_filename=Path(filename or "dataset").name,
-            model="kmeans",
+            model=model_name,
+            model_display_name=model_definition.display_name,
             feature_columns=features,
-            cluster_count=cluster_count,
+            cluster_count=actual_cluster_count,
+            requested_cluster_count=(
+                cluster_count if model_definition.uses_cluster_count else None
+            ),
+            noise_rows=noise_rows,
             random_state=42,
             summary=summary,
             metrics=metrics,
