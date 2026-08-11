@@ -39,3 +39,20 @@ Online 使用后端模型注册表动态提供以下已验证方法：
 - Ridge Regression
 
 请求仍使用 `/api/data-mining/regression`，新增可选表单字段 `model`。未提供时默认使用 `linear_regression`，因此旧版调用方式保持兼容。模型名称、显示名称、指标、方程、系数和预测均写入版本化 JSON 报告。
+
+## 已接入 Online 的 v0.8 分类方法
+
+以下方法由同一后端注册表动态提供，并已经过分层训练/测试划分、指标、混淆矩阵和下载报告验证：
+
+- Logistic Regression
+- Support Vector Machine
+- Decision Tree
+- Random Forest
+- Extra-Trees
+- Multi-layer Perceptron
+- Gradient Boosting
+- K-Nearest Neighbors
+- Stochastic Gradient Descent
+- AdaBoost
+
+请求继续使用 `/api/data-mining/classification`，新增可选表单字段 `model`；未提供时默认使用 `logistic_regression`。XGBoost 暂不标记为可用，待其现代可选依赖和模型安全边界单独完成验证后再加入注册表。

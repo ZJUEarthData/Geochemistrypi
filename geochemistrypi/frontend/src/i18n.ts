@@ -174,8 +174,8 @@ const exactEnglish: Record<string, string> = {
     'Verified column selection, missing-value handling, result preview, CSV download, and JSON processing record.',
   '已接入 v0.8 线性、二阶多项式、Lasso、Elastic Net、Bayesian Ridge 和 Ridge 回归，并完成固定随机种子训练测试划分、R²/MAE/RMSE、系数、预测结果和报告下载验证。':
     'Verified v0.8 Linear, second-order Polynomial, Lasso, Elastic Net, Bayesian Ridge, and Ridge regression with a fixed-seed train/test split, R²/MAE/RMSE, coefficients, predictions, and report downloads.',
-  '已完成数值特征标准化、逻辑回归、分层训练测试划分、Accuracy/Precision/Recall/F1、混淆矩阵和结果下载验证。':
-    'Verified numeric-feature standardization, logistic regression, stratified train/test splitting, Accuracy/Precision/Recall/F1, a confusion matrix, and result downloads.',
+  '已接入 v0.8 Logistic、SVM、Decision Tree、Random Forest、Extra-Trees、MLP、Gradient Boosting、KNN、SGD 和 AdaBoost，并完成分层训练测试划分、Accuracy/Precision/Recall/F1、混淆矩阵和结果下载验证。':
+    'Verified v0.8 Logistic Regression, SVM, Decision Tree, Random Forest, Extra-Trees, MLP, Gradient Boosting, KNN, SGD, and AdaBoost with stratified train/test splitting, Accuracy/Precision/Recall/F1, a confusion matrix, and result downloads.',
   '已完成数值特征标准化、K-means 聚类、簇数设置、三项聚类评价指标、聚类中心和结果下载验证。':
     'Verified numeric-feature standardization, K-means clustering, cluster-count configuration, three evaluation metrics, cluster centers, and result downloads.',
   总质量或总浓度: 'Total mass or concentration',

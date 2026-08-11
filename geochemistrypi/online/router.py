@@ -183,6 +183,7 @@ def create_router(
         tags=["data-mining"],
     )
     async def run_classification(
+        model: str = Form("logistic_regression"),
         target_column: str = Form(...),
         feature_columns: str = Form(...),
         test_size: float = Form(0.2),
@@ -203,6 +204,7 @@ def create_router(
                 target_column=target_column,
                 feature_columns=parsed_features,
                 test_size=test_size,
+                model_name=model,
             )
         except UploadTooLargeError as exc:
             raise HTTPException(

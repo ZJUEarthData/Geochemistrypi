@@ -161,7 +161,8 @@ export interface ClassificationResponse {
   status: string
   message: string
   source_filename: string
-  model: 'logistic_regression'
+  model: string
+  model_display_name: string
   target_column: string
   feature_columns: string[]
   test_size: number
@@ -283,13 +284,15 @@ export async function runClassification(
   dataset: File,
   targetColumn: string,
   featureColumns: string[],
-  testSize: number
+  testSize: number,
+  model: string = 'logistic_regression'
 ): Promise<ClassificationResponse> {
   const form = new FormData()
   form.append('dataset', dataset)
   form.append('target_column', targetColumn)
   form.append('feature_columns', JSON.stringify(featureColumns))
   form.append('test_size', String(testSize))
+  form.append('model', model)
   const response = await fetch(`${API_BASE_URL}/api/data-mining/classification`, {
     method: 'POST',
     body: form

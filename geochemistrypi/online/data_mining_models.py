@@ -5,16 +5,29 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from sklearn.base import RegressorMixin
+from sklearn.base import ClassifierMixin, RegressorMixin
+from sklearn.ensemble import (
+    AdaBoostClassifier,
+    ExtraTreesClassifier,
+    GradientBoostingClassifier,
+    RandomForestClassifier,
+)
 from sklearn.linear_model import (
     BayesianRidge,
     ElasticNet,
     Lasso,
     LinearRegression,
+    LogisticRegression,
     Ridge,
+    SGDClassifier,
 )
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.preprocessing import PolynomialFeatures
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
 
 
 @dataclass(frozen=True)
@@ -23,6 +36,14 @@ class RegressionModelDefinition:
     display_name: str
     description: str
     factory: Callable[[], RegressorMixin | Pipeline]
+
+
+@dataclass(frozen=True)
+class ClassificationModelDefinition:
+    name: str
+    display_name: str
+    description: str
+    factory: Callable[[], ClassifierMixin | Pipeline]
 
 
 REGRESSION_MODELS: dict[str, RegressionModelDefinition] = {
@@ -76,6 +97,105 @@ REGRESSION_MODELS: dict[str, RegressionModelDefinition] = {
 }
 
 
+CLASSIFICATION_MODELS: dict[str, ClassificationModelDefinition] = {
+    definition.name: definition
+    for definition in (
+        ClassificationModelDefinition(
+            name="logistic_regression",
+            display_name="Logistic Regression",
+            description="Standardized logistic classification with L2 regularization.",
+            factory=lambda: make_pipeline(
+                StandardScaler(),
+                LogisticRegression(max_iter=2_000, random_state=42),
+            ),
+        ),
+        ClassificationModelDefinition(
+            name="support_vector_machine",
+            display_name="Support Vector Machine",
+            description="Standardized nonlinear classification with an RBF kernel.",
+            factory=lambda: make_pipeline(StandardScaler(), SVC(kernel="rbf")),
+        ),
+        ClassificationModelDefinition(
+            name="decision_tree",
+            display_name="Decision Tree",
+            description="Decision-tree classification with a reproducible random seed.",
+            factory=lambda: DecisionTreeClassifier(random_state=42),
+        ),
+        ClassificationModelDefinition(
+            name="random_forest",
+            display_name="Random Forest",
+            description="Ensemble classification using 200 randomized decision trees.",
+            factory=lambda: RandomForestClassifier(
+                n_estimators=200,
+                random_state=42,
+                n_jobs=-1,
+            ),
+        ),
+        ClassificationModelDefinition(
+            name="extra_trees",
+            display_name="Extra-Trees",
+            description="Extremely randomized tree ensemble classification.",
+            factory=lambda: ExtraTreesClassifier(
+                n_estimators=200,
+                random_state=42,
+                n_jobs=-1,
+            ),
+        ),
+        ClassificationModelDefinition(
+            name="multi_layer_perceptron",
+            display_name="Multi-layer Perceptron",
+            description="Standardized neural-network classification with one hidden layer.",
+            factory=lambda: make_pipeline(
+                StandardScaler(),
+                MLPClassifier(
+                    hidden_layer_sizes=(100,),
+                    max_iter=2_000,
+                    random_state=42,
+                ),
+            ),
+        ),
+        ClassificationModelDefinition(
+            name="gradient_boosting",
+            display_name="Gradient Boosting",
+            description="Sequential gradient-boosted decision-tree classification.",
+            factory=lambda: GradientBoostingClassifier(random_state=42),
+        ),
+        ClassificationModelDefinition(
+            name="k_nearest_neighbors",
+            display_name="K-Nearest Neighbors",
+            description="Standardized classification using the five nearest samples.",
+            factory=lambda: make_pipeline(
+                StandardScaler(),
+                KNeighborsClassifier(n_neighbors=5),
+            ),
+        ),
+        ClassificationModelDefinition(
+            name="stochastic_gradient_descent",
+            display_name="Stochastic Gradient Descent",
+            description="Standardized linear classification optimized by SGD.",
+            factory=lambda: make_pipeline(
+                StandardScaler(),
+                SGDClassifier(
+                    loss="log_loss",
+                    max_iter=2_000,
+                    tol=1e-3,
+                    random_state=42,
+                ),
+            ),
+        ),
+        ClassificationModelDefinition(
+            name="adaboost",
+            display_name="AdaBoost",
+            description="Adaptive boosting classification using 100 estimators.",
+            factory=lambda: AdaBoostClassifier(
+                n_estimators=100,
+                random_state=42,
+            ),
+        ),
+    )
+}
+
+
 def get_regression_model(name: str) -> RegressionModelDefinition:
     try:
         return REGRESSION_MODELS[name]
@@ -83,6 +203,16 @@ def get_regression_model(name: str) -> RegressionModelDefinition:
         choices = ", ".join(REGRESSION_MODELS)
         raise ValueError(
             f"Unknown regression model '{name}'. Choose one of: {choices}"
+        ) from exc
+
+
+def get_classification_model(name: str) -> ClassificationModelDefinition:
+    try:
+        return CLASSIFICATION_MODELS[name]
+    except KeyError as exc:
+        choices = ", ".join(CLASSIFICATION_MODELS)
+        raise ValueError(
+            f"Unknown classification model '{name}'. Choose one of: {choices}"
         ) from exc
 
 
@@ -107,8 +237,11 @@ def extract_linear_parameters(
 
 
 __all__ = [
+    "CLASSIFICATION_MODELS",
+    "ClassificationModelDefinition",
     "REGRESSION_MODELS",
     "RegressionModelDefinition",
     "extract_linear_parameters",
+    "get_classification_model",
     "get_regression_model",
 ]

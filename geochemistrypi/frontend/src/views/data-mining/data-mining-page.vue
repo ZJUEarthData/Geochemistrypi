@@ -48,6 +48,7 @@ const regressionModel = ref('linear_regression')
 const classificationTarget = ref('')
 const classificationFeatures = ref<string[]>([])
 const classificationTestSize = ref(0.2)
+const classificationModel = ref('logistic_regression')
 const clusteringFeatures = ref<string[]>([])
 const clusterCount = ref(3)
 const errorMessage = ref('')
@@ -135,6 +136,7 @@ const classificationTargetColumns = computed(
 const classificationFeatureOptions = computed(() =>
   numericColumns.value.filter((column) => column !== classificationTarget.value)
 )
+const classificationMethodOptions = computed(() => currentFeature.value?.methods || [])
 const selectedStrategy = computed(() =>
   missingStrategyOptions.value.find((option) => option.value === missingStrategy.value)
 )
@@ -251,6 +253,11 @@ const runSummaryParameters = computed(() => {
   if (isClassification.value) {
     return [
       `${t('Target', '目标')}: ${classificationTarget.value || '—'}`,
+      `${t('Model', '模型')}: ${
+        classificationMethodOptions.value.find(
+          (method) => method.name === classificationModel.value
+        )?.display_name || classificationModel.value
+      }`,
       `${t('Features', '特征')}: ${classificationFeatures.value.length}`,
       `${t('Test size', '测试集')}: ${formatPercent(classificationTestSize.value)}`
     ]
@@ -319,6 +326,9 @@ watch(
   { deep: true }
 )
 watch(classificationTestSize, () => {
+  classificationResult.value = null
+})
+watch(classificationModel, () => {
   classificationResult.value = null
 })
 watch(
@@ -480,9 +490,12 @@ async function submitJob() {
         datasetFile.value,
         classificationTarget.value,
         classificationFeatures.value,
-        classificationTestSize.value
+        classificationTestSize.value,
+        classificationModel.value
       )
-      ElMessage.success(t('Logistic classification completed', '逻辑分类完成'))
+      ElMessage.success(
+        `${classificationResult.value.model_display_name} ${t('completed', '已完成')}`
+      )
     } else if (isClustering.value) {
       clusteringResult.value = await runClustering(
         datasetFile.value,
@@ -945,10 +958,21 @@ function formatCell(value: unknown) {
             <template v-if="columnInspection">
               <div class="form-grid">
                 <el-form-item :label="t('Model', '模型')">
-                  <el-input
-                    :model-value="t('Standardized logistic regression', '标准化逻辑回归')"
-                    disabled
-                  />
+                  <el-select v-model="classificationModel" :disabled="running">
+                    <el-option
+                      v-for="method in classificationMethodOptions"
+                      :key="method.name"
+                      :label="method.display_name"
+                      :value="method.name"
+                    />
+                  </el-select>
+                  <p class="field-help">
+                    {{
+                      classificationMethodOptions.find(
+                        (method) => method.name === classificationModel
+                      )?.description
+                    }}
+                  </p>
                 </el-form-item>
 
                 <el-form-item :label="t('Test dataset size', '测试集比例')">
@@ -1635,7 +1659,9 @@ function formatCell(value: unknown) {
           <template #header>
             <div class="result-heading">
               <div>
-                <h2>{{ t('Logistic classification completed', '逻辑分类完成') }}</h2>
+                <h2>
+                  {{ classificationResult.model_display_name }} {{ t('completed', '已完成') }}
+                </h2>
                 <p>
                   {{ classificationResult.source_filename }} · {{ t('Job ID', '任务 ID') }}:
                   {{ classificationResult.job_id }}

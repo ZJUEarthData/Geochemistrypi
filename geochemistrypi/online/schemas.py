@@ -222,7 +222,8 @@ class ClassificationResponse(BaseModel):
     status: str
     message: str
     source_filename: str
-    model: Literal["logistic_regression"]
+    model: str
+    model_display_name: str
     target_column: str
     feature_columns: list[str]
     test_size: float

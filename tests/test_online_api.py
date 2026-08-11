@@ -522,6 +522,19 @@ def test_data_mining_catalog_starts_with_verified_dataset_profile(tmp_path):
         "预测结果 CSV",
         "JSON 模型报告",
     ]
+    assert [method["name"] for method in features[3]["methods"]] == [
+        "logistic_regression",
+        "support_vector_machine",
+        "decision_tree",
+        "random_forest",
+        "extra_trees",
+        "multi_layer_perceptron",
+        "gradient_boosting",
+        "k_nearest_neighbors",
+        "stochastic_gradient_descent",
+        "adaboost",
+    ]
+    assert all(method["status"] == "verified" for method in features[3]["methods"])
     assert features[4]["outputs"] == [
         "聚类指标",
         "簇大小与中心",
@@ -1148,6 +1161,83 @@ def test_logistic_classification_returns_metrics_confusion_and_downloads(tmp_pat
     assert report["report_version"] == "logistic-classification-v1"
     assert report["random_state"] == 42
     assert report["metrics"]["accuracy"] >= 0.9
+
+
+@pytest.mark.parametrize(
+    ("model_name", "expected_display_name"),
+    [
+        ("logistic_regression", "Logistic Regression"),
+        ("support_vector_machine", "Support Vector Machine"),
+        ("decision_tree", "Decision Tree"),
+        ("random_forest", "Random Forest"),
+        ("extra_trees", "Extra-Trees"),
+        ("multi_layer_perceptron", "Multi-layer Perceptron"),
+        ("gradient_boosting", "Gradient Boosting"),
+        ("k_nearest_neighbors", "K-Nearest Neighbors"),
+        ("stochastic_gradient_descent", "Stochastic Gradient Descent"),
+        ("adaboost", "AdaBoost"),
+    ],
+)
+def test_v080_classification_registry_runs_verified_models(
+    tmp_path,
+    model_name,
+    expected_display_name,
+):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    response = client.post(
+        "/api/data-mining/classification",
+        data={
+            "model": model_name,
+            "target_column": "Class",
+            "feature_columns": json.dumps(["X1", "X2"]),
+            "test_size": "0.25",
+        },
+        files={
+            "dataset": (
+                "classification.csv",
+                make_classification_csv(),
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["model"] == model_name
+    assert payload["model_display_name"] == expected_display_name
+    assert payload["classes"] == ["high", "low"]
+    assert payload["metrics"]["accuracy"] >= 0.5
+    assert payload["metrics"]["f1_macro"] >= 0.5
+    assert sum(item["count"] for item in payload["confusion_matrix"]) == 10
+
+    report = client.get(payload["artifacts"][1]["download_url"])
+    assert report.status_code == 200
+    report_payload = json.loads(report.content.decode("utf-8"))
+    assert report_payload["model"] == model_name
+    assert report_payload["model_display_name"] == expected_display_name
+
+
+def test_reject_unknown_classification_model(tmp_path):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    response = client.post(
+        "/api/data-mining/classification",
+        data={
+            "model": "unknown_classifier",
+            "target_column": "Class",
+            "feature_columns": json.dumps(["X1", "X2"]),
+            "test_size": "0.2",
+        },
+        files={
+            "dataset": (
+                "classification.csv",
+                make_classification_csv(),
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 422
+    assert "Unknown classification model" in response.json()["detail"]
 
 
 def test_classification_drops_incomplete_rows_before_split(tmp_path):

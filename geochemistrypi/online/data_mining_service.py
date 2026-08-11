@@ -13,7 +13,6 @@ from uuid import uuid4
 import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
-from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     accuracy_score,
     calinski_harabasz_score,
@@ -28,12 +27,13 @@ from sklearn.metrics import (
     silhouette_score,
 )
 from sklearn.model_selection import train_test_split
-from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from .data_mining_models import (
+    CLASSIFICATION_MODELS,
     REGRESSION_MODELS,
     extract_linear_parameters,
+    get_classification_model,
     get_regression_model,
 )
 from .schemas import (
@@ -140,11 +140,21 @@ class DataMiningService:
                     description="Classification",
                     status="verified",
                     status_message=(
-                        "已完成数值特征标准化、逻辑回归、分层训练测试划分、"
+                        "已接入 v0.8 Logistic、SVM、Decision Tree、Random Forest、"
+                        "Extra-Trees、MLP、Gradient Boosting、KNN、SGD 和 AdaBoost，"
+                        "并完成分层训练测试划分、"
                         "Accuracy/Precision/Recall/F1、混淆矩阵和结果下载验证。"
                     ),
                     input_formats=[".xlsx", ".csv"],
                     outputs=["分类指标", "混淆矩阵", "预测结果 CSV", "JSON 模型报告"],
+                    methods=[
+                        DataMiningMethodItem(
+                            name=definition.name,
+                            display_name=definition.display_name,
+                            description=definition.description,
+                        )
+                        for definition in CLASSIFICATION_MODELS.values()
+                    ],
                 ),
                 DataMiningFeatureItem(
                     name="clustering",
@@ -625,7 +635,12 @@ class DataMiningService:
         target_column: str,
         feature_columns: list[str],
         test_size: float = 0.2,
+        model_name: str = "logistic_regression",
     ) -> ClassificationResponse:
+        try:
+            model_definition = get_classification_model(model_name)
+        except ValueError as exc:
+            raise InvalidDatasetError(str(exc)) from exc
         suffix = self._validate_upload(filename, content)
         dataframe = self._read_dataframe(suffix, content)
         self._validate_dataframe(dataframe)
@@ -706,10 +721,7 @@ class DataMiningService:
             stratify=target,
         )
 
-        model = make_pipeline(
-            StandardScaler(),
-            LogisticRegression(max_iter=1000, random_state=42),
-        )
+        model = model_definition.factory()
         model.fit(features_train, target_train)
         predicted = model.predict(features_test)
         classes = [str(value) for value in model.classes_]
@@ -801,10 +813,15 @@ class DataMiningService:
             encoding="utf-8-sig",
         )
         report_payload = {
-            "report_version": "logistic-classification-v1",
+            "report_version": (
+                "logistic-classification-v1"
+                if model_name == "logistic_regression"
+                else "v080-classification-v1"
+            ),
             "created_utc": datetime.now(timezone.utc).isoformat(),
             "source_filename": Path(filename or "dataset").name,
-            "model": "logistic_regression",
+            "model": model_name,
+            "model_display_name": model_definition.display_name,
             "target_column": target_column,
             "feature_columns": features,
             "test_size": test_size,
@@ -824,9 +841,10 @@ class DataMiningService:
         return ClassificationResponse(
             job_id=job_id,
             status="success",
-            message="Logistic classification completed",
+            message=f"{model_definition.display_name} completed",
             source_filename=Path(filename or "dataset").name,
-            model="logistic_regression",
+            model=model_name,
+            model_display_name=model_definition.display_name,
             target_column=target_column,
             feature_columns=features,
             test_size=test_size,
