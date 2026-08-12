@@ -177,6 +177,34 @@ export interface ClassificationResponse {
   artifacts: ArtifactResponse[]
 }
 
+export interface ModelInferenceSummary {
+  original_rows: number
+  predicted_rows: number
+  excluded_rows: number
+  imputed_rows: number
+  feature_count: number
+}
+
+export interface ModelInferenceResponse {
+  job_id: string
+  training_job_id: string
+  status: string
+  message: string
+  source_filename: string
+  task_type: 'regression' | 'classification'
+  model: string
+  model_display_name: string
+  target_column: string
+  feature_columns: string[]
+  prediction_column: string
+  pipeline_schema_version: string
+  software_version: string
+  summary: ModelInferenceSummary
+  preview: Record<string, unknown>[]
+  warnings: string[]
+  artifacts: ArtifactResponse[]
+}
+
 export interface ClusteringSummary {
   original_rows: number
   usable_rows: number
@@ -299,6 +327,7 @@ export interface TimeSeriesBinItem {
   age: number
   mean_proportion: number | null
   uncertainty_2sigma: number | null
+  sample_count: number
 }
 
 export interface ProbabilityModelInfo {
@@ -330,14 +359,21 @@ export interface TimeSeriesResponse {
   message: string
   source_filename: string
   age_column: string
-  age_max_column: string
-  probability_column: string
-  latitude_column: string
-  longitude_column: string
+  age_max_column: string | null
+  probability_column: string | null
+  latitude_column: string | null
+  longitude_column: string | null
   age_unit: 'Ma' | 'Ga'
   bin_width: number
   bootstrap_iterations: number
-  random_state: number
+  random_state: number | null
+  analysis_type: 'subaerial_proportion' | 'element_mean'
+  value_column: string | null
+  value_unit: string | null
+  uncertainty_method: 'bootstrap_2sigma' | '2_sem'
+  filter_column: string | null
+  filter_min: number | null
+  filter_max: number | null
   probability_source: 'uploaded' | 'model_predicted'
   probability_model: ProbabilityModelInfo | null
   prediction_summary: ProbabilityPredictionSummary | null
@@ -434,6 +470,22 @@ export async function runClassification(
     body: form
   })
   return parseResponse<ClassificationResponse>(response)
+}
+
+export async function runModelInference(
+  trainingJobId: string,
+  dataset: File,
+  taskId?: string
+): Promise<ModelInferenceResponse> {
+  const form = new FormData()
+  form.append('training_job_id', trainingJobId)
+  form.append('dataset', dataset)
+  const response = await fetch(`${API_BASE_URL}/api/data-mining/inference`, {
+    method: 'POST',
+    headers: taskHeaders(taskId),
+    body: form
+  })
+  return parseResponse<ModelInferenceResponse>(response)
 }
 
 export async function runClustering(
@@ -549,6 +601,39 @@ export async function runPredictedTimeSeries(
   form.append('bin_width', String(binWidth))
   form.append('bootstrap_iterations', String(bootstrapIterations))
   const response = await fetch(`${API_BASE_URL}/api/data-mining/time-series/predict`, {
+    method: 'POST',
+    headers: taskHeaders(taskId),
+    body: form
+  })
+  return parseResponse<TimeSeriesResponse>(response)
+}
+
+export async function runElementTimeSeries(
+  dataset: File,
+  columns: {
+    age: string
+    value: string
+    filter?: string
+  },
+  ageUnit: 'Ma' | 'Ga',
+  binWidth: number,
+  valueUnit: string,
+  filterRange?: { minimum: number; maximum: number },
+  taskId?: string
+): Promise<TimeSeriesResponse> {
+  const form = new FormData()
+  form.append('dataset', dataset)
+  form.append('age_column', columns.age)
+  form.append('value_column', columns.value)
+  form.append('age_unit', ageUnit)
+  form.append('bin_width', String(binWidth))
+  form.append('value_unit', valueUnit)
+  if (columns.filter && filterRange) {
+    form.append('filter_column', columns.filter)
+    form.append('filter_min', String(filterRange.minimum))
+    form.append('filter_max', String(filterRange.maximum))
+  }
+  const response = await fetch(`${API_BASE_URL}/api/data-mining/time-series/element-mean`, {
     method: 'POST',
     headers: taskHeaders(taskId),
     body: form

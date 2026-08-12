@@ -448,8 +448,10 @@ def extract_linear_parameters(
     estimator = fitted_model
     coefficient_names = feature_names
     if isinstance(fitted_model, Pipeline):
-        polynomial = fitted_model.named_steps["polynomialfeatures"]
-        estimator = fitted_model.named_steps["linearregression"]
+        estimator = fitted_model.named_steps.get("model", fitted_model)
+    if isinstance(estimator, Pipeline) and "polynomialfeatures" in estimator.named_steps:
+        polynomial = estimator.named_steps["polynomialfeatures"]
+        estimator = estimator.named_steps["linearregression"]
         coefficient_names = [
             str(name)
             for name in polynomial.get_feature_names_out(feature_names)

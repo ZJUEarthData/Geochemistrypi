@@ -11,11 +11,14 @@ The MVP provides:
 - a dynamic chemical-modeling catalog;
 - method-level `verified` and `testing` readiness states;
 - structured input documentation with formulas, columns, meanings, units, types, examples, and notes;
-- `.xlsx` and UTF-8 `.csv` upload with a 10 MB limit;
+- `.xlsx` and UTF-8 `.csv` upload with a 20 MB limit;
 - a 30-minute hard limit for every calculation process;
 - one site-wide calculation slot; additional calculation requests wait in a serial queue;
 - synchronous calculation in an isolated job directory;
 - result-file download;
+- unified supervised-learning Pipelines for regression and classification;
+- downloadable `trained_pipeline.joblib` model bundles with feature, target, model, software-version, and training metadata;
+- independent Application Data inference through `POST /api/data-mining/inference`, using a training Job ID and an `.xlsx` or `.csv` dataset without requiring the target column;
 - readable validation errors;
 - backend regression tests.
 
@@ -39,11 +42,17 @@ For `second_order`, `c0` must be greater than zero, while `k` and `t` must be gr
 
 Other catalog entries remain visible for inspection but are marked `testing` and cannot run until scientific and interface validation is complete.
 
+### Saved Pipeline and Application Data inference
+
+Every successful regression or classification job saves a single fitted scikit-learn Pipeline. The Pipeline contains the training-set median imputer and the selected estimator, including any estimator-specific transformations such as standardization. Application Data must contain columns whose names match every training feature. Rows with at least one numeric feature are predicted; missing feature values are imputed with the medians learned from the training split. Rows for which every required feature is missing or non-numeric are retained in the downloaded CSV and marked as excluded.
+
+The inference API accepts only a server-created training Job ID. It deliberately does not accept uploaded `.joblib` files because loading an untrusted pickle-compatible artifact would permit arbitrary code execution. Model files should only be loaded in a trusted Python environment with compatible Geochemistry Pi and scikit-learn versions.
+
 ## Resource limits
 
 The backend enforces the limits below for both Chemical Modeling and Data Mining. Frontend checks are only an early user-facing warning and are not the security boundary.
 
-- Maximum uploaded dataset: `10 MiB` (`10,485,760` bytes).
+- Maximum uploaded dataset: `20 MiB` (`20,971,520` bytes).
 - Maximum calculation runtime: `30 minutes` after the task starts running; queue time is not counted. The isolated calculation process is terminated and the API returns HTTP `504` when the deadline is reached.
 - Maximum concurrent calculations: `1` for the whole Online instance. Later requests wait and start automatically, one by one, after the running task completes or times out.
 - The page polls `GET /api/tasks/{task_id}` for live queue position, execution state, elapsed runtime, and progress-stage display.

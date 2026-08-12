@@ -5,13 +5,17 @@ from __future__ import annotations
 import json
 import math
 from datetime import date, datetime, timezone
+from html import escape
 from io import BytesIO
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+import joblib
 import numpy as np
 import pandas as pd
+from sklearn import __version__ as sklearn_version
+from sklearn.impute import SimpleImputer
 from sklearn.metrics import (
     accuracy_score,
     calinski_harabasz_score,
@@ -26,7 +30,10 @@ from sklearn.metrics import (
     silhouette_score,
 )
 from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+
+from geochemistrypi._version import __version__
 
 from geochemistrypi.data_mining.process.time_series import (
     compute_subaerial_proportion,
@@ -70,6 +77,8 @@ from .schemas import (
     DimensionalityReductionMetrics,
     DimensionalityReductionResponse,
     DimensionalityReductionSummary,
+    ModelInferenceResponse,
+    ModelInferenceSummary,
     RegressionCoefficientItem,
     RegressionMetrics,
     RegressionResponse,
@@ -95,6 +104,8 @@ class DataMiningService:
     """Run small, non-interactive Data Mining jobs without the legacy web stack."""
 
     supported_suffixes = {".xlsx", ".csv"}
+    supervised_pipeline_filename = "trained_pipeline.joblib"
+    supervised_pipeline_schema = "geochemistrypi-online-supervised-pipeline-v1"
     preprocessing_strategies = {
         "keep",
         "drop_rows",
@@ -153,7 +164,14 @@ class DataMiningService:
                         "R²/MAE/RMSE、系数、预测结果和报告下载验证。"
                     ),
                     input_formats=[".xlsx", ".csv"],
-                    outputs=["回归指标", "模型系数", "预测结果 CSV", "JSON 模型报告"],
+                    outputs=[
+                        "回归指标",
+                        "模型系数",
+                        "预测结果 CSV",
+                        "JSON 模型报告",
+                        "已训练 Pipeline",
+                        "Application Data 推理",
+                    ],
                     methods=[
                         DataMiningMethodItem(
                             name=definition.name,
@@ -174,7 +192,14 @@ class DataMiningService:
                         "Accuracy/Precision/Recall/F1、混淆矩阵和结果下载验证。"
                     ),
                     input_formats=[".xlsx", ".csv"],
-                    outputs=["分类指标", "混淆矩阵", "预测结果 CSV", "JSON 模型报告"],
+                    outputs=[
+                        "分类指标",
+                        "混淆矩阵",
+                        "预测结果 CSV",
+                        "JSON 模型报告",
+                        "已训练 Pipeline",
+                        "Application Data 推理",
+                    ],
                     methods=[
                         DataMiningMethodItem(
                             name=definition.name,
@@ -488,6 +513,47 @@ class DataMiningService:
             ],
         )
 
+    @staticmethod
+    def _build_supervised_pipeline(estimator: Any) -> Pipeline:
+        """Keep training and later application inference in one fitted object."""
+        return Pipeline(
+            steps=[
+                ("imputer", SimpleImputer(strategy="median")),
+                ("model", estimator),
+            ]
+        )
+
+    def _save_supervised_pipeline(
+        self,
+        path: Path,
+        *,
+        pipeline: Pipeline,
+        task_type: str,
+        model_name: str,
+        model_display_name: str,
+        target_column: str,
+        feature_columns: list[str],
+        source_filename: str,
+    ) -> None:
+        joblib.dump(
+            {
+                "schema_version": self.supervised_pipeline_schema,
+                "software_version": __version__,
+                "scikit_learn_version": sklearn_version,
+                "pandas_version": pd.__version__,
+                "created_utc": datetime.now(timezone.utc).isoformat(),
+                "task_type": task_type,
+                "model": model_name,
+                "model_display_name": model_display_name,
+                "target_column": target_column,
+                "feature_columns": feature_columns,
+                "source_filename": source_filename,
+                "pipeline": pipeline,
+            },
+            path,
+            compress=3,
+        )
+
     def run_regression(
         self,
         *,
@@ -578,7 +644,7 @@ class DataMiningService:
             random_state=42,
         )
 
-        model = model_definition.factory()
+        model = self._build_supervised_pipeline(model_definition.factory())
         model.fit(features_train, target_train)
         predicted = model.predict(features_test)
         mae = float(mean_absolute_error(target_test, predicted))
@@ -660,10 +726,21 @@ class DataMiningService:
         output_dir.mkdir(parents=True)
         predictions_path = output_dir / "regression_predictions.csv"
         report_path = output_dir / "regression_report.json"
+        pipeline_path = output_dir / self.supervised_pipeline_filename
         prediction_frame.to_csv(
             predictions_path,
             index=False,
             encoding="utf-8-sig",
+        )
+        self._save_supervised_pipeline(
+            pipeline_path,
+            pipeline=model,
+            task_type="regression",
+            model_name=model_name,
+            model_display_name=model_definition.display_name,
+            target_column=target_column,
+            feature_columns=features,
+            source_filename=Path(filename or "dataset").name,
         )
         report_payload = {
             "report_version": (
@@ -689,6 +766,8 @@ class DataMiningService:
             "equation": equation,
             "prediction_preview": preview,
             "warnings": warnings,
+            "pipeline_artifact": pipeline_path.name,
+            "pipeline_schema_version": self.supervised_pipeline_schema,
         }
         report_path.write_text(
             json.dumps(report_payload, ensure_ascii=False, indent=2),
@@ -728,6 +807,13 @@ class DataMiningService:
                         f"/api/data-mining/jobs/{job_id}/files/{report_path.name}"
                     ),
                     size_bytes=report_path.stat().st_size,
+                ),
+                ArtifactResponse(
+                    name=pipeline_path.name,
+                    download_url=(
+                        f"/api/data-mining/jobs/{job_id}/files/{pipeline_path.name}"
+                    ),
+                    size_bytes=pipeline_path.stat().st_size,
                 ),
             ],
         )
@@ -826,7 +912,7 @@ class DataMiningService:
             stratify=target,
         )
 
-        model = model_definition.factory()
+        model = self._build_supervised_pipeline(model_definition.factory())
         model.fit(features_train, target_train)
         predicted = model.predict(features_test)
         classes = [str(value) for value in model.classes_]
@@ -912,10 +998,21 @@ class DataMiningService:
         output_dir.mkdir(parents=True)
         predictions_path = output_dir / "classification_predictions.csv"
         report_path = output_dir / "classification_report.json"
+        pipeline_path = output_dir / self.supervised_pipeline_filename
         prediction_frame.to_csv(
             predictions_path,
             index=False,
             encoding="utf-8-sig",
+        )
+        self._save_supervised_pipeline(
+            pipeline_path,
+            pipeline=model,
+            task_type="classification",
+            model_name=model_name,
+            model_display_name=model_definition.display_name,
+            target_column=target_column,
+            feature_columns=features,
+            source_filename=Path(filename or "dataset").name,
         )
         report_payload = {
             "report_version": (
@@ -937,6 +1034,8 @@ class DataMiningService:
             "confusion_matrix": [item.model_dump() for item in confusion_items],
             "prediction_preview": preview,
             "warnings": warnings,
+            "pipeline_artifact": pipeline_path.name,
+            "pipeline_schema_version": self.supervised_pipeline_schema,
         }
         report_path.write_text(
             json.dumps(report_payload, ensure_ascii=False, indent=2),
@@ -976,8 +1075,208 @@ class DataMiningService:
                     ),
                     size_bytes=report_path.stat().st_size,
                 ),
+                ArtifactResponse(
+                    name=pipeline_path.name,
+                    download_url=(
+                        f"/api/data-mining/jobs/{job_id}/files/{pipeline_path.name}"
+                    ),
+                    size_bytes=pipeline_path.stat().st_size,
+                ),
             ],
         )
+
+    def run_model_inference(
+        self,
+        *,
+        training_job_id: str,
+        filename: str | None,
+        content: bytes,
+    ) -> ModelInferenceResponse:
+        if (
+            len(training_job_id) != 32
+            or any(character not in "0123456789abcdef" for character in training_job_id)
+        ):
+            raise InvalidDatasetError("Training Job ID is invalid")
+
+        suffix = self._validate_upload(filename, content)
+        dataframe = self._read_dataframe(suffix, content)
+        self._validate_dataframe(dataframe)
+        dataframe.columns = [str(column) for column in dataframe.columns]
+
+        try:
+            pipeline_path = self.resolve_artifact(
+                training_job_id,
+                self.supervised_pipeline_filename,
+            )
+        except FileNotFoundError as exc:
+            raise InvalidDatasetError(
+                "The training job does not contain a saved supervised Pipeline"
+            ) from exc
+
+        try:
+            bundle = joblib.load(pipeline_path)
+        except Exception as exc:
+            raise InvalidDatasetError("The saved Pipeline cannot be loaded") from exc
+        if (
+            not isinstance(bundle, dict)
+            or bundle.get("schema_version") != self.supervised_pipeline_schema
+        ):
+            raise InvalidDatasetError("The saved Pipeline format is not supported")
+
+        task_type = bundle.get("task_type")
+        if task_type not in {"regression", "classification"}:
+            raise InvalidDatasetError("The saved Pipeline is not a supervised model")
+        pipeline = bundle.get("pipeline")
+        if not isinstance(pipeline, Pipeline):
+            raise InvalidDatasetError("The saved model does not contain a valid Pipeline")
+        feature_columns = [str(column) for column in bundle.get("feature_columns", [])]
+        if not feature_columns:
+            raise InvalidDatasetError("The saved Pipeline has no feature definition")
+        missing_columns = [column for column in feature_columns if column not in dataframe.columns]
+        if missing_columns:
+            raise InvalidDatasetError(
+                "Application Data is missing required feature columns: "
+                + ", ".join(missing_columns)
+            )
+
+        feature_data = dataframe.loc[:, feature_columns].apply(
+            pd.to_numeric,
+            errors="coerce",
+        ).replace([np.inf, -np.inf], np.nan)
+        predictable_mask = feature_data.notna().any(axis=1)
+        predicted_rows = int(predictable_mask.sum())
+        excluded_rows = int((~predictable_mask).sum())
+        if predicted_rows == 0:
+            raise InvalidDatasetError(
+                "Application Data contains no row with a usable numeric feature"
+            )
+        imputed_rows = int(
+            feature_data.loc[predictable_mask].isna().any(axis=1).sum()
+        )
+        predicted = pipeline.predict(feature_data.loc[predictable_mask])
+
+        output_frame = dataframe.copy()
+        source_row_column = self._unique_output_column(output_frame, "source_row")
+        prediction_column = self._unique_output_column(
+            output_frame,
+            f"predicted_{bundle['target_column']}",
+        )
+        status_column = self._unique_output_column(output_frame, "inference_status")
+        output_frame.insert(
+            0,
+            source_row_column,
+            np.arange(2, dataframe.shape[0] + 2),
+        )
+        output_frame[prediction_column] = None
+        output_frame[status_column] = "excluded_no_numeric_features"
+        output_frame.loc[predictable_mask, prediction_column] = np.asarray(predicted)
+        output_frame.loc[predictable_mask, status_column] = "predicted"
+        if imputed_rows:
+            imputed_mask = predictable_mask & feature_data.isna().any(axis=1)
+            output_frame.loc[imputed_mask, status_column] = "predicted_with_imputation"
+
+        preview = [
+            {
+                str(column): self._json_value(value)
+                for column, value in row.items()
+            }
+            for row in output_frame.head(20).to_dict(orient="records")
+        ]
+        warnings: list[str] = []
+        if imputed_rows:
+            warnings.append(
+                f"{imputed_rows} application rows contained missing or non-numeric feature "
+                "values and were imputed with training-set medians."
+            )
+        if excluded_rows:
+            warnings.append(
+                f"{excluded_rows} application rows were excluded because all required "
+                "features were missing or non-numeric."
+            )
+        if not warnings:
+            warnings.append("All application rows were predicted without imputation.")
+
+        job_id = uuid4().hex
+        output_dir = self.jobs_dir / job_id / "output"
+        output_dir.mkdir(parents=True)
+        predictions_path = output_dir / "application_predictions.csv"
+        report_path = output_dir / "application_inference_report.json"
+        output_frame.to_csv(predictions_path, index=False, encoding="utf-8-sig")
+        summary = ModelInferenceSummary(
+            original_rows=int(dataframe.shape[0]),
+            predicted_rows=predicted_rows,
+            excluded_rows=excluded_rows,
+            imputed_rows=imputed_rows,
+            feature_count=len(feature_columns),
+        )
+        report_payload = {
+            "report_version": "application-inference-v1",
+            "created_utc": datetime.now(timezone.utc).isoformat(),
+            "training_job_id": training_job_id,
+            "source_filename": Path(filename or "application-data").name,
+            "task_type": task_type,
+            "model": bundle["model"],
+            "model_display_name": bundle["model_display_name"],
+            "target_column": bundle["target_column"],
+            "feature_columns": feature_columns,
+            "prediction_column": prediction_column,
+            "pipeline_schema_version": bundle["schema_version"],
+            "training_software_version": bundle["software_version"],
+            "training_scikit_learn_version": bundle.get("scikit_learn_version"),
+            "training_pandas_version": bundle.get("pandas_version"),
+            "inference_software_version": __version__,
+            "summary": summary.model_dump(),
+            "prediction_preview": preview,
+            "warnings": warnings,
+        }
+        report_path.write_text(
+            json.dumps(report_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+        return ModelInferenceResponse(
+            job_id=job_id,
+            training_job_id=training_job_id,
+            status="success",
+            message=f"{bundle['model_display_name']} application inference completed",
+            source_filename=Path(filename or "application-data").name,
+            task_type=task_type,
+            model=bundle["model"],
+            model_display_name=bundle["model_display_name"],
+            target_column=bundle["target_column"],
+            feature_columns=feature_columns,
+            prediction_column=prediction_column,
+            pipeline_schema_version=bundle["schema_version"],
+            software_version=bundle["software_version"],
+            summary=summary,
+            preview=preview,
+            warnings=warnings,
+            artifacts=[
+                ArtifactResponse(
+                    name=predictions_path.name,
+                    download_url=(
+                        f"/api/data-mining/jobs/{job_id}/files/{predictions_path.name}"
+                    ),
+                    size_bytes=predictions_path.stat().st_size,
+                ),
+                ArtifactResponse(
+                    name=report_path.name,
+                    download_url=(
+                        f"/api/data-mining/jobs/{job_id}/files/{report_path.name}"
+                    ),
+                    size_bytes=report_path.stat().st_size,
+                ),
+            ],
+        )
+
+    @staticmethod
+    def _unique_output_column(dataframe: pd.DataFrame, base_name: str) -> str:
+        candidate = base_name
+        suffix = 2
+        while candidate in dataframe.columns:
+            candidate = f"{base_name}_{suffix}"
+            suffix += 1
+        return candidate
 
     def run_clustering(
         self,
@@ -2087,7 +2386,7 @@ class DataMiningService:
         figure_path = output_dir / "subaerial_proportion.svg"
         report_path = output_dir / "time_series_report.json"
         pd.DataFrame(
-            [item.model_dump() for item in bins]
+            [item.model_dump(exclude={"sample_count"}) for item in bins]
         ).to_csv(results_path, index=False, encoding="utf-8-sig")
         self._write_time_series_svg(
             figure_path,
@@ -2149,6 +2448,310 @@ class DataMiningService:
             warnings=warnings,
             artifacts=artifacts,
         )
+
+    def run_element_time_series(
+        self,
+        *,
+        filename: str | None,
+        content: bytes,
+        age_column: str,
+        value_column: str,
+        age_unit: str = "Ma",
+        bin_width: float = 100.0,
+        value_unit: str = "wt%",
+        filter_column: str | None = None,
+        filter_min: float | None = None,
+        filter_max: float | None = None,
+    ) -> TimeSeriesResponse:
+        suffix = self._validate_upload(filename, content)
+        dataframe = self._read_dataframe(suffix, content)
+        self._validate_dataframe(dataframe)
+        dataframe.columns = [str(column) for column in dataframe.columns]
+
+        selected = [age_column, value_column]
+        if filter_column:
+            selected.append(filter_column)
+        mapped_columns = self._validate_selected_columns(dataframe, selected)
+        if len(mapped_columns) != len(selected):
+            raise InvalidDatasetError(
+                "Element time series requires different age, value, and filter columns"
+            )
+        if age_unit not in {"Ma", "Ga"}:
+            raise InvalidDatasetError("Age unit must be Ma or Ga")
+        if not math.isfinite(bin_width) or bin_width <= 0:
+            raise InvalidDatasetError("Bin width must be a positive finite number")
+        if filter_column:
+            if filter_min is None or filter_max is None:
+                raise InvalidDatasetError(
+                    "Both filter minimum and maximum are required"
+                )
+            if not math.isfinite(filter_min) or not math.isfinite(filter_max):
+                raise InvalidDatasetError("Filter bounds must be finite numbers")
+            if filter_min > filter_max:
+                raise InvalidDatasetError(
+                    "Filter minimum must not exceed filter maximum"
+                )
+
+        numeric = dataframe.loc[:, selected].apply(pd.to_numeric, errors="coerce")
+        numeric = numeric.replace([np.inf, -np.inf], np.nan)
+        valid_mask = numeric[[age_column, value_column]].notna().all(axis=1)
+        if filter_column:
+            valid_mask &= numeric[filter_column].between(
+                float(filter_min), float(filter_max), inclusive="both"
+            )
+        analysis = numeric.loc[valid_mask, [age_column, value_column]].copy()
+        if (analysis[age_column] < 0).any():
+            raise InvalidDatasetError("Age values must be zero or greater")
+        if analysis.empty:
+            raise InvalidDatasetError(
+                "Element time series requires at least one usable numeric row"
+            )
+
+        maximum_age = float(analysis[age_column].max())
+        if maximum_age <= 0:
+            raise InvalidDatasetError(
+                "Element time series requires at least one age greater than zero"
+            )
+        bin_count = max(1, int(math.floor(maximum_age / bin_width)) + 1)
+        if bin_count > 5_000:
+            raise InvalidDatasetError(
+                "The selected bin width would create more than 5,000 age bins"
+            )
+        analysis["__bin_index__"] = np.floor(
+            analysis[age_column] / bin_width
+        ).astype(int)
+        grouped = analysis.groupby("__bin_index__")[value_column]
+        statistics = grouped.agg(["count", "mean", "std"])
+
+        bins: list[TimeSeriesBinItem] = []
+        for index in range(bin_count):
+            age = (index + 0.5) * bin_width
+            if index not in statistics.index:
+                bins.append(TimeSeriesBinItem(age=age))
+                continue
+            count = int(statistics.loc[index, "count"])
+            mean = float(statistics.loc[index, "mean"])
+            std = float(statistics.loc[index, "std"])
+            uncertainty = (
+                2.0 * std / math.sqrt(count)
+                if count >= 2 and math.isfinite(std)
+                else None
+            )
+            bins.append(
+                TimeSeriesBinItem(
+                    age=age,
+                    mean_proportion=mean,
+                    uncertainty_2sigma=uncertainty,
+                    sample_count=count,
+                )
+            )
+
+        usable_rows = int(analysis.shape[0])
+        dropped_rows = int(dataframe.shape[0] - usable_rows)
+        populated_bins = sum(item.mean_proportion is not None for item in bins)
+        summary = TimeSeriesSummary(
+            original_rows=int(dataframe.shape[0]),
+            usable_rows=usable_rows,
+            dropped_rows=dropped_rows,
+            bin_count=len(bins),
+            populated_bins=populated_bins,
+        )
+        filter_description = (
+            f" after filtering {filter_column} to {filter_min:g}-{filter_max:g}"
+            if filter_column and filter_min is not None and filter_max is not None
+            else ""
+        )
+        warnings = [
+            (
+                f"Used {usable_rows:,} rows{filter_description}; excluded "
+                f"{dropped_rows:,} rows with missing values or outside the filter."
+            ),
+            (
+                "Each bin is an unweighted arithmetic mean; uncertainty is +/-2 SEM. "
+                "This basic validation does not reproduce Keller et al.'s spatial-"
+                "temporal weighting or Monte Carlo age resampling."
+            ),
+        ]
+
+        job_id = uuid4().hex
+        output_dir = self.jobs_dir / job_id / "output"
+        output_dir.mkdir(parents=True)
+        results_path = output_dir / "element_mean_time_series.csv"
+        figure_path = output_dir / "element_mean_time_series.svg"
+        report_path = output_dir / "element_mean_time_series_report.json"
+        pd.DataFrame(
+            {
+                "age": [item.age for item in bins],
+                "mean_value": [item.mean_proportion for item in bins],
+                "uncertainty_2sem": [item.uncertainty_2sigma for item in bins],
+                "sample_count": [item.sample_count for item in bins],
+            }
+        ).to_csv(results_path, index=False, encoding="utf-8-sig")
+        self._write_element_time_series_svg(
+            figure_path,
+            bins=bins,
+            age_unit=age_unit,
+            value_column=value_column,
+            value_unit=value_unit,
+            bin_width=bin_width,
+        )
+        report_payload = {
+            "report_version": "element-mean-time-series-v1",
+            "created_utc": datetime.now(timezone.utc).isoformat(),
+            "source_filename": Path(filename or "dataset").name,
+            "analysis_type": "element_mean",
+            "column_mapping": {"age": age_column, "value": value_column},
+            "value_unit": value_unit,
+            "age_unit": age_unit,
+            "bin_width": bin_width,
+            "uncertainty_method": "2_sem",
+            "filter": (
+                {
+                    "column": filter_column,
+                    "minimum": filter_min,
+                    "maximum": filter_max,
+                }
+                if filter_column
+                else None
+            ),
+            "summary": summary.model_dump(),
+            "bins": [item.model_dump() for item in bins],
+            "warnings": warnings,
+        }
+        report_path.write_text(
+            json.dumps(report_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        artifacts = [
+            ArtifactResponse(
+                name=path.name,
+                download_url=f"/api/data-mining/jobs/{job_id}/files/{path.name}",
+                size_bytes=path.stat().st_size,
+            )
+            for path in (results_path, figure_path, report_path)
+        ]
+        return TimeSeriesResponse(
+            job_id=job_id,
+            status="success",
+            message="Element mean time series completed",
+            source_filename=Path(filename or "dataset").name,
+            age_column=age_column,
+            age_unit=age_unit,
+            bin_width=bin_width,
+            analysis_type="element_mean",
+            value_column=value_column,
+            value_unit=value_unit,
+            uncertainty_method="2_sem",
+            filter_column=filter_column,
+            filter_min=filter_min,
+            filter_max=filter_max,
+            summary=summary,
+            bins=bins,
+            warnings=warnings,
+            artifacts=artifacts,
+        )
+
+    @staticmethod
+    def _write_element_time_series_svg(
+        path: Path,
+        *,
+        bins: list[TimeSeriesBinItem],
+        age_unit: str,
+        value_column: str,
+        value_unit: str,
+        bin_width: float,
+    ) -> None:
+        valid = [
+            item
+            for item in bins
+            if item.mean_proportion is not None
+            and item.uncertainty_2sigma is not None
+        ]
+        if not valid:
+            raise InvalidDatasetError(
+                "Element time series requires at least one bin with two samples"
+            )
+        ages = [item.age for item in valid]
+        lower_values = [
+            (item.mean_proportion or 0) - (item.uncertainty_2sigma or 0)
+            for item in valid
+        ]
+        upper_values = [
+            (item.mean_proportion or 0) + (item.uncertainty_2sigma or 0)
+            for item in valid
+        ]
+        minimum_age, maximum_age = min(ages), max(ages)
+        age_span = maximum_age - minimum_age or 1.0
+        data_min, data_max = min(lower_values), max(upper_values)
+        value_span = data_max - data_min or max(abs(data_max), 1.0)
+        y_min = data_min - value_span * 0.08
+        y_max = data_max + value_span * 0.08
+        width, height = 960, 520
+        left, right, top, bottom = 92, 36, 58, 76
+        plot_width = width - left - right
+        plot_height = height - top - bottom
+
+        def x_position(age: float) -> float:
+            return left + (maximum_age - age) / age_span * plot_width
+
+        def y_position(value: float) -> float:
+            return top + (y_max - value) / (y_max - y_min) * plot_height
+
+        line_points = " ".join(
+            f"{x_position(item.age):.2f},{y_position(item.mean_proportion or 0):.2f}"
+            for item in valid
+        )
+        upper = [
+            (
+                x_position(item.age),
+                y_position((item.mean_proportion or 0) + (item.uncertainty_2sigma or 0)),
+            )
+            for item in valid
+        ]
+        lower = [
+            (
+                x_position(item.age),
+                y_position((item.mean_proportion or 0) - (item.uncertainty_2sigma or 0)),
+            )
+            for item in reversed(valid)
+        ]
+        band_points = " ".join(f"{x:.2f},{y:.2f}" for x, y in [*upper, *lower])
+        grid_lines = []
+        for index in range(6):
+            value = y_min + (y_max - y_min) * index / 5
+            y = y_position(value)
+            grid_lines.append(
+                f'<line x1="{left}" y1="{y:.2f}" x2="{width-right}" '
+                f'y2="{y:.2f}" class="grid"/>'
+            )
+            grid_lines.append(
+                f'<text x="{left-14}" y="{y+5:.2f}" text-anchor="end" '
+                f'class="tick">{value:.3g}</text>'
+            )
+        title = escape(f"{value_column} mean through time")
+        y_label = escape(f"{value_column} ({value_unit})")
+        svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
+<style>
+text{{font-family:Arial,Helvetica,sans-serif;fill:#18323a}} .title{{font-size:22px;font-weight:700}}
+.subtitle{{font-size:13px;fill:#5c7078}} .axis{{stroke:#18323a;stroke-width:1.4}}
+.grid{{stroke:#dbe5e7;stroke-width:1;stroke-dasharray:4 5}} .tick{{font-size:12px;fill:#526970}}
+.curve{{fill:none;stroke:#e5674f;stroke-width:3;stroke-linejoin:round;stroke-linecap:round}}
+.band{{fill:#e5674f;fill-opacity:.18;stroke:none}} .label{{font-size:14px;font-weight:600}}
+</style>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="{left}" y="30" class="title">{title}</text>
+<text x="{left}" y="49" class="subtitle">Bin width {bin_width:g} {age_unit} - unweighted mean - shaded area +/-2 SEM</text>
+{''.join(grid_lines)}
+<line x1="{left}" y1="{top}" x2="{left}" y2="{height-bottom}" class="axis"/>
+<line x1="{left}" y1="{height-bottom}" x2="{width-right}" y2="{height-bottom}" class="axis"/>
+<polygon points="{band_points}" class="band"/>
+<polyline points="{line_points}" class="curve"/>
+<text x="{left}" y="{height-bottom+26}" text-anchor="middle" class="tick">{maximum_age:g}</text>
+<text x="{width-right}" y="{height-bottom+26}" text-anchor="middle" class="tick">{minimum_age:g}</text>
+<text x="{left + plot_width/2:.2f}" y="{height-22}" text-anchor="middle" class="label">Age ({age_unit})</text>
+<text x="24" y="{top + plot_height/2:.2f}" text-anchor="middle" class="label" transform="rotate(-90 24 {top + plot_height/2:.2f})">{y_label}</text>
+</svg>'''
+        path.write_text(svg, encoding="utf-8")
 
     @staticmethod
     def _write_time_series_svg(

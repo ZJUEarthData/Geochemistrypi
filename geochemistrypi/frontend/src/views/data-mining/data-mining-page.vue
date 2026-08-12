@@ -15,6 +15,8 @@ import {
   runClassification,
   runClustering,
   runDimensionalityReduction,
+  runElementTimeSeries,
+  runModelInference,
   runPredictedTimeSeries,
   runRegression,
   runTimeSeries,
@@ -26,6 +28,7 @@ import {
   type DatasetProfileResponse,
   type DimensionalityReductionResponse,
   type MissingValueStrategy,
+  type ModelInferenceResponse,
   type RegressionResponse,
   type TimeSeriesResponse
 } from '@/api/data-mining'
@@ -33,7 +36,7 @@ import { DEFAULT_MAX_UPLOAD_BYTES, artifactUrl, getHealth } from '@/api/online'
 import { apiText, dataMiningFeatureDescription, t, warningIsSuccess } from '@/i18n'
 
 type ServiceState = 'checking' | 'online' | 'offline'
-type TimeSeriesMode = 'direct' | 'model_predicted'
+type TimeSeriesMode = 'direct' | 'model_predicted' | 'element_mean'
 
 const serviceState = ref<ServiceState>('checking')
 const softwareVersion = ref('')
@@ -57,6 +60,10 @@ const columnInspection = ref<DatasetProfileResponse | null>(null)
 const preprocessingResult = ref<DataPreprocessingResponse | null>(null)
 const regressionResult = ref<RegressionResponse | null>(null)
 const classificationResult = ref<ClassificationResponse | null>(null)
+const applicationDataFile = ref<File | null>(null)
+const inferenceResult = ref<ModelInferenceResponse | null>(null)
+const inferenceError = ref('')
+const runningInference = ref(false)
 const clusteringResult = ref<ClusteringResponse | null>(null)
 const dimensionalityReductionResult = ref<DimensionalityReductionResponse | null>(null)
 const anomalyDetectionResult = ref<AnomalyDetectionResponse | null>(null)
@@ -85,6 +92,11 @@ const timeSeriesAgeMaxColumn = ref('')
 const timeSeriesProbabilityColumn = ref('')
 const timeSeriesLatitudeColumn = ref('')
 const timeSeriesLongitudeColumn = ref('')
+const timeSeriesValueColumn = ref('')
+const timeSeriesValueUnit = ref('wt%')
+const timeSeriesFilterColumn = ref('')
+const timeSeriesFilterMinimum = ref(43)
+const timeSeriesFilterMaximum = ref(51)
 const timeSeriesAgeUnit = ref<'Ma' | 'Ga'>('Ma')
 const timeSeriesBinWidth = ref(10)
 const timeSeriesBootstrapIterations = ref(100)
@@ -97,6 +109,15 @@ const {
   beginTask,
   finishTask,
   cancelCurrentTask
+} = useTaskTracking()
+const {
+  taskId: inferenceTaskId,
+  taskStatus: inferenceTaskStatus,
+  cancellingTask: cancellingInference,
+  cancelledByUser: inferenceCancelledByUser,
+  beginTask: beginInferenceTask,
+  finishTask: finishInferenceTask,
+  cancelCurrentTask: cancelInferenceTask
 } = useTaskTracking()
 
 const missingStrategyOptions = computed<
@@ -168,6 +189,12 @@ const regressionPreviewColumns = computed(() =>
 const classificationPreviewColumns = computed(() =>
   Object.keys(classificationResult.value?.preview[0] || {})
 )
+const trainedSupervisedResult = computed(() =>
+  regressionResult.value || classificationResult.value
+)
+const inferencePreviewColumns = computed(() =>
+  Object.keys(inferenceResult.value?.preview[0] || {})
+)
 const clusteringPreviewColumns = computed(() =>
   Object.keys(clusteringResult.value?.preview[0] || {})
 )
@@ -178,6 +205,13 @@ const anomalyDetectionPreviewColumns = computed(() =>
   Object.keys(anomalyDetectionResult.value?.preview[0] || {})
 )
 const timeSeriesMappedColumns = computed(() => {
+  if (timeSeriesMode.value === 'element_mean') {
+    return [
+      timeSeriesAgeColumn.value,
+      timeSeriesValueColumn.value,
+      ...(timeSeriesFilterColumn.value ? [timeSeriesFilterColumn.value] : [])
+    ]
+  }
   const columns = [
     timeSeriesAgeColumn.value,
     timeSeriesAgeMaxColumn.value,
@@ -187,7 +221,15 @@ const timeSeriesMappedColumns = computed(() => {
   if (timeSeriesMode.value === 'direct') columns.splice(2, 0, timeSeriesProbabilityColumn.value)
   return columns
 })
-const timeSeriesRequiredColumnCount = computed(() => (timeSeriesMode.value === 'direct' ? 5 : 4))
+const timeSeriesRequiredColumnCount = computed(() =>
+  timeSeriesMode.value === 'element_mean'
+    ? timeSeriesFilterColumn.value
+      ? 3
+      : 2
+    : timeSeriesMode.value === 'direct'
+      ? 5
+      : 4
+)
 const timeSeriesMappingComplete = computed(
   () =>
     timeSeriesMappedColumns.value.every(Boolean) &&
@@ -208,8 +250,27 @@ const timeSeriesChart = computed(() => {
   const maximumAge = Math.max(...valid.map((item) => item.age))
   const ageSpan = maximumAge - minimumAge || 1
   const x = (age: number) => left + ((maximumAge - age) / ageSpan) * (width - left - right)
+  const lowerValues = valid.map(
+    (item) => (item.mean_proportion || 0) - (item.uncertainty_2sigma || 0)
+  )
+  const upperValues = valid.map(
+    (item) => (item.mean_proportion || 0) + (item.uncertainty_2sigma || 0)
+  )
+  const rawMinimum = timeSeriesResult.value?.analysis_type === 'element_mean' ? Math.min(...lowerValues) : 0
+  const rawMaximum =
+    timeSeriesResult.value?.analysis_type === 'element_mean' ? Math.max(...upperValues) : 100
+  const rawSpan = rawMaximum - rawMinimum || Math.max(Math.abs(rawMaximum), 1)
+  const yMinimum =
+    timeSeriesResult.value?.analysis_type === 'element_mean'
+      ? rawMinimum - rawSpan * 0.08
+      : 0
+  const yMaximum =
+    timeSeriesResult.value?.analysis_type === 'element_mean'
+      ? rawMaximum + rawSpan * 0.08
+      : 100
   const y = (value: number) =>
-    top + ((100 - Math.min(100, Math.max(0, value))) / 100) * (height - top - bottom)
+    top + ((yMaximum - value) / (yMaximum - yMinimum)) * (height - top - bottom)
+  const yTicks = Array.from({ length: 6 }, (_, index) => yMinimum + ((yMaximum - yMinimum) * index) / 5)
   const line = valid
     .map((item) => `${x(item.age).toFixed(2)},${y(item.mean_proportion || 0).toFixed(2)}`)
     .join(' ')
@@ -232,6 +293,7 @@ const timeSeriesChart = computed(() => {
     bottom,
     minimumAge,
     maximumAge,
+    yTicks,
     line,
     band: [...upper, ...lower].join(' '),
     y
@@ -314,8 +376,12 @@ const canRun = computed(() => {
     return (
       timeSeriesMappingComplete.value &&
       timeSeriesBinWidth.value > 0 &&
-      timeSeriesBootstrapIterations.value >= 10 &&
-      timeSeriesBootstrapIterations.value <= 1000 &&
+      (timeSeriesMode.value === 'element_mean' ||
+        (timeSeriesBootstrapIterations.value >= 10 &&
+          timeSeriesBootstrapIterations.value <= 1000)) &&
+      (timeSeriesMode.value !== 'element_mean' ||
+        !timeSeriesFilterColumn.value ||
+        timeSeriesFilterMinimum.value <= timeSeriesFilterMaximum.value) &&
       !inspectingColumns.value
     )
   }
@@ -329,7 +395,9 @@ const runButtonLabel = computed(() => {
     if (isDimensionalityReduction.value) return t('Reducing dimensions…', '正在降维…')
     if (isAnomalyDetection.value) return t('Detecting anomalies…', '正在检测异常…')
     if (isTimeSeries.value)
-      return timeSeriesMode.value === 'direct'
+      return timeSeriesMode.value === 'element_mean'
+        ? t('Calculating element means…', '正在计算元素均值…')
+        : timeSeriesMode.value === 'direct'
         ? t('Calculating time series…', '正在计算时间序列…')
         : t('Predicting probability and calculating…', '正在预测概率并计算…')
     return t('Analyzing…', '正在分析…')
@@ -455,6 +523,14 @@ const runSummaryParameters = computed(() => {
     ]
   }
   if (isTimeSeries.value) {
+    if (timeSeriesMode.value === 'element_mean') {
+      return [
+        `${t('Analysis', '分析')}: ${t('Element mean', '元素均值')}`,
+        `${t('Target', '目标')}: ${timeSeriesValueColumn.value || '—'}`,
+        `${t('Bin width', '分箱宽度')}: ${timeSeriesBinWidth.value} ${timeSeriesAgeUnit.value}`,
+        `${t('Uncertainty', '不确定性')}: ±2 SEM`
+      ]
+    }
     return [
       `${t('Age unit', '年龄单位')}: ${timeSeriesAgeUnit.value}`,
       `${t('Bin width', '分箱宽度')}: ${timeSeriesBinWidth.value} ${timeSeriesAgeUnit.value}`,
@@ -565,6 +641,13 @@ watch(
 watch(anomalyDetectionModel, () => {
   anomalyDetectionResult.value = null
 })
+watch(timeSeriesMode, (mode) => {
+  if (mode !== 'element_mean') return
+  timeSeriesAgeUnit.value = 'Ma'
+  timeSeriesBinWidth.value = 100
+  timeSeriesValueColumn.value ||= findDetectedColumn('MGO', 'MgO')
+  timeSeriesFilterColumn.value ||= findDetectedColumn('SIO2', 'SiO2')
+})
 watch(
   [
     timeSeriesMode,
@@ -573,13 +656,18 @@ watch(
     timeSeriesProbabilityColumn,
     timeSeriesLatitudeColumn,
     timeSeriesLongitudeColumn,
+    timeSeriesValueColumn,
+    timeSeriesValueUnit,
+    timeSeriesFilterColumn,
+    timeSeriesFilterMinimum,
+    timeSeriesFilterMaximum,
     timeSeriesAgeUnit,
     timeSeriesBinWidth,
     timeSeriesBootstrapIterations
   ],
   () => {
     timeSeriesResult.value = null
-    const mappingMessages = [4, 5].map((count) =>
+    const mappingMessages = [2, 3, 4, 5].map((count) =>
       t(
         `Map all ${count} required time-series variables to different numeric columns.`,
         `请将 ${count} 个必需的时间序列变量分别映射到不同数值列。`
@@ -747,6 +835,8 @@ async function inspectDatasetColumns() {
       timeSeriesMode.value = timeSeriesProbabilityColumn.value ? 'direct' : 'model_predicted'
       timeSeriesLatitudeColumn.value = findDetectedColumn('LATITUDE', 'Latitude')
       timeSeriesLongitudeColumn.value = findDetectedColumn('LONGITUDE', 'Longitude')
+      timeSeriesValueColumn.value = findDetectedColumn('MGO', 'MgO')
+      timeSeriesFilterColumn.value = findDetectedColumn('SIO2', 'SiO2')
       if (!timeSeriesMappingComplete.value) {
         errorMessage.value = t(
           `Map all ${timeSeriesRequiredColumnCount.value} required time-series variables to different numeric columns.`,
@@ -843,7 +933,26 @@ async function submitJob() {
         longitude: timeSeriesLongitudeColumn.value
       }
       timeSeriesResult.value =
-        timeSeriesMode.value === 'direct'
+        timeSeriesMode.value === 'element_mean'
+          ? await runElementTimeSeries(
+              datasetFile.value,
+              {
+                age: timeSeriesAgeColumn.value,
+                value: timeSeriesValueColumn.value,
+                filter: timeSeriesFilterColumn.value || undefined
+              },
+              timeSeriesAgeUnit.value,
+              timeSeriesBinWidth.value,
+              timeSeriesValueUnit.value,
+              timeSeriesFilterColumn.value
+                ? {
+                    minimum: timeSeriesFilterMinimum.value,
+                    maximum: timeSeriesFilterMaximum.value
+                  }
+                : undefined,
+              trackingId
+            )
+          : timeSeriesMode.value === 'direct'
           ? await runTimeSeries(
               datasetFile.value,
               { ...sharedColumns, probability: timeSeriesProbabilityColumn.value },
@@ -881,6 +990,61 @@ async function submitJob() {
   }
 }
 
+function onApplicationDataChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0] || null
+  inferenceResult.value = null
+  inferenceError.value = ''
+  if (file && !/\.(xlsx|csv)$/i.test(file.name)) {
+    applicationDataFile.value = null
+    input.value = ''
+    inferenceError.value = t(
+      'Application Data must be an .xlsx or .csv file.',
+      'Application Data 必须是 .xlsx 或 .csv 文件。'
+    )
+    return
+  }
+  if (file && file.size > maxUploadBytes.value) {
+    applicationDataFile.value = null
+    input.value = ''
+    inferenceError.value = t(
+      `The selected file exceeds the ${Math.round(maxUploadBytes.value / 1024 / 1024)} MB upload limit.`,
+      `所选文件超过 ${Math.round(maxUploadBytes.value / 1024 / 1024)} MB 上传限制。`
+    )
+    return
+  }
+  applicationDataFile.value = file
+}
+
+async function submitInference() {
+  if (!trainedSupervisedResult.value || !applicationDataFile.value || runningInference.value) return
+  runningInference.value = true
+  inferenceResult.value = null
+  inferenceError.value = ''
+  const trackingId = beginInferenceTask('Application Data inference')
+  try {
+    inferenceResult.value = await runModelInference(
+      trainedSupervisedResult.value.job_id,
+      applicationDataFile.value,
+      trackingId
+    )
+    ElMessage.success(t('Application inference completed', 'Application Data 推理完成'))
+  } catch (error) {
+    if (inferenceCancelledByUser.value) {
+      ElMessage.info(t('Inference cancelled', '推理任务已取消'))
+    } else {
+      inferenceError.value =
+        error instanceof Error
+          ? error.message
+          : t('Application inference failed.', 'Application Data 推理失败。')
+      ElMessage.error(t('Application inference failed', 'Application Data 推理失败'))
+    }
+  } finally {
+    await finishInferenceTask()
+    runningInference.value = false
+  }
+}
+
 function clearResult() {
   result.value = null
   preprocessingResult.value = null
@@ -890,6 +1054,9 @@ function clearResult() {
   dimensionalityReductionResult.value = null
   anomalyDetectionResult.value = null
   timeSeriesResult.value = null
+  applicationDataFile.value = null
+  inferenceResult.value = null
+  inferenceError.value = ''
 }
 
 function resetTimeSeriesColumns() {
@@ -899,6 +1066,11 @@ function resetTimeSeriesColumns() {
   timeSeriesProbabilityColumn.value = ''
   timeSeriesLatitudeColumn.value = ''
   timeSeriesLongitudeColumn.value = ''
+  timeSeriesValueColumn.value = ''
+  timeSeriesValueUnit.value = 'wt%'
+  timeSeriesFilterColumn.value = ''
+  timeSeriesFilterMinimum.value = 43
+  timeSeriesFilterMaximum.value = 51
 }
 
 function findDetectedColumn(...candidates: string[]) {
@@ -1179,6 +1351,7 @@ function formatCell(value: unknown) {
             />
 
             <el-alert
+              v-if="timeSeriesMode !== 'element_mean'"
               :title="
                 t(
                   'The uploaded source file is never modified. A new UTF-8 CSV file and a JSON processing record will be generated.',
@@ -1766,8 +1939,11 @@ function formatCell(value: unknown) {
 
             <template v-if="columnInspection">
               <div class="time-series-mode-picker">
-                <span>{{ t('Probability source', '概率来源') }}</span>
+                <span>{{ t('Analysis mode', '分析模式') }}</span>
                 <el-radio-group v-model="timeSeriesMode" :disabled="running">
+                  <el-radio-button value="element_mean">
+                    {{ t('Element mean', '元素均值') }}
+                  </el-radio-button>
                   <el-radio-button value="direct">
                     {{ t('Uploaded probability column', '使用上传的概率列') }}
                   </el-radio-button>
@@ -1808,7 +1984,10 @@ function formatCell(value: unknown) {
                   <p class="field-help">R_AGE</p>
                 </el-form-item>
 
-                <el-form-item :label="t('Maximum age', '最大年龄')">
+                <el-form-item
+                  v-if="timeSeriesMode !== 'element_mean'"
+                  :label="t('Maximum age', '最大年龄')"
+                >
                   <el-select
                     v-model="timeSeriesAgeMaxColumn"
                     filterable
@@ -1823,6 +2002,47 @@ function formatCell(value: unknown) {
                     />
                   </el-select>
                   <p class="field-help">R_MAX_AGE</p>
+                </el-form-item>
+
+                <el-form-item
+                  v-if="timeSeriesMode === 'element_mean'"
+                  :label="t('Target element', '目标元素')"
+                >
+                  <el-select
+                    v-model="timeSeriesValueColumn"
+                    filterable
+                    :placeholder="t('Select numeric element column', '选择数值元素列')"
+                    :disabled="running"
+                  >
+                    <el-option
+                      v-for="column in numericColumns"
+                      :key="column"
+                      :label="column"
+                      :value="column"
+                    />
+                  </el-select>
+                  <p class="field-help">MGO</p>
+                </el-form-item>
+
+                <el-form-item
+                  v-if="timeSeriesMode === 'element_mean'"
+                  :label="t('Optional filter column', '可选筛选列')"
+                >
+                  <el-select
+                    v-model="timeSeriesFilterColumn"
+                    filterable
+                    clearable
+                    :placeholder="t('No composition filter', '不筛选成分')"
+                    :disabled="running"
+                  >
+                    <el-option
+                      v-for="column in numericColumns"
+                      :key="column"
+                      :label="column"
+                      :value="column"
+                    />
+                  </el-select>
+                  <p class="field-help">Keller Figure 1: SIO2 43–51 wt%</p>
                 </el-form-item>
 
                 <el-form-item
@@ -1845,7 +2065,10 @@ function formatCell(value: unknown) {
                   <p class="field-help">0–1 · SBAP</p>
                 </el-form-item>
 
-                <el-form-item :label="t('Latitude', '纬度')">
+                <el-form-item
+                  v-if="timeSeriesMode !== 'element_mean'"
+                  :label="t('Latitude', '纬度')"
+                >
                   <el-select
                     v-model="timeSeriesLatitudeColumn"
                     filterable
@@ -1862,7 +2085,10 @@ function formatCell(value: unknown) {
                   <p class="field-help">−90°–90°</p>
                 </el-form-item>
 
-                <el-form-item :label="t('Longitude', '经度')">
+                <el-form-item
+                  v-if="timeSeriesMode !== 'element_mean'"
+                  :label="t('Longitude', '经度')"
+                >
                   <el-select
                     v-model="timeSeriesLongitudeColumn"
                     filterable
@@ -1897,7 +2123,34 @@ function formatCell(value: unknown) {
                     controls-position="right"
                   />
                 </el-form-item>
-                <el-form-item :label="t('Bootstrap iterations', 'Bootstrap 次数')">
+                <el-form-item
+                  v-if="timeSeriesMode === 'element_mean'"
+                  :label="t('Value unit', '数值单位')"
+                >
+                  <el-input v-model="timeSeriesValueUnit" :disabled="running" />
+                </el-form-item>
+                <el-form-item
+                  v-if="timeSeriesMode === 'element_mean' && timeSeriesFilterColumn"
+                  :label="t('Filter range', '筛选范围')"
+                >
+                  <div class="filter-range-inputs">
+                    <el-input-number
+                      v-model="timeSeriesFilterMinimum"
+                      :disabled="running"
+                      controls-position="right"
+                    />
+                    <span>–</span>
+                    <el-input-number
+                      v-model="timeSeriesFilterMaximum"
+                      :disabled="running"
+                      controls-position="right"
+                    />
+                  </div>
+                </el-form-item>
+                <el-form-item
+                  v-if="timeSeriesMode !== 'element_mean'"
+                  :label="t('Bootstrap iterations', 'Bootstrap 次数')"
+                >
                   <el-input-number
                     v-model="timeSeriesBootstrapIterations"
                     :min="10"
@@ -1908,6 +2161,18 @@ function formatCell(value: unknown) {
                   />
                 </el-form-item>
               </div>
+              <el-alert
+                v-if="timeSeriesMode === 'element_mean'"
+                type="info"
+                :closable="false"
+                show-icon
+                :title="
+                  t(
+                    'Each age bin reports the unweighted arithmetic mean and ±2 SEM. Use 100 Ma bins and SIO2 = 43–51 wt% for a basic comparison with Keller Figure 1.',
+                    '每个年龄箱输出未加权算术平均值和 ±2 SEM。与 Keller Figure 1 基础对比时使用100 Ma分箱，并筛选 SIO2 = 43–51 wt%。'
+                  )
+                "
+              />
             </template>
 
             <el-alert
@@ -2407,7 +2672,9 @@ function formatCell(value: unknown) {
               {{
                 artifact.name.endsWith('.csv')
                   ? t('Download predictions CSV', '下载预测 CSV')
-                  : t('Download regression report', '下载回归报告')
+                  : artifact.name.endsWith('.joblib')
+                    ? t('Download trained Pipeline', '下载已训练 Pipeline')
+                    : t('Download regression report', '下载回归报告')
               }}
             </el-button>
           </div>
@@ -2577,10 +2844,188 @@ function formatCell(value: unknown) {
               {{
                 artifact.name.endsWith('.csv')
                   ? t('Download predictions CSV', '下载预测 CSV')
-                  : t('Download classification report', '下载分类报告')
+                  : artifact.name.endsWith('.joblib')
+                    ? t('Download trained Pipeline', '下载已训练 Pipeline')
+                    : t('Download classification report', '下载分类报告')
               }}
             </el-button>
           </div>
+        </el-card>
+      </template>
+
+      <template v-if="trainedSupervisedResult">
+        <el-card class="result-card application-inference-card" shadow="never">
+          <template #header>
+            <div class="result-heading">
+              <div>
+                <p class="guide-kicker">APPLICATION DATA</p>
+                <h2>{{ t('Apply the trained Pipeline', '使用已训练 Pipeline 进行推理') }}</h2>
+                <p>
+                  {{
+                    t(
+                      'Upload an independent dataset. The saved training Pipeline will validate the required features, impute missing values with training-set medians and generate predictions.',
+                      '上传独立数据集。保存的训练 Pipeline 会校验必需特征、使用训练集的中位数填补缺失值，并生成预测。'
+                    )
+                  }}
+                </p>
+              </div>
+              <el-tag type="success" effect="plain">
+                {{ trainedSupervisedResult.model_display_name }}
+              </el-tag>
+            </div>
+          </template>
+
+          <el-alert
+            :title="
+              t(
+                'The target column is not required. Column names must match the training features; arbitrary model-file uploads are not accepted.',
+                'Application Data 不需要目标列；列名必须与训练特征一致，服务端不接受任意模型文件上传。'
+              )
+            "
+            type="info"
+            :closable="false"
+            show-icon
+          />
+
+          <section class="inference-requirements">
+            <span>{{ t('Required feature columns', '必需特征列') }}</span>
+            <div class="selected-column-tags">
+              <el-tag
+                v-for="column in trainedSupervisedResult.feature_columns"
+                :key="column"
+                size="small"
+                effect="plain"
+              >
+                {{ column }}
+              </el-tag>
+            </div>
+          </section>
+
+          <div class="inference-actions">
+            <label class="file-picker">
+              <input type="file" accept=".xlsx,.csv" @change="onApplicationDataChange" />
+              <span class="file-button">{{ t('Choose Application Data', '选择 Application Data') }}</span>
+              <span class="file-name">
+                {{ applicationDataFile?.name || t('No file selected', '未选择文件') }}
+              </span>
+            </label>
+            <el-button
+              type="primary"
+              :disabled="!applicationDataFile || runningInference"
+              :loading="runningInference"
+              @click="submitInference"
+            >
+              {{
+                runningInference
+                  ? t('Running inference…', '正在推理…')
+                  : t('Run application inference', '运行 Application Data 推理')
+              }}
+            </el-button>
+          </div>
+
+          <TaskProgress
+            v-if="inferenceTaskStatus && runningInference"
+            :task="inferenceTaskStatus"
+            :cancelling="cancellingInference"
+            @cancel="cancelInferenceTask"
+          />
+          <el-alert
+            v-if="inferenceError"
+            class="message-block"
+            :title="inferenceError"
+            type="error"
+            :closable="false"
+            show-icon
+          />
+
+          <template v-if="inferenceResult">
+            <section class="summary-grid inference-summary-grid">
+              <article class="summary-card">
+                <span>{{ t('Predicted rows', '已预测行数') }}</span>
+                <strong>{{ inferenceResult.summary.predicted_rows }}</strong>
+              </article>
+              <article class="summary-card">
+                <span>{{ t('Imputed rows', '填补后预测行数') }}</span>
+                <strong>{{ inferenceResult.summary.imputed_rows }}</strong>
+              </article>
+              <article class="summary-card">
+                <span>{{ t('Excluded rows', '排除行数') }}</span>
+                <strong>{{ inferenceResult.summary.excluded_rows }}</strong>
+              </article>
+              <article class="summary-card">
+                <span>{{ t('Prediction column', '预测结果列') }}</span>
+                <strong>{{ inferenceResult.prediction_column }}</strong>
+              </article>
+            </section>
+
+            <div class="warning-list">
+              <el-alert
+                v-for="warning in inferenceResult.warnings"
+                :key="warning"
+                :title="warning"
+                :type="warning.startsWith('All ') ? 'success' : 'warning'"
+                :closable="false"
+                show-icon
+              />
+            </div>
+
+            <section v-if="inferenceResult.preview.length" class="result-section">
+              <div class="section-heading">
+                <div>
+                  <p class="guide-kicker">INFERENCE PREVIEW</p>
+                  <h3>{{ t('Application predictions', 'Application Data 预测结果') }}</h3>
+                </div>
+                <el-tag type="info" effect="plain">
+                  {{ t('Training Job ID', '训练任务 ID') }}:
+                  {{ inferenceResult.training_job_id }}
+                </el-tag>
+              </div>
+              <div class="table-wrap desktop-data-table">
+                <el-table :data="inferenceResult.preview" border size="small">
+                  <el-table-column
+                    v-for="column in inferencePreviewColumns"
+                    :key="column"
+                    :prop="column"
+                    :label="formatLabel(column)"
+                    min-width="140"
+                  >
+                    <template #default="scope">
+                      {{
+                        typeof scope.row[column] === 'number'
+                          ? formatNumber(scope.row[column], 8)
+                          : formatCell(scope.row[column])
+                      }}
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </div>
+              <MobileFieldCards :rows="inferenceResult.preview" />
+            </section>
+
+            <div
+              v-for="artifact in inferenceResult.artifacts"
+              :key="artifact.download_url"
+              class="artifact-row"
+            >
+              <div>
+                <strong>{{ artifact.name }}</strong>
+                <span>{{ formatBytes(artifact.size_bytes) }}</span>
+              </div>
+              <el-button
+                type="success"
+                plain
+                tag="a"
+                :href="artifactUrl(artifact.download_url)"
+                download
+              >
+                {{
+                  artifact.name.endsWith('.csv')
+                    ? t('Download all predictions', '下载完整预测结果')
+                    : t('Download inference report', '下载推理报告')
+                }}
+              </el-button>
+            </div>
+          </template>
         </el-card>
       </template>
 
@@ -3127,9 +3572,24 @@ function formatCell(value: unknown) {
             <small>{{ t('Age resolution', '年龄分辨率') }}</small>
           </article>
           <article class="summary-card">
-            <span>{{ t('Bootstrap iterations', 'Bootstrap 次数') }}</span>
-            <strong>{{ formatNumber(timeSeriesResult.bootstrap_iterations) }}</strong>
-            <small>{{ t('Random state', '随机种子') }} {{ timeSeriesResult.random_state }}</small>
+            <span>
+              {{
+                timeSeriesResult.analysis_type === 'element_mean'
+                  ? t('Uncertainty', '不确定性')
+                  : t('Bootstrap iterations', 'Bootstrap 次数')
+              }}
+            </span>
+            <strong>
+              {{
+                timeSeriesResult.analysis_type === 'element_mean'
+                  ? '±2 SEM'
+                  : formatNumber(timeSeriesResult.bootstrap_iterations)
+              }}
+            </strong>
+            <small v-if="timeSeriesResult.analysis_type !== 'element_mean'">
+              {{ t('Random state', '随机种子') }} {{ timeSeriesResult.random_state }}
+            </small>
+            <small v-else>{{ t('Unweighted arithmetic mean', '未加权算术平均值') }}</small>
           </article>
         </section>
 
@@ -3139,7 +3599,9 @@ function formatCell(value: unknown) {
               <div>
                 <h2>
                   {{
-                    t('Subaerial proportion time series completed', '陆上玄武岩比例时间序列已完成')
+                    timeSeriesResult.analysis_type === 'element_mean'
+                      ? t('Element mean time series completed', '元素均值时间序列已完成')
+                      : t('Subaerial proportion time series completed', '陆上玄武岩比例时间序列已完成')
                   }}
                 </h2>
                 <p>
@@ -3153,12 +3615,23 @@ function formatCell(value: unknown) {
 
           <div class="result-meta regression-meta">
             <div>
-              <span>{{ t('Age and uncertainty', '年龄与不确定度') }}</span>
+              <span>{{ t('Age column', '年龄列') }}</span>
               <strong>
-                {{ timeSeriesResult.age_column }} · {{ timeSeriesResult.age_max_column }}
+                {{ timeSeriesResult.age_column }}
+                <template v-if="timeSeriesResult.age_max_column">
+                  · {{ timeSeriesResult.age_max_column }}
+                </template>
               </strong>
             </div>
-            <div>
+            <div v-if="timeSeriesResult.analysis_type === 'element_mean'">
+              <span>{{ t('Target element', '目标元素') }}</span>
+              <strong>{{ timeSeriesResult.value_column }} ({{ timeSeriesResult.value_unit }})</strong>
+              <small v-if="timeSeriesResult.filter_column">
+                {{ timeSeriesResult.filter_column }}:
+                {{ formatNumber(timeSeriesResult.filter_min) }}–{{ formatNumber(timeSeriesResult.filter_max) }}
+              </small>
+            </div>
+            <div v-else>
               <span>{{ t('Subaerial probability', '陆上玄武岩概率') }}</span>
               <strong>{{ timeSeriesResult.probability_column }}</strong>
             </div>
@@ -3175,7 +3648,7 @@ function formatCell(value: unknown) {
                 }}
               </small>
             </div>
-            <div>
+            <div v-if="timeSeriesResult.analysis_type !== 'element_mean'">
               <span>{{ t('Spatial coordinates', '空间坐标') }}</span>
               <strong>
                 {{ timeSeriesResult.latitude_column }} · {{ timeSeriesResult.longitude_column }}
@@ -3199,12 +3672,16 @@ function formatCell(value: unknown) {
               <div>
                 <p class="guide-kicker">{{ t('TIME SERIES CURVE', '时间序列曲线') }}</p>
                 <h3>
-                  {{ t('Estimated proportion with ±2σ uncertainty', '估计比例与 ±2σ 不确定度') }}
+                  {{
+                    timeSeriesResult.analysis_type === 'element_mean'
+                      ? `${timeSeriesResult.value_column} ${t('mean with ±2 SEM', '均值与 ±2 SEM')}`
+                      : t('Estimated proportion with ±2σ uncertainty', '估计比例与 ±2σ 不确定度')
+                  }}
                 </h3>
               </div>
               <div class="chart-legend">
                 <span><i class="legend-line"></i>{{ t('Mean', '均值') }}</span>
-                <span><i class="legend-band"></i>±2σ</span>
+                <span><i class="legend-band"></i>{{ timeSeriesResult.analysis_type === 'element_mean' ? '±2 SEM' : '±2σ' }}</span>
               </div>
             </div>
             <div class="time-series-chart-wrap">
@@ -3213,10 +3690,12 @@ function formatCell(value: unknown) {
                 :viewBox="`0 0 ${timeSeriesChart.width} ${timeSeriesChart.height}`"
                 role="img"
                 :aria-label="
-                  t('Subaerial proportion time-series chart', '陆上玄武岩比例时间序列图')
+                  timeSeriesResult.analysis_type === 'element_mean'
+                    ? t('Element mean time-series chart', '元素均值时间序列图')
+                    : t('Subaerial proportion time-series chart', '陆上玄武岩比例时间序列图')
                 "
               >
-                <g v-for="tick in [0, 20, 40, 60, 80, 100]" :key="tick">
+                <g v-for="tick in timeSeriesChart.yTicks" :key="tick">
                   <line
                     :x1="timeSeriesChart.left"
                     :x2="timeSeriesChart.width - timeSeriesChart.right"
@@ -3230,7 +3709,7 @@ function formatCell(value: unknown) {
                     text-anchor="end"
                     class="chart-tick"
                   >
-                    {{ tick }}
+                    {{ formatNumber(tick, 3) }}
                   </text>
                 </g>
                 <line
@@ -3280,7 +3759,11 @@ function formatCell(value: unknown) {
                   class="chart-label"
                   :transform="`rotate(-90 16 ${timeSeriesChart.height / 2})`"
                 >
-                  {{ t('Estimated proportion (%)', '估计比例（%）') }}
+                  {{
+                    timeSeriesResult.analysis_type === 'element_mean'
+                      ? `${timeSeriesResult.value_column} (${timeSeriesResult.value_unit})`
+                      : t('Estimated proportion (%)', '估计比例（%）')
+                  }}
                 </text>
               </svg>
             </div>
@@ -3298,16 +3781,36 @@ function formatCell(value: unknown) {
                 <el-table-column :label="`Age (${timeSeriesResult.age_unit})`" min-width="150">
                   <template #default="scope">{{ formatNumber(scope.row.age, 6) }}</template>
                 </el-table-column>
-                <el-table-column :label="t('Mean proportion (%)', '平均比例（%）')" min-width="180">
+                <el-table-column
+                  :label="
+                    timeSeriesResult.analysis_type === 'element_mean'
+                      ? `${t('Mean', '均值')} (${timeSeriesResult.value_unit})`
+                      : t('Mean proportion (%)', '平均比例（%）')
+                  "
+                  min-width="180"
+                >
                   <template #default="scope">{{
                     formatNumber(scope.row.mean_proportion, 6)
                   }}</template>
                 </el-table-column>
-                <el-table-column label="±2σ (%)" min-width="160">
+                <el-table-column
+                  :label="
+                    timeSeriesResult.analysis_type === 'element_mean'
+                      ? `±2 SEM (${timeSeriesResult.value_unit})`
+                      : '±2σ (%)'
+                  "
+                  min-width="160"
+                >
                   <template #default="scope">{{
                     formatNumber(scope.row.uncertainty_2sigma, 6)
                   }}</template>
                 </el-table-column>
+                <el-table-column
+                  v-if="timeSeriesResult.analysis_type === 'element_mean'"
+                  :label="t('Samples', '样本数')"
+                  prop="sample_count"
+                  min-width="120"
+                />
               </el-table>
             </div>
             <MobileFieldCards :rows="timeSeriesResult.bins" />
@@ -3581,6 +4084,51 @@ function formatCell(value: unknown) {
   :deep(.el-radio-group) {
     display: flex;
     flex-wrap: wrap;
+  }
+}
+
+.application-inference-card {
+  margin-top: 24px;
+}
+
+.inference-requirements {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.35fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  margin: 20px 0;
+  padding: 16px;
+  border: 1px solid #d6e6e3;
+  border-radius: 8px;
+  background: #f6f8f8;
+
+  > span {
+    color: #526970;
+    font-size: 14px;
+    font-weight: 650;
+  }
+}
+
+.inference-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.inference-summary-grid {
+  margin-top: 24px;
+}
+
+.filter-range-inputs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+
+  :deep(.el-input-number) {
+    width: 100%;
   }
 }
 
@@ -4390,9 +4938,15 @@ function formatCell(value: unknown) {
   }
 
   .file-picker,
-  .artifact-row {
+  .artifact-row,
+  .inference-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .inference-actions,
+  .inference-requirements {
+    grid-template-columns: 1fr;
   }
 
   .file-picker .file-copy {

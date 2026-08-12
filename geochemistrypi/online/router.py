@@ -21,6 +21,7 @@ from .schemas import (
     DatasetProfileResponse,
     DimensionalityReductionResponse,
     HealthResponse,
+    ModelInferenceResponse,
     RegressionResponse,
     RunResponse,
     TaskStatusResponse,
@@ -320,6 +321,48 @@ def create_router(
             await dataset.close()
 
     @router.post(
+        "/data-mining/inference",
+        response_model=ModelInferenceResponse,
+        tags=["data-mining"],
+    )
+    async def run_model_inference(
+        training_job_id: str = Form(...),
+        dataset: UploadFile = File(...),
+        x_task_id: str | None = Header(None, alias="X-Task-ID"),
+    ) -> ModelInferenceResponse:
+        content = await dataset.read(data_mining_service.max_upload_bytes + 1)
+        try:
+            enforce_upload_limit(content, data_mining_service.max_upload_bytes)
+            data_mining_service.validate_upload(dataset.filename, content)
+            return await run_calculation(
+                data_mining_service.run_model_inference,
+                tracking_id=x_task_id,
+                task_label="Application Data inference",
+                training_job_id=training_job_id,
+                filename=dataset.filename,
+                content=content,
+            )
+        except UploadTooLargeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                detail=str(exc),
+            ) from exc
+        except (InvalidDatasetError, ValueError, TypeError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=str(exc),
+            ) from exc
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Application inference failed: {type(exc).__name__}: {exc}",
+            ) from exc
+        finally:
+            await dataset.close()
+
+    @router.post(
         "/data-mining/clustering",
         response_model=ClusteringResponse,
         tags=["data-mining"],
@@ -585,6 +628,62 @@ def create_router(
                     "Model-predicted time series failed: "
                     f"{type(exc).__name__}: {exc}"
                 ),
+            ) from exc
+        finally:
+            await dataset.close()
+
+    @router.post(
+        "/data-mining/time-series/element-mean",
+        response_model=TimeSeriesResponse,
+        tags=["data-mining"],
+    )
+    async def run_element_time_series(
+        age_column: str = Form(...),
+        value_column: str = Form(...),
+        age_unit: str = Form("Ma"),
+        bin_width: float = Form(100.0),
+        value_unit: str = Form("wt%"),
+        filter_column: str | None = Form(None),
+        filter_min: float | None = Form(None),
+        filter_max: float | None = Form(None),
+        dataset: UploadFile = File(...),
+        x_task_id: str | None = Header(None, alias="X-Task-ID"),
+    ) -> TimeSeriesResponse:
+        content = await dataset.read(data_mining_service.max_upload_bytes + 1)
+        try:
+            enforce_upload_limit(content, data_mining_service.max_upload_bytes)
+            data_mining_service.validate_upload(dataset.filename, content)
+            return await run_calculation(
+                data_mining_service.run_element_time_series,
+                tracking_id=x_task_id,
+                task_label="Element mean time series",
+                filename=dataset.filename,
+                content=content,
+                age_column=age_column,
+                value_column=value_column,
+                age_unit=age_unit,
+                bin_width=bin_width,
+                value_unit=value_unit,
+                filter_column=filter_column,
+                filter_min=filter_min,
+                filter_max=filter_max,
+            )
+        except UploadTooLargeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                detail=str(exc),
+            ) from exc
+        except (InvalidDatasetError, ValueError, TypeError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=str(exc),
+            ) from exc
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Element time series failed: {type(exc).__name__}: {exc}",
             ) from exc
         finally:
             await dataset.close()

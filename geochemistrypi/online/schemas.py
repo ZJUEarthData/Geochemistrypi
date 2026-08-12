@@ -269,6 +269,34 @@ class ClassificationResponse(BaseModel):
     artifacts: list[ArtifactResponse] = Field(default_factory=list)
 
 
+class ModelInferenceSummary(BaseModel):
+    original_rows: int
+    predicted_rows: int
+    excluded_rows: int
+    imputed_rows: int
+    feature_count: int
+
+
+class ModelInferenceResponse(BaseModel):
+    job_id: str
+    training_job_id: str
+    status: str
+    message: str
+    source_filename: str
+    task_type: Literal["regression", "classification"]
+    model: str
+    model_display_name: str
+    target_column: str
+    feature_columns: list[str]
+    prediction_column: str
+    pipeline_schema_version: str
+    software_version: str
+    summary: ModelInferenceSummary
+    preview: list[dict[str, Any]]
+    warnings: list[str] = Field(default_factory=list)
+    artifacts: list[ArtifactResponse] = Field(default_factory=list)
+
+
 class ClusteringSummary(BaseModel):
     original_rows: int
     usable_rows: int
@@ -393,6 +421,7 @@ class TimeSeriesBinItem(BaseModel):
     age: float
     mean_proportion: float | None = None
     uncertainty_2sigma: float | None = None
+    sample_count: int = 0
 
 
 class ProbabilityModelMetrics(BaseModel):
@@ -426,14 +455,23 @@ class TimeSeriesResponse(BaseModel):
     message: str
     source_filename: str
     age_column: str
-    age_max_column: str
-    probability_column: str
-    latitude_column: str
-    longitude_column: str
+    age_max_column: str | None = None
+    probability_column: str | None = None
+    latitude_column: str | None = None
+    longitude_column: str | None = None
     age_unit: str
     bin_width: float
-    bootstrap_iterations: int
-    random_state: int
+    bootstrap_iterations: int = 0
+    random_state: int | None = None
+    analysis_type: Literal["subaerial_proportion", "element_mean"] = (
+        "subaerial_proportion"
+    )
+    value_column: str | None = None
+    value_unit: str | None = None
+    uncertainty_method: Literal["bootstrap_2sigma", "2_sem"] = "bootstrap_2sigma"
+    filter_column: str | None = None
+    filter_min: float | None = None
+    filter_max: float | None = None
     probability_source: Literal["uploaded", "model_predicted"] = "uploaded"
     probability_model: ProbabilityModelInfo | None = None
     prediction_summary: ProbabilityPredictionSummary | None = None

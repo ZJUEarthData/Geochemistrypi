@@ -524,6 +524,14 @@ def make_time_series_csv() -> bytes:
     return ("\n".join(rows) + "\n").encode("utf-8")
 
 
+def make_element_time_series_csv() -> bytes:
+    rows = ["Age,MGO,SIO2"]
+    for age in range(0, 400, 20):
+        rows.append(f"{age},{6 + age * 0.01},{45 + age * 0.005}")
+    rows.append("50,,48")
+    return ("\n".join(rows) + "\n").encode("utf-8")
+
+
 def make_predicted_time_series_csv() -> bytes:
     geochemical_columns = [
         "SIO2",
@@ -612,6 +620,8 @@ def test_data_mining_catalog_starts_with_verified_dataset_profile(tmp_path):
         "模型系数",
         "预测结果 CSV",
         "JSON 模型报告",
+        "已训练 Pipeline",
+        "Application Data 推理",
     ]
     assert [method["name"] for method in features[2]["methods"]] == [
         "linear_regression",
@@ -628,6 +638,8 @@ def test_data_mining_catalog_starts_with_verified_dataset_profile(tmp_path):
         "混淆矩阵",
         "预测结果 CSV",
         "JSON 模型报告",
+        "已训练 Pipeline",
+        "Application Data 推理",
     ]
     assert [method["name"] for method in features[3]["methods"]] == [
         "logistic_regression",
@@ -951,7 +963,7 @@ def test_preprocess_rejects_upload_over_size_limit(tmp_path):
         files={
             "dataset": (
                 "oversized.csv",
-                b"Sample\n" + b"A" * (10 * 1024 * 1024 + 1),
+                b"Sample\n" + b"A" * (20 * 1024 * 1024 + 1),
                 "text/csv",
             )
         },
@@ -960,10 +972,10 @@ def test_preprocess_rejects_upload_over_size_limit(tmp_path):
     assert "exceeds" in response.json()["detail"]
 
 
-def test_default_upload_limit_is_10_mib(tmp_path):
+def test_default_upload_limit_is_20_mib(tmp_path):
     app = create_app(tmp_path / "runtime")
 
-    expected_bytes = 10 * 1024 * 1024
+    expected_bytes = 20 * 1024 * 1024
     assert app.state.online_service.max_upload_bytes == expected_bytes
     assert app.state.data_mining_service.max_upload_bytes == expected_bytes
 
@@ -1084,6 +1096,7 @@ def test_linear_regression_returns_metrics_coefficients_and_downloads(tmp_path):
     assert [artifact["name"] for artifact in payload["artifacts"]] == [
         "regression_predictions.csv",
         "regression_report.json",
+        "trained_pipeline.joblib",
     ]
 
     predictions_download = client.get(payload["artifacts"][0]["download_url"])
@@ -1103,6 +1116,91 @@ def test_linear_regression_returns_metrics_coefficients_and_downloads(tmp_path):
     assert report["report_version"] == "linear-regression-v1"
     assert report["random_state"] == 42
     assert report["metrics"]["r2"] == pytest.approx(1.0)
+    assert report["pipeline_artifact"] == "trained_pipeline.joblib"
+    pipeline_download = client.get(payload["artifacts"][2]["download_url"])
+    assert pipeline_download.status_code == 200
+    assert pipeline_download.content
+
+
+def test_saved_regression_pipeline_predicts_independent_application_data(tmp_path):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    training = client.post(
+        "/api/data-mining/regression",
+        data={
+            "target_column": "Target",
+            "feature_columns": json.dumps(["X1", "X2"]),
+            "test_size": "0.25",
+        },
+        files={"dataset": ("training.csv", make_linear_regression_csv(), "text/csv")},
+    )
+    assert training.status_code == 200, training.text
+    training_payload = training.json()
+
+    application = client.post(
+        "/api/data-mining/inference",
+        data={"training_job_id": training_payload["job_id"]},
+        files={
+            "dataset": (
+                "application.csv",
+                b"Sample,X1,X2\nA,50,4\nB,51,\nC,,\n",
+                "text/csv",
+            )
+        },
+    )
+    assert application.status_code == 200, application.text
+    payload = application.json()
+    assert payload["training_job_id"] == training_payload["job_id"]
+    assert payload["task_type"] == "regression"
+    assert payload["feature_columns"] == ["X1", "X2"]
+    assert payload["prediction_column"] == "predicted_Target"
+    assert payload["summary"] == {
+        "original_rows": 3,
+        "predicted_rows": 2,
+        "excluded_rows": 1,
+        "imputed_rows": 1,
+        "feature_count": 2,
+    }
+    assert payload["preview"][0]["predicted_Target"] == pytest.approx(147.0)
+    assert payload["preview"][0]["inference_status"] == "predicted"
+    assert payload["preview"][1]["inference_status"] == "predicted_with_imputation"
+    assert payload["preview"][2]["inference_status"] == "excluded_no_numeric_features"
+    assert [artifact["name"] for artifact in payload["artifacts"]] == [
+        "application_predictions.csv",
+        "application_inference_report.json",
+    ]
+    predictions_download = client.get(payload["artifacts"][0]["download_url"])
+    assert predictions_download.status_code == 200
+    predictions = pd.read_csv(BytesIO(predictions_download.content))
+    assert list(predictions.columns) == [
+        "source_row",
+        "Sample",
+        "X1",
+        "X2",
+        "predicted_Target",
+        "inference_status",
+    ]
+    assert len(predictions) == 3
+
+
+def test_application_inference_rejects_missing_training_feature(tmp_path):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    training = client.post(
+        "/api/data-mining/classification",
+        data={
+            "target_column": "Class",
+            "feature_columns": json.dumps(["X1", "X2"]),
+            "test_size": "0.25",
+        },
+        files={"dataset": ("training.csv", make_classification_csv(), "text/csv")},
+    )
+    assert training.status_code == 200, training.text
+    response = client.post(
+        "/api/data-mining/inference",
+        data={"training_job_id": training.json()["job_id"]},
+        files={"dataset": ("application.csv", b"X1\n1\n2\n", "text/csv")},
+    )
+    assert response.status_code == 422
+    assert "missing required feature columns: X2" in response.json()["detail"]
 
 
 @pytest.mark.parametrize(
@@ -1358,6 +1456,7 @@ def test_logistic_classification_returns_metrics_confusion_and_downloads(tmp_pat
     assert [artifact["name"] for artifact in payload["artifacts"]] == [
         "classification_predictions.csv",
         "classification_report.json",
+        "trained_pipeline.joblib",
     ]
 
     predictions_download = client.get(payload["artifacts"][0]["download_url"])
@@ -1377,6 +1476,10 @@ def test_logistic_classification_returns_metrics_confusion_and_downloads(tmp_pat
     assert report["report_version"] == "logistic-classification-v1"
     assert report["random_state"] == 42
     assert report["metrics"]["accuracy"] >= 0.9
+    assert report["pipeline_artifact"] == "trained_pipeline.joblib"
+    pipeline_download = client.get(payload["artifacts"][2]["download_url"])
+    assert pipeline_download.status_code == 200
+    assert pipeline_download.content
 
 
 @pytest.mark.parametrize(
@@ -2043,6 +2146,79 @@ def test_v080_time_series_returns_bins_figure_and_downloads(tmp_path):
     assert report["column_mapping"]["age"] == "Age"
     assert report["probability_source"] == "uploaded"
     assert report["summary"]["populated_bins"] == 6
+
+
+def test_element_mean_time_series_returns_100_ma_bins_and_2sem(tmp_path):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    response = client.post(
+        "/api/data-mining/time-series/element-mean",
+        data={
+            "age_column": "Age",
+            "value_column": "MGO",
+            "age_unit": "Ma",
+            "bin_width": "100",
+            "value_unit": "wt%",
+            "filter_column": "SIO2",
+            "filter_min": "43",
+            "filter_max": "51",
+        },
+        files={
+            "dataset": (
+                "element-series.csv",
+                make_element_time_series_csv(),
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["analysis_type"] == "element_mean"
+    assert payload["value_column"] == "MGO"
+    assert payload["value_unit"] == "wt%"
+    assert payload["uncertainty_method"] == "2_sem"
+    assert payload["bin_width"] == 100
+    assert payload["bootstrap_iterations"] == 0
+    assert payload["random_state"] is None
+    assert payload["summary"] == {
+        "original_rows": 21,
+        "usable_rows": 20,
+        "dropped_rows": 1,
+        "sampled_out_rows": 0,
+        "bin_count": 4,
+        "populated_bins": 4,
+    }
+    assert [item["age"] for item in payload["bins"]] == [50, 150, 250, 350]
+    assert [item["sample_count"] for item in payload["bins"]] == [5, 5, 5, 5]
+    assert payload["bins"][0]["mean_proportion"] == pytest.approx(6.4)
+    assert payload["bins"][0]["uncertainty_2sigma"] == pytest.approx(
+        2 * pd.Series([6.0, 6.2, 6.4, 6.6, 6.8]).std() / 5**0.5
+    )
+    assert [artifact["name"] for artifact in payload["artifacts"]] == [
+        "element_mean_time_series.csv",
+        "element_mean_time_series.svg",
+        "element_mean_time_series_report.json",
+    ]
+
+    results = pd.read_csv(
+        BytesIO(client.get(payload["artifacts"][0]["download_url"]).content)
+    )
+    assert list(results.columns) == [
+        "age",
+        "mean_value",
+        "uncertainty_2sem",
+        "sample_count",
+    ]
+    assert len(results) == 4
+    svg = client.get(payload["artifacts"][1]["download_url"])
+    assert b"MGO mean through time" in svg.content
+    report = client.get(payload["artifacts"][2]["download_url"]).json()
+    assert report["report_version"] == "element-mean-time-series-v1"
+    assert report["filter"] == {
+        "column": "SIO2",
+        "minimum": 43.0,
+        "maximum": 51.0,
+    }
 
 
 def test_model_predicted_time_series_is_versioned_and_auditable(tmp_path):
