@@ -4,6 +4,8 @@ import { ElInputNumber, ElMessage } from 'element-plus'
 
 import MobileFieldCards from '@/components/mobile-field-cards.vue'
 import RunSummary from '@/components/run-summary.vue'
+import TaskProgress from '@/components/task-progress.vue'
+import { useTaskTracking } from '@/composables/use-task-tracking'
 
 import {
   getDataMiningCatalog,
@@ -27,7 +29,7 @@ import {
   type RegressionResponse,
   type TimeSeriesResponse
 } from '@/api/data-mining'
-import { artifactUrl, getHealth } from '@/api/online'
+import { DEFAULT_MAX_UPLOAD_BYTES, artifactUrl, getHealth } from '@/api/online'
 import { apiText, dataMiningFeatureDescription, t, warningIsSuccess } from '@/i18n'
 
 type ServiceState = 'checking' | 'online' | 'offline'
@@ -35,12 +37,21 @@ type TimeSeriesMode = 'direct' | 'model_predicted'
 
 const serviceState = ref<ServiceState>('checking')
 const softwareVersion = ref('')
+const maxUploadBytes = ref(DEFAULT_MAX_UPLOAD_BYTES)
+const taskTimeoutMinutes = ref(30)
+const maxConcurrentTasks = ref(1)
 const loadingCatalog = ref(true)
 const running = ref(false)
 const inspectingColumns = ref(false)
 const features = ref<DataMiningFeatureItem[]>([])
 const selectedFeature = ref('')
 const datasetFile = ref<File | null>(null)
+const resourceLimitNote = computed(() =>
+  t(
+    `Maximum file size: ${Math.round(maxUploadBytes.value / 1024 / 1024)} MB. The site runs ${maxConcurrentTasks.value} calculation at a time; additional jobs wait in the queue. A running job stops after ${taskTimeoutMinutes.value} minutes.`,
+    `文件大小不得超过 ${Math.round(maxUploadBytes.value / 1024 / 1024)} MB。全站同时只运行 ${maxConcurrentTasks.value} 个计算任务，其他任务排队等待；任务开始运行 ${taskTimeoutMinutes.value} 分钟后将自动停止。`
+  )
+)
 const result = ref<DatasetProfileResponse | null>(null)
 const columnInspection = ref<DatasetProfileResponse | null>(null)
 const preprocessingResult = ref<DataPreprocessingResponse | null>(null)
@@ -78,6 +89,15 @@ const timeSeriesAgeUnit = ref<'Ma' | 'Ga'>('Ma')
 const timeSeriesBinWidth = ref(10)
 const timeSeriesBootstrapIterations = ref(100)
 const errorMessage = ref('')
+const {
+  taskId,
+  taskStatus,
+  cancellingTask,
+  cancelledByUser,
+  beginTask,
+  finishTask,
+  cancelCurrentTask
+} = useTaskTracking()
 
 const missingStrategyOptions = computed<
   Array<{
@@ -357,6 +377,9 @@ const runSummaryStatus = computed(() => {
   if (serviceState.value === 'checking') return t('Checking service', '正在检查服务')
   if (serviceState.value === 'offline') return t('Backend offline', '后端离线')
   if (inspectingColumns.value) return t('Inspecting dataset', '正在检查数据集')
+  if (taskStatus.value?.status === 'queued') return t('Waiting in queue', '正在排队')
+  if (taskStatus.value?.status === 'cancelling') return t('Cancelling', '正在取消')
+  if (taskStatus.value?.status === 'cancelled') return t('Cancelled', '已取消')
   if (running.value) return t('Running analysis', '正在运行分析')
   if (operationCompleted.value) return t('Completed', '已完成')
   if (errorMessage.value) return t('Needs attention', '需要检查')
@@ -576,6 +599,9 @@ async function loadPage() {
   try {
     const health = await getHealth()
     softwareVersion.value = health.version
+    maxUploadBytes.value = health.max_upload_bytes
+    taskTimeoutMinutes.value = Math.round(health.task_timeout_seconds / 60)
+    maxConcurrentTasks.value = health.max_concurrent_tasks
     serviceState.value = 'online'
     const catalog = await getDataMiningCatalog()
     features.value = catalog.features
@@ -619,6 +645,15 @@ async function onFileChange(event: Event) {
     )
     return
   }
+  if (file && file.size > maxUploadBytes.value) {
+    datasetFile.value = null
+    input.value = ''
+    errorMessage.value = t(
+      `The selected file exceeds the ${Math.round(maxUploadBytes.value / 1024 / 1024)} MB upload limit.`,
+      `所选文件超过 ${Math.round(maxUploadBytes.value / 1024 / 1024)} MB 上传限制。`
+    )
+    return
+  }
   datasetFile.value = file
   if (file) {
     await inspectDatasetColumns()
@@ -639,8 +674,9 @@ async function inspectDatasetColumns() {
   dimensionalityReductionFeatures.value = []
   anomalyDetectionFeatures.value = []
   errorMessage.value = ''
+  const trackingId = beginTask('Dataset profile')
   try {
-    columnInspection.value = await profileDataset(datasetFile.value)
+    columnInspection.value = await profileDataset(datasetFile.value, trackingId)
     if (isPreprocessing.value) {
       selectedColumns.value = columnInspection.value.columns.map((column) => column.name)
     } else if (isRegression.value) {
@@ -719,11 +755,14 @@ async function inspectDatasetColumns() {
       }
     }
   } catch (error) {
-    errorMessage.value =
-      error instanceof Error
-        ? error.message
-        : t('Could not inspect dataset columns.', '无法检测数据集列。')
+    if (!cancelledByUser.value) {
+      errorMessage.value =
+        error instanceof Error
+          ? error.message
+          : t('Could not inspect dataset columns.', '无法检测数据集列。')
+    }
   } finally {
+    await finishTask()
     inspectingColumns.value = false
   }
 }
@@ -734,12 +773,14 @@ async function submitJob() {
   running.value = true
   clearResult()
   errorMessage.value = ''
+  const trackingId = beginTask(runSummaryMethod.value || 'Data Mining')
   try {
     if (isPreprocessing.value) {
       preprocessingResult.value = await preprocessDataset(
         datasetFile.value,
         selectedColumns.value,
-        missingStrategy.value
+        missingStrategy.value,
+        trackingId
       )
       ElMessage.success(t('Data preprocessing completed', '数据预处理完成'))
     } else if (isRegression.value) {
@@ -748,7 +789,8 @@ async function submitJob() {
         regressionTarget.value,
         regressionFeatures.value,
         regressionTestSize.value,
-        regressionModel.value
+        regressionModel.value,
+        trackingId
       )
       ElMessage.success(`${regressionResult.value.model_display_name} ${t('completed', '已完成')}`)
     } else if (isClassification.value) {
@@ -757,7 +799,8 @@ async function submitJob() {
         classificationTarget.value,
         classificationFeatures.value,
         classificationTestSize.value,
-        classificationModel.value
+        classificationModel.value,
+        trackingId
       )
       ElMessage.success(
         `${classificationResult.value.model_display_name} ${t('completed', '已完成')}`
@@ -767,7 +810,8 @@ async function submitJob() {
         datasetFile.value,
         clusteringFeatures.value,
         clusterCount.value,
-        clusteringModel.value
+        clusteringModel.value,
+        trackingId
       )
       ElMessage.success(`${clusteringResult.value.model_display_name} ${t('completed', '已完成')}`)
     } else if (isDimensionalityReduction.value) {
@@ -775,7 +819,8 @@ async function submitJob() {
         datasetFile.value,
         dimensionalityReductionFeatures.value,
         componentCount.value,
-        dimensionalityReductionModel.value
+        dimensionalityReductionModel.value,
+        trackingId
       )
       ElMessage.success(
         `${dimensionalityReductionResult.value.model_display_name} ${t('completed', '已完成')}`
@@ -784,7 +829,8 @@ async function submitJob() {
       anomalyDetectionResult.value = await runAnomalyDetection(
         datasetFile.value,
         anomalyDetectionFeatures.value,
-        anomalyDetectionModel.value
+        anomalyDetectionModel.value,
+        trackingId
       )
       ElMessage.success(
         `${anomalyDetectionResult.value.model_display_name} ${t('completed', '已完成')}`
@@ -803,27 +849,34 @@ async function submitJob() {
               { ...sharedColumns, probability: timeSeriesProbabilityColumn.value },
               timeSeriesAgeUnit.value,
               timeSeriesBinWidth.value,
-              timeSeriesBootstrapIterations.value
+              timeSeriesBootstrapIterations.value,
+              trackingId
             )
           : await runPredictedTimeSeries(
               datasetFile.value,
               sharedColumns,
               timeSeriesAgeUnit.value,
               timeSeriesBinWidth.value,
-              timeSeriesBootstrapIterations.value
+              timeSeriesBootstrapIterations.value,
+              trackingId
             )
       ElMessage.success(t('Time series analysis completed', '时间序列分析完成'))
     } else {
-      result.value = await profileDataset(datasetFile.value)
+      result.value = await profileDataset(datasetFile.value, trackingId)
       ElMessage.success(t('Dataset profile completed', '数据集概览完成'))
     }
   } catch (error) {
-    errorMessage.value =
-      error instanceof Error
-        ? error.message
-        : t('The Data Mining operation failed.', '数据挖掘操作失败。')
-    ElMessage.error(t('Data Mining operation failed', '数据挖掘操作失败'))
+    if (cancelledByUser.value) {
+      ElMessage.info(t('Task cancelled', '任务已取消'))
+    } else {
+      errorMessage.value =
+        error instanceof Error
+          ? error.message
+          : t('The Data Mining operation failed.', '数据挖掘操作失败。')
+      ElMessage.error(t('Data Mining operation failed', '数据挖掘操作失败'))
+    }
   } finally {
+    await finishTask()
     running.value = false
   }
 }
@@ -1030,6 +1083,7 @@ function formatCell(value: unknown) {
                     '拖放 XLSX 或 CSV 文件到此处，或点击浏览。'
                   )
                 }}</small>
+                <small>{{ resourceLimitNote }}</small>
                 <em class="file-name">{{
                   datasetFile?.name || t('No file selected', '未选择文件')
                 }}</em>
@@ -1905,6 +1959,12 @@ function formatCell(value: unknown) {
               {{ t('Retry connection', '重新连接') }}
             </el-button>
           </div>
+          <TaskProgress
+            v-if="taskStatus && (running || inspectingColumns)"
+            :task="taskStatus"
+            :cancelling="cancellingTask"
+            @cancel="cancelCurrentTask"
+          />
         </el-form>
       </el-card>
 
@@ -3292,7 +3352,7 @@ function formatCell(value: unknown) {
         :parameters="runSummaryParameters"
         :status="runSummaryStatus"
         :status-tone="runSummaryTone"
-        :job-id="activeJobId"
+        :job-id="activeJobId || taskId"
         :software-version="softwareVersion"
       />
     </aside>

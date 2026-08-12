@@ -4,10 +4,13 @@ import { ElMessage } from 'element-plus'
 
 import FormulaDisplay from '@/components/formula-display.vue'
 import RunSummary from '@/components/run-summary.vue'
+import TaskProgress from '@/components/task-progress.vue'
+import { useTaskTracking } from '@/composables/use-task-tracking'
 
 import { profileDataset, type DatasetProfileResponse } from '@/api/data-mining'
 
 import {
+  DEFAULT_MAX_UPLOAD_BYTES,
   artifactUrl,
   getCatalog,
   getHealth,
@@ -27,6 +30,9 @@ type ServiceState = 'checking' | 'online' | 'offline'
 
 const serviceState = ref<ServiceState>('checking')
 const softwareVersion = ref('')
+const maxUploadBytes = ref(DEFAULT_MAX_UPLOAD_BYTES)
+const taskTimeoutMinutes = ref(30)
+const maxConcurrentTasks = ref(1)
 const loadingCatalog = ref(true)
 const inspectingDataset = ref(false)
 const running = ref(false)
@@ -39,6 +45,22 @@ const datasetProfile = ref<DatasetProfileResponse | null>(null)
 const artifacts = ref<ArtifactResponse[]>([])
 const jobId = ref('')
 const errorMessage = ref('')
+const {
+  taskId,
+  taskStatus,
+  cancellingTask,
+  cancelledByUser,
+  beginTask,
+  finishTask,
+  cancelCurrentTask
+} = useTaskTracking()
+
+const resourceLimitNote = computed(() =>
+  t(
+    `Maximum file size: ${Math.round(maxUploadBytes.value / 1024 / 1024)} MB. The site runs ${maxConcurrentTasks.value} calculation at a time; additional jobs wait in the queue. A running job stops after ${taskTimeoutMinutes.value} minutes.`,
+    `文件大小不得超过 ${Math.round(maxUploadBytes.value / 1024 / 1024)} MB。全站同时只运行 ${maxConcurrentTasks.value} 个计算任务，其他任务排队等待；任务开始运行 ${taskTimeoutMinutes.value} 分钟后将自动停止。`
+  )
+)
 
 const availableTasks = computed(() => tasks.value.filter((task) => task.available))
 const unavailableTasks = computed(() => tasks.value.filter((task) => !task.available))
@@ -66,6 +88,9 @@ const runSummaryStatus = computed(() => {
   if (serviceState.value === 'checking') return t('Checking service', '正在检查服务')
   if (serviceState.value === 'offline') return t('Backend offline', '后端离线')
   if (inspectingDataset.value) return t('Inspecting dataset', '正在检查数据集')
+  if (taskStatus.value?.status === 'queued') return t('Waiting in queue', '正在排队')
+  if (taskStatus.value?.status === 'cancelling') return t('Cancelling', '正在取消')
+  if (taskStatus.value?.status === 'cancelled') return t('Cancelled', '已取消')
   if (running.value) return t('Calculating', '正在计算')
   if (jobId.value) return t('Completed', '已完成')
   if (errorMessage.value) return t('Needs attention', '需要检查')
@@ -117,6 +142,9 @@ async function loadPage() {
   try {
     const health = await getHealth()
     softwareVersion.value = health.version
+    maxUploadBytes.value = health.max_upload_bytes
+    taskTimeoutMinutes.value = Math.round(health.task_timeout_seconds / 60)
+    maxConcurrentTasks.value = health.max_concurrent_tasks
     serviceState.value = 'online'
     const catalog = await getCatalog()
     tasks.value = catalog.tasks
@@ -153,19 +181,32 @@ async function onFileChange(event: Event) {
     )
     return
   }
+  if (file && file.size > maxUploadBytes.value) {
+    datasetFile.value = null
+    input.value = ''
+    errorMessage.value = t(
+      `The selected file exceeds the ${Math.round(maxUploadBytes.value / 1024 / 1024)} MB upload limit.`,
+      `所选文件超过 ${Math.round(maxUploadBytes.value / 1024 / 1024)} MB 上传限制。`
+    )
+    return
+  }
   datasetFile.value = file
 
   if (!file) return
 
   inspectingDataset.value = true
+  const trackingId = beginTask('Dataset profile')
   try {
-    datasetProfile.value = await profileDataset(file)
+    datasetProfile.value = await profileDataset(file, trackingId)
   } catch (error) {
-    errorMessage.value =
-      error instanceof Error
-        ? error.message
-        : t('Could not inspect the selected dataset.', '无法检查所选数据集。')
+    if (!cancelledByUser.value) {
+      errorMessage.value =
+        error instanceof Error
+          ? error.message
+          : t('Could not inspect the selected dataset.', '无法检查所选数据集。')
+    }
   } finally {
+    await finishTask()
     inspectingDataset.value = false
   }
 }
@@ -176,21 +217,28 @@ async function submitJob() {
   running.value = true
   clearResult()
   errorMessage.value = ''
+  const trackingId = beginTask(`Chemical modeling: ${selectedMethod.value}`)
   try {
     const result = await runChemicalModel(
       selectedTask.value,
       selectedMethod.value,
       selectedElement.value,
-      datasetFile.value
+      datasetFile.value,
+      trackingId
     )
     artifacts.value = result.artifacts
     jobId.value = result.job_id
     ElMessage.success(t('Calculation completed', '计算完成'))
   } catch (error) {
-    errorMessage.value =
-      error instanceof Error ? error.message : t('Calculation failed.', '计算失败。')
-    ElMessage.error(t('Calculation failed', '计算失败'))
+    if (cancelledByUser.value) {
+      ElMessage.info(t('Task cancelled', '任务已取消'))
+    } else {
+      errorMessage.value =
+        error instanceof Error ? error.message : t('Calculation failed.', '计算失败。')
+      ElMessage.error(t('Calculation failed', '计算失败'))
+    }
   } finally {
+    await finishTask()
     running.value = false
   }
 }
@@ -465,6 +513,7 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
                     '拖放 XLSX 或 CSV 文件到此处，或点击浏览。'
                   )
                 }}</small>
+                <small>{{ resourceLimitNote }}</small>
                 <em>{{ datasetFile?.name || t('No file selected', '未选择文件') }}</em>
               </span>
             </label>
@@ -477,6 +526,13 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
             type="error"
             :closable="false"
             show-icon
+          />
+
+          <TaskProgress
+            v-if="taskStatus && (running || inspectingDataset)"
+            :task="taskStatus"
+            :cancelling="cancellingTask"
+            @cancel="cancelCurrentTask"
           />
 
           <div class="actions">
@@ -556,7 +612,7 @@ function rangeLabel(minimum: number | null, exclusiveMinimum: boolean) {
         :parameters="runSummaryParameters"
         :status="runSummaryStatus"
         :status-tone="runSummaryTone"
-        :job-id="jobId"
+        :job-id="jobId || taskId"
         :software-version="softwareVersion"
       />
     </aside>

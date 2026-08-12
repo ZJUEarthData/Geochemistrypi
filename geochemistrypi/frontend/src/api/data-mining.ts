@@ -1,4 +1,4 @@
-import { API_BASE_URL, type ArtifactResponse } from '@/api/online'
+import { API_BASE_URL, taskHeaders, type ArtifactResponse } from '@/api/online'
 
 export type DataMiningStatus = 'verified' | 'testing'
 
@@ -363,11 +363,12 @@ export async function getDataMiningCatalog(): Promise<DataMiningCatalogResponse>
   return parseResponse<DataMiningCatalogResponse>(response)
 }
 
-export async function profileDataset(dataset: File): Promise<DatasetProfileResponse> {
+export async function profileDataset(dataset: File, taskId?: string): Promise<DatasetProfileResponse> {
   const form = new FormData()
   form.append('dataset', dataset)
   const response = await fetch(`${API_BASE_URL}/api/data-mining/profile`, {
     method: 'POST',
+    headers: taskHeaders(taskId),
     body: form
   })
   return parseResponse<DatasetProfileResponse>(response)
@@ -376,7 +377,8 @@ export async function profileDataset(dataset: File): Promise<DatasetProfileRespo
 export async function preprocessDataset(
   dataset: File,
   selectedColumns: string[],
-  missingStrategy: MissingValueStrategy
+  missingStrategy: MissingValueStrategy,
+  taskId?: string
 ): Promise<DataPreprocessingResponse> {
   const form = new FormData()
   form.append('dataset', dataset)
@@ -384,6 +386,7 @@ export async function preprocessDataset(
   form.append('missing_strategy', missingStrategy)
   const response = await fetch(`${API_BASE_URL}/api/data-mining/preprocess`, {
     method: 'POST',
+    headers: taskHeaders(taskId),
     body: form
   })
   return parseResponse<DataPreprocessingResponse>(response)
@@ -394,7 +397,8 @@ export async function runRegression(
   targetColumn: string,
   featureColumns: string[],
   testSize: number,
-  model: string = 'linear_regression'
+  model: string = 'linear_regression',
+  taskId?: string
 ): Promise<RegressionResponse> {
   const form = new FormData()
   form.append('dataset', dataset)
@@ -404,6 +408,7 @@ export async function runRegression(
   form.append('model', model)
   const response = await fetch(`${API_BASE_URL}/api/data-mining/regression`, {
     method: 'POST',
+    headers: taskHeaders(taskId),
     body: form
   })
   return parseResponse<RegressionResponse>(response)
@@ -414,7 +419,8 @@ export async function runClassification(
   targetColumn: string,
   featureColumns: string[],
   testSize: number,
-  model: string = 'logistic_regression'
+  model: string = 'logistic_regression',
+  taskId?: string
 ): Promise<ClassificationResponse> {
   const form = new FormData()
   form.append('dataset', dataset)
@@ -424,6 +430,7 @@ export async function runClassification(
   form.append('model', model)
   const response = await fetch(`${API_BASE_URL}/api/data-mining/classification`, {
     method: 'POST',
+    headers: taskHeaders(taskId),
     body: form
   })
   return parseResponse<ClassificationResponse>(response)
@@ -433,7 +440,8 @@ export async function runClustering(
   dataset: File,
   featureColumns: string[],
   clusterCount: number,
-  model: string = 'kmeans'
+  model: string = 'kmeans',
+  taskId?: string
 ): Promise<ClusteringResponse> {
   const form = new FormData()
   form.append('dataset', dataset)
@@ -442,6 +450,7 @@ export async function runClustering(
   form.append('model', model)
   const response = await fetch(`${API_BASE_URL}/api/data-mining/clustering`, {
     method: 'POST',
+    headers: taskHeaders(taskId),
     body: form
   })
   return parseResponse<ClusteringResponse>(response)
@@ -451,7 +460,8 @@ export async function runDimensionalityReduction(
   dataset: File,
   featureColumns: string[],
   componentCount: number,
-  model: string = 'pca'
+  model: string = 'pca',
+  taskId?: string
 ): Promise<DimensionalityReductionResponse> {
   const form = new FormData()
   form.append('dataset', dataset)
@@ -460,6 +470,7 @@ export async function runDimensionalityReduction(
   form.append('model', model)
   const response = await fetch(`${API_BASE_URL}/api/data-mining/dimensionality-reduction`, {
     method: 'POST',
+    headers: taskHeaders(taskId),
     body: form
   })
   return parseResponse<DimensionalityReductionResponse>(response)
@@ -468,7 +479,8 @@ export async function runDimensionalityReduction(
 export async function runAnomalyDetection(
   dataset: File,
   featureColumns: string[],
-  model: string = 'isolation_forest'
+  model: string = 'isolation_forest',
+  taskId?: string
 ): Promise<AnomalyDetectionResponse> {
   const form = new FormData()
   form.append('dataset', dataset)
@@ -476,6 +488,7 @@ export async function runAnomalyDetection(
   form.append('model', model)
   const response = await fetch(`${API_BASE_URL}/api/data-mining/anomaly-detection`, {
     method: 'POST',
+    headers: taskHeaders(taskId),
     body: form
   })
   return parseResponse<AnomalyDetectionResponse>(response)
@@ -492,7 +505,8 @@ export async function runTimeSeries(
   },
   ageUnit: 'Ma' | 'Ga',
   binWidth: number,
-  bootstrapIterations: number
+  bootstrapIterations: number,
+  taskId?: string
 ): Promise<TimeSeriesResponse> {
   const form = new FormData()
   form.append('dataset', dataset)
@@ -506,6 +520,7 @@ export async function runTimeSeries(
   form.append('bootstrap_iterations', String(bootstrapIterations))
   const response = await fetch(`${API_BASE_URL}/api/data-mining/time-series`, {
     method: 'POST',
+    headers: taskHeaders(taskId),
     body: form
   })
   return parseResponse<TimeSeriesResponse>(response)
@@ -521,7 +536,8 @@ export async function runPredictedTimeSeries(
   },
   ageUnit: 'Ma' | 'Ga',
   binWidth: number,
-  bootstrapIterations: number
+  bootstrapIterations: number,
+  taskId?: string
 ): Promise<TimeSeriesResponse> {
   const form = new FormData()
   form.append('dataset', dataset)
@@ -534,6 +550,7 @@ export async function runPredictedTimeSeries(
   form.append('bootstrap_iterations', String(bootstrapIterations))
   const response = await fetch(`${API_BASE_URL}/api/data-mining/time-series/predict`, {
     method: 'POST',
+    headers: taskHeaders(taskId),
     body: form
   })
   return parseResponse<TimeSeriesResponse>(response)

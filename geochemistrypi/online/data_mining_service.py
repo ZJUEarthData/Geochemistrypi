@@ -82,6 +82,7 @@ from .schemas import (
     TimeSeriesSummary,
 )
 from .service import InvalidDatasetError, UploadTooLargeError
+from .limits import MAX_UPLOAD_BYTES
 from .subaerial_probability import (
     MIN_FEATURES_PER_ROW,
     MODEL_DISPLAY_NAME,
@@ -105,7 +106,7 @@ class DataMiningService:
     def __init__(
         self,
         runtime_dir: Path,
-        max_upload_bytes: int = 25 * 1024 * 1024,
+        max_upload_bytes: int = MAX_UPLOAD_BYTES,
         max_rows: int = 100_000,
         max_columns: int = 500,
     ):
@@ -2275,6 +2276,10 @@ text{{font-family:Arial,Helvetica,sans-serif;fill:#18323a}} .title{{font-size:22
                 f"The uploaded file exceeds {self.max_upload_bytes} bytes"
             )
         return suffix
+
+    def validate_upload(self, filename: str | None, content: bytes) -> str:
+        """Validate inexpensive upload rules before claiming the compute slot."""
+        return self._validate_upload(filename, content)
 
     @staticmethod
     def _read_dataframe(suffix: str, content: bytes) -> pd.DataFrame:

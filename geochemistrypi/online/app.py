@@ -10,6 +10,7 @@ from geochemistrypi._version import __version__
 from .data_mining_service import DataMiningService
 from .router import create_router
 from .service import OnlineService
+from .task_runner import TaskRunner
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -32,9 +33,11 @@ def create_app(runtime_dir: Path | None = None) -> FastAPI:
     resolved_runtime_dir = runtime_dir or PROJECT_ROOT / "runtime"
     service = OnlineService(resolved_runtime_dir)
     data_mining_service = DataMiningService(resolved_runtime_dir)
+    task_runner = TaskRunner(resolved_runtime_dir / "online-task.lock")
     app.state.online_service = service
     app.state.data_mining_service = data_mining_service
-    app.include_router(create_router(service, data_mining_service))
+    app.state.task_runner = task_runner
+    app.include_router(create_router(service, data_mining_service, task_runner))
 
     @app.get("/", include_in_schema=False)
     async def root() -> dict[str, str]:

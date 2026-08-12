@@ -3,12 +3,14 @@
 import asyncio
 import json
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, File, Form, Header, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
 
 from geochemistrypi._version import __version__
 
 from .data_mining_service import DataMiningService
+from .identity import BUILD_ID, INSTANCE_ID, SOURCE_REVISION
+from .limits import MAX_CONCURRENT_TASKS, MAX_UPLOAD_BYTES, TASK_TIMEOUT_SECONDS
 from .schemas import (
     AnomalyDetectionResponse,
     CatalogResponse,
@@ -21,14 +23,17 @@ from .schemas import (
     HealthResponse,
     RegressionResponse,
     RunResponse,
+    TaskStatusResponse,
     TimeSeriesResponse,
 )
 from .service import InvalidDatasetError, OnlineService, UploadTooLargeError
+from .task_runner import TaskCancelledError, TaskRunner, TaskTimeoutError
 
 
 def create_router(
     service: OnlineService,
     data_mining_service: DataMiningService,
+    task_runner: TaskRunner,
 ) -> APIRouter:
     router = APIRouter(prefix="/api")
 
@@ -38,7 +43,66 @@ def create_router(
             status="ok",
             service="geochemistrypi-online",
             version=__version__,
+            instance_id=INSTANCE_ID,
+            source_revision=SOURCE_REVISION,
+            build_id=BUILD_ID,
+            max_upload_bytes=MAX_UPLOAD_BYTES,
+            task_timeout_seconds=TASK_TIMEOUT_SECONDS,
+            max_concurrent_tasks=MAX_CONCURRENT_TASKS,
         )
+
+    async def run_calculation(
+        operation,
+        tracking_id: str | None,
+        task_label: str,
+        **arguments,
+    ):
+        try:
+            return await task_runner.run(
+                operation,
+                arguments=arguments,
+                tracking_id=tracking_id,
+                task_label=task_label,
+            )
+        except TaskCancelledError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=str(exc),
+            ) from exc
+        except TaskTimeoutError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail=str(exc),
+            ) from exc
+
+    def enforce_upload_limit(content: bytes, max_upload_bytes: int) -> None:
+        if len(content) > max_upload_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                detail=f"The uploaded file exceeds {max_upload_bytes} bytes",
+            )
+
+    @router.get(
+        "/tasks/{task_id}",
+        response_model=TaskStatusResponse,
+        tags=["tasks"],
+    )
+    async def get_task_status(task_id: str) -> TaskStatusResponse:
+        task = task_runner.get_status(task_id)
+        if task is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+        return TaskStatusResponse(**task)
+
+    @router.post(
+        "/tasks/{task_id}/cancel",
+        response_model=TaskStatusResponse,
+        tags=["tasks"],
+    )
+    async def cancel_task(task_id: str) -> TaskStatusResponse:
+        task = await asyncio.to_thread(task_runner.cancel, task_id)
+        if task is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+        return TaskStatusResponse(**task)
 
     @router.get(
         "/chemical-modeling/catalog",
@@ -64,11 +128,16 @@ def create_router(
     )
     async def profile_dataset(
         dataset: UploadFile = File(...),
+        x_task_id: str | None = Header(None, alias="X-Task-ID"),
     ) -> DatasetProfileResponse:
         content = await dataset.read(data_mining_service.max_upload_bytes + 1)
         try:
-            return await asyncio.to_thread(
+            enforce_upload_limit(content, data_mining_service.max_upload_bytes)
+            data_mining_service.validate_upload(dataset.filename, content)
+            return await run_calculation(
                 data_mining_service.profile_dataset,
+                tracking_id=x_task_id,
+                task_label="Dataset profile",
                 filename=dataset.filename,
                 content=content,
             )
@@ -82,6 +151,8 @@ def create_router(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=str(exc),
             ) from exc
+        except HTTPException:
+            raise
         except Exception as exc:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -99,17 +170,22 @@ def create_router(
         selected_columns: str = Form(...),
         missing_strategy: str = Form(...),
         dataset: UploadFile = File(...),
+        x_task_id: str | None = Header(None, alias="X-Task-ID"),
     ) -> DataPreprocessingResponse:
         content = await dataset.read(data_mining_service.max_upload_bytes + 1)
         try:
+            enforce_upload_limit(content, data_mining_service.max_upload_bytes)
+            data_mining_service.validate_upload(dataset.filename, content)
             try:
                 parsed_columns = json.loads(selected_columns)
             except json.JSONDecodeError as exc:
                 raise InvalidDatasetError(
                     "Selected columns must be a valid JSON list"
                 ) from exc
-            return await asyncio.to_thread(
+            return await run_calculation(
                 data_mining_service.preprocess_dataset,
+                tracking_id=x_task_id,
+                task_label="Data preprocessing",
                 filename=dataset.filename,
                 content=content,
                 selected_columns=parsed_columns,
@@ -125,6 +201,8 @@ def create_router(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=str(exc),
             ) from exc
+        except HTTPException:
+            raise
         except Exception as exc:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -144,17 +222,22 @@ def create_router(
         feature_columns: str = Form(...),
         test_size: float = Form(0.2),
         dataset: UploadFile = File(...),
+        x_task_id: str | None = Header(None, alias="X-Task-ID"),
     ) -> RegressionResponse:
         content = await dataset.read(data_mining_service.max_upload_bytes + 1)
         try:
+            enforce_upload_limit(content, data_mining_service.max_upload_bytes)
+            data_mining_service.validate_upload(dataset.filename, content)
             try:
                 parsed_features = json.loads(feature_columns)
             except json.JSONDecodeError as exc:
                 raise InvalidDatasetError(
                     "Feature columns must be a valid JSON list"
                 ) from exc
-            return await asyncio.to_thread(
+            return await run_calculation(
                 data_mining_service.run_regression,
+                tracking_id=x_task_id,
+                task_label=f"Regression: {model}",
                 filename=dataset.filename,
                 content=content,
                 target_column=target_column,
@@ -172,6 +255,8 @@ def create_router(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=str(exc),
             ) from exc
+        except HTTPException:
+            raise
         except Exception as exc:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -191,17 +276,22 @@ def create_router(
         feature_columns: str = Form(...),
         test_size: float = Form(0.2),
         dataset: UploadFile = File(...),
+        x_task_id: str | None = Header(None, alias="X-Task-ID"),
     ) -> ClassificationResponse:
         content = await dataset.read(data_mining_service.max_upload_bytes + 1)
         try:
+            enforce_upload_limit(content, data_mining_service.max_upload_bytes)
+            data_mining_service.validate_upload(dataset.filename, content)
             try:
                 parsed_features = json.loads(feature_columns)
             except json.JSONDecodeError as exc:
                 raise InvalidDatasetError(
                     "Feature columns must be a valid JSON list"
                 ) from exc
-            return await asyncio.to_thread(
+            return await run_calculation(
                 data_mining_service.run_classification,
+                tracking_id=x_task_id,
+                task_label=f"Classification: {model}",
                 filename=dataset.filename,
                 content=content,
                 target_column=target_column,
@@ -219,6 +309,8 @@ def create_router(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=str(exc),
             ) from exc
+        except HTTPException:
+            raise
         except Exception as exc:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -237,17 +329,22 @@ def create_router(
         feature_columns: str = Form(...),
         cluster_count: int = Form(3),
         dataset: UploadFile = File(...),
+        x_task_id: str | None = Header(None, alias="X-Task-ID"),
     ) -> ClusteringResponse:
         content = await dataset.read(data_mining_service.max_upload_bytes + 1)
         try:
+            enforce_upload_limit(content, data_mining_service.max_upload_bytes)
+            data_mining_service.validate_upload(dataset.filename, content)
             try:
                 parsed_features = json.loads(feature_columns)
             except json.JSONDecodeError as exc:
                 raise InvalidDatasetError(
                     "Feature columns must be a valid JSON list"
                 ) from exc
-            return await asyncio.to_thread(
+            return await run_calculation(
                 data_mining_service.run_clustering,
+                tracking_id=x_task_id,
+                task_label=f"Clustering: {model}",
                 filename=dataset.filename,
                 content=content,
                 feature_columns=parsed_features,
@@ -264,6 +361,8 @@ def create_router(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=str(exc),
             ) from exc
+        except HTTPException:
+            raise
         except Exception as exc:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -282,17 +381,22 @@ def create_router(
         feature_columns: str = Form(...),
         component_count: int = Form(2),
         dataset: UploadFile = File(...),
+        x_task_id: str | None = Header(None, alias="X-Task-ID"),
     ) -> DimensionalityReductionResponse:
         content = await dataset.read(data_mining_service.max_upload_bytes + 1)
         try:
+            enforce_upload_limit(content, data_mining_service.max_upload_bytes)
+            data_mining_service.validate_upload(dataset.filename, content)
             try:
                 parsed_features = json.loads(feature_columns)
             except json.JSONDecodeError as exc:
                 raise InvalidDatasetError(
                     "Feature columns must be a valid JSON list"
                 ) from exc
-            return await asyncio.to_thread(
+            return await run_calculation(
                 data_mining_service.run_dimensionality_reduction,
+                tracking_id=x_task_id,
+                task_label=f"Dimensionality reduction: {model}",
                 filename=dataset.filename,
                 content=content,
                 feature_columns=parsed_features,
@@ -309,6 +413,8 @@ def create_router(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=str(exc),
             ) from exc
+        except HTTPException:
+            raise
         except Exception as exc:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -329,17 +435,22 @@ def create_router(
         model: str = Form("isolation_forest"),
         feature_columns: str = Form(...),
         dataset: UploadFile = File(...),
+        x_task_id: str | None = Header(None, alias="X-Task-ID"),
     ) -> AnomalyDetectionResponse:
         content = await dataset.read(data_mining_service.max_upload_bytes + 1)
         try:
+            enforce_upload_limit(content, data_mining_service.max_upload_bytes)
+            data_mining_service.validate_upload(dataset.filename, content)
             try:
                 parsed_features = json.loads(feature_columns)
             except json.JSONDecodeError as exc:
                 raise InvalidDatasetError(
                     "Feature columns must be a valid JSON list"
                 ) from exc
-            return await asyncio.to_thread(
+            return await run_calculation(
                 data_mining_service.run_anomaly_detection,
+                tracking_id=x_task_id,
+                task_label=f"Anomaly detection: {model}",
                 filename=dataset.filename,
                 content=content,
                 feature_columns=parsed_features,
@@ -355,6 +466,8 @@ def create_router(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=str(exc),
             ) from exc
+        except HTTPException:
+            raise
         except Exception as exc:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -378,11 +491,16 @@ def create_router(
         bin_width: float = Form(10.0),
         bootstrap_iterations: int = Form(100),
         dataset: UploadFile = File(...),
+        x_task_id: str | None = Header(None, alias="X-Task-ID"),
     ) -> TimeSeriesResponse:
         content = await dataset.read(data_mining_service.max_upload_bytes + 1)
         try:
-            return await asyncio.to_thread(
+            enforce_upload_limit(content, data_mining_service.max_upload_bytes)
+            data_mining_service.validate_upload(dataset.filename, content)
+            return await run_calculation(
                 data_mining_service.run_time_series,
+                tracking_id=x_task_id,
+                task_label="Time-series analysis",
                 filename=dataset.filename,
                 content=content,
                 age_column=age_column,
@@ -404,6 +522,8 @@ def create_router(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=str(exc),
             ) from exc
+        except HTTPException:
+            raise
         except Exception as exc:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -426,11 +546,16 @@ def create_router(
         bin_width: float = Form(10.0),
         bootstrap_iterations: int = Form(100),
         dataset: UploadFile = File(...),
+        x_task_id: str | None = Header(None, alias="X-Task-ID"),
     ) -> TimeSeriesResponse:
         content = await dataset.read(data_mining_service.max_upload_bytes + 1)
         try:
-            return await asyncio.to_thread(
+            enforce_upload_limit(content, data_mining_service.max_upload_bytes)
+            data_mining_service.validate_upload(dataset.filename, content)
+            return await run_calculation(
                 data_mining_service.run_predicted_time_series,
+                tracking_id=x_task_id,
+                task_label="Model-predicted time series",
                 filename=dataset.filename,
                 content=content,
                 age_column=age_column,
@@ -451,6 +576,8 @@ def create_router(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=str(exc),
             ) from exc
+        except HTTPException:
+            raise
         except Exception as exc:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -472,11 +599,17 @@ def create_router(
         method: str = Form(...),
         element: str = Form(...),
         dataset: UploadFile = File(...),
+        x_task_id: str | None = Header(None, alias="X-Task-ID"),
     ) -> RunResponse:
         content = await dataset.read(service.max_upload_bytes + 1)
         try:
-            return await asyncio.to_thread(
+            enforce_upload_limit(content, service.max_upload_bytes)
+            service.validate_upload(dataset.filename, content)
+            service.validate_selection(task, method, element)
+            return await run_calculation(
                 service.run_job,
+                tracking_id=x_task_id,
+                task_label=f"Chemical modeling: {method}",
                 task=task,
                 method=method,
                 element=element,
@@ -487,6 +620,8 @@ def create_router(
             raise HTTPException(status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail=str(exc)) from exc
         except (InvalidDatasetError, ValueError, KeyError) as exc:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
+        except HTTPException:
+            raise
         except Exception as exc:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -20,6 +20,7 @@ from geochemistrypi.chemical_modeling.dispatcher import (
 )
 
 from .method_metadata import get_method_metadata
+from .limits import MAX_UPLOAD_BYTES
 from .schemas import ArtifactResponse, InputColumnItem, MethodCatalogItem, RunResponse, TaskCatalogItem
 
 
@@ -34,7 +35,7 @@ class UploadTooLargeError(ValueError):
 class OnlineService:
     """Run lightweight Online jobs without importing the legacy web stack."""
 
-    def __init__(self, runtime_dir: Path, max_upload_bytes: int = 25 * 1024 * 1024):
+    def __init__(self, runtime_dir: Path, max_upload_bytes: int = MAX_UPLOAD_BYTES):
         self.runtime_dir = runtime_dir.resolve()
         self.max_upload_bytes = max_upload_bytes
         self.jobs_dir = self.runtime_dir / "jobs"
@@ -174,6 +175,10 @@ class OnlineService:
         if len(content) > self.max_upload_bytes:
             raise UploadTooLargeError(f"The uploaded file exceeds {self.max_upload_bytes} bytes")
         return suffix
+
+    def validate_upload(self, filename: str | None, content: bytes) -> str:
+        """Validate inexpensive upload rules before claiming the compute slot."""
+        return self._validate_upload(filename, content)
 
     @staticmethod
     def _read_and_validate_dataset(

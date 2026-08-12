@@ -1,5 +1,6 @@
 """Response models for the Online API."""
 
+from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -9,6 +10,36 @@ class HealthResponse(BaseModel):
     status: str
     service: str
     version: str
+    instance_id: str
+    source_revision: str
+    build_id: str
+    max_upload_bytes: int
+    task_timeout_seconds: int
+    max_concurrent_tasks: int
+
+
+class TaskStatusResponse(BaseModel):
+    task_id: str
+    label: str
+    status: Literal[
+        "queued",
+        "running",
+        "cancelling",
+        "completed",
+        "failed",
+        "timed_out",
+        "cancelled",
+    ]
+    progress: int
+    queue_position: int | None = None
+    submitted_at: datetime
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    elapsed_seconds: float
+    timeout_seconds: float
+    cancellable: bool
+    message: str
+    error: str | None = None
 
 
 class InputColumnItem(BaseModel):

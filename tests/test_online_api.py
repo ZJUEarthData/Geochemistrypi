@@ -1,15 +1,24 @@
 """Integration tests for the minimal Online API."""
 
 from dataclasses import replace
+import asyncio
 import json
 from io import BytesIO
+import threading
+import time
 
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
 from geochemistrypi.online.app import create_app
+from geochemistrypi.online.limits import (
+    MAX_CONCURRENT_TASKS,
+    MAX_UPLOAD_BYTES,
+    TASK_TIMEOUT_SECONDS,
+)
 from geochemistrypi.online.method_metadata import METHOD_METADATA
+from geochemistrypi.online.task_runner import TaskCancelledError, TaskTimeoutError
 
 
 def make_kinetic_workbook() -> bytes:
@@ -178,7 +187,12 @@ def post_method(
     )
 
 
-def post_first_order(client: TestClient, content: bytes, filename: str = "kinetic.xlsx"):
+def post_first_order(
+    client: TestClient,
+    content: bytes,
+    filename: str = "kinetic.xlsx",
+    headers: dict[str, str] | None = None,
+):
     return client.post(
         "/api/chemical-modeling/run",
         data={
@@ -197,6 +211,7 @@ def post_first_order(client: TestClient, content: bytes, filename: str = "kineti
                 ),
             )
         },
+        headers=headers,
     )
 
 
@@ -317,7 +332,15 @@ def test_health_and_catalog(tmp_path):
 
     health = client.get("/api/health")
     assert health.status_code == 200
-    assert health.json()["status"] == "ok"
+    health_payload = health.json()
+    assert health_payload["status"] == "ok"
+    assert health_payload["service"] == "geochemistrypi-online"
+    assert len(health_payload["instance_id"]) == 16
+    assert health_payload["source_revision"]
+    assert health_payload["build_id"]
+    assert health_payload["max_upload_bytes"] == MAX_UPLOAD_BYTES
+    assert health_payload["task_timeout_seconds"] == TASK_TIMEOUT_SECONDS
+    assert health_payload["max_concurrent_tasks"] == MAX_CONCURRENT_TASKS
 
     catalog = client.get("/api/chemical-modeling/catalog")
     assert catalog.status_code == 200
@@ -928,7 +951,7 @@ def test_preprocess_rejects_upload_over_size_limit(tmp_path):
         files={
             "dataset": (
                 "oversized.csv",
-                b"Sample\n" + b"A" * (25 * 1024 * 1024 + 1),
+                b"Sample\n" + b"A" * (10 * 1024 * 1024 + 1),
                 "text/csv",
             )
         },
@@ -937,12 +960,69 @@ def test_preprocess_rejects_upload_over_size_limit(tmp_path):
     assert "exceeds" in response.json()["detail"]
 
 
-def test_default_upload_limit_is_25_mib(tmp_path):
+def test_default_upload_limit_is_10_mib(tmp_path):
     app = create_app(tmp_path / "runtime")
 
-    expected_bytes = 25 * 1024 * 1024
+    expected_bytes = 10 * 1024 * 1024
     assert app.state.online_service.max_upload_bytes == expected_bytes
     assert app.state.data_mining_service.max_upload_bytes == expected_bytes
+
+
+def test_timed_out_calculation_returns_504(tmp_path, monkeypatch):
+    app = create_app(tmp_path / "runtime")
+
+    async def reject_timeout(*args, **kwargs):
+        raise TaskTimeoutError(
+            "Calculation exceeded the 30-minute limit and was stopped."
+        )
+
+    monkeypatch.setattr(app.state.task_runner, "run", reject_timeout)
+    response = post_first_order(TestClient(app), make_kinetic_workbook())
+
+    assert response.status_code == 504
+    assert response.json()["detail"] == (
+        "Calculation exceeded the 30-minute limit and was stopped."
+    )
+
+
+def test_task_status_and_cancel_api(tmp_path, monkeypatch):
+    app = create_app(tmp_path / "runtime")
+    task_id = "44444444-4444-4444-8444-444444444444"
+
+    async def fake_run(operation, *, arguments, tracking_id, task_label):
+        assert tracking_id == task_id
+        app.state.task_runner._register(tracking_id, task_label)
+        while True:
+            status_payload = app.state.task_runner.get_status(task_id)
+            if status_payload and status_payload["status"] == "cancelled":
+                raise TaskCancelledError("Calculation was cancelled.")
+            await asyncio.sleep(0.01)
+
+    monkeypatch.setattr(app.state.task_runner, "run", fake_run)
+    with TestClient(app) as client:
+        response_holder = {}
+
+        def send_request():
+            response_holder["response"] = post_first_order(
+                client,
+                make_kinetic_workbook(),
+                headers={"X-Task-ID": task_id},
+            )
+
+        request = threading.Thread(target=send_request)
+        request.start()
+        for _ in range(200):
+            status_response = client.get(f"/api/tasks/{task_id}")
+            if status_response.status_code == 200:
+                break
+            time.sleep(0.01)
+
+        assert status_response.json()["status"] == "queued"
+        cancelled = client.post(f"/api/tasks/{task_id}/cancel")
+        assert cancelled.status_code == 200
+        assert cancelled.json()["status"] == "cancelled"
+        request.join(timeout=5)
+        assert response_holder["response"].status_code == 409
 
 
 def test_linear_regression_returns_metrics_coefficients_and_downloads(tmp_path):

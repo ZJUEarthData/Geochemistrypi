@@ -16,8 +16,61 @@ $logsRoot = Join-Path $runtimeRoot 'logs'
 $stateFile = Join-Path $runtimeRoot 'online-processes.json'
 $backendUrl = 'http://127.0.0.1:8000'
 $frontendUrl = 'http://127.0.0.1:5173/online'
+$frontendIdentityUrl = 'http://127.0.0.1:5173/__geochemistrypi_instance'
 
 New-Item -ItemType Directory -Force -Path $logsRoot | Out-Null
+
+function Get-ShortSha256([string]$value) {
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try {
+        $bytes = [Text.Encoding]::UTF8.GetBytes($value)
+        $hash = $sha256.ComputeHash($bytes)
+        return ([BitConverter]::ToString($hash).Replace('-', '').ToLowerInvariant()).Substring(0, 16)
+    }
+    finally {
+        $sha256.Dispose()
+    }
+}
+
+function Get-OnlineBuildId {
+    $sourcePaths = @(
+        (Join-Path $projectRoot 'geochemistrypi\online'),
+        (Join-Path $projectRoot 'geochemistrypi\frontend\src'),
+        (Join-Path $projectRoot 'geochemistrypi\frontend\vite.config.ts'),
+        (Join-Path $projectRoot 'geochemistrypi\_version.py'),
+        (Join-Path $projectRoot 'scripts\start_online.ps1')
+    )
+    $files = foreach ($sourcePath in $sourcePaths) {
+        if (Test-Path -LiteralPath $sourcePath -PathType Leaf) {
+            Get-Item -LiteralPath $sourcePath
+        }
+        elseif (Test-Path -LiteralPath $sourcePath -PathType Container) {
+            Get-ChildItem -LiteralPath $sourcePath -Recurse -File |
+                Where-Object { $_.FullName -notmatch '[\\/](__pycache__|node_modules|dist)[\\/]' }
+        }
+    }
+    $fingerprintLines = foreach ($file in ($files | Sort-Object FullName -Unique)) {
+        $relativePath = $file.FullName.Substring($projectRoot.Length).TrimStart('\', '/').Replace('\', '/')
+        $fileHash = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+        "$relativePath`:$fileHash"
+    }
+    return Get-ShortSha256 ($fingerprintLines -join "`n")
+}
+
+$normalizedProjectRoot = [IO.Path]::GetFullPath($projectRoot).Replace('\', '/').TrimEnd('/').ToLowerInvariant()
+$instanceId = Get-ShortSha256 $normalizedProjectRoot
+$sourceRevision = 'unknown'
+$gitCommand = Get-Command git -ErrorAction SilentlyContinue
+if ($gitCommand) {
+    $revisionOutput = & $gitCommand.Source -C $projectRoot rev-parse --short=12 HEAD 2>$null
+    if ($LASTEXITCODE -eq 0 -and $revisionOutput) {
+        $sourceRevision = "$revisionOutput".Trim()
+    }
+}
+$buildId = Get-OnlineBuildId
+$env:GEOCHEMISTRYPI_ONLINE_INSTANCE_ID = $instanceId
+$env:GEOCHEMISTRYPI_SOURCE_REVISION = $sourceRevision
+$env:GEOCHEMISTRYPI_BUILD_ID = $buildId
 
 function Refresh-OnlineProcessPath {
     $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
@@ -214,11 +267,15 @@ function Stop-FrontendForDependencySync([string]$expectedViteEntry) {
     }
 
     $processInfo = Get-CimInstance Win32_Process -Filter "ProcessId=$($connection.OwningProcess)"
-    $isExpectedViteProcess =
+    $isCurrentViteProcess =
         $processInfo -and
         $processInfo.CommandLine -and
         $processInfo.CommandLine.IndexOf($expectedViteEntry, [StringComparison]::OrdinalIgnoreCase) -ge 0
-    if (-not $isExpectedViteProcess) {
+    $isGeochemistryPiViteProcess =
+        $processInfo -and
+        $processInfo.CommandLine -and
+        $processInfo.CommandLine -match 'geochemistrypi[\\/]+frontend[\\/]+node_modules[\\/]+vite[\\/]+bin[\\/]+vite\.js'
+    if (-not $isCurrentViteProcess -and -not $isGeochemistryPiViteProcess) {
         throw 'Frontend dependencies changed, but port 5173 is occupied by an unrelated process. Stop it and try again.'
     }
 
@@ -230,7 +287,12 @@ function Stop-FrontendForDependencySync([string]$expectedViteEntry) {
 function Test-BackendReady {
     try {
         $response = Invoke-RestMethod -Uri "$backendUrl/api/health" -TimeoutSec 2
-        return $response.status -eq 'ok' -and $response.service -eq 'geochemistrypi-online'
+        return (
+            $response.status -eq 'ok' -and
+            $response.service -eq 'geochemistrypi-online' -and
+            $response.instance_id -eq $instanceId -and
+            $response.build_id -eq $buildId
+        )
     }
     catch {
         return $false
@@ -239,12 +301,106 @@ function Test-BackendReady {
 
 function Test-FrontendReady {
     try {
-        $response = Invoke-WebRequest -UseBasicParsing -Uri $frontendUrl -TimeoutSec 2
-        return $response.StatusCode -eq 200
+        $response = Invoke-RestMethod -Uri $frontendIdentityUrl -TimeoutSec 2
+        return (
+            $response.service -eq 'geochemistrypi-online-frontend' -and
+            $response.instance_id -eq $instanceId -and
+            $response.build_id -eq $buildId
+        )
     }
     catch {
         return $false
     }
+}
+
+function Get-ListenerInfo([int]$port) {
+    $connection = Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+    if (-not $connection) {
+        return $null
+    }
+
+    $processInfo = Get-CimInstance Win32_Process -Filter "ProcessId=$($connection.OwningProcess)" -ErrorAction SilentlyContinue
+    $commandLines = @()
+    $currentProcessInfo = $processInfo
+    for ($depth = 0; $currentProcessInfo -and $depth -lt 4; $depth++) {
+        if ($currentProcessInfo.CommandLine) {
+            $commandLines += $currentProcessInfo.CommandLine
+        }
+        if (-not $currentProcessInfo.ParentProcessId) {
+            break
+        }
+        $currentProcessInfo = Get-CimInstance Win32_Process -Filter "ProcessId=$($currentProcessInfo.ParentProcessId)" -ErrorAction SilentlyContinue
+    }
+
+    return [pscustomobject]@{
+        port = $port
+        id = [int]$connection.OwningProcess
+        processInfo = $processInfo
+        lineageCommandLine = $commandLines -join "`n"
+    }
+}
+
+function Stop-VerifiedOnlineListener($listener, [string]$label) {
+    Write-Host "A different Geochemistry Pi $label instance is using port $($listener.port). Replacing it..." -ForegroundColor Yellow
+    Stop-Process -Id $listener.id
+    $deadline = (Get-Date).AddSeconds(5)
+    while ((Get-Date) -lt $deadline) {
+        if (-not (Get-NetTCPConnection -State Listen -LocalPort $listener.port -ErrorAction SilentlyContinue)) {
+            return
+        }
+        Start-Sleep -Milliseconds 200
+    }
+    throw "The previous Geochemistry Pi $label instance on port $($listener.port) could not be stopped."
+}
+
+function Resolve-BackendPort {
+    if (Test-BackendReady) {
+        return $true
+    }
+
+    $listener = Get-ListenerInfo 8000
+    if (-not $listener) {
+        return $false
+    }
+
+    $health = $null
+    try {
+        $health = Invoke-RestMethod -Uri "$backendUrl/api/health" -TimeoutSec 2
+    }
+    catch {
+        # The process is still classified by its command line below.
+    }
+    $isGeochemistryPiBackend =
+        $health -and
+        $health.service -eq 'geochemistrypi-online' -and
+        $listener.lineageCommandLine -match 'geochemistrypi\.online\.app:app'
+    if (-not $isGeochemistryPiBackend) {
+        throw "Port 8000 is occupied by an unrelated process (PID $($listener.id)). It was not stopped."
+    }
+
+    Stop-VerifiedOnlineListener $listener 'backend'
+    return $false
+}
+
+function Resolve-FrontendPort {
+    if (Test-FrontendReady) {
+        return $true
+    }
+
+    $listener = Get-ListenerInfo 5173
+    if (-not $listener) {
+        return $false
+    }
+
+    $isGeochemistryPiFrontend =
+        $listener.lineageCommandLine -match 'geochemistrypi[\\/]+frontend[\\/]+node_modules[\\/]+vite[\\/]+bin[\\/]+vite\.js'
+    if (-not $isGeochemistryPiFrontend) {
+        throw "Port 5173 is occupied by an unrelated process (PID $($listener.id)). It was not stopped."
+    }
+
+    Stop-VerifiedOnlineListener $listener 'frontend'
+    return $false
 }
 
 function Wait-OnlineService([scriptblock]$readyCheck, [int]$timeoutSeconds = 30) {
@@ -263,11 +419,24 @@ function Get-ListenerRecord([int]$port, $fallbackProcess, [string]$fallbackPath)
     if ($connection) {
         $listenerProcess = Get-Process -Id $connection.OwningProcess -ErrorAction SilentlyContinue
         if ($listenerProcess -and $listenerProcess.Path) {
-            return [ordered]@{ id = $listenerProcess.Id; path = $listenerProcess.Path }
+            $processInfo = Get-CimInstance Win32_Process -Filter "ProcessId=$($listenerProcess.Id)" -ErrorAction SilentlyContinue
+            return [ordered]@{
+                id = $listenerProcess.Id
+                path = $listenerProcess.Path
+                commandLine = $processInfo.CommandLine
+                instanceId = $instanceId
+                buildId = $buildId
+            }
         }
     }
 
-    return [ordered]@{ id = $fallbackProcess.Id; path = $fallbackPath }
+    return [ordered]@{
+        id = $fallbackProcess.Id
+        path = $fallbackPath
+        commandLine = $null
+        instanceId = $instanceId
+        buildId = $buildId
+    }
 }
 
 $venvPython = Join-Path $projectRoot '.venv-online\Scripts\python.exe'
@@ -339,24 +508,18 @@ if ($frontendDependenciesNeedInstall) {
 
 $state = [ordered]@{
     startedAt = (Get-Date).ToString('o')
+    instanceId = $instanceId
+    sourceRevision = $sourceRevision
+    buildId = $buildId
     backend = $null
     frontend = $null
-}
-if (Test-Path -LiteralPath $stateFile) {
-    try {
-        $previousState = Get-Content -LiteralPath $stateFile -Raw | ConvertFrom-Json
-        $state.backend = $previousState.backend
-        $state.frontend = $previousState.frontend
-    }
-    catch {
-        Write-Warning 'The previous process-state file is invalid and will be replaced.'
-    }
 }
 
 $startedBackend = $null
 $startedFrontend = $null
+$backendAlreadyRunning = Resolve-BackendPort
 
-if (-not (Test-BackendReady)) {
+if (-not $backendAlreadyRunning) {
     Write-Host 'Starting the Online API...'
     $startedBackend = Start-Process `
         -FilePath $venvPython `
@@ -377,10 +540,12 @@ if (-not (Test-BackendReady)) {
     $state.backend = Get-ListenerRecord 8000 $startedBackend $venvPython
 }
 else {
-    Write-Host 'Online API is already running.'
+    Write-Host 'The matching Online API is already running.'
+    $state.backend = Get-ListenerRecord 8000 $null $venvPython
 }
 
-if (-not (Test-FrontendReady)) {
+$frontendAlreadyRunning = Resolve-FrontendPort
+if (-not $frontendAlreadyRunning) {
     Write-Host 'Starting the Vue development server...'
     $startedFrontend = Start-Process `
         -FilePath $nodeExecutable `
@@ -401,7 +566,8 @@ if (-not (Test-FrontendReady)) {
     $state.frontend = Get-ListenerRecord 5173 $startedFrontend $nodeExecutable
 }
 else {
-    Write-Host 'Vue development server is already running.'
+    Write-Host 'The matching Vue development server is already running.'
+    $state.frontend = Get-ListenerRecord 5173 $null $nodeExecutable
 }
 
 $state | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $stateFile -Encoding UTF8
@@ -410,6 +576,8 @@ Write-Host ''
 Write-Host 'Geochemistry Pi Online is ready.' -ForegroundColor Green
 Write-Host "Online page: $frontendUrl"
 Write-Host "API docs:    $backendUrl/docs"
+Write-Host "Instance:    $instanceId"
+Write-Host "Build:       $buildId ($sourceRevision)"
 Write-Host "Logs:        $logsRoot"
 
 if (-not $NoBrowser) {

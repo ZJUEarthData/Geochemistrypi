@@ -12,6 +12,8 @@ The MVP provides:
 - method-level `verified` and `testing` readiness states;
 - structured input documentation with formulas, columns, meanings, units, types, examples, and notes;
 - `.xlsx` and UTF-8 `.csv` upload with a 10 MB limit;
+- a 30-minute hard limit for every calculation process;
+- one site-wide calculation slot; additional calculation requests wait in a serial queue;
 - synchronous calculation in an isolated job directory;
 - result-file download;
 - readable validation errors;
@@ -37,6 +39,18 @@ For `second_order`, `c0` must be greater than zero, while `k` and `t` must be gr
 
 Other catalog entries remain visible for inspection but are marked `testing` and cannot run until scientific and interface validation is complete.
 
+## Resource limits
+
+The backend enforces the limits below for both Chemical Modeling and Data Mining. Frontend checks are only an early user-facing warning and are not the security boundary.
+
+- Maximum uploaded dataset: `10 MiB` (`10,485,760` bytes).
+- Maximum calculation runtime: `30 minutes` after the task starts running; queue time is not counted. The isolated calculation process is terminated and the API returns HTTP `504` when the deadline is reached.
+- Maximum concurrent calculations: `1` for the whole Online instance. Later requests wait and start automatically, one by one, after the running task completes or times out.
+- The page polls `GET /api/tasks/{task_id}` for live queue position, execution state, elapsed runtime, and progress-stage display.
+- `POST /api/tasks/{task_id}/cancel` removes a queued task or terminates a running calculation process. The next queued task then starts automatically.
+- Progress reflects real lifecycle stages (`queued` → `running` → terminal state). Algorithms that do not expose iteration callbacks use an indeterminate running bar rather than a fabricated percentage.
+- Catalog, health, and result-download requests do not occupy the calculation slot.
+
 ## One-click startup on Windows
 
 From the repository root, double-click:
@@ -52,7 +66,10 @@ The launcher:
 3. locates or creates `.venv-online`;
 4. installs backend and frontend dependencies when needed;
 5. starts FastAPI and Vue in hidden background processes;
-6. waits for both services to become healthy and opens the Online page.
+6. verifies that the frontend and backend belong to this checkout and the same source build;
+7. safely replaces an older Geochemistry Pi instance, then opens the Online page.
+
+If another application occupies port `5173` or `8000`, the launcher exits with the process ID and leaves that unrelated process untouched.
 
 The first automatic software installation may still display a Windows administrator confirmation. If WinGet is unavailable, the launcher reports which prerequisite must be installed manually. To prohibit any automatic installation, run:
 
@@ -142,13 +159,13 @@ pnpm run build
 Current expected result:
 
 ```text
-backend: 44 passed
+backend: all Online API and task-runner tests pass
 frontend: production build succeeds
 ```
 
 ## Known MVP limitations
 
-- calculations are synchronous, so a long calculation keeps the HTTP request open;
+- calculations still keep the HTTP request open while running, up to the enforced 30-minute deadline;
 - job metadata exists only in the filesystem and is not stored in a database;
 - there is no user login or per-user authorization in the new lightweight API;
 - uploaded files and results have no automatic retention or cleanup policy;

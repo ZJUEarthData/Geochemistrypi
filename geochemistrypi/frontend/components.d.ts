@@ -15,6 +15,7 @@ declare module 'vue' {
     ElIcon: typeof import('element-plus/es')['ElIcon']
     ElInput: typeof import('element-plus/es')['ElInput']
     ElOption: typeof import('element-plus/es')['ElOption']
+    ElProgress: typeof import('element-plus/es')['ElProgress']
     ElRadioButton: typeof import('element-plus/es')['ElRadioButton']
     ElRadioGroup: typeof import('element-plus/es')['ElRadioGroup']
     ElSelect: typeof import('element-plus/es')['ElSelect']
@@ -27,6 +28,7 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     RunSummary: typeof import('./src/components/run-summary.vue')['default']
+    TaskProgress: typeof import('./src/components/task-progress.vue')['default']
     TraceElementChart: typeof import('./src/components/trace-element-chart.vue')['default']
     WorkspaceSidebar: typeof import('./src/components/workspace-sidebar.vue')['default']
   }

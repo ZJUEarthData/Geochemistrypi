@@ -1,9 +1,22 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
+export const DEFAULT_MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+
+export const FRONTEND_IDENTITY = {
+  instanceId: __GEOCHEMISTRYPI_INSTANCE_ID__,
+  sourceRevision: __GEOCHEMISTRYPI_SOURCE_REVISION__,
+  buildId: __GEOCHEMISTRYPI_BUILD_ID__
+}
 
 export interface HealthResponse {
   status: string
   service: string
   version: string
+  instance_id: string
+  source_revision: string
+  build_id: string
+  max_upload_bytes: number
+  task_timeout_seconds: number
+  max_concurrent_tasks: number
 }
 
 export type MethodStatus = 'verified' | 'testing'
@@ -56,6 +69,49 @@ export interface RunResponse {
   artifacts: ArtifactResponse[]
 }
 
+export type OnlineTaskState =
+  | 'queued'
+  | 'running'
+  | 'cancelling'
+  | 'completed'
+  | 'failed'
+  | 'timed_out'
+  | 'cancelled'
+
+export interface OnlineTaskStatus {
+  task_id: string
+  label: string
+  status: OnlineTaskState
+  progress: number
+  queue_position: number | null
+  submitted_at: string
+  started_at: string | null
+  finished_at: string | null
+  elapsed_seconds: number
+  timeout_seconds: number
+  cancellable: boolean
+  message: string
+  error: string | null
+}
+
+export function createTaskId(): string {
+  return crypto.randomUUID()
+}
+
+export function taskHeaders(taskId?: string): HeadersInit | undefined {
+  return taskId ? { 'X-Task-ID': taskId } : undefined
+}
+
+export async function getTaskStatus(taskId: string): Promise<OnlineTaskStatus> {
+  const response = await fetch(`${API_BASE_URL}/api/tasks/${taskId}`)
+  return parseResponse<OnlineTaskStatus>(response)
+}
+
+export async function cancelTask(taskId: string): Promise<OnlineTaskStatus> {
+  const response = await fetch(`${API_BASE_URL}/api/tasks/${taskId}/cancel`, { method: 'POST' })
+  return parseResponse<OnlineTaskStatus>(response)
+}
+
 async function parseResponse<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => null)
   if (!response.ok) {
@@ -68,7 +124,16 @@ async function parseResponse<T>(response: Response): Promise<T> {
 
 export async function getHealth(): Promise<HealthResponse> {
   const response = await fetch(`${API_BASE_URL}/api/health`)
-  return parseResponse<HealthResponse>(response)
+  const health = await parseResponse<HealthResponse>(response)
+  if (
+    health.instance_id !== FRONTEND_IDENTITY.instanceId ||
+    health.build_id !== FRONTEND_IDENTITY.buildId
+  ) {
+    throw new Error(
+      'Frontend/backend version mismatch. Run start-online.cmd again to start the matching services.'
+    )
+  }
+  return health
 }
 
 export async function getCatalog(): Promise<CatalogResponse> {
@@ -80,7 +145,8 @@ export async function runChemicalModel(
   task: string,
   method: string,
   element: string,
-  dataset: File
+  dataset: File,
+  taskId?: string
 ): Promise<RunResponse> {
   const form = new FormData()
   form.append('task', task)
@@ -90,6 +156,7 @@ export async function runChemicalModel(
 
   const response = await fetch(`${API_BASE_URL}/api/chemical-modeling/run`, {
     method: 'POST',
+    headers: taskHeaders(taskId),
     body: form
   })
   return parseResponse<RunResponse>(response)
