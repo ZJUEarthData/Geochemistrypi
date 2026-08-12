@@ -1,0 +1,79 @@
+{
+  "report_version": "linear-regression-v1",
+  "created_utc": "2026-08-06T07:00:09.207124+00:00",
+  "source_filename": "data-mining-regression-example.csv",
+  "model": "linear_regression",
+  "target_column": "concentration_ppm",
+  "feature_columns": [
+    "temperature_C",
+    "pressure_MPa"
+  ],
+  "test_size": 0.2,
+  "random_state": 42,
+  "summary": {
+    "original_rows": 30,
+    "usable_rows": 30,
+    "dropped_rows": 0,
+    "train_rows": 24,
+    "test_rows": 6,
+    "feature_count": 2
+  },
+  "metrics": {
+    "r2": 1.0,
+    "mean_absolute_error": 5.684341886080802e-14,
+    "root_mean_squared_error": 8.038873388460929e-14
+  },
+  "intercept": 4.999999999999773,
+  "coefficients": [
+    {
+      "feature": "temperature_C",
+      "coefficient": 3.000000000000001
+    },
+    {
+      "feature": "pressure_MPa",
+      "coefficient": 1.9999999999999991
+    }
+  ],
+  "equation": "concentration_ppm = 5 + 3 × temperature_C + 2 × pressure_MPa",
+  "prediction_preview": [
+    {
+      "source_row": 10,
+      "actual": 557.0,
+      "predicted": 556.9999999999999,
+      "residual": 1.1368683772161603e-13
+    },
+    {
+      "source_row": 11,
+      "actual": 593.0,
+      "predicted": 592.9999999999999,
+      "residual": 1.1368683772161603e-13
+    },
+    {
+      "source_row": 17,
+      "actual": 769.0,
+      "predicted": 769.0,
+      "residual": 0.0
+    },
+    {
+      "source_row": 19,
+      "actual": 835.0,
+      "predicted": 835.0,
+      "residual": 0.0
+    },
+    {
+      "source_row": 25,
+      "actual": 1011.0,
+      "predicted": 1011.0000000000001,
+      "residual": -1.1368683772161603e-13
+    },
+    {
+      "source_row": 29,
+      "actual": 1135.0,
+      "predicted": 1135.0,
+      "residual": 0.0
+    }
+  ],
+  "warnings": [
+    "所有数据行均可用于回归。"
+  ]
+}

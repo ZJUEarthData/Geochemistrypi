@@ -34,7 +34,7 @@ class UploadTooLargeError(ValueError):
 class OnlineService:
     """Run lightweight Online jobs without importing the legacy web stack."""
 
-    def __init__(self, runtime_dir: Path, max_upload_bytes: int = 10 * 1024 * 1024):
+    def __init__(self, runtime_dir: Path, max_upload_bytes: int = 25 * 1024 * 1024):
         self.runtime_dir = runtime_dir.resolve()
         self.max_upload_bytes = max_upload_bytes
         self.jobs_dir = self.runtime_dir / "jobs"

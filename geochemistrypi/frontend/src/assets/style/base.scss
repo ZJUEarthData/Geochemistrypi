@@ -5,6 +5,16 @@
   margin: 0;
   font-weight: normal;
 }
+
+html,
+body,
+#app {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
+}
 a {
   text-decoration: none;
 }
@@ -30,7 +40,9 @@ body {
     'Droid Sans',
     'Helvetica Neue',
     sans-serif;
-  font-size: 14px;
+  color: #263f46;
+  background: #f3f5f6;
+  font-size: 15px;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

@@ -1,12 +1,45 @@
 # -*- coding: utf-8 -*-
+import inspect
 import os
 import subprocess
+from functools import wraps
 from typing import Optional
 
+import click
 import typer
+import typer.core
 from rich import print
 
 from ._version import __version__
+
+
+def _patch_typer_for_click() -> None:
+    """Keep the v0.8 Typer CLI compatible with newer Click releases."""
+    unset = getattr(click.core, "UNSET", None)
+    flag_value = inspect.signature(click.Option.__init__).parameters.get("flag_value")
+    if (
+        unset is not None
+        and flag_value is not None
+        and flag_value.default is unset
+        and not getattr(typer.core.TyperOption.__init__, "_geopi_click_unset_patch", False)
+    ):
+        original_init = typer.core.TyperOption.__init__
+
+        @wraps(original_init)
+        def patched_init(self, *args, **kwargs):
+            if kwargs.get("flag_value") is None:
+                kwargs["flag_value"] = unset
+            return original_init(self, *args, **kwargs)
+
+        patched_init._geopi_click_unset_patch = True
+        typer.core.TyperOption.__init__ = patched_init
+
+    ctx_parameter = inspect.signature(click.Parameter.make_metavar).parameters.get("ctx")
+    if ctx_parameter is not None and ctx_parameter.default is inspect.Parameter.empty:
+        typer.core.rich = None
+
+
+_patch_typer_for_click()
 
 app = typer.Typer()
 
@@ -16,10 +49,26 @@ BACKEND_PATH = os.path.join(CURRENT_PATH, "start_dash_pipeline.py")
 PIPELINE_PATH = os.path.join(CURRENT_PATH, "start_cli_pipeline.py")
 
 
+def _run_cli_pipeline(
+    training_data_path: str,
+    application_data_path: str,
+    data_source_name: str,
+) -> None:
+    """Import the heavy Data Mining stack only when a run is requested."""
+    from .data_mining.cli_pipeline import cli_pipeline
+    from .data_mining.enum_ import DataSource
+
+    cli_pipeline(
+        training_data_path=training_data_path,
+        application_data_path=application_data_path,
+        data_source=DataSource[data_source_name],
+    )
+
+
 def _version_callback(value: bool) -> None:
     """Show Geochemistry Pi version."""
     if value:
-        typer.echo(f"Geochemistry π {__version__}")
+        typer.echo(f"Geochemistry Pi {__version__}")
         raise typer.Exit()
 
 
@@ -44,7 +93,7 @@ def main(
         return
 
     # Interactive launcher
-    print("\n[bold blue]Welcome to Geochemistry π[/bold blue]")
+    print("\n[bold blue]Welcome to Geochemistry Pi[/bold blue]")
     print("[bold]Please choose a module to run:[/bold]")
     print("1 - Data Mining (automated ML pipelines)")
     print("2 - Chemical Modeling (equilibrium / fractionation / etc.)")
@@ -58,8 +107,7 @@ def main(
     if choice == "1":
         # Delay-import data_mining modules to avoid loading heavy deps unless needed
         try:
-            from .data_mining.cli_pipeline import cli_pipeline as dm_cli_pipeline  # type: ignore
-            from .data_mining.enum import DataSource  # type: ignore
+            from .data_mining.enum_ import DataSource  # type: ignore
         except Exception as e:
             print(f"[red]Failed to import data_mining modules: {e}[/red]")
             print()
@@ -91,7 +139,7 @@ def main(
 
         # Start interactive data_mining pipeline (uses built-in defaults)
         print("[green]Starting Data Mining CLI pipeline (interactive mode).[/green]")
-        dm_cli_pipeline(training_data_path="", application_data_path="", data_source=DataSource.BUILT_IN)
+        _run_cli_pipeline("", "", DataSource.BUILT_IN.name)
         raise typer.Exit()
 
     if choice == "2":
@@ -175,6 +223,35 @@ def main(
 
     print("Unknown choice. Exiting.")
     raise typer.Exit()
+
+
+@app.command(name="data-mining")
+def data_mining(
+    data: str = typer.Option("", "--data", help="Training data path without model inference."),
+    desktop: bool = typer.Option(False, "--desktop", help="Use the desktop geopi_input directory."),
+    training: str = typer.Option("", "--training", help="Training data path."),
+    application: str = typer.Option("", "--application", help="Inference data path."),
+    mlflow: bool = typer.Option(False, "--mlflow", help="Start the MLflow server."),
+) -> None:
+    """Run the v0.8 automated Data Mining pipeline."""
+    if mlflow:
+        tracking_dir = os.path.join(os.getcwd(), "geopi_tracking")
+        os.makedirs(tracking_dir, exist_ok=True)
+        store_uri = "file:///" + tracking_dir.replace("\\", "/")
+        subprocess.run(
+            ["mlflow", "ui", "--backend-store-uri", store_uri],
+            check=False,
+        )
+        return
+
+    if desktop:
+        _run_cli_pipeline("", "", "DESKTOP")
+    elif data:
+        _run_cli_pipeline(data, "", "ANY_PATH")
+    elif training:
+        _run_cli_pipeline(training, application, "ANY_PATH")
+    else:
+        _run_cli_pipeline("", "", "BUILT_IN")
 
 
 if __name__ == "__main__":

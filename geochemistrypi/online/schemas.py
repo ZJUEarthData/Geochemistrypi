@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 class HealthResponse(BaseModel):
     status: str
     service: str
+    version: str
 
 
 class InputColumnItem(BaseModel):
@@ -58,6 +59,14 @@ class RunResponse(BaseModel):
     artifacts: list[ArtifactResponse]
 
 
+class DataMiningMethodItem(BaseModel):
+    name: str
+    display_name: str
+    description: str
+    status: Literal["verified", "testing"] = "verified"
+    uses_cluster_count: bool = False
+
+
 class DataMiningFeatureItem(BaseModel):
     name: str
     description: str
@@ -65,6 +74,7 @@ class DataMiningFeatureItem(BaseModel):
     status_message: str
     input_formats: list[str] = Field(default_factory=list)
     outputs: list[str] = Field(default_factory=list)
+    methods: list[DataMiningMethodItem] = Field(default_factory=list)
 
 
 class DataMiningCatalogResponse(BaseModel):
@@ -169,7 +179,8 @@ class RegressionResponse(BaseModel):
     status: str
     message: str
     source_filename: str
-    model: Literal["linear_regression"]
+    model: str
+    model_display_name: str
     target_column: str
     feature_columns: list[str]
     test_size: float
@@ -212,7 +223,8 @@ class ClassificationResponse(BaseModel):
     status: str
     message: str
     source_filename: str
-    model: Literal["logistic_regression"]
+    model: str
+    model_display_name: str
     target_column: str
     feature_columns: list[str]
     test_size: float
@@ -255,14 +267,146 @@ class ClusteringResponse(BaseModel):
     status: str
     message: str
     source_filename: str
-    model: Literal["kmeans"]
+    model: str
+    model_display_name: str
     feature_columns: list[str]
     cluster_count: int
+    requested_cluster_count: int | None = None
+    noise_rows: int = 0
     random_state: int
     summary: ClusteringSummary
     metrics: ClusteringMetrics
     cluster_sizes: list[ClusterSizeItem]
     cluster_centers: list[ClusterCenterItem]
     preview: list[dict[str, Any]]
+    warnings: list[str] = Field(default_factory=list)
+    artifacts: list[ArtifactResponse] = Field(default_factory=list)
+
+
+class DimensionalityReductionSummary(BaseModel):
+    original_rows: int
+    usable_rows: int
+    dropped_rows: int
+    feature_count: int
+    component_count: int
+
+
+class DimensionalityReductionMetrics(BaseModel):
+    explained_variance_ratio: list[float] = Field(default_factory=list)
+    cumulative_explained_variance_ratio: list[float] = Field(
+        default_factory=list
+    )
+    total_explained_variance_ratio: float | None = None
+    kl_divergence: float | None = None
+    stress: float | None = None
+
+
+class DimensionalityReductionResponse(BaseModel):
+    job_id: str
+    status: str
+    message: str
+    source_filename: str
+    model: str
+    model_display_name: str
+    feature_columns: list[str]
+    component_count: int
+    random_state: int
+    summary: DimensionalityReductionSummary
+    metrics: DimensionalityReductionMetrics
+    preview: list[dict[str, Any]]
+    warnings: list[str] = Field(default_factory=list)
+    artifacts: list[ArtifactResponse] = Field(default_factory=list)
+
+
+class AnomalyDetectionSummary(BaseModel):
+    original_rows: int
+    usable_rows: int
+    dropped_rows: int
+    feature_count: int
+    normal_rows: int
+    anomaly_rows: int
+
+
+class AnomalyScoreSummary(BaseModel):
+    minimum: float
+    maximum: float
+    mean: float
+
+
+class AnomalyDetectionResponse(BaseModel):
+    job_id: str
+    status: str
+    message: str
+    source_filename: str
+    model: str
+    model_display_name: str
+    feature_columns: list[str]
+    random_state: int | None = None
+    summary: AnomalyDetectionSummary
+    score_summary: AnomalyScoreSummary
+    preview: list[dict[str, Any]]
+    warnings: list[str] = Field(default_factory=list)
+    artifacts: list[ArtifactResponse] = Field(default_factory=list)
+
+
+class TimeSeriesSummary(BaseModel):
+    original_rows: int
+    usable_rows: int
+    dropped_rows: int
+    sampled_out_rows: int = 0
+    bin_count: int
+    populated_bins: int
+
+
+class TimeSeriesBinItem(BaseModel):
+    age: float
+    mean_proportion: float | None = None
+    uncertainty_2sigma: float | None = None
+
+
+class ProbabilityModelMetrics(BaseModel):
+    validation_rows: int
+    mean_absolute_error: float
+    root_mean_squared_error: float
+    r2: float
+
+
+class ProbabilityModelInfo(BaseModel):
+    version: str
+    display_name: str
+    training_rows: int
+    training_sha256: str
+    recognized_features: list[str]
+    metrics: ProbabilityModelMetrics
+    target_description: str
+
+
+class ProbabilityPredictionSummary(BaseModel):
+    predicted_rows: int
+    insufficient_feature_rows: int
+    eligible_time_series_rows: int
+    sampled_time_series_rows: int
+    minimum_features_per_row: int
+
+
+class TimeSeriesResponse(BaseModel):
+    job_id: str
+    status: str
+    message: str
+    source_filename: str
+    age_column: str
+    age_max_column: str
+    probability_column: str
+    latitude_column: str
+    longitude_column: str
+    age_unit: str
+    bin_width: float
+    bootstrap_iterations: int
+    random_state: int
+    probability_source: Literal["uploaded", "model_predicted"] = "uploaded"
+    probability_model: ProbabilityModelInfo | None = None
+    prediction_summary: ProbabilityPredictionSummary | None = None
+    summary: TimeSeriesSummary
+    bins: list[TimeSeriesBinItem]
     warnings: list[str] = Field(default_factory=list)
     artifacts: list[ArtifactResponse] = Field(default_factory=list)
