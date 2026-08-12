@@ -133,7 +133,8 @@ const dataMiningDescriptions: Record<string, [string, string]> = {
   classification: ['Classification', '分类'],
   clustering: ['Clustering', '聚类'],
   dimensionality_reduction: ['Dimensionality reduction', '降维'],
-  anomaly_detection: ['Anomaly detection', '异常检测']
+  anomaly_detection: ['Anomaly detection', '异常检测'],
+  time_series: ['Time series', '时间序列']
 }
 
 export function dataMiningFeatureDescription(name: string, source: string) {
@@ -177,6 +178,11 @@ const exactEnglish: Record<string, string> = {
   '正常/异常样品统计': 'Normal/anomalous sample counts',
   异常分数与标签: 'Anomaly scores and labels',
   '异常检测结果 CSV': 'Anomaly-detection CSV',
+  陆上玄武岩比例曲线: 'Subaerial-basalt proportion curve',
+  年龄分箱结果表: 'Age-bin result table',
+  '时间序列结果 CSV': 'Time-series result CSV',
+  'SVG 矢量图': 'SVG vector figure',
+  'JSON 分析报告': 'JSON analysis report',
   '已完成 Excel/CSV 上传、数据类型识别、缺失值、重复行、唯一值、数值统计、预览和 JSON 报告下载验证。':
     'Verified Excel/CSV upload, data-type detection, missing values, duplicate rows, unique values, numerical statistics, preview, and JSON report download.',
   '已完成列选择、缺失值处理、结果预览、CSV 数据下载和 JSON 处理记录验证。':
@@ -191,6 +197,8 @@ const exactEnglish: Record<string, string> = {
     'Verified v0.8 PCA, T-SNE, and MDS with numeric-feature standardization, two- or three-dimensional coordinates, PCA explained variance, T-SNE KL divergence, MDS stress, and result downloads.',
   '已接入 v0.8 Isolation Forest 和 Local Outlier Factor，完成数值特征标准化、逐行异常标签、统一方向异常分数、异常样品预览和结果下载验证。':
     'Verified v0.8 Isolation Forest and Local Outlier Factor with numeric-feature standardization, row-level labels, consistently oriented anomaly scores, anomaly preview, and result downloads.',
+  '已接入 v0.8 陆上玄武岩比例时间序列工作流，完成字段映射、年龄分箱、固定随机种子 Bootstrap、2σ 不确定度、曲线图和结果下载验证。':
+    'Verified the v0.8 subaerial-basalt proportion time-series workflow, including column mapping, age binning, fixed-seed bootstrap analysis, 2σ uncertainty, a curve figure, and result downloads.',
   总质量或总浓度: 'Total mass or concentration',
   '需要与同一行所有物种浓度之和进行比较的总量。':
     'Total to compare with the sum of all species concentrations in the same row.',
@@ -529,6 +537,11 @@ export function apiText(source: string | null | undefined) {
         `${count} rows containing missing or infinite values were removed before anomaly detection.`
     ],
     [
+      /^时间序列分析前删除了 (\d+) 行缺少必需数值的记录。$/,
+      (count) =>
+        `${count} rows missing required numeric values were removed before time-series analysis.`
+    ],
+    [
       /^(T-SNE|MDS) 坐标用于相对结构解释，坐标轴本身没有原始地球化学单位。$/,
       (model) =>
         `${model} coordinates describe relative structure; their axes do not retain the original geochemical units.`
@@ -559,6 +572,9 @@ export function apiText(source: string | null | undefined) {
     '所有数据行均可用于聚类。': 'All data rows can be used for clustering.',
     '所有数据行均可用于降维。': 'All data rows can be used for dimensionality reduction.',
     '所有数据行均可用于异常检测。': 'All data rows can be used for anomaly detection.',
+    '所有数据行均可用于时间序列分析。': 'All data rows can be used for time-series analysis.',
+    '阴影范围表示 Bootstrap 结果的 ±2σ；结果反映分箱统计关系，不代表时间序列预测。':
+      'The shaded interval shows ±2σ across bootstrap results. These are binned statistical relationships, not time-series forecasts.',
     '异常分数已统一为数值越大越异常；不同算法之间的绝对分数不可直接比较。':
       'Scores are oriented so that higher values indicate stronger anomalies; absolute scores are not directly comparable across algorithms.',
     'Silhouette 指标使用固定随机种子抽样 10,000 行计算。':
@@ -586,6 +602,7 @@ export function warningIsSuccess(source: string) {
     '均可用于聚类',
     '均可用于降维',
     '均可用于异常检测',
+    '均可用于时间序列分析',
     '未发现'
   ].some((message) => source.includes(message))
 }

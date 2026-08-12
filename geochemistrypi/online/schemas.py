@@ -347,3 +347,66 @@ class AnomalyDetectionResponse(BaseModel):
     preview: list[dict[str, Any]]
     warnings: list[str] = Field(default_factory=list)
     artifacts: list[ArtifactResponse] = Field(default_factory=list)
+
+
+class TimeSeriesSummary(BaseModel):
+    original_rows: int
+    usable_rows: int
+    dropped_rows: int
+    sampled_out_rows: int = 0
+    bin_count: int
+    populated_bins: int
+
+
+class TimeSeriesBinItem(BaseModel):
+    age: float
+    mean_proportion: float | None = None
+    uncertainty_2sigma: float | None = None
+
+
+class ProbabilityModelMetrics(BaseModel):
+    validation_rows: int
+    mean_absolute_error: float
+    root_mean_squared_error: float
+    r2: float
+
+
+class ProbabilityModelInfo(BaseModel):
+    version: str
+    display_name: str
+    training_rows: int
+    training_sha256: str
+    recognized_features: list[str]
+    metrics: ProbabilityModelMetrics
+    target_description: str
+
+
+class ProbabilityPredictionSummary(BaseModel):
+    predicted_rows: int
+    insufficient_feature_rows: int
+    eligible_time_series_rows: int
+    sampled_time_series_rows: int
+    minimum_features_per_row: int
+
+
+class TimeSeriesResponse(BaseModel):
+    job_id: str
+    status: str
+    message: str
+    source_filename: str
+    age_column: str
+    age_max_column: str
+    probability_column: str
+    latitude_column: str
+    longitude_column: str
+    age_unit: str
+    bin_width: float
+    bootstrap_iterations: int
+    random_state: int
+    probability_source: Literal["uploaded", "model_predicted"] = "uploaded"
+    probability_model: ProbabilityModelInfo | None = None
+    prediction_summary: ProbabilityPredictionSummary | None = None
+    summary: TimeSeriesSummary
+    bins: list[TimeSeriesBinItem]
+    warnings: list[str] = Field(default_factory=list)
+    artifacts: list[ArtifactResponse] = Field(default_factory=list)

@@ -286,6 +286,67 @@ export interface AnomalyDetectionResponse {
   artifacts: ArtifactResponse[]
 }
 
+export interface TimeSeriesSummary {
+  original_rows: number
+  usable_rows: number
+  dropped_rows: number
+  sampled_out_rows: number
+  bin_count: number
+  populated_bins: number
+}
+
+export interface TimeSeriesBinItem {
+  age: number
+  mean_proportion: number | null
+  uncertainty_2sigma: number | null
+}
+
+export interface ProbabilityModelInfo {
+  version: string
+  display_name: string
+  training_rows: number
+  training_sha256: string
+  recognized_features: string[]
+  metrics: {
+    validation_rows: number
+    mean_absolute_error: number
+    root_mean_squared_error: number
+    r2: number
+  }
+  target_description: string
+}
+
+export interface ProbabilityPredictionSummary {
+  predicted_rows: number
+  insufficient_feature_rows: number
+  eligible_time_series_rows: number
+  sampled_time_series_rows: number
+  minimum_features_per_row: number
+}
+
+export interface TimeSeriesResponse {
+  job_id: string
+  status: string
+  message: string
+  source_filename: string
+  age_column: string
+  age_max_column: string
+  probability_column: string
+  latitude_column: string
+  longitude_column: string
+  age_unit: 'Ma' | 'Ga'
+  bin_width: number
+  bootstrap_iterations: number
+  random_state: number
+  probability_source: 'uploaded' | 'model_predicted'
+  probability_model: ProbabilityModelInfo | null
+  prediction_summary: ProbabilityPredictionSummary | null
+  summary: TimeSeriesSummary
+  bins: TimeSeriesBinItem[]
+  warnings: string[]
+  artifacts: ArtifactResponse[]
+}
+
 async function parseResponse<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => null)
   if (!response.ok) {
@@ -418,4 +479,62 @@ export async function runAnomalyDetection(
     body: form
   })
   return parseResponse<AnomalyDetectionResponse>(response)
+}
+
+export async function runTimeSeries(
+  dataset: File,
+  columns: {
+    age: string
+    ageMax: string
+    probability: string
+    latitude: string
+    longitude: string
+  },
+  ageUnit: 'Ma' | 'Ga',
+  binWidth: number,
+  bootstrapIterations: number
+): Promise<TimeSeriesResponse> {
+  const form = new FormData()
+  form.append('dataset', dataset)
+  form.append('age_column', columns.age)
+  form.append('age_max_column', columns.ageMax)
+  form.append('probability_column', columns.probability)
+  form.append('latitude_column', columns.latitude)
+  form.append('longitude_column', columns.longitude)
+  form.append('age_unit', ageUnit)
+  form.append('bin_width', String(binWidth))
+  form.append('bootstrap_iterations', String(bootstrapIterations))
+  const response = await fetch(`${API_BASE_URL}/api/data-mining/time-series`, {
+    method: 'POST',
+    body: form
+  })
+  return parseResponse<TimeSeriesResponse>(response)
+}
+
+export async function runPredictedTimeSeries(
+  dataset: File,
+  columns: {
+    age: string
+    ageMax: string
+    latitude: string
+    longitude: string
+  },
+  ageUnit: 'Ma' | 'Ga',
+  binWidth: number,
+  bootstrapIterations: number
+): Promise<TimeSeriesResponse> {
+  const form = new FormData()
+  form.append('dataset', dataset)
+  form.append('age_column', columns.age)
+  form.append('age_max_column', columns.ageMax)
+  form.append('latitude_column', columns.latitude)
+  form.append('longitude_column', columns.longitude)
+  form.append('age_unit', ageUnit)
+  form.append('bin_width', String(binWidth))
+  form.append('bootstrap_iterations', String(bootstrapIterations))
+  const response = await fetch(`${API_BASE_URL}/api/data-mining/time-series/predict`, {
+    method: 'POST',
+    body: form
+  })
+  return parseResponse<TimeSeriesResponse>(response)
 }

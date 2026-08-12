@@ -490,6 +490,76 @@ def make_unsupervised_csv() -> bytes:
     return ("\n".join(rows) + "\n").encode("utf-8")
 
 
+def make_time_series_csv() -> bytes:
+    rows = ["Age,AgeMax,Probability,Latitude,Longitude"]
+    for index in range(30):
+        age = index * 10
+        probability = 0.2 if index < 15 else 0.8
+        rows.append(
+            f"{age},{age + 8},{probability},{-60 + index * 4},{-150 + index * 10}"
+        )
+    return ("\n".join(rows) + "\n").encode("utf-8")
+
+
+def make_predicted_time_series_csv() -> bytes:
+    geochemical_columns = [
+        "SIO2",
+        "TIO2",
+        "AL2O3",
+        "MNO",
+        "MGO",
+        "CAO",
+        "NA2O",
+        "K2O",
+        "P2O5",
+        "CR",
+        "NI",
+        "RB",
+        "SR",
+        "Y",
+        "ZR",
+        "NB",
+    ]
+    rows = [
+        ",".join(
+            ["Sample", "Age", "AgeMax", "Latitude", "Longitude", *geochemical_columns]
+        )
+    ]
+    for index in range(30):
+        geochemistry = [
+            48 + (index % 8),
+            0.7 + (index % 5) * 0.1,
+            14 + (index % 6) * 0.2,
+            0.12,
+            5.5 - (index % 4) * 0.3,
+            8.5 - (index % 3) * 0.2,
+            3.1 + (index % 5) * 0.1,
+            1.2 + (index % 4) * 0.1,
+            0.18,
+            120 + index,
+            80 + index,
+            20 + index,
+            350 + index * 2,
+            25 + index * 0.2,
+            110 + index,
+            8 + index * 0.1,
+        ]
+        rows.append(
+            ",".join(
+                str(value)
+                for value in [
+                    f"S{index + 1}",
+                    index * 10,
+                    index * 10 + 8,
+                    -60 + index * 4,
+                    -150 + index * 10,
+                    *geochemistry,
+                ]
+            )
+        )
+    return ("\n".join(rows) + "\n").encode("utf-8")
+
+
 def test_data_mining_catalog_starts_with_verified_dataset_profile(tmp_path):
     client = TestClient(create_app(tmp_path / "runtime"))
     response = client.get("/api/data-mining/catalog")
@@ -503,6 +573,7 @@ def test_data_mining_catalog_starts_with_verified_dataset_profile(tmp_path):
         "clustering",
         "dimensionality_reduction",
         "anomaly_detection",
+        "time_series",
     ]
     assert features[0]["status"] == "verified"
     assert features[0]["input_formats"] == [".xlsx", ".csv"]
@@ -590,6 +661,13 @@ def test_data_mining_catalog_starts_with_verified_dataset_profile(tmp_path):
         "异常分数与标签",
         "异常检测结果 CSV",
         "JSON 模型报告",
+    ]
+    assert features[7]["outputs"] == [
+        "陆上玄武岩比例曲线",
+        "年龄分箱结果表",
+        "时间序列结果 CSV",
+        "SVG 矢量图",
+        "JSON 分析报告",
     ]
 
 
@@ -850,13 +928,21 @@ def test_preprocess_rejects_upload_over_size_limit(tmp_path):
         files={
             "dataset": (
                 "oversized.csv",
-                b"Sample\n" + b"A" * (10 * 1024 * 1024 + 1),
+                b"Sample\n" + b"A" * (25 * 1024 * 1024 + 1),
                 "text/csv",
             )
         },
     )
     assert response.status_code == 413
     assert "exceeds" in response.json()["detail"]
+
+
+def test_default_upload_limit_is_25_mib(tmp_path):
+    app = create_app(tmp_path / "runtime")
+
+    expected_bytes = 25 * 1024 * 1024
+    assert app.state.online_service.max_upload_bytes == expected_bytes
+    assert app.state.data_mining_service.max_upload_bytes == expected_bytes
 
 
 def test_linear_regression_returns_metrics_coefficients_and_downloads(tmp_path):
@@ -1798,6 +1884,185 @@ def test_v080_anomaly_detection_registry_runs_verified_models(
     assert report["report_version"] == "v080-anomaly-detection-v1"
     assert report["model"] == model_name
     assert report["summary"]["anomaly_rows"] == payload["summary"]["anomaly_rows"]
+
+
+def test_v080_time_series_returns_bins_figure_and_downloads(tmp_path):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    response = client.post(
+        "/api/data-mining/time-series",
+        data={
+            "age_column": "Age",
+            "age_max_column": "AgeMax",
+            "probability_column": "Probability",
+            "latitude_column": "Latitude",
+            "longitude_column": "Longitude",
+            "age_unit": "Ma",
+            "bin_width": "50",
+            "bootstrap_iterations": "20",
+        },
+        files={
+            "dataset": (
+                "time-series.csv",
+                make_time_series_csv(),
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["status"] == "success"
+    assert payload["age_unit"] == "Ma"
+    assert payload["bin_width"] == 50
+    assert payload["bootstrap_iterations"] == 20
+    assert payload["random_state"] == 2025
+    assert payload["probability_source"] == "uploaded"
+    assert payload["probability_model"] is None
+    assert payload["summary"] == {
+        "original_rows": 30,
+        "usable_rows": 30,
+        "dropped_rows": 0,
+        "sampled_out_rows": 0,
+        "bin_count": 6,
+        "populated_bins": 6,
+    }
+    assert [item["age"] for item in payload["bins"]] == [
+        25.0,
+        75.0,
+        125.0,
+        175.0,
+        225.0,
+        275.0,
+    ]
+    assert all(item["mean_proportion"] is not None for item in payload["bins"])
+    assert [artifact["name"] for artifact in payload["artifacts"]] == [
+        "subaerial_proportion.csv",
+        "subaerial_proportion.svg",
+        "time_series_report.json",
+    ]
+
+    csv_download = client.get(payload["artifacts"][0]["download_url"])
+    assert csv_download.status_code == 200
+    results = pd.read_csv(BytesIO(csv_download.content))
+    assert list(results.columns) == [
+        "age",
+        "mean_proportion",
+        "uncertainty_2sigma",
+    ]
+    assert len(results) == 6
+
+    svg_download = client.get(payload["artifacts"][1]["download_url"])
+    assert svg_download.status_code == 200
+    assert b"<svg" in svg_download.content
+    assert b"Estimated proportion of subaerial basalts" in svg_download.content
+
+    report_download = client.get(payload["artifacts"][2]["download_url"])
+    assert report_download.status_code == 200
+    report = json.loads(report_download.content.decode("utf-8"))
+    assert report["report_version"] == "v080-time-series-v1"
+    assert report["column_mapping"]["age"] == "Age"
+    assert report["probability_source"] == "uploaded"
+    assert report["summary"]["populated_bins"] == 6
+
+
+def test_model_predicted_time_series_is_versioned_and_auditable(tmp_path):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    response = client.post(
+        "/api/data-mining/time-series/predict",
+        data={
+            "age_column": "Age",
+            "age_max_column": "AgeMax",
+            "latitude_column": "Latitude",
+            "longitude_column": "Longitude",
+            "age_unit": "Ma",
+            "bin_width": "50",
+            "bootstrap_iterations": "20",
+        },
+        files={
+            "dataset": (
+                "raw-geochemistry.csv",
+                make_predicted_time_series_csv(),
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["probability_source"] == "model_predicted"
+    assert payload["probability_model"]["version"] == "liu-2024-surrogate-hgbr-v1"
+    assert payload["probability_model"]["metrics"]["r2"] > 0.8
+    assert payload["prediction_summary"] == {
+        "predicted_rows": 30,
+        "insufficient_feature_rows": 0,
+        "eligible_time_series_rows": 30,
+        "sampled_time_series_rows": 30,
+        "minimum_features_per_row": 12,
+    }
+    assert payload["summary"]["sampled_out_rows"] == 0
+    assert [artifact["name"] for artifact in payload["artifacts"]] == [
+        "subaerial_proportion.csv",
+        "subaerial_proportion.svg",
+        "time_series_report.json",
+        "predicted_subaerial_probabilities.csv",
+    ]
+
+    prediction_download = client.get(payload["artifacts"][3]["download_url"])
+    assert prediction_download.status_code == 200
+    predictions = pd.read_csv(BytesIO(prediction_download.content))
+    assert len(predictions) == 30
+    assert predictions["predicted_subaerial_probability"].between(0, 1).all()
+    assert predictions["model_version"].eq("liu-2024-surrogate-hgbr-v1").all()
+
+    report_download = client.get(payload["artifacts"][2]["download_url"])
+    report = json.loads(report_download.content.decode("utf-8"))
+    assert report["probability_source"] == "model_predicted"
+    assert report["probability_model"]["version"] == "liu-2024-surrogate-hgbr-v1"
+
+
+@pytest.mark.parametrize(
+    ("updates", "expected_message"),
+    [
+        ({"age_unit": "ka"}, "Age unit must be Ma or Ga"),
+        ({"bin_width": "0"}, "Bin width must be a positive finite number"),
+        (
+            {"bin_width": "0.01"},
+            "The selected bin width would create more than 5,000 age bins",
+        ),
+        (
+            {"bootstrap_iterations": "5"},
+            "Bootstrap iterations must be between 10 and 1,000",
+        ),
+        (
+            {"probability_column": "Missing"},
+            "Unknown selected columns: Missing",
+        ),
+    ],
+)
+def test_time_series_rejects_invalid_configuration(
+    tmp_path,
+    updates,
+    expected_message,
+):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    data = {
+        "age_column": "Age",
+        "age_max_column": "AgeMax",
+        "probability_column": "Probability",
+        "latitude_column": "Latitude",
+        "longitude_column": "Longitude",
+        "age_unit": "Ma",
+        "bin_width": "50",
+        "bootstrap_iterations": "20",
+        **updates,
+    }
+    response = client.post(
+        "/api/data-mining/time-series",
+        data=data,
+        files={"dataset": ("time-series.csv", make_time_series_csv(), "text/csv")},
+    )
+    assert response.status_code == 422
+    assert expected_message in response.json()["detail"]
 
 
 @pytest.mark.parametrize(

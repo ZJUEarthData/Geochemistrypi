@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElInputNumber, ElMessage } from 'element-plus'
 
 import MobileFieldCards from '@/components/mobile-field-cards.vue'
 import RunSummary from '@/components/run-summary.vue'
@@ -13,7 +13,9 @@ import {
   runClassification,
   runClustering,
   runDimensionalityReduction,
+  runPredictedTimeSeries,
   runRegression,
+  runTimeSeries,
   type AnomalyDetectionResponse,
   type ClassificationResponse,
   type ClusteringResponse,
@@ -22,12 +24,14 @@ import {
   type DatasetProfileResponse,
   type DimensionalityReductionResponse,
   type MissingValueStrategy,
-  type RegressionResponse
+  type RegressionResponse,
+  type TimeSeriesResponse
 } from '@/api/data-mining'
 import { artifactUrl, getHealth } from '@/api/online'
 import { apiText, dataMiningFeatureDescription, t, warningIsSuccess } from '@/i18n'
 
 type ServiceState = 'checking' | 'online' | 'offline'
+type TimeSeriesMode = 'direct' | 'model_predicted'
 
 const serviceState = ref<ServiceState>('checking')
 const softwareVersion = ref('')
@@ -45,6 +49,7 @@ const classificationResult = ref<ClassificationResponse | null>(null)
 const clusteringResult = ref<ClusteringResponse | null>(null)
 const dimensionalityReductionResult = ref<DimensionalityReductionResponse | null>(null)
 const anomalyDetectionResult = ref<AnomalyDetectionResponse | null>(null)
+const timeSeriesResult = ref<TimeSeriesResponse | null>(null)
 const selectedColumns = ref<string[]>([])
 const missingStrategy = ref<MissingValueStrategy>('keep')
 const regressionTarget = ref('')
@@ -63,6 +68,15 @@ const dimensionalityReductionModel = ref('pca')
 const componentCount = ref(2)
 const anomalyDetectionFeatures = ref<string[]>([])
 const anomalyDetectionModel = ref('isolation_forest')
+const timeSeriesMode = ref<TimeSeriesMode>('direct')
+const timeSeriesAgeColumn = ref('')
+const timeSeriesAgeMaxColumn = ref('')
+const timeSeriesProbabilityColumn = ref('')
+const timeSeriesLatitudeColumn = ref('')
+const timeSeriesLongitudeColumn = ref('')
+const timeSeriesAgeUnit = ref<'Ma' | 'Ga'>('Ma')
+const timeSeriesBinWidth = ref(10)
+const timeSeriesBootstrapIterations = ref(100)
 const errorMessage = ref('')
 
 const missingStrategyOptions = computed<
@@ -123,6 +137,7 @@ const isDimensionalityReduction = computed(
   () => selectedFeature.value === 'dimensionality_reduction'
 )
 const isAnomalyDetection = computed(() => selectedFeature.value === 'anomaly_detection')
+const isTimeSeries = computed(() => selectedFeature.value === 'time_series')
 const previewColumns = computed(() => Object.keys(result.value?.preview[0] || {}))
 const preprocessingPreviewColumns = computed(() =>
   Object.keys(preprocessingResult.value?.preview[0] || {})
@@ -142,6 +157,66 @@ const dimensionalityReductionPreviewColumns = computed(() =>
 const anomalyDetectionPreviewColumns = computed(() =>
   Object.keys(anomalyDetectionResult.value?.preview[0] || {})
 )
+const timeSeriesMappedColumns = computed(() => {
+  const columns = [
+    timeSeriesAgeColumn.value,
+    timeSeriesAgeMaxColumn.value,
+    timeSeriesLatitudeColumn.value,
+    timeSeriesLongitudeColumn.value
+  ]
+  if (timeSeriesMode.value === 'direct') columns.splice(2, 0, timeSeriesProbabilityColumn.value)
+  return columns
+})
+const timeSeriesRequiredColumnCount = computed(() => (timeSeriesMode.value === 'direct' ? 5 : 4))
+const timeSeriesMappingComplete = computed(
+  () =>
+    timeSeriesMappedColumns.value.every(Boolean) &&
+    new Set(timeSeriesMappedColumns.value).size === timeSeriesMappedColumns.value.length
+)
+const timeSeriesChart = computed(() => {
+  const valid = (timeSeriesResult.value?.bins || []).filter(
+    (item) => item.mean_proportion !== null && item.uncertainty_2sigma !== null
+  )
+  if (!valid.length) return null
+  const width = 760
+  const height = 320
+  const left = 64
+  const right = 20
+  const top = 24
+  const bottom = 48
+  const minimumAge = Math.min(...valid.map((item) => item.age))
+  const maximumAge = Math.max(...valid.map((item) => item.age))
+  const ageSpan = maximumAge - minimumAge || 1
+  const x = (age: number) => left + ((maximumAge - age) / ageSpan) * (width - left - right)
+  const y = (value: number) =>
+    top + ((100 - Math.min(100, Math.max(0, value))) / 100) * (height - top - bottom)
+  const line = valid
+    .map((item) => `${x(item.age).toFixed(2)},${y(item.mean_proportion || 0).toFixed(2)}`)
+    .join(' ')
+  const upper = valid.map(
+    (item) =>
+      `${x(item.age).toFixed(2)},${y((item.mean_proportion || 0) + (item.uncertainty_2sigma || 0)).toFixed(2)}`
+  )
+  const lower = [...valid]
+    .reverse()
+    .map(
+      (item) =>
+        `${x(item.age).toFixed(2)},${y((item.mean_proportion || 0) - (item.uncertainty_2sigma || 0)).toFixed(2)}`
+    )
+  return {
+    width,
+    height,
+    left,
+    right,
+    top,
+    bottom,
+    minimumAge,
+    maximumAge,
+    line,
+    band: [...upper, ...lower].join(' '),
+    y
+  }
+})
 const numericColumns = computed(
   () =>
     columnInspection.value?.columns
@@ -215,6 +290,15 @@ const canRun = computed(() => {
   if (isAnomalyDetection.value) {
     return anomalyDetectionFeatures.value.length > 0 && !inspectingColumns.value
   }
+  if (isTimeSeries.value) {
+    return (
+      timeSeriesMappingComplete.value &&
+      timeSeriesBinWidth.value > 0 &&
+      timeSeriesBootstrapIterations.value >= 10 &&
+      timeSeriesBootstrapIterations.value <= 1000 &&
+      !inspectingColumns.value
+    )
+  }
   return selectedFeature.value === 'dataset_profile'
 })
 const runButtonLabel = computed(() => {
@@ -224,6 +308,10 @@ const runButtonLabel = computed(() => {
     if (isClustering.value) return t('Clustering…', '正在聚类…')
     if (isDimensionalityReduction.value) return t('Reducing dimensions…', '正在降维…')
     if (isAnomalyDetection.value) return t('Detecting anomalies…', '正在检测异常…')
+    if (isTimeSeries.value)
+      return timeSeriesMode.value === 'direct'
+        ? t('Calculating time series…', '正在计算时间序列…')
+        : t('Predicting probability and calculating…', '正在预测概率并计算…')
     return t('Analyzing…', '正在分析…')
   }
   if (!currentFeatureIsVerified.value)
@@ -234,6 +322,7 @@ const runButtonLabel = computed(() => {
   if (isClustering.value) return t('Run clustering', '运行聚类')
   if (isDimensionalityReduction.value) return t('Run dimensionality reduction', '运行降维')
   if (isAnomalyDetection.value) return t('Run anomaly detection', '运行异常检测')
+  if (isTimeSeries.value) return t('Run time series analysis', '运行时间序列分析')
   return t('Analyze dataset', '分析数据集')
 })
 
@@ -245,7 +334,8 @@ const operationCompleted = computed(() =>
     classificationResult.value ||
     clusteringResult.value ||
     dimensionalityReductionResult.value ||
-    anomalyDetectionResult.value
+    anomalyDetectionResult.value ||
+    timeSeriesResult.value
   )
 )
 
@@ -258,6 +348,7 @@ const activeJobId = computed(
     clusteringResult.value?.job_id ||
     dimensionalityReductionResult.value?.job_id ||
     anomalyDetectionResult.value?.job_id ||
+    timeSeriesResult.value?.job_id ||
     columnInspection.value?.job_id ||
     ''
 )
@@ -340,6 +431,15 @@ const runSummaryParameters = computed(() => {
       `${t('Features', '特征')}: ${anomalyDetectionFeatures.value.length}`
     ]
   }
+  if (isTimeSeries.value) {
+    return [
+      `${t('Age unit', '年龄单位')}: ${timeSeriesAgeUnit.value}`,
+      `${t('Bin width', '分箱宽度')}: ${timeSeriesBinWidth.value} ${timeSeriesAgeUnit.value}`,
+      `${t('Bootstrap iterations', 'Bootstrap 次数')}: ${timeSeriesBootstrapIterations.value}`,
+      `${t('Probability source', '概率来源')}: ${timeSeriesMode.value === 'direct' ? t('Uploaded column', '上传数据列') : t('Liu 2024 surrogate', 'Liu 2024 替代模型')}`,
+      `${t('Mapped columns', '映射列')}: ${timeSeriesMappedColumns.value.filter(Boolean).length}/${timeSeriesRequiredColumnCount.value}`
+    ]
+  }
   return [`${t('Scope', '范围')}: ${t('Full dataset', '完整数据集')}`]
 })
 
@@ -355,6 +455,7 @@ watch(selectedFeature, async () => {
   clusteringFeatures.value = []
   dimensionalityReductionFeatures.value = []
   anomalyDetectionFeatures.value = []
+  resetTimeSeriesColumns()
   if (datasetFile.value) {
     await inspectDatasetColumns()
   }
@@ -441,6 +542,31 @@ watch(
 watch(anomalyDetectionModel, () => {
   anomalyDetectionResult.value = null
 })
+watch(
+  [
+    timeSeriesMode,
+    timeSeriesAgeColumn,
+    timeSeriesAgeMaxColumn,
+    timeSeriesProbabilityColumn,
+    timeSeriesLatitudeColumn,
+    timeSeriesLongitudeColumn,
+    timeSeriesAgeUnit,
+    timeSeriesBinWidth,
+    timeSeriesBootstrapIterations
+  ],
+  () => {
+    timeSeriesResult.value = null
+    const mappingMessages = [4, 5].map((count) =>
+      t(
+        `Map all ${count} required time-series variables to different numeric columns.`,
+        `请将 ${count} 个必需的时间序列变量分别映射到不同数值列。`
+      )
+    )
+    if (timeSeriesMappingComplete.value && mappingMessages.includes(errorMessage.value)) {
+      errorMessage.value = ''
+    }
+  }
+)
 onMounted(loadPage)
 
 async function loadPage() {
@@ -481,6 +607,7 @@ async function onFileChange(event: Event) {
   clusteringFeatures.value = []
   dimensionalityReductionFeatures.value = []
   anomalyDetectionFeatures.value = []
+  resetTimeSeriesColumns()
   errorMessage.value = ''
 
   if (file && !/\.(xlsx|csv)$/i.test(file.name)) {
@@ -573,6 +700,23 @@ async function inspectDatasetColumns() {
           '异常检测至少需要一个数值特征列。'
         )
       }
+    } else if (isTimeSeries.value) {
+      timeSeriesAgeColumn.value = findDetectedColumn('R_AGE', 'AGE', 'Age')
+      timeSeriesAgeMaxColumn.value = findDetectedColumn('R_MAX_AGE', 'MAX_AGE', 'AgeMax')
+      timeSeriesProbabilityColumn.value = findDetectedColumn(
+        'Estimated Proportion of Subaerial Basalts',
+        'SBAP',
+        'Probability'
+      )
+      timeSeriesMode.value = timeSeriesProbabilityColumn.value ? 'direct' : 'model_predicted'
+      timeSeriesLatitudeColumn.value = findDetectedColumn('LATITUDE', 'Latitude')
+      timeSeriesLongitudeColumn.value = findDetectedColumn('LONGITUDE', 'Longitude')
+      if (!timeSeriesMappingComplete.value) {
+        errorMessage.value = t(
+          `Map all ${timeSeriesRequiredColumnCount.value} required time-series variables to different numeric columns.`,
+          `请将 ${timeSeriesRequiredColumnCount.value} 个必需的时间序列变量分别映射到不同数值列。`
+        )
+      }
     }
   } catch (error) {
     errorMessage.value =
@@ -645,6 +789,30 @@ async function submitJob() {
       ElMessage.success(
         `${anomalyDetectionResult.value.model_display_name} ${t('completed', '已完成')}`
       )
+    } else if (isTimeSeries.value) {
+      const sharedColumns = {
+        age: timeSeriesAgeColumn.value,
+        ageMax: timeSeriesAgeMaxColumn.value,
+        latitude: timeSeriesLatitudeColumn.value,
+        longitude: timeSeriesLongitudeColumn.value
+      }
+      timeSeriesResult.value =
+        timeSeriesMode.value === 'direct'
+          ? await runTimeSeries(
+              datasetFile.value,
+              { ...sharedColumns, probability: timeSeriesProbabilityColumn.value },
+              timeSeriesAgeUnit.value,
+              timeSeriesBinWidth.value,
+              timeSeriesBootstrapIterations.value
+            )
+          : await runPredictedTimeSeries(
+              datasetFile.value,
+              sharedColumns,
+              timeSeriesAgeUnit.value,
+              timeSeriesBinWidth.value,
+              timeSeriesBootstrapIterations.value
+            )
+      ElMessage.success(t('Time series analysis completed', '时间序列分析完成'))
     } else {
       result.value = await profileDataset(datasetFile.value)
       ElMessage.success(t('Dataset profile completed', '数据集概览完成'))
@@ -668,6 +836,24 @@ function clearResult() {
   clusteringResult.value = null
   dimensionalityReductionResult.value = null
   anomalyDetectionResult.value = null
+  timeSeriesResult.value = null
+}
+
+function resetTimeSeriesColumns() {
+  timeSeriesMode.value = 'direct'
+  timeSeriesAgeColumn.value = ''
+  timeSeriesAgeMaxColumn.value = ''
+  timeSeriesProbabilityColumn.value = ''
+  timeSeriesLatitudeColumn.value = ''
+  timeSeriesLongitudeColumn.value = ''
+}
+
+function findDetectedColumn(...candidates: string[]) {
+  const normalized = candidates.map((candidate) => candidate.toLowerCase())
+  return (
+    columnInspection.value?.columns.find((column) => normalized.includes(column.name.toLowerCase()))
+      ?.name || ''
+  )
 }
 
 function selectAllColumns() {
@@ -1493,6 +1679,201 @@ function formatCell(value: unknown) {
                 t(
                   'At least 10 complete rows are required. The automatic contamination threshold follows each v0.8 algorithm default.',
                   '至少需要 10 行完整数据；自动异常比例阈值遵循各 v0.8 算法默认设置。'
+                )
+              "
+              type="info"
+              :closable="false"
+              show-icon
+            />
+          </section>
+
+          <section v-if="isTimeSeries" v-loading="inspectingColumns" class="preprocessing-panel">
+            <div class="section-heading">
+              <div>
+                <p class="guide-kicker">
+                  {{ t('TIME SERIES CONFIGURATION', '时间序列配置') }}
+                </p>
+                <h3>
+                  {{
+                    t(
+                      'Map geological variables and configure age-bin uncertainty analysis',
+                      '映射地质变量并配置年龄分箱不确定度分析'
+                    )
+                  }}
+                </h3>
+              </div>
+              <el-tag v-if="columnInspection" type="success" effect="plain">
+                {{ timeSeriesMappedColumns.filter(Boolean).length }}/{{
+                  timeSeriesRequiredColumnCount
+                }}
+                {{ t('variables mapped', '个变量已映射') }}
+              </el-tag>
+            </div>
+
+            <template v-if="columnInspection">
+              <div class="time-series-mode-picker">
+                <span>{{ t('Probability source', '概率来源') }}</span>
+                <el-radio-group v-model="timeSeriesMode" :disabled="running">
+                  <el-radio-button value="direct">
+                    {{ t('Uploaded probability column', '使用上传的概率列') }}
+                  </el-radio-button>
+                  <el-radio-button value="model_predicted">
+                    {{ t('Predict from geochemistry', '根据地球化学数据预测') }}
+                  </el-radio-button>
+                </el-radio-group>
+              </div>
+
+              <el-alert
+                v-if="timeSeriesMode === 'model_predicted'"
+                type="warning"
+                :closable="false"
+                show-icon
+                :title="
+                  t(
+                    'Liu-2024 surrogate v1 predicts probability before Time Series. It is a reproducible surrogate of published probabilities, not the authors’ original trained model.',
+                    'Liu-2024 替代模型 v1 会先预测概率再运行时间序列；它是对已发布概率的可复现替代模型，并非论文作者的原始训练模型。'
+                  )
+                "
+              />
+
+              <div class="time-series-mapping-grid">
+                <el-form-item :label="t('Central age', '中心年龄')">
+                  <el-select
+                    v-model="timeSeriesAgeColumn"
+                    filterable
+                    :placeholder="t('Select age column', '选择年龄列')"
+                    :disabled="running"
+                  >
+                    <el-option
+                      v-for="column in numericColumns"
+                      :key="column"
+                      :label="column"
+                      :value="column"
+                    />
+                  </el-select>
+                  <p class="field-help">R_AGE</p>
+                </el-form-item>
+
+                <el-form-item :label="t('Maximum age', '最大年龄')">
+                  <el-select
+                    v-model="timeSeriesAgeMaxColumn"
+                    filterable
+                    :placeholder="t('Select maximum-age column', '选择最大年龄列')"
+                    :disabled="running"
+                  >
+                    <el-option
+                      v-for="column in numericColumns"
+                      :key="column"
+                      :label="column"
+                      :value="column"
+                    />
+                  </el-select>
+                  <p class="field-help">R_MAX_AGE</p>
+                </el-form-item>
+
+                <el-form-item
+                  v-if="timeSeriesMode === 'direct'"
+                  :label="t('Subaerial probability', '陆上玄武岩概率')"
+                >
+                  <el-select
+                    v-model="timeSeriesProbabilityColumn"
+                    filterable
+                    :placeholder="t('Select probability column', '选择概率列')"
+                    :disabled="running"
+                  >
+                    <el-option
+                      v-for="column in numericColumns"
+                      :key="column"
+                      :label="column"
+                      :value="column"
+                    />
+                  </el-select>
+                  <p class="field-help">0–1 · SBAP</p>
+                </el-form-item>
+
+                <el-form-item :label="t('Latitude', '纬度')">
+                  <el-select
+                    v-model="timeSeriesLatitudeColumn"
+                    filterable
+                    :placeholder="t('Select latitude column', '选择纬度列')"
+                    :disabled="running"
+                  >
+                    <el-option
+                      v-for="column in numericColumns"
+                      :key="column"
+                      :label="column"
+                      :value="column"
+                    />
+                  </el-select>
+                  <p class="field-help">−90°–90°</p>
+                </el-form-item>
+
+                <el-form-item :label="t('Longitude', '经度')">
+                  <el-select
+                    v-model="timeSeriesLongitudeColumn"
+                    filterable
+                    :placeholder="t('Select longitude column', '选择经度列')"
+                    :disabled="running"
+                  >
+                    <el-option
+                      v-for="column in numericColumns"
+                      :key="column"
+                      :label="column"
+                      :value="column"
+                    />
+                  </el-select>
+                  <p class="field-help">−180°–180°</p>
+                </el-form-item>
+              </div>
+
+              <div class="time-series-parameter-grid">
+                <el-form-item :label="t('Age unit', '年龄单位')">
+                  <el-select v-model="timeSeriesAgeUnit" :disabled="running">
+                    <el-option label="Ma" value="Ma" />
+                    <el-option label="Ga" value="Ga" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item :label="`${t('Bin width', '分箱宽度')} (${timeSeriesAgeUnit})`">
+                  <el-input-number
+                    v-model="timeSeriesBinWidth"
+                    :min="0.000001"
+                    :precision="timeSeriesAgeUnit === 'Ga' ? 3 : 1"
+                    :step="timeSeriesAgeUnit === 'Ga' ? 0.01 : 10"
+                    :disabled="running"
+                    controls-position="right"
+                  />
+                </el-form-item>
+                <el-form-item :label="t('Bootstrap iterations', 'Bootstrap 次数')">
+                  <el-input-number
+                    v-model="timeSeriesBootstrapIterations"
+                    :min="10"
+                    :max="1000"
+                    :step="10"
+                    :disabled="running"
+                    controls-position="right"
+                  />
+                </el-form-item>
+              </div>
+            </template>
+
+            <el-alert
+              v-else-if="!datasetFile"
+              :title="
+                t(
+                  'Choose a dataset first. Standard v0.8 column names will be mapped automatically when available.',
+                  '请先选择数据集；若存在 v0.8 标准列名，系统将自动完成映射。'
+                )
+              "
+              type="info"
+              :closable="false"
+              show-icon
+            />
+
+            <el-alert
+              :title="
+                t(
+                  'This workflow estimates binned subaerial-basalt proportions with bootstrap uncertainty. It is not a forecasting model.',
+                  '此工作流通过 Bootstrap 不确定度估计分箱后的陆上玄武岩比例，并非预测模型。'
                 )
               "
               type="info"
@@ -2653,6 +3034,252 @@ function formatCell(value: unknown) {
           </div>
         </el-card>
       </template>
+
+      <template v-if="timeSeriesResult">
+        <section class="summary-grid">
+          <article class="summary-card">
+            <span>{{ t('Usable rows', '可用行数') }}</span>
+            <strong>{{ formatNumber(timeSeriesResult.summary.usable_rows) }}</strong>
+            <small>
+              {{ timeSeriesResult.summary.dropped_rows }}
+              {{ t('incomplete rows removed', '行不完整数据已删除') }}
+              <template v-if="timeSeriesResult.summary.sampled_out_rows">
+                · {{ formatNumber(timeSeriesResult.summary.sampled_out_rows) }}
+                {{
+                  t('eligible rows excluded by deterministic sampling', '个有效行未进入确定性抽样')
+                }}
+              </template>
+            </small>
+          </article>
+          <article class="summary-card">
+            <span>{{ t('Populated age bins', '有效年龄分箱') }}</span>
+            <strong>{{ timeSeriesResult.summary.populated_bins }}</strong>
+            <small>
+              {{ timeSeriesResult.summary.bin_count }} {{ t('total bins', '个总分箱') }}
+            </small>
+          </article>
+          <article class="summary-card">
+            <span>{{ t('Bin width', '分箱宽度') }}</span>
+            <strong
+              >{{ formatNumber(timeSeriesResult.bin_width) }}
+              {{ timeSeriesResult.age_unit }}</strong
+            >
+            <small>{{ t('Age resolution', '年龄分辨率') }}</small>
+          </article>
+          <article class="summary-card">
+            <span>{{ t('Bootstrap iterations', 'Bootstrap 次数') }}</span>
+            <strong>{{ formatNumber(timeSeriesResult.bootstrap_iterations) }}</strong>
+            <small>{{ t('Random state', '随机种子') }} {{ timeSeriesResult.random_state }}</small>
+          </article>
+        </section>
+
+        <el-card class="result-card" shadow="never">
+          <template #header>
+            <div class="result-heading">
+              <div>
+                <h2>
+                  {{
+                    t('Subaerial proportion time series completed', '陆上玄武岩比例时间序列已完成')
+                  }}
+                </h2>
+                <p>
+                  {{ timeSeriesResult.source_filename }} · {{ t('Job ID', '任务 ID') }}:
+                  {{ timeSeriesResult.job_id }}
+                </p>
+              </div>
+              <el-tag type="success">{{ t('SUCCESS', '成功') }}</el-tag>
+            </div>
+          </template>
+
+          <div class="result-meta regression-meta">
+            <div>
+              <span>{{ t('Age and uncertainty', '年龄与不确定度') }}</span>
+              <strong>
+                {{ timeSeriesResult.age_column }} · {{ timeSeriesResult.age_max_column }}
+              </strong>
+            </div>
+            <div>
+              <span>{{ t('Subaerial probability', '陆上玄武岩概率') }}</span>
+              <strong>{{ timeSeriesResult.probability_column }}</strong>
+            </div>
+            <div v-if="timeSeriesResult.probability_model">
+              <span>{{ t('Probability model', '概率模型') }}</span>
+              <strong>
+                {{ timeSeriesResult.probability_model.display_name }} ·
+                {{ timeSeriesResult.probability_model.version }}
+              </strong>
+              <small>
+                R² {{ formatNumber(timeSeriesResult.probability_model.metrics.r2, 3) }} · MAE
+                {{
+                  formatNumber(timeSeriesResult.probability_model.metrics.mean_absolute_error, 3)
+                }}
+              </small>
+            </div>
+            <div>
+              <span>{{ t('Spatial coordinates', '空间坐标') }}</span>
+              <strong>
+                {{ timeSeriesResult.latitude_column }} · {{ timeSeriesResult.longitude_column }}
+              </strong>
+            </div>
+          </div>
+
+          <div class="warning-list">
+            <el-alert
+              v-for="warning in timeSeriesResult.warnings"
+              :key="warning"
+              :title="apiText(warning)"
+              :type="warningIsSuccess(warning) ? 'success' : 'warning'"
+              :closable="false"
+              show-icon
+            />
+          </div>
+
+          <section v-if="timeSeriesChart" class="result-section">
+            <div class="section-heading">
+              <div>
+                <p class="guide-kicker">{{ t('TIME SERIES CURVE', '时间序列曲线') }}</p>
+                <h3>
+                  {{ t('Estimated proportion with ±2σ uncertainty', '估计比例与 ±2σ 不确定度') }}
+                </h3>
+              </div>
+              <div class="chart-legend">
+                <span><i class="legend-line"></i>{{ t('Mean', '均值') }}</span>
+                <span><i class="legend-band"></i>±2σ</span>
+              </div>
+            </div>
+            <div class="time-series-chart-wrap">
+              <svg
+                class="time-series-chart"
+                :viewBox="`0 0 ${timeSeriesChart.width} ${timeSeriesChart.height}`"
+                role="img"
+                :aria-label="
+                  t('Subaerial proportion time-series chart', '陆上玄武岩比例时间序列图')
+                "
+              >
+                <g v-for="tick in [0, 20, 40, 60, 80, 100]" :key="tick">
+                  <line
+                    :x1="timeSeriesChart.left"
+                    :x2="timeSeriesChart.width - timeSeriesChart.right"
+                    :y1="timeSeriesChart.y(tick)"
+                    :y2="timeSeriesChart.y(tick)"
+                    class="chart-grid-line"
+                  />
+                  <text
+                    :x="timeSeriesChart.left - 12"
+                    :y="timeSeriesChart.y(tick) + 4"
+                    text-anchor="end"
+                    class="chart-tick"
+                  >
+                    {{ tick }}
+                  </text>
+                </g>
+                <line
+                  :x1="timeSeriesChart.left"
+                  :x2="timeSeriesChart.left"
+                  :y1="timeSeriesChart.top"
+                  :y2="timeSeriesChart.height - timeSeriesChart.bottom"
+                  class="chart-axis"
+                />
+                <line
+                  :x1="timeSeriesChart.left"
+                  :x2="timeSeriesChart.width - timeSeriesChart.right"
+                  :y1="timeSeriesChart.height - timeSeriesChart.bottom"
+                  :y2="timeSeriesChart.height - timeSeriesChart.bottom"
+                  class="chart-axis"
+                />
+                <polygon :points="timeSeriesChart.band" class="chart-band" />
+                <polyline :points="timeSeriesChart.line" class="chart-curve" />
+                <text
+                  :x="timeSeriesChart.left"
+                  :y="timeSeriesChart.height - 20"
+                  text-anchor="middle"
+                  class="chart-tick"
+                >
+                  {{ formatNumber(timeSeriesChart.maximumAge) }}
+                </text>
+                <text
+                  :x="timeSeriesChart.width - timeSeriesChart.right"
+                  :y="timeSeriesChart.height - 20"
+                  text-anchor="middle"
+                  class="chart-tick"
+                >
+                  {{ formatNumber(timeSeriesChart.minimumAge) }}
+                </text>
+                <text
+                  :x="(timeSeriesChart.left + timeSeriesChart.width - timeSeriesChart.right) / 2"
+                  :y="timeSeriesChart.height - 3"
+                  text-anchor="middle"
+                  class="chart-label"
+                >
+                  {{ t('Age', '年龄') }} ({{ timeSeriesResult.age_unit }})
+                </text>
+                <text
+                  x="16"
+                  :y="timeSeriesChart.height / 2"
+                  text-anchor="middle"
+                  class="chart-label"
+                  :transform="`rotate(-90 16 ${timeSeriesChart.height / 2})`"
+                >
+                  {{ t('Estimated proportion (%)', '估计比例（%）') }}
+                </text>
+              </svg>
+            </div>
+          </section>
+
+          <section class="result-section">
+            <div class="section-heading">
+              <div>
+                <p class="guide-kicker">{{ t('BINNED RESULTS', '分箱结果') }}</p>
+                <h3>{{ t('Age-bin statistics', '年龄分箱统计') }}</h3>
+              </div>
+            </div>
+            <div class="table-wrap desktop-data-table">
+              <el-table :data="timeSeriesResult.bins" border size="small" max-height="520">
+                <el-table-column :label="`Age (${timeSeriesResult.age_unit})`" min-width="150">
+                  <template #default="scope">{{ formatNumber(scope.row.age, 6) }}</template>
+                </el-table-column>
+                <el-table-column :label="t('Mean proportion (%)', '平均比例（%）')" min-width="180">
+                  <template #default="scope">{{
+                    formatNumber(scope.row.mean_proportion, 6)
+                  }}</template>
+                </el-table-column>
+                <el-table-column label="±2σ (%)" min-width="160">
+                  <template #default="scope">{{
+                    formatNumber(scope.row.uncertainty_2sigma, 6)
+                  }}</template>
+                </el-table-column>
+              </el-table>
+            </div>
+            <MobileFieldCards :rows="timeSeriesResult.bins" />
+          </section>
+
+          <div
+            v-for="artifact in timeSeriesResult.artifacts"
+            :key="artifact.download_url"
+            class="artifact-row"
+          >
+            <div>
+              <strong>{{ artifact.name }}</strong>
+              <span>{{ formatBytes(artifact.size_bytes) }}</span>
+            </div>
+            <el-button
+              type="success"
+              plain
+              tag="a"
+              :href="artifactUrl(artifact.download_url)"
+              download
+            >
+              <template v-if="artifact.name.endsWith('.csv')">
+                {{ t('Download time-series CSV', '下载时间序列 CSV') }}
+              </template>
+              <template v-else-if="artifact.name.endsWith('.svg')">
+                {{ t('Download vector figure', '下载矢量图') }}
+              </template>
+              <template v-else>{{ t('Download analysis report', '下载分析报告') }}</template>
+            </el-button>
+          </div>
+        </el-card>
+      </template>
     </section>
 
     <aside class="insight-rail">
@@ -2874,6 +3501,41 @@ function formatCell(value: unknown) {
   line-height: 1.5;
 }
 
+.time-series-mapping-grid,
+.time-series-parameter-grid {
+  display: grid;
+  gap: 14px;
+  width: 100%;
+}
+
+.time-series-mode-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 650;
+
+  :deep(.el-radio-group) {
+    display: flex;
+    flex-wrap: wrap;
+  }
+}
+
+.time-series-mapping-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.time-series-parameter-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+
+  :deep(.el-input-number) {
+    width: 100%;
+  }
+}
+
 .file-picker {
   display: flex;
   align-items: center;
@@ -3083,6 +3745,87 @@ function formatCell(value: unknown) {
   }
 }
 
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  color: #607c80;
+  font-size: 13px;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+}
+
+.legend-line,
+.legend-band {
+  display: inline-block;
+  width: 24px;
+}
+
+.legend-line {
+  border-top: 3px solid #d86149;
+}
+
+.legend-band {
+  height: 10px;
+  border-radius: 2px;
+  background: rgb(216 97 73 / 20%);
+}
+
+.time-series-chart-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #d6e6e3;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.time-series-chart {
+  display: block;
+  width: 100%;
+  min-width: 620px;
+  height: auto;
+  font-family: 'IBM Plex Sans', Arial, sans-serif;
+}
+
+.chart-grid-line {
+  stroke: #dbe5e7;
+  stroke-width: 1;
+  stroke-dasharray: 4 5;
+}
+
+.chart-axis {
+  stroke: #244c54;
+  stroke-width: 1.4;
+}
+
+.chart-band {
+  fill: #d86149;
+  fill-opacity: 0.18;
+}
+
+.chart-curve {
+  fill: none;
+  stroke: #d86149;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chart-tick {
+  fill: #607c80;
+  font-size: 12px;
+}
+
+.chart-label {
+  fill: #244c54;
+  font-size: 13px;
+  font-weight: 650;
+}
+
 /* Shared alpine daylight system for the data-mining workspace. */
 .data-mining-workbench {
   display: grid;
@@ -3112,6 +3855,8 @@ function formatCell(value: unknown) {
 .page-heading > div,
 .form-grid,
 .form-grid > *,
+.time-series-mapping-grid,
+.time-series-parameter-grid,
 .feature-guide,
 .feature-guide > *,
 .file-picker,
@@ -3576,6 +4321,8 @@ function formatCell(value: unknown) {
   }
 
   .form-grid,
+  .time-series-mapping-grid,
+  .time-series-parameter-grid,
   .summary-grid,
   .result-meta,
   .result-meta.regression-meta {
