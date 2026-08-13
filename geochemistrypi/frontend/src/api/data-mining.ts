@@ -2,12 +2,25 @@ import { API_BASE_URL, taskHeaders, type ArtifactResponse } from '@/api/online'
 
 export type DataMiningStatus = 'verified' | 'testing'
 
+export interface HyperparameterItem {
+  name: string
+  display_name: string
+  description: string
+  value_type: 'integer' | 'number' | 'boolean' | 'select'
+  default: string | number | boolean
+  minimum: number | null
+  maximum: number | null
+  step: number | null
+  options: Array<string | number | boolean>
+}
+
 export interface DataMiningMethodItem {
   name: string
   display_name: string
   description: string
   status: DataMiningStatus
   uses_cluster_count: boolean
+  hyperparameters: HyperparameterItem[]
 }
 
 export interface DataMiningFeatureItem {
@@ -124,6 +137,8 @@ export interface RegressionResponse {
   feature_columns: string[]
   test_size: number
   random_state: number
+  hyperparameters: Record<string, string | number | boolean>
+  cross_validation: CrossValidationResult | null
   summary: RegressionSummary
   metrics: RegressionMetrics
   intercept: number | null
@@ -168,6 +183,8 @@ export interface ClassificationResponse {
   feature_columns: string[]
   test_size: number
   random_state: number
+  hyperparameters: Record<string, string | number | boolean>
+  cross_validation: CrossValidationResult | null
   classes: string[]
   summary: ClassificationSummary
   metrics: ClassificationMetrics
@@ -175,6 +192,21 @@ export interface ClassificationResponse {
   preview: Record<string, unknown>[]
   warnings: string[]
   artifacts: ArtifactResponse[]
+}
+
+export interface CrossValidationMetricItem {
+  name: string
+  display_name: string
+  mean: number
+  standard_deviation: number
+  higher_is_better: boolean
+}
+
+export interface CrossValidationResult {
+  folds: number
+  strategy: string
+  random_state: number
+  metrics: CrossValidationMetricItem[]
 }
 
 export interface ModelInferenceSummary {
@@ -279,6 +311,33 @@ export interface DimensionalityReductionResponse {
   summary: DimensionalityReductionSummary
   metrics: DimensionalityReductionMetrics
   preview: Record<string, unknown>[]
+  warnings: string[]
+  artifacts: ArtifactResponse[]
+}
+
+export interface ModelComparisonItem {
+  rank: number
+  model: string
+  model_display_name: string
+  status: 'success' | 'failed'
+  primary_score: number | null
+  metrics: CrossValidationMetricItem[]
+  hyperparameters: Record<string, string | number | boolean>
+  error: string | null
+}
+
+export interface ModelComparisonResponse {
+  job_id: string
+  status: string
+  message: string
+  source_filename: string
+  task_type: 'regression' | 'classification'
+  target_column: string
+  feature_columns: string[]
+  cross_validation_folds: number
+  comparison_metric: string
+  best_model: string | null
+  results: ModelComparisonItem[]
   warnings: string[]
   artifacts: ArtifactResponse[]
 }
@@ -434,6 +493,8 @@ export async function runRegression(
   featureColumns: string[],
   testSize: number,
   model: string = 'linear_regression',
+  hyperparameters: Record<string, string | number | boolean> = {},
+  crossValidationFolds: number = 0,
   taskId?: string
 ): Promise<RegressionResponse> {
   const form = new FormData()
@@ -442,6 +503,8 @@ export async function runRegression(
   form.append('feature_columns', JSON.stringify(featureColumns))
   form.append('test_size', String(testSize))
   form.append('model', model)
+  form.append('hyperparameters', JSON.stringify(hyperparameters))
+  form.append('cross_validation_folds', String(crossValidationFolds))
   const response = await fetch(`${API_BASE_URL}/api/data-mining/regression`, {
     method: 'POST',
     headers: taskHeaders(taskId),
@@ -456,6 +519,8 @@ export async function runClassification(
   featureColumns: string[],
   testSize: number,
   model: string = 'logistic_regression',
+  hyperparameters: Record<string, string | number | boolean> = {},
+  crossValidationFolds: number = 0,
   taskId?: string
 ): Promise<ClassificationResponse> {
   const form = new FormData()
@@ -464,12 +529,40 @@ export async function runClassification(
   form.append('feature_columns', JSON.stringify(featureColumns))
   form.append('test_size', String(testSize))
   form.append('model', model)
+  form.append('hyperparameters', JSON.stringify(hyperparameters))
+  form.append('cross_validation_folds', String(crossValidationFolds))
   const response = await fetch(`${API_BASE_URL}/api/data-mining/classification`, {
     method: 'POST',
     headers: taskHeaders(taskId),
     body: form
   })
   return parseResponse<ClassificationResponse>(response)
+}
+
+export async function runModelComparison(
+  dataset: File,
+  taskType: 'regression' | 'classification',
+  targetColumn: string,
+  featureColumns: string[],
+  models: string[],
+  hyperparameters: Record<string, Record<string, string | number | boolean>>,
+  crossValidationFolds: number,
+  taskId?: string
+): Promise<ModelComparisonResponse> {
+  const form = new FormData()
+  form.append('dataset', dataset)
+  form.append('task_type', taskType)
+  form.append('target_column', targetColumn)
+  form.append('feature_columns', JSON.stringify(featureColumns))
+  form.append('models', JSON.stringify(models))
+  form.append('hyperparameters', JSON.stringify(hyperparameters))
+  form.append('cross_validation_folds', String(crossValidationFolds))
+  const response = await fetch(`${API_BASE_URL}/api/data-mining/model-comparison`, {
+    method: 'POST',
+    headers: taskHeaders(taskId),
+    body: form
+  })
+  return parseResponse<ModelComparisonResponse>(response)
 }
 
 export async function runModelInference(

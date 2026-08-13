@@ -22,6 +22,7 @@ from sklearn.metrics import (
     confusion_matrix,
     davies_bouldin_score,
     f1_score,
+    make_scorer,
     mean_absolute_error,
     mean_squared_error,
     precision_score,
@@ -29,7 +30,7 @@ from sklearn.metrics import (
     recall_score,
     silhouette_score,
 )
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import KFold, StratifiedKFold, cross_validate, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -45,12 +46,14 @@ from .data_mining_models import (
     CLUSTERING_MODELS,
     DIMENSIONALITY_REDUCTION_MODELS,
     REGRESSION_MODELS,
+    configure_model,
     extract_linear_parameters,
     get_anomaly_detection_model,
     get_classification_model,
     get_clustering_model,
     get_dimensionality_reduction_model,
     get_regression_model,
+    get_hyperparameters,
 )
 from .schemas import (
     AnomalyDetectionResponse,
@@ -70,6 +73,7 @@ from .schemas import (
     DataMiningCatalogResponse,
     DataMiningFeatureItem,
     DataMiningMethodItem,
+    HyperparameterItem,
     DataPreprocessingResponse,
     DataPreprocessingSummary,
     DatasetProfileResponse,
@@ -79,6 +83,10 @@ from .schemas import (
     DimensionalityReductionSummary,
     ModelInferenceResponse,
     ModelInferenceSummary,
+    ModelComparisonItem,
+    ModelComparisonResponse,
+    CrossValidationMetricItem,
+    CrossValidationResult,
     RegressionCoefficientItem,
     RegressionMetrics,
     RegressionResponse,
@@ -177,6 +185,22 @@ class DataMiningService:
                             name=definition.name,
                             display_name=definition.display_name,
                             description=definition.description,
+                            hyperparameters=[
+                                HyperparameterItem(
+                                    name=parameter.name,
+                                    display_name=parameter.display_name,
+                                    description=parameter.description,
+                                    value_type=parameter.value_type,
+                                    default=parameter.default,
+                                    minimum=parameter.minimum,
+                                    maximum=parameter.maximum,
+                                    step=parameter.step,
+                                    options=list(parameter.options),
+                                )
+                                for parameter in get_hyperparameters(
+                                    "regression", definition.name
+                                )
+                            ],
                         )
                         for definition in REGRESSION_MODELS.values()
                     ],
@@ -205,6 +229,22 @@ class DataMiningService:
                             name=definition.name,
                             display_name=definition.display_name,
                             description=definition.description,
+                            hyperparameters=[
+                                HyperparameterItem(
+                                    name=parameter.name,
+                                    display_name=parameter.display_name,
+                                    description=parameter.description,
+                                    value_type=parameter.value_type,
+                                    default=parameter.default,
+                                    minimum=parameter.minimum,
+                                    maximum=parameter.maximum,
+                                    step=parameter.step,
+                                    options=list(parameter.options),
+                                )
+                                for parameter in get_hyperparameters(
+                                    "classification", definition.name
+                                )
+                            ],
                         )
                         for definition in CLASSIFICATION_MODELS.values()
                     ],
@@ -523,6 +563,107 @@ class DataMiningService:
             ]
         )
 
+    @staticmethod
+    def _validate_cross_validation_folds(
+        folds: int,
+        row_count: int,
+        *,
+        minimum_class_rows: int | None = None,
+    ) -> None:
+        if folds == 0:
+            return
+        if not 2 <= folds <= 10:
+            raise InvalidDatasetError(
+                "Cross-validation folds must be 0 (disabled) or between 2 and 10"
+            )
+        if folds > row_count:
+            raise InvalidDatasetError(
+                "Cross-validation folds cannot exceed the number of usable rows"
+            )
+        if minimum_class_rows is not None and folds > minimum_class_rows:
+            raise InvalidDatasetError(
+                "For stratified cross-validation, every class must contain at "
+                f"least {folds} rows"
+            )
+        if row_count < folds * 2:
+            raise InvalidDatasetError(
+                "Cross-validation requires at least two validation rows per fold"
+            )
+
+    def _cross_validate_supervised(
+        self,
+        *,
+        task_type: str,
+        model: Pipeline,
+        features: pd.DataFrame,
+        target: pd.Series,
+        folds: int,
+    ) -> CrossValidationResult | None:
+        if folds == 0:
+            return None
+        if task_type == "regression":
+            splitter = KFold(n_splits=folds, shuffle=True, random_state=42)
+            scoring: dict[str, Any] = {
+                "r2": "r2",
+                "mean_absolute_error": "neg_mean_absolute_error",
+                "root_mean_squared_error": "neg_root_mean_squared_error",
+            }
+            labels = {
+                "r2": ("R²", True, 1.0),
+                "mean_absolute_error": ("Mean absolute error", False, -1.0),
+                "root_mean_squared_error": ("Root mean squared error", False, -1.0),
+            }
+            strategy = "Shuffled K-Fold"
+        else:
+            splitter = StratifiedKFold(n_splits=folds, shuffle=True, random_state=42)
+            scoring = {
+                "accuracy": "accuracy",
+                "precision_macro": make_scorer(
+                    precision_score, average="macro", zero_division=0
+                ),
+                "recall_macro": make_scorer(
+                    recall_score, average="macro", zero_division=0
+                ),
+                "f1_macro": make_scorer(
+                    f1_score, average="macro", zero_division=0
+                ),
+            }
+            labels = {
+                "accuracy": ("Accuracy", True, 1.0),
+                "precision_macro": ("Macro precision", True, 1.0),
+                "recall_macro": ("Macro recall", True, 1.0),
+                "f1_macro": ("Macro F1", True, 1.0),
+            }
+            strategy = "Shuffled Stratified K-Fold"
+
+        scores = cross_validate(
+            model,
+            features,
+            target,
+            cv=splitter,
+            scoring=scoring,
+            n_jobs=1,
+            error_score="raise",
+        )
+        metrics = []
+        for name, (display_name, higher_is_better, multiplier) in labels.items():
+            values = np.asarray(scores[f"test_{name}"], dtype=float) * multiplier
+            metrics.append(
+                CrossValidationMetricItem(
+                    name=name,
+                    display_name=display_name,
+                    mean=float(np.mean(values)),
+                    standard_deviation=float(np.std(values, ddof=0)),
+                    higher_is_better=higher_is_better,
+                )
+            )
+        return CrossValidationResult(
+            folds=folds,
+            strategy=strategy,
+            random_state=42,
+            metrics=metrics,
+        )
+
     def _save_supervised_pipeline(
         self,
         path: Path,
@@ -563,6 +704,8 @@ class DataMiningService:
         feature_columns: list[str],
         test_size: float = 0.2,
         model_name: str = "linear_regression",
+        hyperparameters: dict[str, Any] | None = None,
+        cross_validation_folds: int = 0,
     ) -> RegressionResponse:
         try:
             model_definition = get_regression_model(model_name)
@@ -614,6 +757,10 @@ class DataMiningService:
             raise InvalidDatasetError(
                 "Regression requires at least 10 complete numeric rows"
             )
+        self._validate_cross_validation_folds(
+            cross_validation_folds,
+            usable_rows,
+        )
 
         test_rows = int(math.ceil(usable_rows * test_size))
         train_rows = usable_rows - test_rows
@@ -644,7 +791,20 @@ class DataMiningService:
             random_state=42,
         )
 
-        model = self._build_supervised_pipeline(model_definition.factory())
+        try:
+            estimator = configure_model(
+                "regression", model_definition, hyperparameters
+            )
+        except (TypeError, ValueError) as exc:
+            raise InvalidDatasetError(str(exc)) from exc
+        model = self._build_supervised_pipeline(estimator)
+        cross_validation = self._cross_validate_supervised(
+            task_type="regression",
+            model=model,
+            features=feature_data,
+            target=target,
+            folds=cross_validation_folds,
+        )
         model.fit(features_train, target_train)
         predicted = model.predict(features_test)
         mae = float(mean_absolute_error(target_test, predicted))
@@ -759,6 +919,10 @@ class DataMiningService:
             "feature_columns": features,
             "test_size": test_size,
             "random_state": 42,
+            "hyperparameters": hyperparameters or {},
+            "cross_validation": (
+                cross_validation.model_dump() if cross_validation else None
+            ),
             "summary": summary.model_dump(),
             "metrics": metrics.model_dump(),
             "intercept": intercept,
@@ -788,6 +952,8 @@ class DataMiningService:
             feature_columns=features,
             test_size=test_size,
             random_state=42,
+            hyperparameters=hyperparameters or {},
+            cross_validation=cross_validation,
             summary=summary,
             metrics=metrics,
             intercept=intercept,
@@ -830,6 +996,8 @@ class DataMiningService:
         feature_columns: list[str],
         test_size: float = 0.2,
         model_name: str = "logistic_regression",
+        hyperparameters: dict[str, Any] | None = None,
+        cross_validation_folds: int = 0,
     ) -> ClassificationResponse:
         try:
             model_definition = get_classification_model(model_name)
@@ -893,6 +1061,11 @@ class DataMiningService:
             raise InvalidDatasetError(
                 "Each target class must contain at least two complete rows"
             )
+        self._validate_cross_validation_folds(
+            cross_validation_folds,
+            usable_rows,
+            minimum_class_rows=int(class_counts.min()),
+        )
 
         test_rows = int(math.ceil(usable_rows * test_size))
         train_rows = usable_rows - test_rows
@@ -915,7 +1088,20 @@ class DataMiningService:
             stratify=target,
         )
 
-        model = self._build_supervised_pipeline(model_definition.factory())
+        try:
+            estimator = configure_model(
+                "classification", model_definition, hyperparameters
+            )
+        except (TypeError, ValueError) as exc:
+            raise InvalidDatasetError(str(exc)) from exc
+        model = self._build_supervised_pipeline(estimator)
+        cross_validation = self._cross_validate_supervised(
+            task_type="classification",
+            model=model,
+            features=feature_data,
+            target=target,
+            folds=cross_validation_folds,
+        )
         model.fit(features_train, target_train)
         predicted = model.predict(features_test)
         classes = [str(value) for value in model.classes_]
@@ -1031,6 +1217,10 @@ class DataMiningService:
             "feature_columns": features,
             "test_size": test_size,
             "random_state": 42,
+            "hyperparameters": hyperparameters or {},
+            "cross_validation": (
+                cross_validation.model_dump() if cross_validation else None
+            ),
             "classes": classes,
             "summary": summary.model_dump(),
             "metrics": metrics.model_dump(),
@@ -1056,6 +1246,8 @@ class DataMiningService:
             feature_columns=features,
             test_size=test_size,
             random_state=42,
+            hyperparameters=hyperparameters or {},
+            cross_validation=cross_validation,
             classes=classes,
             summary=summary,
             metrics=metrics,
@@ -1084,6 +1276,274 @@ class DataMiningService:
                         f"/api/data-mining/jobs/{job_id}/files/{pipeline_path.name}"
                     ),
                     size_bytes=pipeline_path.stat().st_size,
+                ),
+            ],
+        )
+
+    def run_model_comparison(
+        self,
+        *,
+        filename: str | None,
+        content: bytes,
+        task_type: str,
+        target_column: str,
+        feature_columns: list[str],
+        model_names: list[str],
+        cross_validation_folds: int = 5,
+        hyperparameters: dict[str, dict[str, Any]] | None = None,
+    ) -> ModelComparisonResponse:
+        if task_type not in {"regression", "classification"}:
+            raise InvalidDatasetError(
+                "Task type must be regression or classification"
+            )
+        if not isinstance(model_names, list) or len(model_names) < 2:
+            raise InvalidDatasetError("Select at least two models to compare")
+        if len(model_names) != len(set(model_names)):
+            raise InvalidDatasetError("Comparison models must be unique")
+        registry = (
+            REGRESSION_MODELS
+            if task_type == "regression"
+            else CLASSIFICATION_MODELS
+        )
+        unknown_models = [name for name in model_names if name not in registry]
+        if unknown_models:
+            raise InvalidDatasetError(
+                "Unknown comparison model(s): " + ", ".join(unknown_models)
+            )
+        if len(model_names) > len(registry):
+            raise InvalidDatasetError("Too many comparison models selected")
+        hyperparameters = hyperparameters or {}
+        if not isinstance(hyperparameters, dict):
+            raise InvalidDatasetError("Hyperparameters must be a JSON object")
+        unknown_parameter_models = sorted(set(hyperparameters) - set(model_names))
+        if unknown_parameter_models:
+            raise InvalidDatasetError(
+                "Hyperparameters were provided for unselected model(s): "
+                + ", ".join(unknown_parameter_models)
+            )
+
+        suffix = self._validate_upload(filename, content)
+        dataframe = self._read_dataframe(suffix, content)
+        self._validate_dataframe(dataframe)
+        dataframe.columns = [str(column) for column in dataframe.columns]
+        if target_column not in dataframe.columns:
+            raise InvalidDatasetError(f"Unknown target column: {target_column}")
+        features = self._validate_selected_columns(dataframe, feature_columns)
+        if target_column in features:
+            raise InvalidDatasetError(
+                "The target column cannot also be a feature column"
+            )
+        non_numeric_features = [
+            column
+            for column in features
+            if not pd.api.types.is_numeric_dtype(dataframe[column])
+            or pd.api.types.is_bool_dtype(dataframe[column])
+        ]
+        if non_numeric_features:
+            raise InvalidDatasetError(
+                "Model comparison requires numeric feature columns: "
+                + ", ".join(non_numeric_features)
+            )
+        if task_type == "regression" and (
+            not pd.api.types.is_numeric_dtype(dataframe[target_column])
+            or pd.api.types.is_bool_dtype(dataframe[target_column])
+        ):
+            raise InvalidDatasetError(
+                "Regression comparison requires a numeric target column"
+            )
+
+        model_data = (
+            dataframe.loc[:, [*features, target_column]]
+            .replace([np.inf, -np.inf], np.nan)
+            .dropna(axis=0, how="any")
+        )
+        usable_rows = int(model_data.shape[0])
+        minimum_rows = 10 if task_type == "regression" else 12
+        if usable_rows < minimum_rows:
+            raise InvalidDatasetError(
+                f"{task_type.title()} comparison requires at least "
+                f"{minimum_rows} complete rows"
+            )
+        feature_data = model_data.loc[:, features].astype(float)
+        if task_type == "regression":
+            target = model_data[target_column].astype(float)
+            if target.nunique(dropna=True) < 2:
+                raise InvalidDatasetError(
+                    "The target column must contain at least two distinct values"
+                )
+            minimum_class_rows = None
+        else:
+            target = model_data[target_column].astype(str)
+            class_counts = target.value_counts()
+            if int(class_counts.shape[0]) < 2:
+                raise InvalidDatasetError(
+                    "The target column must contain at least two classes"
+                )
+            minimum_class_rows = int(class_counts.min())
+        self._validate_cross_validation_folds(
+            cross_validation_folds,
+            usable_rows,
+            minimum_class_rows=minimum_class_rows,
+        )
+        if cross_validation_folds == 0:
+            raise InvalidDatasetError(
+                "Model comparison requires cross-validation with 2 to 10 folds"
+            )
+
+        comparison_results: list[ModelComparisonItem] = []
+        successful_results: list[ModelComparisonItem] = []
+        failed_results: list[ModelComparisonItem] = []
+        primary_metric = "r2" if task_type == "regression" else "f1_macro"
+        for model_name in model_names:
+            definition = registry[model_name]
+            configured_parameters = hyperparameters.get(model_name, {})
+            try:
+                estimator = configure_model(
+                    task_type,
+                    definition,
+                    configured_parameters,
+                )
+                model = self._build_supervised_pipeline(estimator)
+                cross_validation = self._cross_validate_supervised(
+                    task_type=task_type,
+                    model=model,
+                    features=feature_data,
+                    target=target,
+                    folds=cross_validation_folds,
+                )
+                assert cross_validation is not None
+                primary_score = next(
+                    metric.mean
+                    for metric in cross_validation.metrics
+                    if metric.name == primary_metric
+                )
+                successful_results.append(
+                    ModelComparisonItem(
+                        rank=0,
+                        model=model_name,
+                        model_display_name=definition.display_name,
+                        status="success",
+                        primary_score=primary_score,
+                        metrics=cross_validation.metrics,
+                        hyperparameters=configured_parameters,
+                    )
+                )
+            except Exception as exc:
+                failed_results.append(
+                    ModelComparisonItem(
+                        rank=0,
+                        model=model_name,
+                        model_display_name=definition.display_name,
+                        status="failed",
+                        hyperparameters=configured_parameters,
+                        error=f"{type(exc).__name__}: {exc}",
+                    )
+                )
+        if not successful_results:
+            errors = "; ".join(
+                f"{item.model_display_name}: {item.error}"
+                for item in failed_results
+            )
+            raise InvalidDatasetError("All comparison models failed. " + errors)
+
+        successful_results.sort(
+            key=lambda item: item.primary_score
+            if item.primary_score is not None
+            else -math.inf,
+            reverse=True,
+        )
+        for rank, item in enumerate(successful_results, start=1):
+            item.rank = rank
+        for rank, item in enumerate(
+            failed_results,
+            start=len(successful_results) + 1,
+        ):
+            item.rank = rank
+        comparison_results = [*successful_results, *failed_results]
+        warnings = []
+        dropped_rows = int(dataframe.shape[0] - usable_rows)
+        if dropped_rows:
+            warnings.append(
+                f"训练前删除了 {dropped_rows} 行含缺失值或无穷值的记录。"
+            )
+        if failed_results:
+            warnings.append(
+                f"{len(failed_results)} 个模型未能完成；排名仅依据成功模型。"
+            )
+
+        job_id = uuid4().hex
+        output_dir = self.jobs_dir / job_id / "output"
+        output_dir.mkdir(parents=True)
+        csv_path = output_dir / "model_comparison.csv"
+        report_path = output_dir / "model_comparison_report.json"
+        csv_rows = []
+        for item in comparison_results:
+            row: dict[str, Any] = {
+                "rank": item.rank,
+                "model": item.model,
+                "model_display_name": item.model_display_name,
+                "status": item.status,
+                "error": item.error,
+            }
+            for metric in item.metrics:
+                row[f"{metric.name}_mean"] = metric.mean
+                row[f"{metric.name}_std"] = metric.standard_deviation
+            csv_rows.append(row)
+        pd.DataFrame(csv_rows).to_csv(csv_path, index=False, encoding="utf-8-sig")
+        report_payload = {
+            "report_version": "supervised-model-comparison-v1",
+            "created_utc": datetime.now(timezone.utc).isoformat(),
+            "source_filename": Path(filename or "dataset").name,
+            "task_type": task_type,
+            "target_column": target_column,
+            "feature_columns": features,
+            "usable_rows": usable_rows,
+            "cross_validation_folds": cross_validation_folds,
+            "cross_validation_strategy": (
+                "Shuffled K-Fold"
+                if task_type == "regression"
+                else "Shuffled Stratified K-Fold"
+            ),
+            "random_state": 42,
+            "comparison_metric": primary_metric,
+            "best_model": successful_results[0].model,
+            "results": [item.model_dump() for item in comparison_results],
+            "warnings": warnings,
+        }
+        report_path.write_text(
+            json.dumps(report_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        return ModelComparisonResponse(
+            job_id=job_id,
+            status="success",
+            message=(
+                f"Compared {len(successful_results)} models with "
+                f"{cross_validation_folds}-fold cross-validation"
+            ),
+            source_filename=Path(filename or "dataset").name,
+            task_type=task_type,
+            target_column=target_column,
+            feature_columns=features,
+            cross_validation_folds=cross_validation_folds,
+            comparison_metric=primary_metric,
+            best_model=successful_results[0].model,
+            results=comparison_results,
+            warnings=warnings,
+            artifacts=[
+                ArtifactResponse(
+                    name=csv_path.name,
+                    download_url=(
+                        f"/api/data-mining/jobs/{job_id}/files/{csv_path.name}"
+                    ),
+                    size_bytes=csv_path.stat().st_size,
+                ),
+                ArtifactResponse(
+                    name=report_path.name,
+                    download_url=(
+                        f"/api/data-mining/jobs/{job_id}/files/{report_path.name}"
+                    ),
+                    size_bytes=report_path.stat().st_size,
                 ),
             ],
         )

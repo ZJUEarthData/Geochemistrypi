@@ -1132,6 +1132,97 @@ def test_linear_regression_returns_metrics_coefficients_and_downloads(tmp_path):
     assert pipeline_download.content
 
 
+def test_regression_accepts_hyperparameters_and_cross_validation(tmp_path):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    response = client.post(
+        "/api/data-mining/regression",
+        data={
+            "model": "ridge_regression",
+            "target_column": "Target",
+            "feature_columns": json.dumps(["X1", "X2"]),
+            "test_size": "0.25",
+            "hyperparameters": json.dumps(
+                {"alpha": 0.5, "fit_intercept": True}
+            ),
+            "cross_validation_folds": "5",
+        },
+        files={"dataset": ("training.csv", make_linear_regression_csv(), "text/csv")},
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["hyperparameters"] == {"alpha": 0.5, "fit_intercept": True}
+    assert payload["cross_validation"]["folds"] == 5
+    assert payload["cross_validation"]["strategy"] == "Shuffled K-Fold"
+    assert {item["name"] for item in payload["cross_validation"]["metrics"]} == {
+        "r2",
+        "mean_absolute_error",
+        "root_mean_squared_error",
+    }
+
+
+def test_rejects_unsupported_supervised_hyperparameter(tmp_path):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    response = client.post(
+        "/api/data-mining/regression",
+        data={
+            "model": "linear_regression",
+            "target_column": "Target",
+            "feature_columns": json.dumps(["X1", "X2"]),
+            "hyperparameters": json.dumps({"unsafe_parameter": 1}),
+        },
+        files={"dataset": ("training.csv", make_linear_regression_csv(), "text/csv")},
+    )
+    assert response.status_code == 422
+    assert "Unsupported hyperparameter" in response.json()["detail"]
+
+
+def test_model_comparison_ranks_models_and_downloads_reports(tmp_path):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    response = client.post(
+        "/api/data-mining/model-comparison",
+        data={
+            "task_type": "regression",
+            "target_column": "Target",
+            "feature_columns": json.dumps(["X1", "X2"]),
+            "models": json.dumps(["linear_regression", "ridge_regression"]),
+            "hyperparameters": json.dumps(
+                {"ridge_regression": {"alpha": 0.5}}
+            ),
+            "cross_validation_folds": "5",
+        },
+        files={"dataset": ("training.csv", make_linear_regression_csv(), "text/csv")},
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["task_type"] == "regression"
+    assert payload["cross_validation_folds"] == 5
+    assert payload["comparison_metric"] == "r2"
+    assert payload["best_model"] == "linear_regression"
+    assert [item["rank"] for item in payload["results"]] == [1, 2]
+    assert all(item["status"] == "success" for item in payload["results"])
+    assert [artifact["name"] for artifact in payload["artifacts"]] == [
+        "model_comparison.csv",
+        "model_comparison_report.json",
+    ]
+    assert client.get(payload["artifacts"][0]["download_url"]).status_code == 200
+    assert client.get(payload["artifacts"][1]["download_url"]).status_code == 200
+
+
+def test_classification_cross_validation_rejects_too_few_rows_per_class(tmp_path):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    response = client.post(
+        "/api/data-mining/classification",
+        data={
+            "target_column": "Class",
+            "feature_columns": json.dumps(["X1", "X2"]),
+            "cross_validation_folds": "10",
+        },
+        files={"dataset": ("training.csv", make_classification_csv(12), "text/csv")},
+    )
+    assert response.status_code == 422
+    assert "every class must contain at least 10 rows" in response.json()["detail"]
+
+
 def test_saved_regression_pipeline_predicts_independent_application_data(tmp_path):
     client = TestClient(create_app(tmp_path / "runtime"))
     training = client.post(

@@ -132,6 +132,22 @@ class ClassificationModelDefinition:
 
 
 @dataclass(frozen=True)
+class HyperparameterDefinition:
+    """A safe, UI-facing subset of an estimator's configurable parameters."""
+
+    name: str
+    display_name: str
+    description: str
+    value_type: str
+    default: Any
+    estimator_parameter: str | None = None
+    minimum: float | None = None
+    maximum: float | None = None
+    step: float | None = None
+    options: tuple[Any, ...] = ()
+
+
+@dataclass(frozen=True)
 class ClusteringModelDefinition:
     name: str
     display_name: str
@@ -406,6 +422,215 @@ CLASSIFICATION_MODELS: dict[str, ClassificationModelDefinition] = {
 }
 
 
+def _parameter(
+    name: str,
+    display_name: str,
+    description: str,
+    value_type: str,
+    default: Any,
+    *,
+    estimator_parameter: str | None = None,
+    minimum: float | None = None,
+    maximum: float | None = None,
+    step: float | None = None,
+    options: tuple[Any, ...] = (),
+) -> HyperparameterDefinition:
+    return HyperparameterDefinition(
+        name=name,
+        display_name=display_name,
+        description=description,
+        value_type=value_type,
+        default=default,
+        estimator_parameter=estimator_parameter,
+        minimum=minimum,
+        maximum=maximum,
+        step=step,
+        options=options,
+    )
+
+
+REGRESSION_HYPERPARAMETERS: dict[str, tuple[HyperparameterDefinition, ...]] = {
+    "linear_regression": (
+        _parameter("fit_intercept", "Fit intercept", "Estimate a constant intercept.", "boolean", True),
+    ),
+    "polynomial_regression": (
+        _parameter("degree", "Polynomial degree", "Maximum polynomial feature degree.", "integer", 2, estimator_parameter="polynomialfeatures__degree", minimum=1, maximum=5, step=1),
+        _parameter("fit_intercept", "Fit intercept", "Estimate a constant intercept.", "boolean", True, estimator_parameter="linearregression__fit_intercept"),
+    ),
+    "lasso_regression": (
+        _parameter("alpha", "Alpha", "L1 regularization strength.", "number", 1.0, minimum=0.000001, maximum=1000, step=0.01),
+        _parameter("max_iter", "Maximum iterations", "Optimizer iteration limit.", "integer", 10000, minimum=100, maximum=50000, step=100),
+    ),
+    "elastic_net": (
+        _parameter("alpha", "Alpha", "Overall regularization strength.", "number", 1.0, minimum=0.000001, maximum=1000, step=0.01),
+        _parameter("l1_ratio", "L1 ratio", "Mix of L1 (1) and L2 (0) penalties.", "number", 0.5, minimum=0, maximum=1, step=0.05),
+    ),
+    "bayesian_ridge_regression": (
+        _parameter("tol", "Tolerance", "Stopping tolerance for convergence.", "number", 0.001, minimum=0.00000001, maximum=0.1, step=0.0001),
+        _parameter("fit_intercept", "Fit intercept", "Estimate a constant intercept.", "boolean", True),
+    ),
+    "ridge_regression": (
+        _parameter("alpha", "Alpha", "L2 regularization strength.", "number", 1.0, minimum=0, maximum=1000, step=0.01),
+        _parameter("fit_intercept", "Fit intercept", "Estimate a constant intercept.", "boolean", True),
+    ),
+    "decision_tree": (
+        _parameter("min_samples_split", "Minimum split samples", "Minimum rows required to split a node.", "integer", 2, minimum=2, maximum=100, step=1),
+        _parameter("min_samples_leaf", "Minimum leaf samples", "Minimum rows retained in each leaf.", "integer", 1, minimum=1, maximum=100, step=1),
+    ),
+    "extra_trees": (
+        _parameter("n_estimators", "Number of trees", "Number of randomized trees.", "integer", 200, minimum=10, maximum=1000, step=10),
+        _parameter("min_samples_leaf", "Minimum leaf samples", "Minimum rows retained in each leaf.", "integer", 1, minimum=1, maximum=100, step=1),
+        _parameter("max_features", "Features per split", "Feature subset evaluated at each split.", "select", 1.0, options=(1.0, "sqrt", "log2")),
+    ),
+    "gradient_boosting": (
+        _parameter("n_estimators", "Boosting stages", "Number of sequential boosting stages.", "integer", 100, minimum=10, maximum=1000, step=10),
+        _parameter("learning_rate", "Learning rate", "Contribution of each boosting stage.", "number", 0.1, minimum=0.001, maximum=1, step=0.01),
+        _parameter("max_depth", "Tree depth", "Maximum depth of each weak learner.", "integer", 3, minimum=1, maximum=20, step=1),
+    ),
+    "k_nearest_neighbors": (
+        _parameter("n_neighbors", "Neighbors", "Number of nearby samples used for prediction.", "integer", 5, estimator_parameter="kneighborsregressor__n_neighbors", minimum=1, maximum=100, step=1),
+        _parameter("weights", "Neighbor weighting", "Weight all neighbors equally or by distance.", "select", "uniform", estimator_parameter="kneighborsregressor__weights", options=("uniform", "distance")),
+        _parameter("p", "Distance power", "1 uses Manhattan distance; 2 uses Euclidean distance.", "select", 2, estimator_parameter="kneighborsregressor__p", options=(1, 2)),
+    ),
+    "multi_layer_perceptron": (
+        _parameter("alpha", "Alpha", "L2 regularization strength.", "number", 0.0001, estimator_parameter="mlpregressor__alpha", minimum=0.00000001, maximum=10, step=0.0001),
+        _parameter("learning_rate_init", "Initial learning rate", "Initial optimizer step size.", "number", 0.001, estimator_parameter="mlpregressor__learning_rate_init", minimum=0.000001, maximum=1, step=0.0001),
+        _parameter("max_iter", "Maximum iterations", "Optimizer iteration limit.", "integer", 2000, estimator_parameter="mlpregressor__max_iter", minimum=100, maximum=10000, step=100),
+    ),
+    "random_forest": (
+        _parameter("n_estimators", "Number of trees", "Number of trees in the forest.", "integer", 200, minimum=10, maximum=1000, step=10),
+        _parameter("min_samples_leaf", "Minimum leaf samples", "Minimum rows retained in each leaf.", "integer", 1, minimum=1, maximum=100, step=1),
+        _parameter("max_features", "Features per split", "Feature subset evaluated at each split.", "select", 1.0, options=(1.0, "sqrt", "log2")),
+    ),
+    "stochastic_gradient_descent": (
+        _parameter("alpha", "Alpha", "Regularization strength.", "number", 0.0001, estimator_parameter="sgdregressor__alpha", minimum=0.00000001, maximum=10, step=0.0001),
+        _parameter("penalty", "Penalty", "Regularization penalty.", "select", "l2", estimator_parameter="sgdregressor__penalty", options=("l2", "l1", "elasticnet")),
+        _parameter("max_iter", "Maximum iterations", "Optimizer iteration limit.", "integer", 2000, estimator_parameter="sgdregressor__max_iter", minimum=100, maximum=10000, step=100),
+    ),
+    "support_vector_machine": (
+        _parameter("C", "C", "Penalty applied to prediction errors.", "number", 1.0, estimator_parameter="svr__C", minimum=0.0001, maximum=10000, step=0.1),
+        _parameter("epsilon", "Epsilon", "Width of the insensitive loss tube.", "number", 0.1, estimator_parameter="svr__epsilon", minimum=0, maximum=10, step=0.01),
+        _parameter("kernel", "Kernel", "Kernel used to model nonlinear relationships.", "select", "rbf", estimator_parameter="svr__kernel", options=("rbf", "linear", "poly", "sigmoid")),
+    ),
+    "xgboost": (
+        _parameter("n_estimators", "Boosting rounds", "Number of boosted trees.", "integer", 100, minimum=10, maximum=1000, step=10),
+        _parameter("learning_rate", "Learning rate", "Contribution of each boosted tree.", "number", 0.1, minimum=0.001, maximum=1, step=0.01),
+        _parameter("max_depth", "Tree depth", "Maximum depth of each boosted tree.", "integer", 4, minimum=1, maximum=20, step=1),
+        _parameter("subsample", "Row subsample", "Fraction of rows used for each boosted tree.", "number", 0.8, minimum=0.1, maximum=1, step=0.05),
+    ),
+}
+
+
+CLASSIFICATION_HYPERPARAMETERS: dict[str, tuple[HyperparameterDefinition, ...]] = {
+    "logistic_regression": (
+        _parameter("C", "C", "Inverse regularization strength.", "number", 1.0, estimator_parameter="logisticregression__C", minimum=0.0001, maximum=10000, step=0.1),
+        _parameter("max_iter", "Maximum iterations", "Optimizer iteration limit.", "integer", 2000, estimator_parameter="logisticregression__max_iter", minimum=100, maximum=10000, step=100),
+    ),
+    "support_vector_machine": (
+        _parameter("C", "C", "Penalty applied to classification errors.", "number", 1.0, estimator_parameter="svc__C", minimum=0.0001, maximum=10000, step=0.1),
+        _parameter("kernel", "Kernel", "Kernel used to form the class boundary.", "select", "rbf", estimator_parameter="svc__kernel", options=("rbf", "linear", "poly", "sigmoid")),
+        _parameter("gamma", "Gamma", "Kernel coefficient strategy.", "select", "scale", estimator_parameter="svc__gamma", options=("scale", "auto")),
+    ),
+    "decision_tree": REGRESSION_HYPERPARAMETERS["decision_tree"],
+    "random_forest": (
+        _parameter("n_estimators", "Number of trees", "Number of trees in the forest.", "integer", 200, minimum=10, maximum=1000, step=10),
+        _parameter("min_samples_leaf", "Minimum leaf samples", "Minimum rows retained in each leaf.", "integer", 1, minimum=1, maximum=100, step=1),
+        _parameter("max_features", "Features per split", "Feature subset evaluated at each split.", "select", "sqrt", options=("sqrt", "log2", 1.0)),
+    ),
+    "extra_trees": (
+        _parameter("n_estimators", "Number of trees", "Number of randomized trees.", "integer", 200, minimum=10, maximum=1000, step=10),
+        _parameter("min_samples_leaf", "Minimum leaf samples", "Minimum rows retained in each leaf.", "integer", 1, minimum=1, maximum=100, step=1),
+        _parameter("max_features", "Features per split", "Feature subset evaluated at each split.", "select", "sqrt", options=("sqrt", "log2", 1.0)),
+    ),
+    "multi_layer_perceptron": (
+        _parameter("alpha", "Alpha", "L2 regularization strength.", "number", 0.0001, estimator_parameter="mlpclassifier__alpha", minimum=0.00000001, maximum=10, step=0.0001),
+        _parameter("learning_rate_init", "Initial learning rate", "Initial optimizer step size.", "number", 0.001, estimator_parameter="mlpclassifier__learning_rate_init", minimum=0.000001, maximum=1, step=0.0001),
+        _parameter("max_iter", "Maximum iterations", "Optimizer iteration limit.", "integer", 2000, estimator_parameter="mlpclassifier__max_iter", minimum=100, maximum=10000, step=100),
+    ),
+    "gradient_boosting": REGRESSION_HYPERPARAMETERS["gradient_boosting"],
+    "k_nearest_neighbors": (
+        _parameter("n_neighbors", "Neighbors", "Number of nearby samples used for prediction.", "integer", 5, estimator_parameter="kneighborsclassifier__n_neighbors", minimum=1, maximum=100, step=1),
+        _parameter("weights", "Neighbor weighting", "Weight all neighbors equally or by distance.", "select", "uniform", estimator_parameter="kneighborsclassifier__weights", options=("uniform", "distance")),
+        _parameter("p", "Distance power", "1 uses Manhattan distance; 2 uses Euclidean distance.", "select", 2, estimator_parameter="kneighborsclassifier__p", options=(1, 2)),
+    ),
+    "stochastic_gradient_descent": (
+        _parameter("alpha", "Alpha", "Regularization strength.", "number", 0.0001, estimator_parameter="sgdclassifier__alpha", minimum=0.00000001, maximum=10, step=0.0001),
+        _parameter("penalty", "Penalty", "Regularization penalty.", "select", "l2", estimator_parameter="sgdclassifier__penalty", options=("l2", "l1", "elasticnet")),
+        _parameter("max_iter", "Maximum iterations", "Optimizer iteration limit.", "integer", 2000, estimator_parameter="sgdclassifier__max_iter", minimum=100, maximum=10000, step=100),
+    ),
+    "adaboost": (
+        _parameter("n_estimators", "Boosting stages", "Maximum number of estimators.", "integer", 100, minimum=10, maximum=1000, step=10),
+        _parameter("learning_rate", "Learning rate", "Contribution of each estimator.", "number", 1.0, minimum=0.001, maximum=10, step=0.05),
+    ),
+    "xgboost": REGRESSION_HYPERPARAMETERS["xgboost"],
+}
+
+
+def get_hyperparameters(task_type: str, model_name: str) -> tuple[HyperparameterDefinition, ...]:
+    registry = (
+        REGRESSION_HYPERPARAMETERS
+        if task_type == "regression"
+        else CLASSIFICATION_HYPERPARAMETERS
+    )
+    return registry.get(model_name, ())
+
+
+def configure_model(
+    task_type: str,
+    definition: RegressionModelDefinition | ClassificationModelDefinition,
+    supplied: dict[str, Any] | None = None,
+) -> RegressorMixin | ClassifierMixin | Pipeline:
+    """Build an estimator after validating the public hyperparameter whitelist."""
+    supplied = supplied or {}
+    if not isinstance(supplied, dict):
+        raise ValueError("Hyperparameters must be a JSON object")
+    parameter_definitions = {
+        item.name: item for item in get_hyperparameters(task_type, definition.name)
+    }
+    unknown = sorted(set(supplied) - set(parameter_definitions))
+    if unknown:
+        raise ValueError(
+            f"Unsupported hyperparameter(s) for {definition.display_name}: "
+            + ", ".join(unknown)
+        )
+
+    estimator = definition.factory()
+    estimator_parameters: dict[str, Any] = {}
+    for name, raw_value in supplied.items():
+        item = parameter_definitions[name]
+        if item.value_type == "boolean":
+            if not isinstance(raw_value, bool):
+                raise ValueError(f"Hyperparameter '{name}' must be true or false")
+            value = raw_value
+        elif item.value_type == "integer":
+            if isinstance(raw_value, bool) or not isinstance(raw_value, int):
+                raise ValueError(f"Hyperparameter '{name}' must be an integer")
+            value = raw_value
+        elif item.value_type == "number":
+            if isinstance(raw_value, bool) or not isinstance(raw_value, (int, float)):
+                raise ValueError(f"Hyperparameter '{name}' must be a number")
+            value = float(raw_value)
+        elif item.value_type == "select":
+            if raw_value not in item.options:
+                raise ValueError(
+                    f"Hyperparameter '{name}' must be one of: "
+                    + ", ".join(str(option) for option in item.options)
+                )
+            value = raw_value
+        else:
+            raise ValueError(f"Unsupported hyperparameter type: {item.value_type}")
+
+        if item.minimum is not None and value < item.minimum:
+            raise ValueError(f"Hyperparameter '{name}' must be at least {item.minimum}")
+        if item.maximum is not None and value > item.maximum:
+            raise ValueError(f"Hyperparameter '{name}' must be at most {item.maximum}")
+        estimator_parameters[item.estimator_parameter or item.name] = value
+
+    if estimator_parameters:
+        estimator.set_params(**estimator_parameters)
+    return estimator
+
+
 CLUSTERING_MODELS: dict[str, ClusteringModelDefinition] = {
     definition.name: definition
     for definition in (
@@ -642,16 +867,21 @@ __all__ = [
     "AnomalyDetectionModelDefinition",
     "CLASSIFICATION_MODELS",
     "ClassificationModelDefinition",
+    "CLASSIFICATION_HYPERPARAMETERS",
     "CLUSTERING_MODELS",
     "ClusteringModelDefinition",
     "DIMENSIONALITY_REDUCTION_MODELS",
     "DimensionalityReductionModelDefinition",
     "REGRESSION_MODELS",
+    "REGRESSION_HYPERPARAMETERS",
     "RegressionModelDefinition",
+    "HyperparameterDefinition",
+    "configure_model",
     "extract_linear_parameters",
     "get_anomaly_detection_model",
     "get_classification_model",
     "get_clustering_model",
     "get_dimensionality_reduction_model",
+    "get_hyperparameters",
     "get_regression_model",
 ]

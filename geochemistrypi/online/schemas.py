@@ -90,12 +90,25 @@ class RunResponse(BaseModel):
     artifacts: list[ArtifactResponse]
 
 
+class HyperparameterItem(BaseModel):
+    name: str
+    display_name: str
+    description: str
+    value_type: Literal["integer", "number", "boolean", "select"]
+    default: Any
+    minimum: float | None = None
+    maximum: float | None = None
+    step: float | None = None
+    options: list[Any] = Field(default_factory=list)
+
+
 class DataMiningMethodItem(BaseModel):
     name: str
     display_name: str
     description: str
     status: Literal["verified", "testing"] = "verified"
     uses_cluster_count: bool = False
+    hyperparameters: list[HyperparameterItem] = Field(default_factory=list)
 
 
 class DataMiningFeatureItem(BaseModel):
@@ -205,6 +218,21 @@ class RegressionCoefficientItem(BaseModel):
     coefficient: float
 
 
+class CrossValidationMetricItem(BaseModel):
+    name: str
+    display_name: str
+    mean: float
+    standard_deviation: float
+    higher_is_better: bool
+
+
+class CrossValidationResult(BaseModel):
+    folds: int
+    strategy: str
+    random_state: int
+    metrics: list[CrossValidationMetricItem]
+
+
 class RegressionResponse(BaseModel):
     job_id: str
     status: str
@@ -216,6 +244,8 @@ class RegressionResponse(BaseModel):
     feature_columns: list[str]
     test_size: float
     random_state: int
+    hyperparameters: dict[str, Any] = Field(default_factory=dict)
+    cross_validation: CrossValidationResult | None = None
     summary: RegressionSummary
     metrics: RegressionMetrics
     intercept: float | None = None
@@ -260,11 +290,40 @@ class ClassificationResponse(BaseModel):
     feature_columns: list[str]
     test_size: float
     random_state: int
+    hyperparameters: dict[str, Any] = Field(default_factory=dict)
+    cross_validation: CrossValidationResult | None = None
     classes: list[str]
     summary: ClassificationSummary
     metrics: ClassificationMetrics
     confusion_matrix: list[ClassificationConfusionItem]
     preview: list[dict[str, Any]]
+    warnings: list[str] = Field(default_factory=list)
+    artifacts: list[ArtifactResponse] = Field(default_factory=list)
+
+
+class ModelComparisonItem(BaseModel):
+    rank: int
+    model: str
+    model_display_name: str
+    status: Literal["success", "failed"]
+    primary_score: float | None = None
+    metrics: list[CrossValidationMetricItem] = Field(default_factory=list)
+    hyperparameters: dict[str, Any] = Field(default_factory=dict)
+    error: str | None = None
+
+
+class ModelComparisonResponse(BaseModel):
+    job_id: str
+    status: str
+    message: str
+    source_filename: str
+    task_type: Literal["regression", "classification"]
+    target_column: str
+    feature_columns: list[str]
+    cross_validation_folds: int
+    comparison_metric: str
+    best_model: str | None = None
+    results: list[ModelComparisonItem]
     warnings: list[str] = Field(default_factory=list)
     artifacts: list[ArtifactResponse] = Field(default_factory=list)
 

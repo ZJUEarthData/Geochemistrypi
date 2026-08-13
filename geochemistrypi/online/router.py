@@ -22,6 +22,7 @@ from .schemas import (
     DimensionalityReductionResponse,
     HealthResponse,
     ModelInferenceResponse,
+    ModelComparisonResponse,
     RegressionResponse,
     RunResponse,
     TaskStatusResponse,
@@ -222,6 +223,8 @@ def create_router(
         target_column: str = Form(...),
         feature_columns: str = Form(...),
         test_size: float = Form(0.2),
+        hyperparameters: str = Form("{}"),
+        cross_validation_folds: int = Form(0),
         dataset: UploadFile = File(...),
         x_task_id: str | None = Header(None, alias="X-Task-ID"),
     ) -> RegressionResponse:
@@ -231,9 +234,10 @@ def create_router(
             data_mining_service.validate_upload(dataset.filename, content)
             try:
                 parsed_features = json.loads(feature_columns)
+                parsed_hyperparameters = json.loads(hyperparameters)
             except json.JSONDecodeError as exc:
                 raise InvalidDatasetError(
-                    "Feature columns must be a valid JSON list"
+                    "Feature columns and hyperparameters must be valid JSON"
                 ) from exc
             return await run_calculation(
                 data_mining_service.run_regression,
@@ -245,6 +249,8 @@ def create_router(
                 feature_columns=parsed_features,
                 test_size=test_size,
                 model_name=model,
+                hyperparameters=parsed_hyperparameters,
+                cross_validation_folds=cross_validation_folds,
             )
         except UploadTooLargeError as exc:
             raise HTTPException(
@@ -276,6 +282,8 @@ def create_router(
         target_column: str = Form(...),
         feature_columns: str = Form(...),
         test_size: float = Form(0.2),
+        hyperparameters: str = Form("{}"),
+        cross_validation_folds: int = Form(0),
         dataset: UploadFile = File(...),
         x_task_id: str | None = Header(None, alias="X-Task-ID"),
     ) -> ClassificationResponse:
@@ -285,9 +293,10 @@ def create_router(
             data_mining_service.validate_upload(dataset.filename, content)
             try:
                 parsed_features = json.loads(feature_columns)
+                parsed_hyperparameters = json.loads(hyperparameters)
             except json.JSONDecodeError as exc:
                 raise InvalidDatasetError(
-                    "Feature columns must be a valid JSON list"
+                    "Feature columns and hyperparameters must be valid JSON"
                 ) from exc
             return await run_calculation(
                 data_mining_service.run_classification,
@@ -299,6 +308,8 @@ def create_router(
                 feature_columns=parsed_features,
                 test_size=test_size,
                 model_name=model,
+                hyperparameters=parsed_hyperparameters,
+                cross_validation_folds=cross_validation_folds,
             )
         except UploadTooLargeError as exc:
             raise HTTPException(
@@ -316,6 +327,66 @@ def create_router(
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Classification failed: {type(exc).__name__}: {exc}",
+            ) from exc
+        finally:
+            await dataset.close()
+
+    @router.post(
+        "/data-mining/model-comparison",
+        response_model=ModelComparisonResponse,
+        tags=["data-mining"],
+    )
+    async def run_model_comparison(
+        task_type: str = Form(...),
+        target_column: str = Form(...),
+        feature_columns: str = Form(...),
+        models: str = Form(...),
+        hyperparameters: str = Form("{}"),
+        cross_validation_folds: int = Form(5),
+        dataset: UploadFile = File(...),
+        x_task_id: str | None = Header(None, alias="X-Task-ID"),
+    ) -> ModelComparisonResponse:
+        content = await dataset.read(data_mining_service.max_upload_bytes + 1)
+        try:
+            enforce_upload_limit(content, data_mining_service.max_upload_bytes)
+            data_mining_service.validate_upload(dataset.filename, content)
+            try:
+                parsed_features = json.loads(feature_columns)
+                parsed_models = json.loads(models)
+                parsed_hyperparameters = json.loads(hyperparameters)
+            except json.JSONDecodeError as exc:
+                raise InvalidDatasetError(
+                    "Features, models and hyperparameters must be valid JSON"
+                ) from exc
+            return await run_calculation(
+                data_mining_service.run_model_comparison,
+                tracking_id=x_task_id,
+                task_label=f"{task_type.title()} model comparison",
+                filename=dataset.filename,
+                content=content,
+                task_type=task_type,
+                target_column=target_column,
+                feature_columns=parsed_features,
+                model_names=parsed_models,
+                cross_validation_folds=cross_validation_folds,
+                hyperparameters=parsed_hyperparameters,
+            )
+        except UploadTooLargeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                detail=str(exc),
+            ) from exc
+        except (InvalidDatasetError, ValueError, TypeError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=str(exc),
+            ) from exc
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Model comparison failed: {type(exc).__name__}: {exc}",
             ) from exc
         finally:
             await dataset.close()

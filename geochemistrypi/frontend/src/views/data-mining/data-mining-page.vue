@@ -17,6 +17,7 @@ import {
   runDimensionalityReduction,
   runElementTimeSeries,
   runModelInference,
+  runModelComparison,
   runPredictedTimeSeries,
   runRegression,
   runTimeSeries,
@@ -29,6 +30,8 @@ import {
   type DimensionalityReductionResponse,
   type MissingValueStrategy,
   type ModelInferenceResponse,
+  type ModelComparisonResponse,
+  type HyperparameterItem,
   type RegressionResponse,
   type TimeSeriesResponse
 } from '@/api/data-mining'
@@ -37,6 +40,8 @@ import { apiText, dataMiningFeatureDescription, t, warningIsSuccess } from '@/i1
 
 type ServiceState = 'checking' | 'online' | 'offline'
 type TimeSeriesMode = 'direct' | 'model_predicted' | 'element_mean'
+type SupervisedRunMode = 'single' | 'compare'
+type HyperparameterValue = string | number | boolean
 
 const serviceState = ref<ServiceState>('checking')
 const softwareVersion = ref('')
@@ -60,6 +65,7 @@ const columnInspection = ref<DatasetProfileResponse | null>(null)
 const preprocessingResult = ref<DataPreprocessingResponse | null>(null)
 const regressionResult = ref<RegressionResponse | null>(null)
 const classificationResult = ref<ClassificationResponse | null>(null)
+const modelComparisonResult = ref<ModelComparisonResponse | null>(null)
 const applicationDataFile = ref<File | null>(null)
 const inferenceResult = ref<ModelInferenceResponse | null>(null)
 const inferenceError = ref('')
@@ -74,10 +80,30 @@ const regressionTarget = ref('')
 const regressionFeatures = ref<string[]>([])
 const regressionTestSize = ref(0.2)
 const regressionModel = ref('linear_regression')
+const regressionRunMode = ref<SupervisedRunMode>('single')
+const regressionComparisonModels = ref<string[]>([
+  'linear_regression',
+  'random_forest',
+  'xgboost'
+])
+const regressionHyperparameters = ref<Record<string, Record<string, HyperparameterValue>>>({})
+const regressionCrossValidationEnabled = ref(false)
+const regressionCrossValidationFolds = ref(5)
 const classificationTarget = ref('')
 const classificationFeatures = ref<string[]>([])
 const classificationTestSize = ref(0.2)
 const classificationModel = ref('logistic_regression')
+const classificationRunMode = ref<SupervisedRunMode>('single')
+const classificationComparisonModels = ref<string[]>([
+  'logistic_regression',
+  'random_forest',
+  'xgboost'
+])
+const classificationHyperparameters = ref<
+  Record<string, Record<string, HyperparameterValue>>
+>({})
+const classificationCrossValidationEnabled = ref(false)
+const classificationCrossValidationFolds = ref(5)
 const clusteringFeatures = ref<string[]>([])
 const clusterCount = ref(3)
 const clusteringModel = ref('kmeans')
@@ -309,6 +335,9 @@ const regressionFeatureOptions = computed(() =>
   numericColumns.value.filter((column) => column !== regressionTarget.value)
 )
 const regressionMethodOptions = computed(() => currentFeature.value?.methods || [])
+const selectedRegressionMethod = computed(() =>
+  regressionMethodOptions.value.find((method) => method.name === regressionModel.value)
+)
 const classificationTargetColumns = computed(
   () => columnInspection.value?.columns.map((column) => column.name) || []
 )
@@ -316,6 +345,77 @@ const classificationFeatureOptions = computed(() =>
   numericColumns.value.filter((column) => column !== classificationTarget.value)
 )
 const classificationMethodOptions = computed(() => currentFeature.value?.methods || [])
+const selectedClassificationMethod = computed(() =>
+  classificationMethodOptions.value.find((method) => method.name === classificationModel.value)
+)
+const comparisonBestModelDisplayName = computed(
+  () =>
+    modelComparisonResult.value?.results.find(
+      (item) => item.model === modelComparisonResult.value?.best_model
+    )?.model_display_name || '—'
+)
+
+function initializeModelHyperparameters(
+  methods: Array<{ name: string; hyperparameters: HyperparameterItem[] }>,
+  destination: Record<string, Record<string, HyperparameterValue>>
+) {
+  for (const method of methods) {
+    if (destination[method.name]) continue
+    destination[method.name] = Object.fromEntries(
+      (method.hyperparameters || []).map((parameter) => [parameter.name, parameter.default])
+    )
+  }
+}
+
+function getParameterValue(
+  taskType: 'regression' | 'classification',
+  model: string,
+  parameter: HyperparameterItem
+) {
+  const store =
+    taskType === 'regression'
+      ? regressionHyperparameters.value
+      : classificationHyperparameters.value
+  store[model] ||= {}
+  if (!(parameter.name in store[model])) store[model][parameter.name] = parameter.default
+  return store[model][parameter.name]
+}
+
+function setParameterValue(
+  taskType: 'regression' | 'classification',
+  model: string,
+  parameter: HyperparameterItem,
+  value: HyperparameterValue
+) {
+  const store =
+    taskType === 'regression'
+      ? regressionHyperparameters.value
+      : classificationHyperparameters.value
+  store[model] ||= {}
+  store[model][parameter.name] = value
+  modelComparisonResult.value = null
+  if (taskType === 'regression') regressionResult.value = null
+  else classificationResult.value = null
+}
+
+function regressionMethodByName(name: string) {
+  return regressionMethodOptions.value.find((method) => method.name === name)
+}
+
+function classificationMethodByName(name: string) {
+  return classificationMethodOptions.value.find((method) => method.name === name)
+}
+
+function comparisonMetric(item: { metrics: Array<{ name: string; mean: number }> }, name: string) {
+  return item.metrics.find((metric) => metric.name === name)?.mean ?? null
+}
+
+function comparisonMetricStandardDeviation(
+  item: { metrics: Array<{ name: string; standard_deviation: number }> },
+  name: string
+) {
+  return item.metrics.find((metric) => metric.name === name)?.standard_deviation ?? null
+}
 const clusteringMethodOptions = computed(() => currentFeature.value?.methods || [])
 const selectedClusteringMethod = computed(() =>
   clusteringMethodOptions.value.find((method) => method.name === clusteringModel.value)
@@ -350,6 +450,7 @@ const canRun = computed(() => {
     return (
       Boolean(regressionTarget.value) &&
       regressionFeatures.value.length > 0 &&
+      (regressionRunMode.value === 'single' || regressionComparisonModels.value.length >= 2) &&
       !inspectingColumns.value
     )
   }
@@ -357,6 +458,8 @@ const canRun = computed(() => {
     return (
       Boolean(classificationTarget.value) &&
       classificationFeatures.value.length > 0 &&
+      (classificationRunMode.value === 'single' ||
+        classificationComparisonModels.value.length >= 2) &&
       !inspectingColumns.value
     )
   }
@@ -405,8 +508,14 @@ const runButtonLabel = computed(() => {
   if (!currentFeatureIsVerified.value)
     return t('This function is not available yet', '该功能暂不可运行')
   if (isPreprocessing.value) return t('Run preprocessing', '运行预处理')
-  if (isRegression.value) return t('Run regression', '运行回归')
-  if (isClassification.value) return t('Run classification', '运行分类')
+  if (isRegression.value)
+    return regressionRunMode.value === 'compare'
+      ? t('Compare regression models', '比较回归模型')
+      : t('Run regression', '运行回归')
+  if (isClassification.value)
+    return classificationRunMode.value === 'compare'
+      ? t('Compare classification models', '比较分类模型')
+      : t('Run classification', '运行分类')
   if (isClustering.value) return t('Run clustering', '运行聚类')
   if (isDimensionalityReduction.value) return t('Run dimensionality reduction', '运行降维')
   if (isAnomalyDetection.value) return t('Run anomaly detection', '运行异常检测')
@@ -586,6 +695,18 @@ watch(regressionTestSize, () => {
 watch(regressionModel, () => {
   regressionResult.value = null
 })
+watch(regressionRunMode, () => {
+  regressionResult.value = null
+  modelComparisonResult.value = null
+})
+watch(
+  [regressionComparisonModels, regressionCrossValidationEnabled, regressionCrossValidationFolds],
+  () => {
+    regressionResult.value = null
+    modelComparisonResult.value = null
+  },
+  { deep: true }
+)
 watch(classificationTarget, (target) => {
   classificationFeatures.value = classificationFeatures.value.filter(
     (feature) => feature !== target
@@ -605,6 +726,22 @@ watch(classificationTestSize, () => {
 watch(classificationModel, () => {
   classificationResult.value = null
 })
+watch(classificationRunMode, () => {
+  classificationResult.value = null
+  modelComparisonResult.value = null
+})
+watch(
+  [
+    classificationComparisonModels,
+    classificationCrossValidationEnabled,
+    classificationCrossValidationFolds
+  ],
+  () => {
+    classificationResult.value = null
+    modelComparisonResult.value = null
+  },
+  { deep: true }
+)
 watch(
   clusteringFeatures,
   () => {
@@ -693,6 +830,18 @@ async function loadPage() {
     serviceState.value = 'online'
     const catalog = await getDataMiningCatalog()
     features.value = catalog.features
+    const regressionMethods =
+      features.value.find((feature) => feature.name === 'regression')?.methods || []
+    const classificationMethods =
+      features.value.find((feature) => feature.name === 'classification')?.methods || []
+    initializeModelHyperparameters(regressionMethods, regressionHyperparameters.value)
+    initializeModelHyperparameters(classificationMethods, classificationHyperparameters.value)
+    regressionComparisonModels.value = regressionComparisonModels.value.filter((model) =>
+      regressionMethods.some((method) => method.name === model)
+    )
+    classificationComparisonModels.value = classificationComparisonModels.value.filter((model) =>
+      classificationMethods.some((method) => method.name === model)
+    )
     selectedFeature.value =
       features.value.find((feature) => feature.status === 'verified')?.name ||
       features.value[0]?.name ||
@@ -874,27 +1023,75 @@ async function submitJob() {
       )
       ElMessage.success(t('Data preprocessing completed', '数据预处理完成'))
     } else if (isRegression.value) {
-      regressionResult.value = await runRegression(
-        datasetFile.value,
-        regressionTarget.value,
-        regressionFeatures.value,
-        regressionTestSize.value,
-        regressionModel.value,
-        trackingId
-      )
-      ElMessage.success(`${regressionResult.value.model_display_name} ${t('completed', '已完成')}`)
+      if (regressionRunMode.value === 'compare') {
+        modelComparisonResult.value = await runModelComparison(
+          datasetFile.value,
+          'regression',
+          regressionTarget.value,
+          regressionFeatures.value,
+          regressionComparisonModels.value,
+          Object.fromEntries(
+            regressionComparisonModels.value.map((model) => [
+              model,
+              regressionHyperparameters.value[model] || {}
+            ])
+          ),
+          regressionCrossValidationFolds.value,
+          trackingId
+        )
+        ElMessage.success(t('Regression model comparison completed', '回归模型比较已完成'))
+      } else {
+        regressionResult.value = await runRegression(
+          datasetFile.value,
+          regressionTarget.value,
+          regressionFeatures.value,
+          regressionTestSize.value,
+          regressionModel.value,
+          regressionHyperparameters.value[regressionModel.value] || {},
+          regressionCrossValidationEnabled.value ? regressionCrossValidationFolds.value : 0,
+          trackingId
+        )
+        ElMessage.success(
+          `${regressionResult.value.model_display_name} ${t('completed', '已完成')}`
+        )
+      }
     } else if (isClassification.value) {
-      classificationResult.value = await runClassification(
-        datasetFile.value,
-        classificationTarget.value,
-        classificationFeatures.value,
-        classificationTestSize.value,
-        classificationModel.value,
-        trackingId
-      )
-      ElMessage.success(
-        `${classificationResult.value.model_display_name} ${t('completed', '已完成')}`
-      )
+      if (classificationRunMode.value === 'compare') {
+        modelComparisonResult.value = await runModelComparison(
+          datasetFile.value,
+          'classification',
+          classificationTarget.value,
+          classificationFeatures.value,
+          classificationComparisonModels.value,
+          Object.fromEntries(
+            classificationComparisonModels.value.map((model) => [
+              model,
+              classificationHyperparameters.value[model] || {}
+            ])
+          ),
+          classificationCrossValidationFolds.value,
+          trackingId
+        )
+        ElMessage.success(
+          t('Classification model comparison completed', '分类模型比较已完成')
+        )
+      } else {
+        classificationResult.value = await runClassification(
+          datasetFile.value,
+          classificationTarget.value,
+          classificationFeatures.value,
+          classificationTestSize.value,
+          classificationModel.value,
+          classificationHyperparameters.value[classificationModel.value] || {},
+          classificationCrossValidationEnabled.value
+            ? classificationCrossValidationFolds.value
+            : 0,
+          trackingId
+        )
+        ElMessage.success(
+          `${classificationResult.value.model_display_name} ${t('completed', '已完成')}`
+        )
+      }
     } else if (isClustering.value) {
       clusteringResult.value = await runClustering(
         datasetFile.value,
@@ -1050,6 +1247,7 @@ function clearResult() {
   preprocessingResult.value = null
   regressionResult.value = null
   classificationResult.value = null
+  modelComparisonResult.value = null
   clusteringResult.value = null
   dimensionalityReductionResult.value = null
   anomalyDetectionResult.value = null
@@ -1101,7 +1299,8 @@ function statusType(status: 'verified' | 'testing') {
   return status === 'verified' ? 'success' : 'warning'
 }
 
-function formatPercent(value: number) {
+function formatPercent(value: number | null | undefined) {
+  if (value === null || value === undefined) return '—'
   return `${(value * 100).toFixed(1)}%`
 }
 
@@ -1383,8 +1582,26 @@ function formatCell(value: unknown) {
             </div>
 
             <template v-if="columnInspection">
+              <div class="supervised-mode-picker">
+                <div>
+                  <strong>{{ t('Training mode', '训练模式') }}</strong>
+                  <span>
+                    {{
+                      t(
+                        'Train one model or compare several models under identical cross-validation folds.',
+                        '训练单个模型，或在完全相同的交叉验证分折下比较多个模型。'
+                      )
+                    }}
+                  </span>
+                </div>
+                <el-radio-group v-model="regressionRunMode" :disabled="running">
+                  <el-radio-button value="single">{{ t('Single model', '单模型') }}</el-radio-button>
+                  <el-radio-button value="compare">{{ t('Compare models', '多模型比较') }}</el-radio-button>
+                </el-radio-group>
+              </div>
+
               <div class="form-grid">
-                <el-form-item :label="t('Model', '模型')">
+                <el-form-item v-if="regressionRunMode === 'single'" :label="t('Model', '模型')">
                   <el-select v-model="regressionModel" :disabled="running">
                     <el-option
                       v-for="method in regressionMethodOptions"
@@ -1401,7 +1618,10 @@ function formatCell(value: unknown) {
                   </p>
                 </el-form-item>
 
-                <el-form-item :label="t('Test dataset size', '测试集比例')">
+                <el-form-item
+                  v-if="regressionRunMode === 'single'"
+                  :label="t('Test dataset size', '测试集比例')"
+                >
                   <el-select v-model="regressionTestSize" :disabled="running">
                     <el-option :label="t('20% (recommended)', '20%（推荐）')" :value="0.2" />
                     <el-option label="25%" :value="0.25" />
@@ -1409,6 +1629,173 @@ function formatCell(value: unknown) {
                     <el-option label="40%" :value="0.4" />
                   </el-select>
                 </el-form-item>
+
+                <el-form-item
+                  v-if="regressionRunMode === 'compare'"
+                  :label="t('Models to compare', '要比较的模型')"
+                  class="wide-form-item"
+                >
+                  <el-select
+                    v-model="regressionComparisonModels"
+                    multiple
+                    filterable
+                    collapse-tags
+                    collapse-tags-tooltip
+                    :max-collapse-tags="4"
+                    :disabled="running"
+                    :placeholder="t('Select at least two models', '至少选择两个模型')"
+                  >
+                    <el-option
+                      v-for="method in regressionMethodOptions"
+                      :key="method.name"
+                      :label="method.display_name"
+                      :value="method.name"
+                    />
+                  </el-select>
+                  <p class="field-help">
+                    {{
+                      t(
+                        'Models are ranked by mean cross-validated R²; MAE and RMSE are reported as secondary metrics.',
+                        '模型按交叉验证平均 R² 排名，同时报告 MAE 和 RMSE。'
+                      )
+                    }}
+                  </p>
+                </el-form-item>
+              </div>
+
+              <div
+                v-if="regressionRunMode === 'single' && selectedRegressionMethod"
+                class="model-settings"
+              >
+                <div class="model-settings-heading">
+                  <div>
+                    <strong>{{ t('Hyperparameters', '超参数') }}</strong>
+                    <span>{{ t('Validated safe settings for this model.', '当前模型经过校验的安全设置。') }}</span>
+                  </div>
+                  <el-tag effect="plain">{{ selectedRegressionMethod.display_name }}</el-tag>
+                </div>
+                <div class="hyperparameter-grid">
+                  <label
+                    v-for="parameter in selectedRegressionMethod.hyperparameters"
+                    :key="parameter.name"
+                    class="hyperparameter-field"
+                  >
+                    <span>{{ parameter.display_name }}</span>
+                    <el-switch
+                      v-if="parameter.value_type === 'boolean'"
+                      :model-value="Boolean(getParameterValue('regression', regressionModel, parameter))"
+                      :disabled="running"
+                      @update:model-value="setParameterValue('regression', regressionModel, parameter, $event)"
+                    />
+                    <el-select
+                      v-else-if="parameter.value_type === 'select'"
+                      :model-value="getParameterValue('regression', regressionModel, parameter)"
+                      :disabled="running"
+                      @update:model-value="setParameterValue('regression', regressionModel, parameter, $event)"
+                    >
+                      <el-option
+                        v-for="option in parameter.options"
+                        :key="String(option)"
+                        :label="String(option)"
+                        :value="option"
+                      />
+                    </el-select>
+                    <el-input-number
+                      v-else
+                      :model-value="Number(getParameterValue('regression', regressionModel, parameter))"
+                      :min="parameter.minimum ?? undefined"
+                      :max="parameter.maximum ?? undefined"
+                      :step="parameter.step ?? 1"
+                      :precision="parameter.value_type === 'integer' ? 0 : undefined"
+                      :disabled="running"
+                      controls-position="right"
+                      @update:model-value="setParameterValue('regression', regressionModel, parameter, Number($event))"
+                    />
+                    <small>{{ parameter.description }}</small>
+                  </label>
+                </div>
+              </div>
+
+              <div class="cross-validation-setting">
+                <div>
+                  <strong>{{ t('Cross-validation', '交叉验证') }}</strong>
+                  <span>
+                    {{
+                      regressionRunMode === 'compare'
+                        ? t('Required for a fair model comparison.', '多模型公平比较必须启用。')
+                        : t('Optional validation beyond the held-out test set.', '在独立测试集之外进行可选验证。')
+                    }}
+                  </span>
+                </div>
+                <el-switch
+                  v-if="regressionRunMode === 'single'"
+                  v-model="regressionCrossValidationEnabled"
+                  :disabled="running"
+                />
+                <label v-if="regressionRunMode === 'compare' || regressionCrossValidationEnabled">
+                  <span>{{ t('Folds', '折数') }}</span>
+                  <el-input-number
+                    v-model="regressionCrossValidationFolds"
+                    :min="2"
+                    :max="10"
+                    :step="1"
+                    :precision="0"
+                    :disabled="running"
+                    controls-position="right"
+                  />
+                </label>
+              </div>
+
+              <div v-if="regressionRunMode === 'compare'" class="comparison-model-settings">
+                <el-collapse>
+                  <el-collapse-item
+                    v-for="modelName in regressionComparisonModels"
+                    :key="modelName"
+                    :title="`${regressionMethodByName(modelName)?.display_name || modelName} · ${t('Hyperparameters', '超参数')}`"
+                    :name="modelName"
+                  >
+                    <div class="hyperparameter-grid compact">
+                      <label
+                        v-for="parameter in regressionMethodByName(modelName)?.hyperparameters || []"
+                        :key="parameter.name"
+                        class="hyperparameter-field"
+                      >
+                        <span>{{ parameter.display_name }}</span>
+                        <el-switch
+                          v-if="parameter.value_type === 'boolean'"
+                          :model-value="Boolean(getParameterValue('regression', modelName, parameter))"
+                          :disabled="running"
+                          @update:model-value="setParameterValue('regression', modelName, parameter, $event)"
+                        />
+                        <el-select
+                          v-else-if="parameter.value_type === 'select'"
+                          :model-value="getParameterValue('regression', modelName, parameter)"
+                          :disabled="running"
+                          @update:model-value="setParameterValue('regression', modelName, parameter, $event)"
+                        >
+                          <el-option
+                            v-for="option in parameter.options"
+                            :key="String(option)"
+                            :label="String(option)"
+                            :value="option"
+                          />
+                        </el-select>
+                        <el-input-number
+                          v-else
+                          :model-value="Number(getParameterValue('regression', modelName, parameter))"
+                          :min="parameter.minimum ?? undefined"
+                          :max="parameter.maximum ?? undefined"
+                          :step="parameter.step ?? 1"
+                          :precision="parameter.value_type === 'integer' ? 0 : undefined"
+                          :disabled="running"
+                          controls-position="right"
+                          @update:model-value="setParameterValue('regression', modelName, parameter, Number($event))"
+                        />
+                        <small>{{ parameter.description }}</small>
+                      </label>
+                    </div>
+                  </el-collapse-item>
+                </el-collapse>
               </div>
 
               <el-form-item :label="t('Target column', '目标列')">
@@ -1512,8 +1899,29 @@ function formatCell(value: unknown) {
             </div>
 
             <template v-if="columnInspection">
+              <div class="supervised-mode-picker">
+                <div>
+                  <strong>{{ t('Training mode', '训练模式') }}</strong>
+                  <span>
+                    {{
+                      t(
+                        'Train one model or compare several models under identical stratified folds.',
+                        '训练单个模型，或在完全相同的分层交叉验证分折下比较多个模型。'
+                      )
+                    }}
+                  </span>
+                </div>
+                <el-radio-group v-model="classificationRunMode" :disabled="running">
+                  <el-radio-button value="single">{{ t('Single model', '单模型') }}</el-radio-button>
+                  <el-radio-button value="compare">{{ t('Compare models', '多模型比较') }}</el-radio-button>
+                </el-radio-group>
+              </div>
+
               <div class="form-grid">
-                <el-form-item :label="t('Model', '模型')">
+                <el-form-item
+                  v-if="classificationRunMode === 'single'"
+                  :label="t('Model', '模型')"
+                >
                   <el-select v-model="classificationModel" :disabled="running">
                     <el-option
                       v-for="method in classificationMethodOptions"
@@ -1531,7 +1939,10 @@ function formatCell(value: unknown) {
                   </p>
                 </el-form-item>
 
-                <el-form-item :label="t('Test dataset size', '测试集比例')">
+                <el-form-item
+                  v-if="classificationRunMode === 'single'"
+                  :label="t('Test dataset size', '测试集比例')"
+                >
                   <el-select v-model="classificationTestSize" :disabled="running">
                     <el-option :label="t('20% (recommended)', '20%（推荐）')" :value="0.2" />
                     <el-option label="25%" :value="0.25" />
@@ -1539,6 +1950,175 @@ function formatCell(value: unknown) {
                     <el-option label="40%" :value="0.4" />
                   </el-select>
                 </el-form-item>
+
+                <el-form-item
+                  v-if="classificationRunMode === 'compare'"
+                  :label="t('Models to compare', '要比较的模型')"
+                  class="wide-form-item"
+                >
+                  <el-select
+                    v-model="classificationComparisonModels"
+                    multiple
+                    filterable
+                    collapse-tags
+                    collapse-tags-tooltip
+                    :max-collapse-tags="4"
+                    :disabled="running"
+                    :placeholder="t('Select at least two models', '至少选择两个模型')"
+                  >
+                    <el-option
+                      v-for="method in classificationMethodOptions"
+                      :key="method.name"
+                      :label="method.display_name"
+                      :value="method.name"
+                    />
+                  </el-select>
+                  <p class="field-help">
+                    {{
+                      t(
+                        'Models are ranked by mean cross-validated Macro F1; accuracy, precision and recall remain visible.',
+                        '模型按交叉验证平均 Macro F1 排名，同时保留准确率、精确率和召回率。'
+                      )
+                    }}
+                  </p>
+                </el-form-item>
+              </div>
+
+              <div
+                v-if="classificationRunMode === 'single' && selectedClassificationMethod"
+                class="model-settings"
+              >
+                <div class="model-settings-heading">
+                  <div>
+                    <strong>{{ t('Hyperparameters', '超参数') }}</strong>
+                    <span>{{ t('Validated safe settings for this model.', '当前模型经过校验的安全设置。') }}</span>
+                  </div>
+                  <el-tag effect="plain">{{ selectedClassificationMethod.display_name }}</el-tag>
+                </div>
+                <div class="hyperparameter-grid">
+                  <label
+                    v-for="parameter in selectedClassificationMethod.hyperparameters"
+                    :key="parameter.name"
+                    class="hyperparameter-field"
+                  >
+                    <span>{{ parameter.display_name }}</span>
+                    <el-switch
+                      v-if="parameter.value_type === 'boolean'"
+                      :model-value="Boolean(getParameterValue('classification', classificationModel, parameter))"
+                      :disabled="running"
+                      @update:model-value="setParameterValue('classification', classificationModel, parameter, $event)"
+                    />
+                    <el-select
+                      v-else-if="parameter.value_type === 'select'"
+                      :model-value="getParameterValue('classification', classificationModel, parameter)"
+                      :disabled="running"
+                      @update:model-value="setParameterValue('classification', classificationModel, parameter, $event)"
+                    >
+                      <el-option
+                        v-for="option in parameter.options"
+                        :key="String(option)"
+                        :label="String(option)"
+                        :value="option"
+                      />
+                    </el-select>
+                    <el-input-number
+                      v-else
+                      :model-value="Number(getParameterValue('classification', classificationModel, parameter))"
+                      :min="parameter.minimum ?? undefined"
+                      :max="parameter.maximum ?? undefined"
+                      :step="parameter.step ?? 1"
+                      :precision="parameter.value_type === 'integer' ? 0 : undefined"
+                      :disabled="running"
+                      controls-position="right"
+                      @update:model-value="setParameterValue('classification', classificationModel, parameter, Number($event))"
+                    />
+                    <small>{{ parameter.description }}</small>
+                  </label>
+                </div>
+              </div>
+
+              <div class="cross-validation-setting">
+                <div>
+                  <strong>{{ t('Stratified cross-validation', '分层交叉验证') }}</strong>
+                  <span>
+                    {{
+                      classificationRunMode === 'compare'
+                        ? t('Required for a fair model comparison.', '多模型公平比较必须启用。')
+                        : t('Optional validation that preserves class proportions.', '保持类别比例的可选验证。')
+                    }}
+                  </span>
+                </div>
+                <el-switch
+                  v-if="classificationRunMode === 'single'"
+                  v-model="classificationCrossValidationEnabled"
+                  :disabled="running"
+                />
+                <label
+                  v-if="classificationRunMode === 'compare' || classificationCrossValidationEnabled"
+                >
+                  <span>{{ t('Folds', '折数') }}</span>
+                  <el-input-number
+                    v-model="classificationCrossValidationFolds"
+                    :min="2"
+                    :max="10"
+                    :step="1"
+                    :precision="0"
+                    :disabled="running"
+                    controls-position="right"
+                  />
+                </label>
+              </div>
+
+              <div v-if="classificationRunMode === 'compare'" class="comparison-model-settings">
+                <el-collapse>
+                  <el-collapse-item
+                    v-for="modelName in classificationComparisonModels"
+                    :key="modelName"
+                    :title="`${classificationMethodByName(modelName)?.display_name || modelName} · ${t('Hyperparameters', '超参数')}`"
+                    :name="modelName"
+                  >
+                    <div class="hyperparameter-grid compact">
+                      <label
+                        v-for="parameter in classificationMethodByName(modelName)?.hyperparameters || []"
+                        :key="parameter.name"
+                        class="hyperparameter-field"
+                      >
+                        <span>{{ parameter.display_name }}</span>
+                        <el-switch
+                          v-if="parameter.value_type === 'boolean'"
+                          :model-value="Boolean(getParameterValue('classification', modelName, parameter))"
+                          :disabled="running"
+                          @update:model-value="setParameterValue('classification', modelName, parameter, $event)"
+                        />
+                        <el-select
+                          v-else-if="parameter.value_type === 'select'"
+                          :model-value="getParameterValue('classification', modelName, parameter)"
+                          :disabled="running"
+                          @update:model-value="setParameterValue('classification', modelName, parameter, $event)"
+                        >
+                          <el-option
+                            v-for="option in parameter.options"
+                            :key="String(option)"
+                            :label="String(option)"
+                            :value="option"
+                          />
+                        </el-select>
+                        <el-input-number
+                          v-else
+                          :model-value="Number(getParameterValue('classification', modelName, parameter))"
+                          :min="parameter.minimum ?? undefined"
+                          :max="parameter.maximum ?? undefined"
+                          :step="parameter.step ?? 1"
+                          :precision="parameter.value_type === 'integer' ? 0 : undefined"
+                          :disabled="running"
+                          controls-position="right"
+                          @update:model-value="setParameterValue('classification', modelName, parameter, Number($event))"
+                        />
+                        <small>{{ parameter.description }}</small>
+                      </label>
+                    </div>
+                  </el-collapse-item>
+                </el-collapse>
               </div>
 
               <el-form-item :label="t('Target class column', '目标类别列')">
@@ -2608,6 +3188,33 @@ function formatCell(value: unknown) {
             />
           </div>
 
+          <section v-if="regressionResult.cross_validation" class="result-section">
+            <div class="section-heading">
+              <div>
+                <p class="guide-kicker">CROSS-VALIDATION</p>
+                <h3>
+                  {{ regressionResult.cross_validation.folds }}-{{
+                    t('fold validation stability', '折验证稳定性')
+                  }}
+                </h3>
+              </div>
+              <el-tag type="info" effect="plain">
+                {{ regressionResult.cross_validation.strategy }} ·
+                {{ t('seed', '种子') }} {{ regressionResult.cross_validation.random_state }}
+              </el-tag>
+            </div>
+            <div class="validation-metric-grid">
+              <article
+                v-for="metric in regressionResult.cross_validation.metrics"
+                :key="metric.name"
+              >
+                <span>{{ metric.display_name }}</span>
+                <strong>{{ formatNumber(metric.mean, 6) }}</strong>
+                <small>± {{ formatNumber(metric.standard_deviation, 6) }}</small>
+              </article>
+            </div>
+          </section>
+
           <section v-if="regressionResult.coefficients.length" class="result-section">
             <div class="section-heading">
               <div>
@@ -2781,6 +3388,33 @@ function formatCell(value: unknown) {
             />
           </div>
 
+          <section v-if="classificationResult.cross_validation" class="result-section">
+            <div class="section-heading">
+              <div>
+                <p class="guide-kicker">STRATIFIED CROSS-VALIDATION</p>
+                <h3>
+                  {{ classificationResult.cross_validation.folds }}-{{
+                    t('fold validation stability', '折验证稳定性')
+                  }}
+                </h3>
+              </div>
+              <el-tag type="info" effect="plain">
+                {{ classificationResult.cross_validation.strategy }} ·
+                {{ t('seed', '种子') }} {{ classificationResult.cross_validation.random_state }}
+              </el-tag>
+            </div>
+            <div class="validation-metric-grid">
+              <article
+                v-for="metric in classificationResult.cross_validation.metrics"
+                :key="metric.name"
+              >
+                <span>{{ metric.display_name }}</span>
+                <strong>{{ formatPercent(metric.mean) }}</strong>
+                <small>± {{ formatPercent(metric.standard_deviation) }}</small>
+              </article>
+            </div>
+          </section>
+
           <section class="result-section">
             <div class="section-heading">
               <div>
@@ -2859,6 +3493,125 @@ function formatCell(value: unknown) {
                     ? t('Download trained Pipeline', '下载已训练 Pipeline')
                     : t('Download classification report', '下载分类报告')
               }}
+            </el-button>
+          </div>
+        </el-card>
+      </template>
+
+      <template v-if="modelComparisonResult">
+        <section class="summary-grid comparison-summary-grid">
+          <article class="summary-card">
+            <span>{{ t('Best model', '最佳模型') }}</span>
+            <strong>
+              {{ comparisonBestModelDisplayName }}
+            </strong>
+            <small>{{ t('Ranked by cross-validation mean', '按交叉验证均值排名') }}</small>
+          </article>
+          <article class="summary-card">
+            <span>{{ t('Models compared', '已比较模型') }}</span>
+            <strong>{{ modelComparisonResult.results.length }}</strong>
+            <small>{{ modelComparisonResult.cross_validation_folds }}-fold CV</small>
+          </article>
+          <article class="summary-card">
+            <span>{{ t('Ranking metric', '排名指标') }}</span>
+            <strong>{{ formatLabel(modelComparisonResult.comparison_metric) }}</strong>
+            <small>{{ t('Higher is better', '越高越好') }}</small>
+          </article>
+          <article class="summary-card">
+            <span>{{ t('Target column', '目标列') }}</span>
+            <strong>{{ modelComparisonResult.target_column }}</strong>
+            <small>{{ modelComparisonResult.feature_columns.length }} {{ t('features', '个特征') }}</small>
+          </article>
+        </section>
+
+        <el-card class="result-card" shadow="never">
+          <template #header>
+            <div class="result-heading">
+              <div>
+                <p class="guide-kicker">MODEL BENCHMARK</p>
+                <h2>{{ t('Cross-validated model ranking', '交叉验证模型排名') }}</h2>
+                <p>
+                  {{ modelComparisonResult.source_filename }} · {{ t('Job ID', '任务 ID') }}:
+                  {{ modelComparisonResult.job_id }}
+                </p>
+              </div>
+              <el-tag type="success">{{ t('SUCCESS', '成功') }}</el-tag>
+            </div>
+          </template>
+
+          <div class="warning-list">
+            <el-alert
+              v-for="warning in modelComparisonResult.warnings"
+              :key="warning"
+              :title="apiText(warning)"
+              type="warning"
+              :closable="false"
+              show-icon
+            />
+          </div>
+
+          <section class="result-section">
+            <div class="table-wrap desktop-data-table">
+              <el-table :data="modelComparisonResult.results" border size="small">
+                <el-table-column prop="rank" :label="t('Rank', '排名')" width="78" />
+                <el-table-column prop="model_display_name" :label="t('Model', '模型')" min-width="210" />
+                <el-table-column :label="t('Status', '状态')" width="110">
+                  <template #default="scope">
+                    <el-tag :type="scope.row.status === 'success' ? 'success' : 'danger'" effect="plain">
+                      {{ scope.row.status }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <template v-if="modelComparisonResult.task_type === 'regression'">
+                  <el-table-column label="R² mean ± SD" min-width="170">
+                    <template #default="scope">
+                      {{ formatNumber(comparisonMetric(scope.row, 'r2'), 5) }} ±
+                      {{ formatNumber(comparisonMetricStandardDeviation(scope.row, 'r2'), 5) }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="MAE" min-width="120">
+                    <template #default="scope">{{ formatNumber(comparisonMetric(scope.row, 'mean_absolute_error'), 5) }}</template>
+                  </el-table-column>
+                  <el-table-column label="RMSE" min-width="120">
+                    <template #default="scope">{{ formatNumber(comparisonMetric(scope.row, 'root_mean_squared_error'), 5) }}</template>
+                  </el-table-column>
+                </template>
+                <template v-else>
+                  <el-table-column label="Macro F1 mean" min-width="150">
+                    <template #default="scope">{{ formatPercent(comparisonMetric(scope.row, 'f1_macro')) }}</template>
+                  </el-table-column>
+                  <el-table-column :label="t('Accuracy', '准确率')" min-width="130">
+                    <template #default="scope">{{ formatPercent(comparisonMetric(scope.row, 'accuracy')) }}</template>
+                  </el-table-column>
+                  <el-table-column :label="t('Precision', '精确率')" min-width="130">
+                    <template #default="scope">{{ formatPercent(comparisonMetric(scope.row, 'precision_macro')) }}</template>
+                  </el-table-column>
+                  <el-table-column :label="t('Recall', '召回率')" min-width="130">
+                    <template #default="scope">{{ formatPercent(comparisonMetric(scope.row, 'recall_macro')) }}</template>
+                  </el-table-column>
+                </template>
+              </el-table>
+            </div>
+            <MobileFieldCards :rows="modelComparisonResult.results" />
+          </section>
+
+          <div
+            v-for="artifact in modelComparisonResult.artifacts"
+            :key="artifact.download_url"
+            class="artifact-row"
+          >
+            <div>
+              <strong>{{ artifact.name }}</strong>
+              <span>{{ formatBytes(artifact.size_bytes) }}</span>
+            </div>
+            <el-button
+              type="success"
+              plain
+              tag="a"
+              :href="artifactUrl(artifact.download_url)"
+              download
+            >
+              {{ artifact.name.endsWith('.csv') ? t('Download ranking CSV', '下载排名 CSV') : t('Download comparison report', '下载比较报告') }}
             </el-button>
           </div>
         </el-card>
@@ -4098,6 +4851,191 @@ function formatCell(value: unknown) {
   }
 }
 
+.supervised-mode-picker,
+.model-settings-heading,
+.cross-validation-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.supervised-mode-picker {
+  margin-bottom: 18px;
+  padding: 16px;
+  border: 1px solid #d6e6e3;
+  border-radius: 8px;
+  background: #f6f8f8;
+
+  > div,
+  .model-settings-heading > div,
+  .cross-validation-setting > div {
+    display: grid;
+    gap: 4px;
+  }
+
+  strong,
+  span {
+    display: block;
+  }
+
+  strong {
+    color: #244d55;
+    font-size: 14px;
+  }
+
+  span {
+    color: #647b80;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+}
+
+.wide-form-item {
+  grid-column: 1 / -1;
+}
+
+.model-settings,
+.cross-validation-setting {
+  margin-bottom: 18px;
+  padding: 16px;
+  border: 1px solid #d6e6e3;
+  border-radius: 8px;
+  background: #fbfcfc;
+}
+
+.comparison-model-settings {
+  margin-bottom: 18px;
+  padding: 4px 16px;
+  border: 1px solid #d6e6e3;
+  border-radius: 8px;
+  background: #fbfcfc;
+
+  :deep(.el-collapse) {
+    border: 0;
+  }
+
+  :deep(.el-collapse-item__header) {
+    color: #294f56;
+    background: transparent;
+    font-size: 13px;
+    font-weight: 650;
+  }
+
+  :deep(.el-collapse-item__wrap) {
+    background: transparent;
+  }
+}
+
+.model-settings-heading {
+  margin-bottom: 14px;
+
+  > div {
+    display: grid;
+    gap: 3px;
+  }
+
+  strong {
+    color: #244d55;
+    font-size: 14px;
+  }
+
+  span {
+    color: #647b80;
+    font-size: 13px;
+  }
+}
+
+.hyperparameter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.hyperparameter-field {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #e1e8e7;
+  border-radius: 7px;
+  background: #fff;
+
+  > span {
+    color: #294f56;
+    font-size: 13px;
+    font-weight: 650;
+  }
+
+  > small {
+    color: #718589;
+    line-height: 1.4;
+    font-size: 11px;
+  }
+
+  :deep(.el-input-number),
+  :deep(.el-select) {
+    width: 100%;
+  }
+}
+
+.cross-validation-setting {
+  > div {
+    display: grid;
+    gap: 3px;
+  }
+
+  strong {
+    color: #244d55;
+    font-size: 14px;
+  }
+
+  > div span {
+    color: #647b80;
+    font-size: 13px;
+  }
+
+  > label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #526970;
+    font-size: 13px;
+
+    :deep(.el-input-number) {
+      width: 112px;
+    }
+  }
+}
+
+.validation-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+
+  article {
+    display: grid;
+    gap: 5px;
+    padding: 14px;
+    border: 1px solid #d6e6e3;
+    border-radius: 7px;
+    background: #f6f8f8;
+  }
+
+  span,
+  small {
+    color: #61797e;
+    font-size: 12px;
+  }
+
+  strong {
+    color: #287453;
+    font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+    font-size: 19px;
+  }
+}
+
 .application-inference-card {
   margin-top: 24px;
 }
@@ -4942,6 +5880,8 @@ function formatCell(value: unknown) {
   .form-grid,
   .time-series-mapping-grid,
   .time-series-parameter-grid,
+  .hyperparameter-grid,
+  .validation-metric-grid,
   .summary-grid,
   .result-meta,
   .result-meta.regression-meta {
@@ -4958,6 +5898,17 @@ function formatCell(value: unknown) {
   .inference-actions,
   .inference-requirements {
     grid-template-columns: 1fr;
+  }
+
+  .supervised-mode-picker,
+  .model-settings-heading,
+  .cross-validation-setting {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .cross-validation-setting > label {
+    justify-content: space-between;
   }
 
   .file-picker .file-copy {
