@@ -218,9 +218,9 @@ class RegressionResponse(BaseModel):
     random_state: int
     summary: RegressionSummary
     metrics: RegressionMetrics
-    intercept: float
+    intercept: float | None = None
     coefficients: list[RegressionCoefficientItem]
-    equation: str
+    equation: str | None = None
     preview: list[dict[str, Any]]
     warnings: list[str] = Field(default_factory=list)
     artifacts: list[ArtifactResponse] = Field(default_factory=list)

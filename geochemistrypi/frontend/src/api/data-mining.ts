@@ -126,9 +126,9 @@ export interface RegressionResponse {
   random_state: number
   summary: RegressionSummary
   metrics: RegressionMetrics
-  intercept: number
+  intercept: number | null
   coefficients: RegressionCoefficientItem[]
-  equation: string
+  equation: string | null
   preview: Record<string, unknown>[]
   warnings: string[]
   artifacts: ArtifactResponse[]

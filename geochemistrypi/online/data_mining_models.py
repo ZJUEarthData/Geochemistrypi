@@ -5,7 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from sklearn.base import ClassifierMixin, ClusterMixin, RegressorMixin
+import numpy as np
+from sklearn.base import (
+    BaseEstimator,
+    ClassifierMixin,
+    ClusterMixin,
+    RegressorMixin,
+)
 from sklearn.cluster import (
     DBSCAN,
     OPTICS,
@@ -16,10 +22,13 @@ from sklearn.cluster import (
 )
 from sklearn.ensemble import (
     AdaBoostClassifier,
+    ExtraTreesRegressor,
     ExtraTreesClassifier,
     GradientBoostingClassifier,
+    GradientBoostingRegressor,
     IsolationForest,
     RandomForestClassifier,
+    RandomForestRegressor,
 )
 from sklearn.decomposition import PCA
 from sklearn.linear_model import (
@@ -30,15 +39,80 @@ from sklearn.linear_model import (
     LogisticRegression,
     Ridge,
     SGDClassifier,
+    SGDRegressor,
 )
 from sklearn.manifold import MDS, TSNE
-from sklearn.neighbors import KNeighborsClassifier, LocalOutlierFactor
-from sklearn.neural_network import MLPClassifier
+from sklearn.neighbors import (
+    KNeighborsClassifier,
+    KNeighborsRegressor,
+    LocalOutlierFactor,
+)
+from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.pipeline import Pipeline, make_pipeline
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.preprocessing import StandardScaler
-from sklearn.svm import SVC
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.preprocessing import LabelEncoder, PolynomialFeatures, StandardScaler
+from sklearn.svm import SVC, SVR
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from sklearn.utils.validation import check_is_fitted
+from xgboost import XGBClassifier, XGBRegressor
+
+
+class LabelEncodedXGBClassifier(ClassifierMixin, BaseEstimator):
+    """XGBoost classifier that accepts and restores arbitrary class labels."""
+
+    def __init__(
+        self,
+        *,
+        n_estimators: int = 100,
+        learning_rate: float = 0.1,
+        max_depth: int = 4,
+        subsample: float = 0.8,
+        colsample_bytree: float = 1.0,
+        random_state: int = 42,
+        n_jobs: int = 1,
+    ) -> None:
+        self.n_estimators = n_estimators
+        self.learning_rate = learning_rate
+        self.max_depth = max_depth
+        self.subsample = subsample
+        self.colsample_bytree = colsample_bytree
+        self.random_state = random_state
+        self.n_jobs = n_jobs
+
+    def fit(self, features: Any, target: Any) -> "LabelEncodedXGBClassifier":
+        self.label_encoder_ = LabelEncoder()
+        encoded_target = self.label_encoder_.fit_transform(np.asarray(target))
+        self.classes_ = self.label_encoder_.classes_
+        class_count = len(self.classes_)
+        parameters: dict[str, Any] = {
+            "n_estimators": self.n_estimators,
+            "learning_rate": self.learning_rate,
+            "max_depth": self.max_depth,
+            "subsample": self.subsample,
+            "colsample_bytree": self.colsample_bytree,
+            "random_state": self.random_state,
+            "n_jobs": self.n_jobs,
+            "tree_method": "hist",
+            "verbosity": 0,
+        }
+        if class_count > 2:
+            parameters.update(
+                objective="multi:softprob",
+                num_class=class_count,
+                eval_metric="mlogloss",
+            )
+        else:
+            parameters.update(
+                objective="binary:logistic",
+                eval_metric="logloss",
+            )
+        self.model_ = XGBClassifier(**parameters)
+        self.model_.fit(features, encoded_target)
+        return self
+
+    def predict(self, features: Any) -> np.ndarray:
+        check_is_fitted(self, ("model_", "label_encoder_"))
+        encoded = np.asarray(self.model_.predict(features), dtype=int)
+        return self.label_encoder_.inverse_transform(encoded)
 
 
 @dataclass(frozen=True)
@@ -129,6 +203,97 @@ REGRESSION_MODELS: dict[str, RegressionModelDefinition] = {
             display_name="Ridge Regression",
             description="L2-regularized linear regression.",
             factory=lambda: Ridge(alpha=1.0),
+        ),
+        RegressionModelDefinition(
+            name="decision_tree",
+            display_name="Decision Tree",
+            description="Nonlinear regression using a reproducible decision tree.",
+            factory=lambda: DecisionTreeRegressor(random_state=42),
+        ),
+        RegressionModelDefinition(
+            name="extra_trees",
+            display_name="Extra-Trees",
+            description="Regression using 200 extremely randomized decision trees.",
+            factory=lambda: ExtraTreesRegressor(
+                n_estimators=200,
+                random_state=42,
+                n_jobs=1,
+            ),
+        ),
+        RegressionModelDefinition(
+            name="gradient_boosting",
+            display_name="Gradient Boosting",
+            description="Sequential gradient-boosted decision-tree regression.",
+            factory=lambda: GradientBoostingRegressor(random_state=42),
+        ),
+        RegressionModelDefinition(
+            name="k_nearest_neighbors",
+            display_name="K-Nearest Neighbors",
+            description="Standardized regression using the five nearest samples.",
+            factory=lambda: make_pipeline(
+                StandardScaler(),
+                KNeighborsRegressor(n_neighbors=5),
+            ),
+        ),
+        RegressionModelDefinition(
+            name="multi_layer_perceptron",
+            display_name="Multi-layer Perceptron",
+            description="Standardized neural-network regression with one hidden layer.",
+            factory=lambda: make_pipeline(
+                StandardScaler(),
+                MLPRegressor(
+                    hidden_layer_sizes=(100,),
+                    max_iter=2_000,
+                    random_state=42,
+                ),
+            ),
+        ),
+        RegressionModelDefinition(
+            name="random_forest",
+            display_name="Random Forest",
+            description="Ensemble regression using 200 randomized decision trees.",
+            factory=lambda: RandomForestRegressor(
+                n_estimators=200,
+                random_state=42,
+                n_jobs=1,
+            ),
+        ),
+        RegressionModelDefinition(
+            name="stochastic_gradient_descent",
+            display_name="Stochastic Gradient Descent",
+            description="Standardized linear regression optimized by SGD.",
+            factory=lambda: make_pipeline(
+                StandardScaler(),
+                SGDRegressor(
+                    max_iter=2_000,
+                    tol=1e-3,
+                    random_state=42,
+                ),
+            ),
+        ),
+        RegressionModelDefinition(
+            name="support_vector_machine",
+            display_name="Support Vector Machine",
+            description="Standardized nonlinear regression with an RBF kernel.",
+            factory=lambda: make_pipeline(StandardScaler(), SVR(kernel="rbf")),
+        ),
+        RegressionModelDefinition(
+            name="xgboost",
+            display_name="XGBoost",
+            description="Gradient-boosted tree regression using the XGBoost engine.",
+            factory=lambda: XGBRegressor(
+                n_estimators=100,
+                learning_rate=0.1,
+                max_depth=4,
+                subsample=0.8,
+                colsample_bytree=1.0,
+                objective="reg:squarederror",
+                eval_metric="rmse",
+                random_state=42,
+                n_jobs=1,
+                tree_method="hist",
+                verbosity=0,
+            ),
         ),
     )
 }
@@ -228,6 +393,14 @@ CLASSIFICATION_MODELS: dict[str, ClassificationModelDefinition] = {
                 n_estimators=100,
                 random_state=42,
             ),
+        ),
+        ClassificationModelDefinition(
+            name="xgboost",
+            display_name="XGBoost",
+            description=(
+                "Gradient-boosted tree classification with automatic label encoding."
+            ),
+            factory=LabelEncodedXGBClassifier,
         ),
     )
 }
@@ -443,8 +616,8 @@ def get_anomaly_detection_model(name: str) -> AnomalyDetectionModelDefinition:
 def extract_linear_parameters(
     fitted_model: RegressorMixin | Pipeline,
     feature_names: list[str],
-) -> tuple[float, list[str], list[float]]:
-    """Return the fitted intercept and coefficient names for supported models."""
+) -> tuple[float, list[str], list[float]] | None:
+    """Return fitted linear parameters, or ``None`` for nonlinear estimators."""
     estimator = fitted_model
     coefficient_names = feature_names
     if isinstance(fitted_model, Pipeline):
@@ -457,8 +630,10 @@ def extract_linear_parameters(
             for name in polynomial.get_feature_names_out(feature_names)
         ]
 
+    if not hasattr(estimator, "intercept_") or not hasattr(estimator, "coef_"):
+        return None
     intercept = float(estimator.intercept_)
-    coefficients = [float(value) for value in estimator.coef_]
+    coefficients = [float(value) for value in np.ravel(estimator.coef_)]
     return intercept, coefficient_names, coefficients
 
 
