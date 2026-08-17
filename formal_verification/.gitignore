@@ -1,0 +1,11 @@
+# Lake build outputs are reproducible from source; keep the tree clean.
+.lake/
+__pycache__/
+*.pyc
+
+# Obsolete exploratory outputs from the pre-schema-v2 prototype are kept
+# locally for research only and are not part of the reproducible bridge.
+results/python_check.*.txt
+results/python_report.json
+results/runtime_observations.json
+results/runtime_trace.json

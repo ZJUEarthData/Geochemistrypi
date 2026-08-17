@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import json
 import re
 from typing import Dict, List
 
@@ -16,6 +17,7 @@ from sklearn.preprocessing import LabelEncoder
 
 from ....constants import CALCULATION_METHOD_OPTION, SECTION
 from ....data.data_readiness import limit_num_input, num2option, num_input
+from ....utils.base import save_text
 
 
 def score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> tuple[str, Dict]:
@@ -479,7 +481,12 @@ def reset_label(y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, me
 
     y_test_reset : pd.DataFrame
         The label data on test set after reseting label.
+
+    codec : list
+        The label-codec mappings in {"label", "code"} form, so the caller can
+        persist the mapping with the model and decode predictions later.
     """
+    codec = []
     y_colunm_name = list(y)[0]
     label_range = int(y.nunique().values)
     print("----Originla label----\n", y.drop_duplicates().reset_index(drop=True))
@@ -492,6 +499,8 @@ def reset_label(y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, me
         y_train_reset = pd.DataFrame({y_colunm_name: y_train_reset})
         y_test_reset = label_encoder.transform(y_test.squeeze())
         y_test_reset = pd.DataFrame({y_colunm_name: y_test_reset})
+        codec_pairs = sorted({(str(source), int(code)) for source, code in zip(y.squeeze(), y_reset.squeeze())}, key=lambda item: item[1])
+        codec = [{"label": label, "code": code} for label, code in codec_pairs]
     elif method[method_idx] == "Custom Numeric Labels":
         print("When doing customization, the new label should start from 0.")
         print("Case 1: For binary classification, the range of the new label must be from 0 to 1.")
@@ -511,6 +520,7 @@ def reset_label(y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, me
         y_train_reset = pd.DataFrame({y_colunm_name: y_train_reset})
         y_test_reset = y_test.squeeze().map(customize_label_mapping)
         y_test_reset = pd.DataFrame({y_colunm_name: y_test_reset})
+        codec = sorted([{"label": str(label), "code": int(value)} for label, value in customize_label_mapping.items()], key=lambda item: item["code"])
     elif method[method_idx] == "Custom Non-numeric Labels":
         print("When doing customization, the new label should start from 0.")
         print("Case 1: For binary classification, the range of the new label must be from 0 to 1.")
@@ -530,5 +540,30 @@ def reset_label(y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, me
         y_train_reset = pd.DataFrame({y_colunm_name: y_train_reset})
         y_test_reset = y_test.squeeze().map(customize_label_mapping)
         y_test_reset = pd.DataFrame({y_colunm_name: y_test_reset})
+        codec = sorted([{"label": str(label), "code": int(value)} for label, value in customize_label_mapping.items()], key=lambda item: item["code"])
 
-    return y_reset, y_train_reset, y_test_reset
+    return y_reset, y_train_reset, y_test_reset, codec
+
+
+def persist_label_codec(codec: List[Dict], local_path: str, model_name: str) -> str:
+    """Persist the label codec next to the trained model.
+
+    Parameters
+    ----------
+    codec : List[Dict]
+        The label-codec mappings produced by ``reset_label``.
+
+    local_path : str
+        The directory in which the codec file is stored.
+
+    model_name : str
+        The trained model the codec belongs to.
+
+    Returns
+    -------
+    str
+        The serialized codec payload.
+    """
+    payload = json.dumps(codec, indent=4)
+    save_text(payload, f"Label Codec - {model_name}", local_path)
+    return payload

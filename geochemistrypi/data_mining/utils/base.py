@@ -220,7 +220,11 @@ def save_data(df: pd.DataFrame, name_column: str, df_name: str, local_data_path:
         Whether to write the index.
     """
     if name_column is not None and len(df) == len(name_column):
-        if not df.index.empty and len(name_column.index) == len(df.index) and set(df.index) == set(name_column.index):
+        if not df.index.empty and len(name_column.index) == len(df.index) and set(df.index) != set(name_column.index):
+            # Refuse to align by position when the identity sets differ: a
+            # positional fallback silently swaps rows and corrupts the output.
+            raise ValueError("Cannot save data: the identifier column and the data rows carry different identities")
+        if not df.index.empty and len(name_column.index) == len(df.index):
             name_column = name_column.reindex(df.index)
         df.reset_index(drop=True, inplace=True)
         name_column.reset_index(drop=True, inplace=True)

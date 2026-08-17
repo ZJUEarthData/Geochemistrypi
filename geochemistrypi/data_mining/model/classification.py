@@ -186,8 +186,8 @@ class ClassificationWorkflowBase(WorkflowBase):
         precisions = pd.DataFrame(precisions, columns=["Precisions"])
         recalls = pd.DataFrame(recalls, columns=["Recalls"])
         thresholds = pd.DataFrame(thresholds, columns=["Thresholds"])
-        save_data(precisions, name_column, f"{graph_name} - Precisions", local_path, mlflow_path)
-        save_data(recalls, name_column, f"{graph_name} - Recalls", local_path, mlflow_path)
+        save_data(precisions, None, f"{graph_name} - Precisions", local_path, mlflow_path)
+        save_data(recalls, None, f"{graph_name} - Recalls", local_path, mlflow_path)
 
     @staticmethod
     def _plot_precision_recall_threshold(
@@ -200,10 +200,12 @@ class ClassificationWorkflowBase(WorkflowBase):
         precisions = pd.DataFrame(precisions, columns=["Precisions"])
         recalls = pd.DataFrame(recalls, columns=["Recalls"])
         thresholds = pd.DataFrame(thresholds, columns=["Thresholds"])
+        # Probabilities follow the test row order; curve points do not.
+        y_probs.index = name_column.index
         save_data(y_probs, name_column, f"{graph_name} - Probabilities", local_path, mlflow_path)
-        save_data(precisions, name_column, f"{graph_name} - Precisions", local_path, mlflow_path)
-        save_data(recalls, name_column, f"{graph_name} - Recalls", local_path, mlflow_path)
-        save_data(thresholds, name_column, f"{graph_name} - Thresholds", local_path, mlflow_path)
+        save_data(precisions, None, f"{graph_name} - Precisions", local_path, mlflow_path)
+        save_data(recalls, None, f"{graph_name} - Recalls", local_path, mlflow_path)
+        save_data(thresholds, None, f"{graph_name} - Thresholds", local_path, mlflow_path)
 
     @staticmethod
     def _plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, name_column: str, graph_name: str, trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
@@ -214,10 +216,12 @@ class ClassificationWorkflowBase(WorkflowBase):
         fpr = pd.DataFrame(fpr, columns=["False Positive Rate"])
         tpr = pd.DataFrame(tpr, columns=["True Positive Rate"])
         thresholds = pd.DataFrame(thresholds, columns=["Thresholds"])
+        # Probabilities follow the test row order; curve points do not.
+        y_probs.index = name_column.index
         save_data(y_probs, name_column, f"{graph_name} - Probabilities", local_path, mlflow_path)
-        save_data(fpr, name_column, f"{graph_name} - False Positive Rate", local_path, mlflow_path)
-        save_data(tpr, name_column, f"{graph_name} - True Positive Rate", local_path, mlflow_path)
-        save_data(thresholds, name_column, f"{graph_name} - Thresholds", local_path, mlflow_path)
+        save_data(fpr, None, f"{graph_name} - False Positive Rate", local_path, mlflow_path)
+        save_data(tpr, None, f"{graph_name} - True Positive Rate", local_path, mlflow_path)
+        save_data(thresholds, None, f"{graph_name} - Thresholds", local_path, mlflow_path)
 
     @staticmethod
     def _plot_2d_decision_boundary(
@@ -246,8 +250,10 @@ class ClassificationWorkflowBase(WorkflowBase):
             print(train_set_resampled)
             print("Basic Statistical Information: ")
             basic_statistic(train_set_resampled)
-            save_data(X_train, name_column, "X Train After Sample Balance", local_path, mlflow_path)
-            save_data(y_train, name_column, "Y Train After Sample Balance", local_path, mlflow_path)
+            # Resampled rows include synthetic duplicates without an original
+            # identity, so no identifier column is attached here.
+            save_data(X_train, None, "X Train After Sample Balance", local_path, mlflow_path)
+            save_data(y_train, None, "Y Train After Sample Balance", local_path, mlflow_path)
         else:
             sample_balance_config = None
         clear_output()
@@ -256,8 +262,9 @@ class ClassificationWorkflowBase(WorkflowBase):
     @staticmethod
     def customize_label(
         y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, name_column1: str, name_column2: str, name_column3: str, local_path: str, mlflow_path: str
-    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, list]:
         """Using this function to customize the label to which samples of each category belong."""
+        label_codec = None
         print("[bold green]-*-*- Customize Label on Label Set -*-*-[/bold green]")
         num2option(OPTION)
         is_customize_label = limit_num_input(OPTION, SECTION[1], num_input)
@@ -266,7 +273,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             print("Which strategy do you want to apply?")
             num2option(CUSTOMIZE_LABEL_STRATEGY)
             customize_label_num = limit_num_input(CUSTOMIZE_LABEL_STRATEGY, SECTION[1], num_input)
-            y, y_train, y_test = reset_label(y, y_train, y_test, CUSTOMIZE_LABEL_STRATEGY, customize_label_num - 1)
+            y, y_train, y_test, label_codec = reset_label(y, y_train, y_test, CUSTOMIZE_LABEL_STRATEGY, customize_label_num - 1)
             y_show = pd.concat([y_show, y], axis=1)
             y_show = y_show.drop_duplicates().reset_index(drop=True)
             y_show.columns = ["original_label", "new_label"]
@@ -277,7 +284,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             save_data(y_train, name_column2, "Y Train After Customizing label", local_path, mlflow_path)
             save_data(y_test, name_column3, "Y Test After Customizing label", local_path, mlflow_path)
         clear_output()
-        return y, y_train, y_test
+        return y, y_train, y_test, label_codec
 
     @dispatch()
     def common_components(self) -> None:

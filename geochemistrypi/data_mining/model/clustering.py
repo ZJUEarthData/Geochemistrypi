@@ -54,7 +54,7 @@ class ClusteringWorkflowBase(WorkflowBase):
         else:
             column_name = []
             for i in range(cluster_centers.shape[1]):
-                column_name.append(f"Dimension {i+1}")
+                column_name.append(f"Dimension {i + 1}")
             print(cluster_centers)
 
             cluster_centers = pd.DataFrame(cluster_centers, columns=column_name)
@@ -66,6 +66,9 @@ class ClusteringWorkflowBase(WorkflowBase):
         """Get the cluster labels."""
         print(f"-----* {func_name} *-----")
         cluster_label = pd.DataFrame(trained_model.labels_, columns=[func_name])
+        # Carry the source row identities so the labels are bound to the
+        # samples by explicit identity instead of by position.
+        cluster_label.index = name_column.index
         print(cluster_label)
         save_data(cluster_label, name_column, f"{func_name} - {algorithm_name}", local_path, mlflow_path)
         return cluster_label
