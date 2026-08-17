@@ -1,0 +1,60 @@
+{
+  "bridgePassed": true,
+  "productionConforms": true,
+  "counterexampleSuitePassed": true,
+  "counterexampleReportsExactlyEqual": true,
+  "productionReportsExactlyEqual": true,
+  "checkerExitCodesMatch": true,
+  "publicCheckCount": 20,
+  "productionPassedCheckCount": 20,
+  "productionFailedCheckCount": 0,
+  "productionFailedCheckIds": [],
+  "counterexampleCaseCount": 21,
+  "counterexampleCount": 20,
+  "coveredCheckCount": 20,
+  "counterexampleCoverageComplete": true,
+  "allCounterexamplesIsolated": true,
+  "commands": {
+    "leanVersion": {
+      "exitCode": 0,
+      "stdout": "Lean (version 4.32.2, arm64-apple-darwin24.6.0, commit f3b06c705e6c85f5314019d5d3baab0fec5b580c, Release)"
+    },
+    "counterexampleProbe": {
+      "exitCode": 0
+    },
+    "generateCounterexampleRun": {
+      "exitCode": 0
+    },
+    "leanBuildCounterexamples": {
+      "exitCode": 0
+    },
+    "counterexamplePythonCheck": {
+      "exitCode": 1
+    },
+    "counterexampleLeanCheck": {
+      "exitCode": 1
+    },
+    "runtimeProbe": {
+      "exitCode": 0
+    },
+    "generateCurrentRun": {
+      "exitCode": 0
+    },
+    "leanBuildFinal": {
+      "exitCode": 0
+    },
+    "productionPythonCheck": {
+      "exitCode": 0
+    },
+    "productionLeanCheck": {
+      "exitCode": 0
+    },
+    "leanchecker": {
+      "exitCode": 0
+    },
+    "pytest": {
+      "exitCode": 0,
+      "passed": 15
+    }
+  }
+}

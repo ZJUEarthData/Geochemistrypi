@@ -1,0 +1,149 @@
+{
+  "designRule": "每个反例仅改变正向基线中的一个语义事实",
+  "baselineAccepted": true,
+  "counterexampleCount": 20,
+  "coveredCheckCount": 20,
+  "allCounterexamplesIsolated": true,
+  "cases": [
+    {
+      "caseId": "counterexample_d01",
+      "targetCheckId": "D01.input_rows_identified",
+      "failedCheckIds": [
+        "D01.input_rows_identified"
+      ]
+    },
+    {
+      "caseId": "counterexample_d02",
+      "targetCheckId": "D02.split_is_disjoint_partition",
+      "failedCheckIds": [
+        "D02.split_is_disjoint_partition"
+      ]
+    },
+    {
+      "caseId": "counterexample_d03",
+      "targetCheckId": "D03.supervised_views_row_aligned",
+      "failedCheckIds": [
+        "D03.supervised_views_row_aligned"
+      ]
+    },
+    {
+      "caseId": "counterexample_d04",
+      "targetCheckId": "D04.column_roles_guarded_and_disjoint",
+      "failedCheckIds": [
+        "D04.column_roles_guarded_and_disjoint"
+      ]
+    },
+    {
+      "caseId": "counterexample_d05",
+      "targetCheckId": "D05.derived_feature_lineage_safe",
+      "failedCheckIds": [
+        "D05.derived_feature_lineage_safe"
+      ]
+    },
+    {
+      "caseId": "counterexample_d06",
+      "targetCheckId": "D06.filtered_rows_keep_lineage",
+      "failedCheckIds": [
+        "D06.filtered_rows_keep_lineage"
+      ]
+    },
+    {
+      "caseId": "counterexample_p01",
+      "targetCheckId": "P01.effective_schema_matches_training",
+      "failedCheckIds": [
+        "P01.effective_schema_matches_training"
+      ]
+    },
+    {
+      "caseId": "counterexample_p02",
+      "targetCheckId": "P02.stateful_fit_uses_training_rows_only",
+      "failedCheckIds": [
+        "P02.stateful_fit_uses_training_rows_only"
+      ]
+    },
+    {
+      "caseId": "counterexample_p03",
+      "targetCheckId": "P03.fitted_state_reused_for_model_and_inference",
+      "failedCheckIds": [
+        "P03.fitted_state_reused_for_model_and_inference"
+      ]
+    },
+    {
+      "caseId": "counterexample_p04",
+      "targetCheckId": "P04.model_input_schema_matches_pipeline_output",
+      "failedCheckIds": [
+        "P04.model_input_schema_matches_pipeline_output"
+      ]
+    },
+    {
+      "caseId": "counterexample_p05",
+      "targetCheckId": "P05.declared_and_materialized_stage_order_equal",
+      "failedCheckIds": [
+        "P05.declared_and_materialized_stage_order_equal"
+      ]
+    },
+    {
+      "caseId": "counterexample_p06",
+      "targetCheckId": "P06.observed_stage_outputs_finite",
+      "failedCheckIds": [
+        "P06.observed_stage_outputs_finite"
+      ]
+    },
+    {
+      "caseId": "counterexample_l01",
+      "targetCheckId": "L01.codec_total_and_injective",
+      "failedCheckIds": [
+        "L01.codec_total_and_injective"
+      ]
+    },
+    {
+      "caseId": "counterexample_l02",
+      "targetCheckId": "L02.one_codec_fitted_once_for_all_splits",
+      "failedCheckIds": [
+        "L02.one_codec_fitted_once_for_all_splits"
+      ]
+    },
+    {
+      "caseId": "counterexample_l03",
+      "targetCheckId": "L03.codec_persisted_and_predictions_decodable",
+      "failedCheckIds": [
+        "L03.codec_persisted_and_predictions_decodable"
+      ]
+    },
+    {
+      "caseId": "counterexample_a01",
+      "targetCheckId": "A01.predictions_bound_to_source_rows",
+      "failedCheckIds": [
+        "A01.predictions_bound_to_source_rows"
+      ]
+    },
+    {
+      "caseId": "counterexample_a02",
+      "targetCheckId": "A02.artifact_pairs_aligned_and_mismatch_rejected",
+      "failedCheckIds": [
+        "A02.artifact_pairs_aligned_and_mismatch_rejected"
+      ]
+    },
+    {
+      "caseId": "counterexample_a03",
+      "targetCheckId": "A03.model_artifact_and_state_share_run",
+      "failedCheckIds": [
+        "A03.model_artifact_and_state_share_run"
+      ]
+    },
+    {
+      "caseId": "counterexample_e01",
+      "targetCheckId": "E01.selected_models_eligible_and_trained",
+      "failedCheckIds": [
+        "E01.selected_models_eligible_and_trained"
+      ]
+    },
+    {
+      "caseId": "counterexample_e02",
+      "targetCheckId": "E02.model_registry_immutable_during_run",
+      "failedCheckIds": [
+        "E02.model_registry_immutable_during_run"
+      ]
+    }
+  ]
+}

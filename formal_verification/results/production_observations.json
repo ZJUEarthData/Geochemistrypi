@@ -1,0 +1,110 @@
+{
+  "auditData": {
+    "trainingFile": "geochemistrypi/data_mining/data/dataset/Data_Classification.xlsx",
+    "applicationFile": "geochemistrypi/data_mining/data/dataset/ApplicationData_Classification.xlsx",
+    "trainingRows": 2011,
+    "applicationRows": 1006,
+    "featureColumns": [
+      "SIO2(WT%)",
+      "TIO2(WT%)",
+      "AL2O3(WT%)",
+      "FEOT(WT%)",
+      "CAO(WT%)",
+      "MGO(WT%)",
+      "MNO(WT%)",
+      "NA2O(WT%)",
+      "SIO2_MGO_SUM"
+    ],
+    "targetColumn": "Label",
+    "identifierColumns": [
+      "CITATION",
+      "SAMPLE NAME"
+    ],
+    "rowIdentityDigest": "2c65494e7e60a25119f0b9374dc78c4e23360dd0f1a70376818da6906a96def9"
+  },
+  "sourceFacts": {
+    "roleValidationPairs": [
+      "feature_identifier",
+      "feature_target",
+      "target_identifier"
+    ],
+    "featureConstructorReadableColumns": [
+      "SIO2(WT%)",
+      "TIO2(WT%)",
+      "AL2O3(WT%)",
+      "FEOT(WT%)",
+      "CAO(WT%)",
+      "MGO(WT%)",
+      "MNO(WT%)",
+      "NA2O(WT%)",
+      "SIO2_MGO_SUM"
+    ],
+    "artifactMismatchPolicy": "reject",
+    "registryMutationOperations": []
+  },
+  "runtimeFacts": {
+    "trainRows": 1608,
+    "testRows": 403,
+    "pipelineFitRows": 1608,
+    "pipelineFitCount": 1,
+    "trainingStateDigest": "63cf6a8664e55af09424e7f1dfaa93ffb4dab98c67a9f537804528523095025e",
+    "inferenceStateDigest": "63cf6a8664e55af09424e7f1dfaa93ffb4dab98c67a9f537804528523095025e",
+    "modelTrainInputDigest": "216486fbe0ef601ae6e239a6d0b32a477e7bc80914e83b2767104a0bc5160978",
+    "pipelineTrainOutputDigest": "216486fbe0ef601ae6e239a6d0b32a477e7bc80914e83b2767104a0bc5160978",
+    "codecFitCount": 1,
+    "persistedCodecEntries": 2,
+    "predictionCount": 403,
+    "artifactRowCount": 403,
+    "pipelineOutputValueCount": 14472,
+    "pipelineOutputNonFiniteCount": 0
+  },
+  "checkResults": {
+    "D01.input_rows_identified": true,
+    "D02.split_is_disjoint_partition": true,
+    "D03.supervised_views_row_aligned": true,
+    "D04.column_roles_guarded_and_disjoint": true,
+    "D05.derived_feature_lineage_safe": true,
+    "D06.filtered_rows_keep_lineage": true,
+    "P01.effective_schema_matches_training": true,
+    "P02.stateful_fit_uses_training_rows_only": true,
+    "P03.fitted_state_reused_for_model_and_inference": true,
+    "P04.model_input_schema_matches_pipeline_output": true,
+    "P05.declared_and_materialized_stage_order_equal": true,
+    "P06.observed_stage_outputs_finite": true,
+    "L01.codec_total_and_injective": true,
+    "L02.one_codec_fitted_once_for_all_splits": true,
+    "L03.codec_persisted_and_predictions_decodable": true,
+    "A01.predictions_bound_to_source_rows": true,
+    "A02.artifact_pairs_aligned_and_mismatch_rejected": true,
+    "A03.model_artifact_and_state_share_run": true,
+    "E01.selected_models_eligible_and_trained": true,
+    "E02.model_registry_immutable_during_run": true
+  },
+  "failedCheckIds": [],
+  "sourceLocations": {
+    "D04.column_roles_guarded_and_disjoint": [
+      "geochemistrypi/data_mining/cli_pipeline.py 569"
+    ],
+    "D05.derived_feature_lineage_safe": [
+      "geochemistrypi/data_mining/cli_pipeline.py 579"
+    ],
+    "P02.stateful_fit_uses_training_rows_only": [
+      "geochemistrypi/data_mining/cli_pipeline.py 615"
+    ],
+    "P03.fitted_state_reused_for_model_and_inference": [
+      "geochemistrypi/data_mining/cli_pipeline.py 615",
+      "geochemistrypi/data_mining/cli_pipeline.py 792",
+      "geochemistrypi/data_mining/data/inference.py 67"
+    ],
+    "L03.codec_persisted_and_predictions_decodable": [
+      "geochemistrypi/data_mining/model/func/algo_classification/_common.py 502",
+      "geochemistrypi/data_mining/model/func/algo_classification/_common.py 548"
+    ],
+    "A02.artifact_pairs_aligned_and_mismatch_rejected": [
+      "geochemistrypi/data_mining/utils/base.py 222"
+    ],
+    "E02.model_registry_immutable_during_run": [
+      "geochemistrypi/data_mining/cli_pipeline.py 712"
+    ]
+  }
+}
