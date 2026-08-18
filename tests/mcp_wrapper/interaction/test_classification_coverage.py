@@ -106,8 +106,8 @@ def test_label_preprocessing_feature_engineering_and_application_branches_compil
     assert responses["metric_average"] == "2"
     assert responses["mean_normalization"] == "3"
     assert responses["feature_selection_method"] == "2"
-    assert responses["engineered_feature_1_formula"] == "b / c"
-    assert responses["feature_columns"] == "[2,4]"
+    assert responses["engineered_feature_1_formula"] == "a / b"
+    assert responses["feature_columns"] == "[2,3]"
 
     application = tmp_path / "application.csv"
     application.write_text("SampleID,SIO2,TIO2\nA-1,55,1.1\n", encoding="utf-8")
@@ -285,13 +285,13 @@ def test_application_feature_engineering_uses_the_cli_name_based_replay_branch(t
 
     plan = ClassificationPlanCompiler().compile(request, cli_executable=Path(sys.executable))
     responses = {step.id: step.response for step in plan.steps}
-    assert responses["engineered_feature_1_formula"] == "b / c"
+    assert responses["engineered_feature_1_formula"] == "a / b"
     assert responses["engineered_feature_1_formula_ack"] == ""
     assert responses["engineered_feature_1_constructed"] == ""
     assert responses["engineered_feature_1_statistics"] == ""
     assert responses["engineered_feature_1_continue"] == "1"
     assert responses["engineered_feature_1_continue_to_next"] == ""
-    assert responses["engineered_feature_2_formula"] == "b + c"
+    assert responses["engineered_feature_2_formula"] == "a + b"
     assert responses["engineered_feature_2_continue"] == "2"
     preparation = next(step for step in plan.steps if step.id == "continue_after_application_preparation")
     assert preparation.output_anchors[0] == "Application Data Feature-Engineering Selected.xlsx"

@@ -797,10 +797,10 @@ def _compile_engineered_features(
 
         def replace(match: re.Match[str]) -> str:
             column = match.group(1).strip()
-            if column not in available:
-                raise PlanCompilationError(f"Engineered feature {feature.name!r} references unavailable column {column!r}.")
             if column == getattr(request, "target_column", None):
                 raise PlanCompilationError(f"Engineered feature {feature.name!r} must not use the target column; that would leak labels into model inputs.")
+            if column not in available:
+                raise PlanCompilationError(f"Engineered feature {feature.name!r} references unavailable column {column!r}.")
             referenced.add(column)
             return chr(ord("a") + available.index(column))
 
@@ -1458,10 +1458,11 @@ class ClassificationPlanCompiler:
             _validate_application_dataset(application_path, application_columns, request)
 
         selected_names = tuple(column for column in columns if column == request.target_column or column in request.feature_columns)
-        engineered = _compile_engineered_features(request, selected_names)
+        selected_feature_names = tuple(column for column in selected_names if column in request.feature_columns)
+        engineered = _compile_engineered_features(request, selected_feature_names)
         profile = _scan_training_dataset(data_path, columns, request)
         final_feature_names = (
-            *request.feature_columns,
+            *selected_feature_names,
             *(name for name, _ in engineered),
         )
         final_feature_count = len(final_feature_names)
@@ -1473,9 +1474,9 @@ class ClassificationPlanCompiler:
             raise PlanCompilationError(f"model.maximum_features={maximum_features} exceeds the {selected_feature_count} features available after preprocessing.")
 
         original_positions = {column: index + 1 for index, column in enumerate(columns)}
-        selected_positions = {column: index + 1 for index, column in enumerate((*selected_names, *(name for name, _ in engineered)))}
+        selected_positions = {column: index + 1 for index, column in enumerate(selected_names)}
         selected_expression = _selection_expression([original_positions[column] for column in selected_names])
-        feature_expression = _selection_expression([selected_positions[column] for column in final_feature_names])
+        feature_expression = _selection_expression([selected_positions[column] for column in selected_feature_names])
         target_expression = _selection_expression([selected_positions[request.target_column]])
         executable = Path(cli_executable).expanduser().resolve() if cli_executable else resolve_public_cli_executable()
         if not executable.is_file():
@@ -1518,7 +1519,6 @@ class ClassificationPlanCompiler:
             ),
         ]
         steps.extend(self._missing_steps(request, profile, selected_positions, enter_prompt))
-        steps.extend(self._feature_engineering_steps(engineered, enter_prompt))
         steps.extend(
             [
                 InteractionStep(
@@ -1554,6 +1554,7 @@ class ClassificationPlanCompiler:
             ]
         )
         steps.extend(self._label_steps(request, len(profile.class_counts), enter_prompt))
+        steps.extend(self._feature_engineering_steps(engineered, enter_prompt))
         steps.extend(self._preprocessing_steps(request, enter_prompt))
         model_number = 1 if profile.unresolved_missing_columns else MODEL_NUMBERS[request.model.type]
         steps.extend(
@@ -1923,7 +1924,19 @@ class ClassificationPlanCompiler:
 
     @staticmethod
     def _preprocessing_steps(request: ClassificationRequest, enter_prompt: str) -> list[InteractionStep]:
-        steps: list[InteractionStep] = []
+        steps: list[InteractionStep] = [
+            InteractionStep(
+                "default_test_ratio",
+                ("Data Split - Train Set and Test Set", "(Data) ➜ @Test Ratio:"),
+                _float_response(request.test_ratio, 0.2),
+            ),
+            InteractionStep(
+                "continue_after_split",
+                ("Y Test.xlsx", enter_prompt),
+                "",
+                timeout_seconds=180,
+            ),
+        ]
         if request.scaling == "none":
             steps.append(
                 InteractionStep(
@@ -1950,7 +1963,7 @@ class ClassificationPlanCompiler:
                     ),
                 ]
             )
-        scaling_anchor = "X With Scaling.xlsx" if request.scaling != "none" else "Feature Selection on X set"
+        scaling_anchor = "X Train With Scaling.xlsx" if request.scaling != "none" else "Feature Selection on X set"
         steps.append(
             InteractionStep(
                 "continue_after_scaling",
@@ -1990,26 +2003,13 @@ class ClassificationPlanCompiler:
                     ),
                 ]
             )
-        steps.extend(
-            [
-                InteractionStep(
-                    "continue_after_feature_selection",
-                    (enter_prompt,),
-                    "",
-                    timeout_seconds=180,
-                ),
-                InteractionStep(
-                    "default_test_ratio",
-                    ("Data Split - Train Set and Test Set", "(Data) ➜ @Test Ratio:"),
-                    _float_response(request.test_ratio, 0.2),
-                ),
-                InteractionStep(
-                    "continue_after_split",
-                    ("Y Test.xlsx", enter_prompt),
-                    "",
-                    timeout_seconds=180,
-                ),
-            ]
+        steps.append(
+            InteractionStep(
+                "continue_after_feature_selection",
+                (enter_prompt,),
+                "",
+                timeout_seconds=180,
+            )
         )
         return steps
 
@@ -2045,10 +2045,11 @@ class RegressionPlanCompiler:
             _validate_application_dataset(application_path, application_columns, request)
 
         selected_names = tuple(column for column in columns if column == request.target_column or column in request.feature_columns)
-        engineered = _compile_engineered_features(request, selected_names)
+        selected_feature_names = tuple(column for column in selected_names if column in request.feature_columns)
+        engineered = _compile_engineered_features(request, selected_feature_names)
         profile = _scan_regression_training_dataset(data_path, columns, request)
         final_feature_names = (
-            *request.feature_columns,
+            *selected_feature_names,
             *(name for name, _ in engineered),
         )
         final_feature_count = len(final_feature_names)
@@ -2060,9 +2061,9 @@ class RegressionPlanCompiler:
             raise PlanCompilationError(f"model.maximum_features={maximum_features} exceeds the {selected_feature_count} features available after preprocessing.")
 
         original_positions = {column: index + 1 for index, column in enumerate(columns)}
-        selected_positions = {column: index + 1 for index, column in enumerate((*selected_names, *(name for name, _ in engineered)))}
+        selected_positions = {column: index + 1 for index, column in enumerate(selected_names)}
         selected_expression = _selection_expression([original_positions[column] for column in selected_names])
-        feature_expression = _selection_expression([selected_positions[column] for column in final_feature_names])
+        feature_expression = _selection_expression([selected_positions[column] for column in selected_feature_names])
         target_expression = _selection_expression([selected_positions[request.target_column]])
         executable = Path(cli_executable).expanduser().resolve() if cli_executable else resolve_public_cli_executable()
         if not executable.is_file():
@@ -2105,7 +2106,6 @@ class RegressionPlanCompiler:
             ),
         ]
         steps.extend(ClassificationPlanCompiler._missing_steps(request, profile, selected_positions, enter_prompt))
-        steps.extend(ClassificationPlanCompiler._feature_engineering_steps(engineered, enter_prompt))
         steps.extend(
             [
                 InteractionStep(
@@ -2141,6 +2141,7 @@ class RegressionPlanCompiler:
                 InteractionStep("continue_after_target", ("Y.xlsx", enter_prompt), ""),
             ]
         )
+        steps.extend(ClassificationPlanCompiler._feature_engineering_steps(engineered, enter_prompt))
         steps.extend(ClassificationPlanCompiler._preprocessing_steps(request, enter_prompt))
         model_number = 1 if profile.unresolved_missing_columns else REGRESSION_MODEL_NUMBERS[request.model.type]
         steps.extend(
@@ -2355,12 +2356,6 @@ class ClusteringPlanCompiler:
             )
         )
         steps.extend(
-            ClassificationPlanCompiler._feature_engineering_steps(
-                engineered,
-                enter_prompt,
-            )
-        )
-        steps.extend(
             [
                 InteractionStep(
                     "clustering_mode",
@@ -2369,6 +2364,12 @@ class ClusteringPlanCompiler:
                 ),
                 InteractionStep("continue_after_mode", (enter_prompt,), ""),
             ]
+        )
+        steps.extend(
+            ClassificationPlanCompiler._feature_engineering_steps(
+                engineered,
+                enter_prompt,
+            )
         )
         if request.scaling == "none":
             steps.extend(
@@ -2605,12 +2606,6 @@ class DecompositionPlanCompiler:
             )
         )
         steps.extend(
-            ClassificationPlanCompiler._feature_engineering_steps(
-                engineered,
-                enter_prompt,
-            )
-        )
-        steps.extend(
             [
                 InteractionStep(
                     "decomposition_mode",
@@ -2619,6 +2614,12 @@ class DecompositionPlanCompiler:
                 ),
                 InteractionStep("continue_after_mode", (enter_prompt,), ""),
             ]
+        )
+        steps.extend(
+            ClassificationPlanCompiler._feature_engineering_steps(
+                engineered,
+                enter_prompt,
+            )
         )
         if request.scaling == "none":
             steps.extend(
@@ -2861,12 +2862,6 @@ class AnomalyDetectionPlanCompiler:
             )
         )
         steps.extend(
-            ClassificationPlanCompiler._feature_engineering_steps(
-                engineered,
-                enter_prompt,
-            )
-        )
-        steps.extend(
             [
                 InteractionStep(
                     "anomaly_detection_mode",
@@ -2875,6 +2870,12 @@ class AnomalyDetectionPlanCompiler:
                 ),
                 InteractionStep("continue_after_mode", (enter_prompt,), ""),
             ]
+        )
+        steps.extend(
+            ClassificationPlanCompiler._feature_engineering_steps(
+                engineered,
+                enter_prompt,
+            )
         )
         if request.scaling == "none":
             steps.extend(
