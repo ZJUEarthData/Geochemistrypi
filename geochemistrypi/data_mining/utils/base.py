@@ -275,11 +275,17 @@ def save_data(df: pd.DataFrame, name_column: str, df_name: str, local_data_path:
             return
 
     if name_column is not None and len(df) == len(name_column):
-        if not df.index.empty and len(name_column.index) == len(df.index) and set(df.index) == set(name_column.index):
+        if not df.index.empty and len(name_column.index) == len(df.index) and set(df.index) != set(name_column.index):
+            # Refuse to align by position when the identity sets differ: a
+            # positional fallback silently swaps rows and corrupts the output.
+            raise ValueError("Cannot save data: the identifier column and the data rows carry different identities")
+        if not df.index.empty and len(name_column.index) == len(df.index):
             name_column = name_column.reindex(df.index)
-        df.reset_index(drop=True, inplace=True)
-        name_column.reset_index(drop=True, inplace=True)
-        df = pd.concat([name_column, df], axis=1)
+        # Saving must not erase the caller's row identities. Work on detached
+        # frames before normalizing the output-only index.
+        data_to_save = df.reset_index(drop=True)
+        names_to_save = name_column.reset_index(drop=True)
+        df = pd.concat([names_to_save, data_to_save], axis=1)
     try:
         # drop the index in case that the dimensions change
         full_path = os.path.join(local_data_path, "{}.xlsx".format(df_name))

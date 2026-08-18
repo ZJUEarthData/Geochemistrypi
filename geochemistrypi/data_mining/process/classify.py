@@ -20,6 +20,7 @@ from ..model.classification import (
     SVMClassification,
     XGBoostClassification,
 )
+from ..model.func.algo_classification._common import persist_label_codec
 from ..model.func.algo_classification._traceability import save_class_counts, save_decoded_predictions, save_target_transform_configuration
 from ._base import ModelSelectionBase
 
@@ -45,6 +46,21 @@ class ClassificationModelSelection(ModelSelectionBase):
     def _attach_label_config(self) -> None:
         self.clf_workflow.label_config = self.label_config
         self.clf_workflow.metric_average = self.metric_average
+
+    def _persist_label_config_codec(self, fallback_path: str) -> None:
+        """Persist the active label mapping beside the trained model."""
+        if not self.label_config:
+            return
+        mapping = self.label_config.get("custom_label_to_code", {})
+        if not mapping:
+            return
+        codec = sorted(
+            ({"label": str(label), "code": int(code)} for label, code in mapping.items()),
+            key=lambda item: item["code"],
+        )
+        model_path = os.getenv("GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH") or fallback_path
+        os.makedirs(model_path, exist_ok=True)
+        persist_label_codec(codec, model_path, self.model_name)
 
     @dispatch(object, object, object, object, object, object, object, object, object)
     def activate(
@@ -211,14 +227,14 @@ class ClassificationModelSelection(ModelSelectionBase):
         self.clf_workflow.fit(X_train, y_train)
         y_train_predict = self.clf_workflow.predict(X_train)
         y_train_predict = self.clf_workflow.np2pd(y_train_predict, y_train.columns)
+        y_train_predict.index = y_train.index
         y_train_predict = y_train_predict.dropna()
-        y_train_predict = y_train_predict.reset_index(drop=True)
         self.clf_workflow.data_upload(y_train_predict=y_train_predict)
 
         y_test_predict = self.clf_workflow.predict(X_test)
         y_test_predict = self.clf_workflow.np2pd(y_test_predict, y_test.columns)
+        y_test_predict.index = y_test.index
         y_test_predict = y_test_predict.dropna()
-        y_test_predict = y_test_predict.reset_index(drop=True)
         self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test, y_test_predict=y_test_predict)
 
         save_param_path = os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH") or "./output"
@@ -234,6 +250,7 @@ class ClassificationModelSelection(ModelSelectionBase):
         save_decoded_predictions(y_train_predict, name_train, self.label_config, "Y Train Predict Decoded", local_path, mlflow_path)
         save_decoded_predictions(y_test_predict, name_test, self.label_config, "Y Test Predict Decoded", local_path, mlflow_path)
         self.clf_workflow.model_save()
+        self._persist_label_config_codec(local_path)
 
     @dispatch(object, object, object, object, object, object, object, object, object, bool)
     def activate(
@@ -257,7 +274,6 @@ class ClassificationModelSelection(ModelSelectionBase):
 
         self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test, name_train=name_train, name_test=name_test, name_all=name_all)
 
-        # Customize label
         if not self.labels_already_customized:
             label_mapping = self.transformer_config.get("label_mapping")
             interactive = self.transformer_config.get("interactive", False)
@@ -306,14 +322,14 @@ class ClassificationModelSelection(ModelSelectionBase):
 
         y_train_predict = self.clf_workflow.predict(X_train, is_automl)
         y_train_predict = self.clf_workflow.np2pd(y_train_predict, y_train.columns)
+        y_train_predict.index = y_train.index
         y_train_predict = y_train_predict.dropna()
-        y_train_predict = y_train_predict.reset_index(drop=True)
         self.clf_workflow.data_upload(y_train_predict=y_train_predict)
 
         y_test_predict = self.clf_workflow.predict(X_test, is_automl)
         y_test_predict = self.clf_workflow.np2pd(y_test_predict, y_test.columns)
+        y_test_predict.index = y_test.index
         y_test_predict = y_test_predict.dropna()
-        y_test_predict = y_test_predict.reset_index(drop=True)
         self.clf_workflow.data_upload(X=X, y=y, X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test, y_test_predict=y_test_predict)
 
         save_param_path = os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH") or "./output"
@@ -332,3 +348,4 @@ class ClassificationModelSelection(ModelSelectionBase):
         save_decoded_predictions(y_train_predict, name_train, self.label_config, "Y Train Predict Decoded", local_path, mlflow_path)
         save_decoded_predictions(y_test_predict, name_test, self.label_config, "Y Test Predict Decoded", local_path, mlflow_path)
         self.clf_workflow.model_save(is_automl)
+        self._persist_label_config_codec(local_path)

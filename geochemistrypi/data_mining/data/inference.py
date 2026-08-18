@@ -36,7 +36,7 @@ class PipelineConstrutor:
             "SelectKBest": SelectKBest,
         }
 
-    def chain(self, transformer_config: Dict) -> object:
+    def chain(self, transformer_config: Dict, fitted_steps: Optional[Dict] = None) -> object:
         """Chain transformers together into a sklearn pipeline.
 
         Parameters
@@ -44,14 +44,23 @@ class PipelineConstrutor:
         transformer_config : Dict
             A dictionary of transformers and their parameters.
 
+        fitted_steps : Dict, optional
+            Already-fitted transformer instances keyed by their class name.
+            Reusing them avoids a second stateful fit and keeps training and
+            inference on the same fitted state.
+
         Returns
         -------
         object
             A sklearn pipeline.
         """
         transformers = []
+        fitted_steps = fitted_steps or {}
         for transformer_name, transformer_params in transformer_config.items():
-            transformers.append(self.transformer_dict[transformer_name](**transformer_params))
+            if transformer_name in fitted_steps:
+                transformers.append(fitted_steps[transformer_name])
+            else:
+                transformers.append(self.transformer_dict[transformer_name](**transformer_params))
         return make_pipeline(*transformers)
 
 
@@ -62,6 +71,7 @@ def build_transform_pipeline(
     run: object,
     X_train: pd.DataFrame,
     y_train: Optional[pd.DataFrame],
+    fitted_steps: Optional[Dict] = None,
 ) -> Tuple[Dict, object]:
     """Build the transform pipeline.
 
@@ -84,6 +94,11 @@ def build_transform_pipeline(
 
     y_train : pd.DataFrame, optional
         The target data. Unsupervised workflows pass ``None``.
+
+    fitted_steps : Dict, optional
+        Already-fitted transformer instances reused for inference. When every
+        configured step is already fitted, the pipeline is not refit and the
+        training state is shared by model training and inference.
 
     Returns
     -------
@@ -124,13 +139,16 @@ def build_transform_pipeline(
 
     # If transformer_config is not empty, build and fit the transform pipeline
     if transformer_config:
-        # Create the transform pipeline
-        transform_pipeline = PipelineConstrutor().chain(transformer_config)
-
-        # Fit the transform pipeline with the training data
-        transform_pipeline.fit(X_train, y_train)
-
-        # Save the transform pipeline
+        # Create the transform pipeline.
+        if fitted_steps is None:
+            transform_pipeline = PipelineConstrutor().chain(transformer_config)
+        else:
+            transform_pipeline = PipelineConstrutor().chain(transformer_config, fitted_steps)
+        # Fit the transform pipeline with the training data only when at least
+        # one configured step has not been fitted on the training rows yet.
+        if fitted_steps is None or any(name not in fitted_steps for name in transformer_config):
+            transform_pipeline.fit(X_train, y_train)
+        # Save the transform pipeline.
         GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH")
         save_model(transform_pipeline, "Transform Pipeline", X_train.iloc[[0]], GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH)
     else:
@@ -184,7 +202,7 @@ def model_inference(
             inference_data_transformed = inference_data
 
         # Load the trained model from MLflow
-        loaded_model = mlflow.sklearn.load_model(f"runs:/{mlflow.active_run().info.run_id}/{run.model_name}")
+        loaded_model = mlflow.sklearn.load_model(f"runs:/{mlflow.active_run().info.run_id}/{run.model_name}")  # noqa: E231
         inference_data_predicted_np = loaded_model.predict(inference_data_transformed)
 
         # Support multi-output: generate column names based on the prediction shape
@@ -196,9 +214,12 @@ def model_inference(
             if inference_data_predicted_np.ndim == 1:
                 predicted_columns = ["Predicted Value"]
             else:
-                predicted_columns = [f"Predicted_Value_{i+1}" for i in range(inference_data_predicted_np.shape[1])]
+                predicted_columns = [f"Predicted_Value_{i + 1}" for i in range(inference_data_predicted_np.shape[1])]
 
         # Convert predictions to DataFrame and save
         inference_data_predicted = np2pd(inference_data_predicted_np, predicted_columns)
+        # Keep the source identity so prediction rows are aligned by explicit
+        # identity instead of by position.
+        inference_data_predicted.index = inference_data.index
         GEOPI_OUTPUT_ARTIFACTS_DATA_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH")
         save_data(inference_data_predicted, inference_name_column, "Application Data Predicted", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)

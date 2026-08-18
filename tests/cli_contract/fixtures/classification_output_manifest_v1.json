@@ -25,7 +25,8 @@
     "data/Target Transform Configuration.txt",
     "data/X Test.xlsx",
     "data/X Train.xlsx",
-    "data/X With Scaling.xlsx",
+    "data/X Test With Scaling.xlsx",
+    "data/X Train With Scaling.xlsx",
     "data/X Without Scaling.xlsx",
     "data/Y Encoded After Customizing Label.xlsx",
     "data/Y Human-Readable After Customizing Label.xlsx",
@@ -68,6 +69,7 @@
     "image/statistic/Distribution Histogram.xlsx",
     "model/Logistic Regression.joblib",
     "model/Logistic Regression.pkl",
+    "model/Label Codec - Logistic Regression.txt",
     "model/Transform Pipeline.joblib",
     "model/Transform Pipeline.pkl"
   ],
@@ -81,5 +83,5 @@
     "Hyper Parameters - Logistic Regression.txt"
   ],
   "summary_rule": "flattened basenames of every artifacts, metrics, and parameters file",
-  "expected_total_file_count": 124
+  "expected_total_file_count": 128
 }

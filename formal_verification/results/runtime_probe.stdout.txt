@@ -1,0 +1,39 @@
+Successfully construct a new feature SIO2_MGO_SUM.
+0       64.930000
+1       63.040000
+2       65.180000
+3       63.730000
+4       64.200000
+          ...
+2006    67.685847
+2007    67.377226
+2008    67.162518
+2009    57.110000
+2010    58.150000
+Name: SIO2_MGO_SUM, Length: 2011, dtype: float64
+Successfully construct a new feature SIO2_MGO_SUM.
+0       64.930000
+1       63.040000
+2       65.180000
+3       63.730000
+4       65.810000
+          ...
+1001    68.058069
+1002    67.462388
+1003    67.473334
+1004    67.377226
+1005    57.110000
+Name: SIO2_MGO_SUM, Length: 1006, dtype: float64
+Build the transform pipeline according to the previous operations.
+----Originla label----
+    Label
+0      1
+1      0
+Successfully store 'Label Codec - Logistic Regression' in 'Label Codec -
+Logistic Regression.txt' in
+/var/folders/3c/21bt5l6s61b6pfz8v6bc4t8c0000gn/T/geopi-codec-audit-cmzx6ctg.
+Successfully store 'Application Data Predicted' in 'Application Data
+Predicted.xlsx' in
+/var/folders/3c/21bt5l6s61b6pfz8v6bc4t8c0000gn/T/geopi-production-audit-eirdy6tw
+.
+wrote production audit to <repo>/formal_verification/results/production_trace.json

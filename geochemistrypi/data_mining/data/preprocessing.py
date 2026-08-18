@@ -91,7 +91,7 @@ class MeanNormalScaler(BaseEstimator, TransformerMixin):
         return X * self.scale_ + self.mean_
 
 
-def feature_scaler(X: pd.DataFrame, method: List[str], method_idx: int) -> tuple[dict, np.ndarray]:
+def feature_scaler(X: pd.DataFrame, method: List[str], method_idx: int) -> tuple[dict, np.ndarray, object]:
     """Apply feature scaling methods.
 
     Parameters
@@ -112,6 +112,10 @@ def feature_scaler(X: pd.DataFrame, method: List[str], method_idx: int) -> tuple
 
     X_scaled : np.ndarray
         The dataset after imputing.
+
+    scaler : object
+        The fitted scaler. It is reused unchanged for the test set and for
+        model inference so that training and inference share one fitted state.
     """
     if method[method_idx] == "Min-max Scaling":
         scaler = MinMaxScaler()
@@ -125,10 +129,10 @@ def feature_scaler(X: pd.DataFrame, method: List[str], method_idx: int) -> tuple
         print("The selected feature scaling method is not applicable to the dataset!")
         print("Please check the dataset to find the reason.")
     feature_scaling_config = {type(scaler).__name__: scaler.get_params()}
-    return feature_scaling_config, X_scaled
+    return feature_scaling_config, X_scaled, scaler
 
 
-def feature_selector(X: pd.DataFrame, y: pd.DataFrame, feature_selection_task: int, method: List[str], method_idx: int) -> tuple[dict, pd.DataFrame]:
+def feature_selector(X: pd.DataFrame, y: pd.DataFrame, feature_selection_task: int, method: List[str], method_idx: int) -> tuple[dict, pd.DataFrame, object]:
     """Apply feature selection methods.
 
     Parameters
@@ -155,6 +159,10 @@ def feature_selector(X: pd.DataFrame, y: pd.DataFrame, feature_selection_task: i
 
     X_selected : pd.DataFrame
         The feature dataset after selecting.
+
+    selector : object
+        The fitted selector. The test set is restricted to the same selected
+        feature columns, and the same instance is reused for inference.
     """
     print("-- Original Features --")
     show_data_columns(X.columns)
@@ -182,4 +190,4 @@ def feature_selector(X: pd.DataFrame, y: pd.DataFrame, feature_selection_task: i
         print("Please check the dataset to find the reason.")
 
     feature_selection_config = {type(selector).__name__: selector.get_params()}
-    return feature_selection_config, X
+    return feature_selection_config, X, selector

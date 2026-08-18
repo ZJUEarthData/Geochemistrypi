@@ -228,8 +228,8 @@ class ClassificationWorkflowBase(WorkflowBase):
         precisions = pd.DataFrame(precisions, columns=["Precisions"])
         recalls = pd.DataFrame(recalls, columns=["Recalls"])
         thresholds = pd.DataFrame(thresholds, columns=["Thresholds"])
-        save_data(precisions, name_column, f"{graph_name} - Precisions", local_path, mlflow_path)
-        save_data(recalls, name_column, f"{graph_name} - Recalls", local_path, mlflow_path)
+        save_data(precisions, None, f"{graph_name} - Precisions", local_path, mlflow_path)
+        save_data(recalls, None, f"{graph_name} - Recalls", local_path, mlflow_path)
 
     @staticmethod
     def _plot_precision_recall_threshold(
@@ -242,10 +242,12 @@ class ClassificationWorkflowBase(WorkflowBase):
         precisions = pd.DataFrame(precisions, columns=["Precisions"])
         recalls = pd.DataFrame(recalls, columns=["Recalls"])
         thresholds = pd.DataFrame(thresholds, columns=["Thresholds"])
+        # Probabilities follow the test row order; curve points do not.
+        y_probs.index = name_column.index
         save_data(y_probs, name_column, f"{graph_name} - Probabilities", local_path, mlflow_path)
-        save_data(precisions, name_column, f"{graph_name} - Precisions", local_path, mlflow_path)
-        save_data(recalls, name_column, f"{graph_name} - Recalls", local_path, mlflow_path)
-        save_data(thresholds, name_column, f"{graph_name} - Thresholds", local_path, mlflow_path)
+        save_data(precisions, None, f"{graph_name} - Precisions", local_path, mlflow_path)
+        save_data(recalls, None, f"{graph_name} - Recalls", local_path, mlflow_path)
+        save_data(thresholds, None, f"{graph_name} - Thresholds", local_path, mlflow_path)
 
     @staticmethod
     def _plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, name_column: str, graph_name: str, trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
@@ -256,10 +258,12 @@ class ClassificationWorkflowBase(WorkflowBase):
         fpr = pd.DataFrame(fpr, columns=["False Positive Rate"])
         tpr = pd.DataFrame(tpr, columns=["True Positive Rate"])
         thresholds = pd.DataFrame(thresholds, columns=["Thresholds"])
+        # Probabilities follow the test row order; curve points do not.
+        y_probs.index = name_column.index
         save_data(y_probs, name_column, f"{graph_name} - Probabilities", local_path, mlflow_path)
-        save_data(fpr, name_column, f"{graph_name} - False Positive Rate", local_path, mlflow_path)
-        save_data(tpr, name_column, f"{graph_name} - True Positive Rate", local_path, mlflow_path)
-        save_data(thresholds, name_column, f"{graph_name} - Thresholds", local_path, mlflow_path)
+        save_data(fpr, None, f"{graph_name} - False Positive Rate", local_path, mlflow_path)
+        save_data(tpr, None, f"{graph_name} - True Positive Rate", local_path, mlflow_path)
+        save_data(thresholds, None, f"{graph_name} - Thresholds", local_path, mlflow_path)
 
     @staticmethod
     def _plot_2d_decision_boundary(
@@ -288,8 +292,10 @@ class ClassificationWorkflowBase(WorkflowBase):
             print(train_set_resampled)
             print("Basic Statistical Information: ")
             basic_statistic(train_set_resampled)
-            save_data(X_train, name_column, "X Train After Sample Balance", local_path, mlflow_path)
-            save_data(y_train, name_column, "Y Train After Sample Balance", local_path, mlflow_path)
+            # Resampled rows include synthetic duplicates without an original
+            # identity, so no identifier column is attached here.
+            save_data(X_train, None, "X Train After Sample Balance", local_path, mlflow_path)
+            save_data(y_train, None, "Y Train After Sample Balance", local_path, mlflow_path)
         else:
             sample_balance_config = None
         clear_output()
@@ -464,7 +470,7 @@ class ClassificationWorkflowBase(WorkflowBase):
                 if num_classes < 2:
                     raise ValueError("The number of classes must be at least 2.")
                 labels = _parse_labels(num_classes)
-                raw_edges = input(f"Input {num_classes - 1} internal cut points separated by ';'. The full data range will be covered automatically.\n@Cut Points: ").strip()
+                raw_edges = input(f"Input {num_classes - 1} internal cut points separated by semicolons. The full data range will be covered automatically.\n@Cut Points: ").strip()
                 edges = [float(value) for value in _split_semicolon(raw_edges)]
                 if len(edges) != num_classes - 1:
                     raise ValueError(f"Expected {num_classes - 1} cut points, but got {len(edges)}.")

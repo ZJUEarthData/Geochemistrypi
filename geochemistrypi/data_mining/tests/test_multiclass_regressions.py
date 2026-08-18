@@ -512,6 +512,25 @@ def test_process_classify_imports_on_python_38_compatible_annotations() -> None:
     assert selector.metric_average == "macro"
 
 
+def test_process_classify_persists_label_codec_beside_model(tmp_path, monkeypatch) -> None:
+    from geochemistrypi.data_mining.process.classify import ClassificationModelSelection
+
+    monkeypatch.setenv("GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH", str(tmp_path))
+    selector = ClassificationModelSelection(
+        "Decision Tree",
+        label_config={"custom_label_to_code": {"basalt": 0, "rhyolite": 1}},
+        labels_already_customized=True,
+    )
+
+    selector._persist_label_config_codec(str(tmp_path / "fallback"))
+
+    payload = json.loads((tmp_path / "Label Codec - Decision Tree.txt").read_text(encoding="utf-8"))
+    assert payload == [
+        {"label": "basalt", "code": 0},
+        {"label": "rhyolite", "code": 1},
+    ]
+
+
 def test_classification_request_accepts_metric_average() -> None:
     from geochemistrypi.data_mining.schemas import ClassificationRunRequest
 

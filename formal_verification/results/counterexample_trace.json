@@ -1,0 +1,6577 @@
+{
+  "schemaVersion": 2,
+  "sourceCommit": "bc50cc0c3a07b0a80df6236e0f57a3e08c9ea3b7",
+  "generatedAt": "2026-08-18T06:24:26.272425Z",
+  "cases": [
+    {
+      "caseId": "counterexample_baseline",
+      "caseKind": "baseline",
+      "description": "人工反例套件的独立正向基线",
+      "expectedConformant": true,
+      "targetCheckId": "",
+      "dataset": {
+        "rowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "rowIdentityNonemptyMask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "filterInputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterOutputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterXRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterTargetRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterNameRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "testRowIds": [
+          4,
+          5
+        ],
+        "xTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "yTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "nameTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "xTestRowIds": [
+          4,
+          5
+        ],
+        "yTestRowIds": [
+          4,
+          5
+        ],
+        "nameTestRowIds": [
+          4,
+          5
+        ],
+        "featureColumns": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "targetColumns": [
+          "rock_type"
+        ],
+        "identifierColumns": [
+          "sample_id"
+        ],
+        "roleValidationPairs": [
+          "feature_target",
+          "feature_identifier",
+          "target_identifier"
+        ],
+        "featureEngineeringEnabled": true,
+        "allowedDerivedSourceColumns": [
+          "SiO2",
+          "MgO"
+        ],
+        "derivedFeatures": [
+          {
+            "name": "ratio",
+            "sourceColumns": [
+              "SiO2",
+              "MgO"
+            ],
+            "aggregateFitRowIds": []
+          }
+        ]
+      },
+      "pipeline": {
+        "preprocessingEnabled": true,
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "declaredStageIds": [
+          "scale-1"
+        ],
+        "materializedStageIds": [
+          "scale-1"
+        ],
+        "trainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "inferenceInputFeatureSchema": [
+          "sample_id",
+          "SiO2",
+          "MgO",
+          "ratio",
+          "unused"
+        ],
+        "effectiveInferenceFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineOutputFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "modelTrainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineTrainOutputDigest": "model-input-1",
+        "modelTrainInputDigest": "model-input-1",
+        "stages": [
+          {
+            "stageId": "scale-1",
+            "name": "StandardScaler",
+            "fitRowIds": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "fitCount": 1,
+            "trainingStateDigest": "state-1",
+            "inferenceStateDigest": "state-1",
+            "outputValueCount": 12,
+            "outputNonFiniteCount": 0
+          }
+        ]
+      },
+      "labels": {
+        "codecEnabled": true,
+        "sourceLabels": [
+          "basalt",
+          "granite"
+        ],
+        "runtimeMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "fullMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "trainMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "testMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "persistedMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "codecFitCount": 1,
+        "predictedCodes": [
+          4,
+          9
+        ],
+        "decodedPredictions": [
+          "basalt",
+          "granite"
+        ]
+      },
+      "prediction": {
+        "scope": "test",
+        "sourceRowIds": [
+          4,
+          5
+        ],
+        "predictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "sampleRowIds": [
+          4,
+          5
+        ],
+        "artifactRowIds": [
+          4,
+          5
+        ],
+        "artifactPredictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "artifactMismatchPolicy": "reject",
+        "modelRunId": "run-1",
+        "artifactRunId": "run-1"
+      },
+      "execution": {
+        "eligibleModels": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "selectedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelCount": 1,
+        "registryBefore": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryAfter": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryMutationOperations": [],
+        "activeRunId": "run-1",
+        "stateOwnerRunId": "run-1"
+      }
+    },
+    {
+      "caseId": "counterexample_d01",
+      "caseKind": "counterexample",
+      "description": "仅破坏 D01.input_rows_identified 的人工反例",
+      "expectedConformant": false,
+      "targetCheckId": "D01.input_rows_identified",
+      "dataset": {
+        "rowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "rowIdentityNonemptyMask": [
+          false,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "filterInputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterOutputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterXRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterTargetRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterNameRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "testRowIds": [
+          4,
+          5
+        ],
+        "xTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "yTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "nameTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "xTestRowIds": [
+          4,
+          5
+        ],
+        "yTestRowIds": [
+          4,
+          5
+        ],
+        "nameTestRowIds": [
+          4,
+          5
+        ],
+        "featureColumns": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "targetColumns": [
+          "rock_type"
+        ],
+        "identifierColumns": [
+          "sample_id"
+        ],
+        "roleValidationPairs": [
+          "feature_target",
+          "feature_identifier",
+          "target_identifier"
+        ],
+        "featureEngineeringEnabled": true,
+        "allowedDerivedSourceColumns": [
+          "SiO2",
+          "MgO"
+        ],
+        "derivedFeatures": [
+          {
+            "name": "ratio",
+            "sourceColumns": [
+              "SiO2",
+              "MgO"
+            ],
+            "aggregateFitRowIds": []
+          }
+        ]
+      },
+      "pipeline": {
+        "preprocessingEnabled": true,
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "declaredStageIds": [
+          "scale-1"
+        ],
+        "materializedStageIds": [
+          "scale-1"
+        ],
+        "trainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "inferenceInputFeatureSchema": [
+          "sample_id",
+          "SiO2",
+          "MgO",
+          "ratio",
+          "unused"
+        ],
+        "effectiveInferenceFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineOutputFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "modelTrainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineTrainOutputDigest": "model-input-1",
+        "modelTrainInputDigest": "model-input-1",
+        "stages": [
+          {
+            "stageId": "scale-1",
+            "name": "StandardScaler",
+            "fitRowIds": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "fitCount": 1,
+            "trainingStateDigest": "state-1",
+            "inferenceStateDigest": "state-1",
+            "outputValueCount": 12,
+            "outputNonFiniteCount": 0
+          }
+        ]
+      },
+      "labels": {
+        "codecEnabled": true,
+        "sourceLabels": [
+          "basalt",
+          "granite"
+        ],
+        "runtimeMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "fullMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "trainMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "testMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "persistedMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "codecFitCount": 1,
+        "predictedCodes": [
+          4,
+          9
+        ],
+        "decodedPredictions": [
+          "basalt",
+          "granite"
+        ]
+      },
+      "prediction": {
+        "scope": "test",
+        "sourceRowIds": [
+          4,
+          5
+        ],
+        "predictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "sampleRowIds": [
+          4,
+          5
+        ],
+        "artifactRowIds": [
+          4,
+          5
+        ],
+        "artifactPredictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "artifactMismatchPolicy": "reject",
+        "modelRunId": "run-1",
+        "artifactRunId": "run-1"
+      },
+      "execution": {
+        "eligibleModels": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "selectedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelCount": 1,
+        "registryBefore": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryAfter": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryMutationOperations": [],
+        "activeRunId": "run-1",
+        "stateOwnerRunId": "run-1"
+      }
+    },
+    {
+      "caseId": "counterexample_d02",
+      "caseKind": "counterexample",
+      "description": "仅破坏 D02.split_is_disjoint_partition 的人工反例",
+      "expectedConformant": false,
+      "targetCheckId": "D02.split_is_disjoint_partition",
+      "dataset": {
+        "rowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "rowIdentityNonemptyMask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "filterInputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterOutputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterXRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterTargetRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterNameRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "testRowIds": [
+          4,
+          5
+        ],
+        "xTrainRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "yTrainRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "nameTrainRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "xTestRowIds": [
+          4,
+          5
+        ],
+        "yTestRowIds": [
+          4,
+          5
+        ],
+        "nameTestRowIds": [
+          4,
+          5
+        ],
+        "featureColumns": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "targetColumns": [
+          "rock_type"
+        ],
+        "identifierColumns": [
+          "sample_id"
+        ],
+        "roleValidationPairs": [
+          "feature_target",
+          "feature_identifier",
+          "target_identifier"
+        ],
+        "featureEngineeringEnabled": true,
+        "allowedDerivedSourceColumns": [
+          "SiO2",
+          "MgO"
+        ],
+        "derivedFeatures": [
+          {
+            "name": "ratio",
+            "sourceColumns": [
+              "SiO2",
+              "MgO"
+            ],
+            "aggregateFitRowIds": []
+          }
+        ]
+      },
+      "pipeline": {
+        "preprocessingEnabled": true,
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "declaredStageIds": [
+          "scale-1"
+        ],
+        "materializedStageIds": [
+          "scale-1"
+        ],
+        "trainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "inferenceInputFeatureSchema": [
+          "sample_id",
+          "SiO2",
+          "MgO",
+          "ratio",
+          "unused"
+        ],
+        "effectiveInferenceFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineOutputFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "modelTrainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineTrainOutputDigest": "model-input-1",
+        "modelTrainInputDigest": "model-input-1",
+        "stages": [
+          {
+            "stageId": "scale-1",
+            "name": "StandardScaler",
+            "fitRowIds": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "fitCount": 1,
+            "trainingStateDigest": "state-1",
+            "inferenceStateDigest": "state-1",
+            "outputValueCount": 12,
+            "outputNonFiniteCount": 0
+          }
+        ]
+      },
+      "labels": {
+        "codecEnabled": true,
+        "sourceLabels": [
+          "basalt",
+          "granite"
+        ],
+        "runtimeMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "fullMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "trainMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "testMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "persistedMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "codecFitCount": 1,
+        "predictedCodes": [
+          4,
+          9
+        ],
+        "decodedPredictions": [
+          "basalt",
+          "granite"
+        ]
+      },
+      "prediction": {
+        "scope": "test",
+        "sourceRowIds": [
+          4,
+          5
+        ],
+        "predictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "sampleRowIds": [
+          4,
+          5
+        ],
+        "artifactRowIds": [
+          4,
+          5
+        ],
+        "artifactPredictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "artifactMismatchPolicy": "reject",
+        "modelRunId": "run-1",
+        "artifactRunId": "run-1"
+      },
+      "execution": {
+        "eligibleModels": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "selectedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelCount": 1,
+        "registryBefore": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryAfter": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryMutationOperations": [],
+        "activeRunId": "run-1",
+        "stateOwnerRunId": "run-1"
+      }
+    },
+    {
+      "caseId": "counterexample_d03",
+      "caseKind": "counterexample",
+      "description": "仅破坏 D03.supervised_views_row_aligned 的人工反例",
+      "expectedConformant": false,
+      "targetCheckId": "D03.supervised_views_row_aligned",
+      "dataset": {
+        "rowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "rowIdentityNonemptyMask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "filterInputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterOutputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterXRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterTargetRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterNameRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "testRowIds": [
+          4,
+          5
+        ],
+        "xTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "yTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "nameTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "xTestRowIds": [
+          5,
+          4
+        ],
+        "yTestRowIds": [
+          4,
+          5
+        ],
+        "nameTestRowIds": [
+          4,
+          5
+        ],
+        "featureColumns": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "targetColumns": [
+          "rock_type"
+        ],
+        "identifierColumns": [
+          "sample_id"
+        ],
+        "roleValidationPairs": [
+          "feature_target",
+          "feature_identifier",
+          "target_identifier"
+        ],
+        "featureEngineeringEnabled": true,
+        "allowedDerivedSourceColumns": [
+          "SiO2",
+          "MgO"
+        ],
+        "derivedFeatures": [
+          {
+            "name": "ratio",
+            "sourceColumns": [
+              "SiO2",
+              "MgO"
+            ],
+            "aggregateFitRowIds": []
+          }
+        ]
+      },
+      "pipeline": {
+        "preprocessingEnabled": true,
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "declaredStageIds": [
+          "scale-1"
+        ],
+        "materializedStageIds": [
+          "scale-1"
+        ],
+        "trainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "inferenceInputFeatureSchema": [
+          "sample_id",
+          "SiO2",
+          "MgO",
+          "ratio",
+          "unused"
+        ],
+        "effectiveInferenceFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineOutputFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "modelTrainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineTrainOutputDigest": "model-input-1",
+        "modelTrainInputDigest": "model-input-1",
+        "stages": [
+          {
+            "stageId": "scale-1",
+            "name": "StandardScaler",
+            "fitRowIds": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "fitCount": 1,
+            "trainingStateDigest": "state-1",
+            "inferenceStateDigest": "state-1",
+            "outputValueCount": 12,
+            "outputNonFiniteCount": 0
+          }
+        ]
+      },
+      "labels": {
+        "codecEnabled": true,
+        "sourceLabels": [
+          "basalt",
+          "granite"
+        ],
+        "runtimeMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "fullMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "trainMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "testMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "persistedMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "codecFitCount": 1,
+        "predictedCodes": [
+          4,
+          9
+        ],
+        "decodedPredictions": [
+          "basalt",
+          "granite"
+        ]
+      },
+      "prediction": {
+        "scope": "test",
+        "sourceRowIds": [
+          4,
+          5
+        ],
+        "predictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "sampleRowIds": [
+          4,
+          5
+        ],
+        "artifactRowIds": [
+          4,
+          5
+        ],
+        "artifactPredictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "artifactMismatchPolicy": "reject",
+        "modelRunId": "run-1",
+        "artifactRunId": "run-1"
+      },
+      "execution": {
+        "eligibleModels": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "selectedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelCount": 1,
+        "registryBefore": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryAfter": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryMutationOperations": [],
+        "activeRunId": "run-1",
+        "stateOwnerRunId": "run-1"
+      }
+    },
+    {
+      "caseId": "counterexample_d04",
+      "caseKind": "counterexample",
+      "description": "仅破坏 D04.column_roles_guarded_and_disjoint 的人工反例",
+      "expectedConformant": false,
+      "targetCheckId": "D04.column_roles_guarded_and_disjoint",
+      "dataset": {
+        "rowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "rowIdentityNonemptyMask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "filterInputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterOutputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterXRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterTargetRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterNameRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "testRowIds": [
+          4,
+          5
+        ],
+        "xTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "yTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "nameTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "xTestRowIds": [
+          4,
+          5
+        ],
+        "yTestRowIds": [
+          4,
+          5
+        ],
+        "nameTestRowIds": [
+          4,
+          5
+        ],
+        "featureColumns": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "targetColumns": [
+          "rock_type"
+        ],
+        "identifierColumns": [
+          "sample_id"
+        ],
+        "roleValidationPairs": [
+          "feature_target",
+          "feature_identifier"
+        ],
+        "featureEngineeringEnabled": true,
+        "allowedDerivedSourceColumns": [
+          "SiO2",
+          "MgO"
+        ],
+        "derivedFeatures": [
+          {
+            "name": "ratio",
+            "sourceColumns": [
+              "SiO2",
+              "MgO"
+            ],
+            "aggregateFitRowIds": []
+          }
+        ]
+      },
+      "pipeline": {
+        "preprocessingEnabled": true,
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "declaredStageIds": [
+          "scale-1"
+        ],
+        "materializedStageIds": [
+          "scale-1"
+        ],
+        "trainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "inferenceInputFeatureSchema": [
+          "sample_id",
+          "SiO2",
+          "MgO",
+          "ratio",
+          "unused"
+        ],
+        "effectiveInferenceFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineOutputFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "modelTrainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineTrainOutputDigest": "model-input-1",
+        "modelTrainInputDigest": "model-input-1",
+        "stages": [
+          {
+            "stageId": "scale-1",
+            "name": "StandardScaler",
+            "fitRowIds": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "fitCount": 1,
+            "trainingStateDigest": "state-1",
+            "inferenceStateDigest": "state-1",
+            "outputValueCount": 12,
+            "outputNonFiniteCount": 0
+          }
+        ]
+      },
+      "labels": {
+        "codecEnabled": true,
+        "sourceLabels": [
+          "basalt",
+          "granite"
+        ],
+        "runtimeMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "fullMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "trainMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "testMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "persistedMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "codecFitCount": 1,
+        "predictedCodes": [
+          4,
+          9
+        ],
+        "decodedPredictions": [
+          "basalt",
+          "granite"
+        ]
+      },
+      "prediction": {
+        "scope": "test",
+        "sourceRowIds": [
+          4,
+          5
+        ],
+        "predictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "sampleRowIds": [
+          4,
+          5
+        ],
+        "artifactRowIds": [
+          4,
+          5
+        ],
+        "artifactPredictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "artifactMismatchPolicy": "reject",
+        "modelRunId": "run-1",
+        "artifactRunId": "run-1"
+      },
+      "execution": {
+        "eligibleModels": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "selectedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelCount": 1,
+        "registryBefore": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryAfter": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryMutationOperations": [],
+        "activeRunId": "run-1",
+        "stateOwnerRunId": "run-1"
+      }
+    },
+    {
+      "caseId": "counterexample_d05",
+      "caseKind": "counterexample",
+      "description": "仅破坏 D05.derived_feature_lineage_safe 的人工反例",
+      "expectedConformant": false,
+      "targetCheckId": "D05.derived_feature_lineage_safe",
+      "dataset": {
+        "rowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "rowIdentityNonemptyMask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "filterInputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterOutputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterXRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterTargetRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterNameRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "testRowIds": [
+          4,
+          5
+        ],
+        "xTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "yTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "nameTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "xTestRowIds": [
+          4,
+          5
+        ],
+        "yTestRowIds": [
+          4,
+          5
+        ],
+        "nameTestRowIds": [
+          4,
+          5
+        ],
+        "featureColumns": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "targetColumns": [
+          "rock_type"
+        ],
+        "identifierColumns": [
+          "sample_id"
+        ],
+        "roleValidationPairs": [
+          "feature_target",
+          "feature_identifier",
+          "target_identifier"
+        ],
+        "featureEngineeringEnabled": true,
+        "allowedDerivedSourceColumns": [
+          "SiO2",
+          "MgO"
+        ],
+        "derivedFeatures": [
+          {
+            "name": "ratio",
+            "sourceColumns": [
+              "SiO2",
+              "rock_type"
+            ],
+            "aggregateFitRowIds": []
+          }
+        ]
+      },
+      "pipeline": {
+        "preprocessingEnabled": true,
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "declaredStageIds": [
+          "scale-1"
+        ],
+        "materializedStageIds": [
+          "scale-1"
+        ],
+        "trainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "inferenceInputFeatureSchema": [
+          "sample_id",
+          "SiO2",
+          "MgO",
+          "ratio",
+          "unused"
+        ],
+        "effectiveInferenceFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineOutputFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "modelTrainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineTrainOutputDigest": "model-input-1",
+        "modelTrainInputDigest": "model-input-1",
+        "stages": [
+          {
+            "stageId": "scale-1",
+            "name": "StandardScaler",
+            "fitRowIds": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "fitCount": 1,
+            "trainingStateDigest": "state-1",
+            "inferenceStateDigest": "state-1",
+            "outputValueCount": 12,
+            "outputNonFiniteCount": 0
+          }
+        ]
+      },
+      "labels": {
+        "codecEnabled": true,
+        "sourceLabels": [
+          "basalt",
+          "granite"
+        ],
+        "runtimeMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "fullMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "trainMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "testMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "persistedMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "codecFitCount": 1,
+        "predictedCodes": [
+          4,
+          9
+        ],
+        "decodedPredictions": [
+          "basalt",
+          "granite"
+        ]
+      },
+      "prediction": {
+        "scope": "test",
+        "sourceRowIds": [
+          4,
+          5
+        ],
+        "predictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "sampleRowIds": [
+          4,
+          5
+        ],
+        "artifactRowIds": [
+          4,
+          5
+        ],
+        "artifactPredictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "artifactMismatchPolicy": "reject",
+        "modelRunId": "run-1",
+        "artifactRunId": "run-1"
+      },
+      "execution": {
+        "eligibleModels": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "selectedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelCount": 1,
+        "registryBefore": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryAfter": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryMutationOperations": [],
+        "activeRunId": "run-1",
+        "stateOwnerRunId": "run-1"
+      }
+    },
+    {
+      "caseId": "counterexample_d06",
+      "caseKind": "counterexample",
+      "description": "仅破坏 D06.filtered_rows_keep_lineage 的人工反例",
+      "expectedConformant": false,
+      "targetCheckId": "D06.filtered_rows_keep_lineage",
+      "dataset": {
+        "rowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "rowIdentityNonemptyMask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "filterInputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterOutputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterXRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterTargetRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterNameRowIds": [
+          1,
+          0,
+          2,
+          3,
+          4,
+          5
+        ],
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "testRowIds": [
+          4,
+          5
+        ],
+        "xTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "yTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "nameTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "xTestRowIds": [
+          4,
+          5
+        ],
+        "yTestRowIds": [
+          4,
+          5
+        ],
+        "nameTestRowIds": [
+          4,
+          5
+        ],
+        "featureColumns": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "targetColumns": [
+          "rock_type"
+        ],
+        "identifierColumns": [
+          "sample_id"
+        ],
+        "roleValidationPairs": [
+          "feature_target",
+          "feature_identifier",
+          "target_identifier"
+        ],
+        "featureEngineeringEnabled": true,
+        "allowedDerivedSourceColumns": [
+          "SiO2",
+          "MgO"
+        ],
+        "derivedFeatures": [
+          {
+            "name": "ratio",
+            "sourceColumns": [
+              "SiO2",
+              "MgO"
+            ],
+            "aggregateFitRowIds": []
+          }
+        ]
+      },
+      "pipeline": {
+        "preprocessingEnabled": true,
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "declaredStageIds": [
+          "scale-1"
+        ],
+        "materializedStageIds": [
+          "scale-1"
+        ],
+        "trainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "inferenceInputFeatureSchema": [
+          "sample_id",
+          "SiO2",
+          "MgO",
+          "ratio",
+          "unused"
+        ],
+        "effectiveInferenceFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineOutputFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "modelTrainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineTrainOutputDigest": "model-input-1",
+        "modelTrainInputDigest": "model-input-1",
+        "stages": [
+          {
+            "stageId": "scale-1",
+            "name": "StandardScaler",
+            "fitRowIds": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "fitCount": 1,
+            "trainingStateDigest": "state-1",
+            "inferenceStateDigest": "state-1",
+            "outputValueCount": 12,
+            "outputNonFiniteCount": 0
+          }
+        ]
+      },
+      "labels": {
+        "codecEnabled": true,
+        "sourceLabels": [
+          "basalt",
+          "granite"
+        ],
+        "runtimeMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "fullMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "trainMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "testMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "persistedMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "codecFitCount": 1,
+        "predictedCodes": [
+          4,
+          9
+        ],
+        "decodedPredictions": [
+          "basalt",
+          "granite"
+        ]
+      },
+      "prediction": {
+        "scope": "test",
+        "sourceRowIds": [
+          4,
+          5
+        ],
+        "predictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "sampleRowIds": [
+          4,
+          5
+        ],
+        "artifactRowIds": [
+          4,
+          5
+        ],
+        "artifactPredictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "artifactMismatchPolicy": "reject",
+        "modelRunId": "run-1",
+        "artifactRunId": "run-1"
+      },
+      "execution": {
+        "eligibleModels": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "selectedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelCount": 1,
+        "registryBefore": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryAfter": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryMutationOperations": [],
+        "activeRunId": "run-1",
+        "stateOwnerRunId": "run-1"
+      }
+    },
+    {
+      "caseId": "counterexample_p01",
+      "caseKind": "counterexample",
+      "description": "仅破坏 P01.effective_schema_matches_training 的人工反例",
+      "expectedConformant": false,
+      "targetCheckId": "P01.effective_schema_matches_training",
+      "dataset": {
+        "rowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "rowIdentityNonemptyMask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "filterInputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterOutputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterXRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterTargetRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterNameRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "testRowIds": [
+          4,
+          5
+        ],
+        "xTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "yTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "nameTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "xTestRowIds": [
+          4,
+          5
+        ],
+        "yTestRowIds": [
+          4,
+          5
+        ],
+        "nameTestRowIds": [
+          4,
+          5
+        ],
+        "featureColumns": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "targetColumns": [
+          "rock_type"
+        ],
+        "identifierColumns": [
+          "sample_id"
+        ],
+        "roleValidationPairs": [
+          "feature_target",
+          "feature_identifier",
+          "target_identifier"
+        ],
+        "featureEngineeringEnabled": true,
+        "allowedDerivedSourceColumns": [
+          "SiO2",
+          "MgO"
+        ],
+        "derivedFeatures": [
+          {
+            "name": "ratio",
+            "sourceColumns": [
+              "SiO2",
+              "MgO"
+            ],
+            "aggregateFitRowIds": []
+          }
+        ]
+      },
+      "pipeline": {
+        "preprocessingEnabled": true,
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "declaredStageIds": [
+          "scale-1"
+        ],
+        "materializedStageIds": [
+          "scale-1"
+        ],
+        "trainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "inferenceInputFeatureSchema": [
+          "sample_id",
+          "SiO2",
+          "MgO",
+          "ratio",
+          "unused"
+        ],
+        "effectiveInferenceFeatureSchema": [
+          "MgO",
+          "SiO2",
+          "ratio"
+        ],
+        "pipelineOutputFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "modelTrainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineTrainOutputDigest": "model-input-1",
+        "modelTrainInputDigest": "model-input-1",
+        "stages": [
+          {
+            "stageId": "scale-1",
+            "name": "StandardScaler",
+            "fitRowIds": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "fitCount": 1,
+            "trainingStateDigest": "state-1",
+            "inferenceStateDigest": "state-1",
+            "outputValueCount": 12,
+            "outputNonFiniteCount": 0
+          }
+        ]
+      },
+      "labels": {
+        "codecEnabled": true,
+        "sourceLabels": [
+          "basalt",
+          "granite"
+        ],
+        "runtimeMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "fullMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "trainMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "testMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "persistedMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "codecFitCount": 1,
+        "predictedCodes": [
+          4,
+          9
+        ],
+        "decodedPredictions": [
+          "basalt",
+          "granite"
+        ]
+      },
+      "prediction": {
+        "scope": "test",
+        "sourceRowIds": [
+          4,
+          5
+        ],
+        "predictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "sampleRowIds": [
+          4,
+          5
+        ],
+        "artifactRowIds": [
+          4,
+          5
+        ],
+        "artifactPredictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "artifactMismatchPolicy": "reject",
+        "modelRunId": "run-1",
+        "artifactRunId": "run-1"
+      },
+      "execution": {
+        "eligibleModels": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "selectedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelCount": 1,
+        "registryBefore": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryAfter": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryMutationOperations": [],
+        "activeRunId": "run-1",
+        "stateOwnerRunId": "run-1"
+      }
+    },
+    {
+      "caseId": "counterexample_p02",
+      "caseKind": "counterexample",
+      "description": "仅破坏 P02.stateful_fit_uses_training_rows_only 的人工反例",
+      "expectedConformant": false,
+      "targetCheckId": "P02.stateful_fit_uses_training_rows_only",
+      "dataset": {
+        "rowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "rowIdentityNonemptyMask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "filterInputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterOutputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterXRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterTargetRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterNameRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "testRowIds": [
+          4,
+          5
+        ],
+        "xTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "yTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "nameTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "xTestRowIds": [
+          4,
+          5
+        ],
+        "yTestRowIds": [
+          4,
+          5
+        ],
+        "nameTestRowIds": [
+          4,
+          5
+        ],
+        "featureColumns": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "targetColumns": [
+          "rock_type"
+        ],
+        "identifierColumns": [
+          "sample_id"
+        ],
+        "roleValidationPairs": [
+          "feature_target",
+          "feature_identifier",
+          "target_identifier"
+        ],
+        "featureEngineeringEnabled": true,
+        "allowedDerivedSourceColumns": [
+          "SiO2",
+          "MgO"
+        ],
+        "derivedFeatures": [
+          {
+            "name": "ratio",
+            "sourceColumns": [
+              "SiO2",
+              "MgO"
+            ],
+            "aggregateFitRowIds": []
+          }
+        ]
+      },
+      "pipeline": {
+        "preprocessingEnabled": true,
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "declaredStageIds": [
+          "scale-1"
+        ],
+        "materializedStageIds": [
+          "scale-1"
+        ],
+        "trainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "inferenceInputFeatureSchema": [
+          "sample_id",
+          "SiO2",
+          "MgO",
+          "ratio",
+          "unused"
+        ],
+        "effectiveInferenceFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineOutputFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "modelTrainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineTrainOutputDigest": "model-input-1",
+        "modelTrainInputDigest": "model-input-1",
+        "stages": [
+          {
+            "stageId": "scale-1",
+            "name": "StandardScaler",
+            "fitRowIds": [
+              0,
+              1,
+              2,
+              3,
+              4
+            ],
+            "fitCount": 1,
+            "trainingStateDigest": "state-1",
+            "inferenceStateDigest": "state-1",
+            "outputValueCount": 12,
+            "outputNonFiniteCount": 0
+          }
+        ]
+      },
+      "labels": {
+        "codecEnabled": true,
+        "sourceLabels": [
+          "basalt",
+          "granite"
+        ],
+        "runtimeMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "fullMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "trainMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "testMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "persistedMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "codecFitCount": 1,
+        "predictedCodes": [
+          4,
+          9
+        ],
+        "decodedPredictions": [
+          "basalt",
+          "granite"
+        ]
+      },
+      "prediction": {
+        "scope": "test",
+        "sourceRowIds": [
+          4,
+          5
+        ],
+        "predictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "sampleRowIds": [
+          4,
+          5
+        ],
+        "artifactRowIds": [
+          4,
+          5
+        ],
+        "artifactPredictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "artifactMismatchPolicy": "reject",
+        "modelRunId": "run-1",
+        "artifactRunId": "run-1"
+      },
+      "execution": {
+        "eligibleModels": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "selectedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelCount": 1,
+        "registryBefore": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryAfter": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryMutationOperations": [],
+        "activeRunId": "run-1",
+        "stateOwnerRunId": "run-1"
+      }
+    },
+    {
+      "caseId": "counterexample_p03",
+      "caseKind": "counterexample",
+      "description": "仅破坏 P03.fitted_state_reused_for_model_and_inference 的人工反例",
+      "expectedConformant": false,
+      "targetCheckId": "P03.fitted_state_reused_for_model_and_inference",
+      "dataset": {
+        "rowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "rowIdentityNonemptyMask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "filterInputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterOutputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterXRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterTargetRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterNameRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "testRowIds": [
+          4,
+          5
+        ],
+        "xTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "yTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "nameTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "xTestRowIds": [
+          4,
+          5
+        ],
+        "yTestRowIds": [
+          4,
+          5
+        ],
+        "nameTestRowIds": [
+          4,
+          5
+        ],
+        "featureColumns": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "targetColumns": [
+          "rock_type"
+        ],
+        "identifierColumns": [
+          "sample_id"
+        ],
+        "roleValidationPairs": [
+          "feature_target",
+          "feature_identifier",
+          "target_identifier"
+        ],
+        "featureEngineeringEnabled": true,
+        "allowedDerivedSourceColumns": [
+          "SiO2",
+          "MgO"
+        ],
+        "derivedFeatures": [
+          {
+            "name": "ratio",
+            "sourceColumns": [
+              "SiO2",
+              "MgO"
+            ],
+            "aggregateFitRowIds": []
+          }
+        ]
+      },
+      "pipeline": {
+        "preprocessingEnabled": true,
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "declaredStageIds": [
+          "scale-1"
+        ],
+        "materializedStageIds": [
+          "scale-1"
+        ],
+        "trainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "inferenceInputFeatureSchema": [
+          "sample_id",
+          "SiO2",
+          "MgO",
+          "ratio",
+          "unused"
+        ],
+        "effectiveInferenceFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineOutputFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "modelTrainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineTrainOutputDigest": "model-input-1",
+        "modelTrainInputDigest": "model-input-1",
+        "stages": [
+          {
+            "stageId": "scale-1",
+            "name": "StandardScaler",
+            "fitRowIds": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "fitCount": 2,
+            "trainingStateDigest": "state-1",
+            "inferenceStateDigest": "state-1",
+            "outputValueCount": 12,
+            "outputNonFiniteCount": 0
+          }
+        ]
+      },
+      "labels": {
+        "codecEnabled": true,
+        "sourceLabels": [
+          "basalt",
+          "granite"
+        ],
+        "runtimeMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "fullMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "trainMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "testMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "persistedMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "codecFitCount": 1,
+        "predictedCodes": [
+          4,
+          9
+        ],
+        "decodedPredictions": [
+          "basalt",
+          "granite"
+        ]
+      },
+      "prediction": {
+        "scope": "test",
+        "sourceRowIds": [
+          4,
+          5
+        ],
+        "predictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "sampleRowIds": [
+          4,
+          5
+        ],
+        "artifactRowIds": [
+          4,
+          5
+        ],
+        "artifactPredictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "artifactMismatchPolicy": "reject",
+        "modelRunId": "run-1",
+        "artifactRunId": "run-1"
+      },
+      "execution": {
+        "eligibleModels": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "selectedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelCount": 1,
+        "registryBefore": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryAfter": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryMutationOperations": [],
+        "activeRunId": "run-1",
+        "stateOwnerRunId": "run-1"
+      }
+    },
+    {
+      "caseId": "counterexample_p04",
+      "caseKind": "counterexample",
+      "description": "仅破坏 P04.model_input_schema_matches_pipeline_output 的人工反例",
+      "expectedConformant": false,
+      "targetCheckId": "P04.model_input_schema_matches_pipeline_output",
+      "dataset": {
+        "rowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "rowIdentityNonemptyMask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "filterInputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterOutputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterXRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterTargetRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterNameRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "testRowIds": [
+          4,
+          5
+        ],
+        "xTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "yTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "nameTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "xTestRowIds": [
+          4,
+          5
+        ],
+        "yTestRowIds": [
+          4,
+          5
+        ],
+        "nameTestRowIds": [
+          4,
+          5
+        ],
+        "featureColumns": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "targetColumns": [
+          "rock_type"
+        ],
+        "identifierColumns": [
+          "sample_id"
+        ],
+        "roleValidationPairs": [
+          "feature_target",
+          "feature_identifier",
+          "target_identifier"
+        ],
+        "featureEngineeringEnabled": true,
+        "allowedDerivedSourceColumns": [
+          "SiO2",
+          "MgO"
+        ],
+        "derivedFeatures": [
+          {
+            "name": "ratio",
+            "sourceColumns": [
+              "SiO2",
+              "MgO"
+            ],
+            "aggregateFitRowIds": []
+          }
+        ]
+      },
+      "pipeline": {
+        "preprocessingEnabled": true,
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "declaredStageIds": [
+          "scale-1"
+        ],
+        "materializedStageIds": [
+          "scale-1"
+        ],
+        "trainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "inferenceInputFeatureSchema": [
+          "sample_id",
+          "SiO2",
+          "MgO",
+          "ratio",
+          "unused"
+        ],
+        "effectiveInferenceFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineOutputFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "modelTrainFeatureSchema": [
+          "SiO2",
+          "MgO"
+        ],
+        "pipelineTrainOutputDigest": "model-input-1",
+        "modelTrainInputDigest": "model-input-1",
+        "stages": [
+          {
+            "stageId": "scale-1",
+            "name": "StandardScaler",
+            "fitRowIds": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "fitCount": 1,
+            "trainingStateDigest": "state-1",
+            "inferenceStateDigest": "state-1",
+            "outputValueCount": 12,
+            "outputNonFiniteCount": 0
+          }
+        ]
+      },
+      "labels": {
+        "codecEnabled": true,
+        "sourceLabels": [
+          "basalt",
+          "granite"
+        ],
+        "runtimeMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "fullMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "trainMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "testMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "persistedMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "codecFitCount": 1,
+        "predictedCodes": [
+          4,
+          9
+        ],
+        "decodedPredictions": [
+          "basalt",
+          "granite"
+        ]
+      },
+      "prediction": {
+        "scope": "test",
+        "sourceRowIds": [
+          4,
+          5
+        ],
+        "predictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "sampleRowIds": [
+          4,
+          5
+        ],
+        "artifactRowIds": [
+          4,
+          5
+        ],
+        "artifactPredictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "artifactMismatchPolicy": "reject",
+        "modelRunId": "run-1",
+        "artifactRunId": "run-1"
+      },
+      "execution": {
+        "eligibleModels": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "selectedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelCount": 1,
+        "registryBefore": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryAfter": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryMutationOperations": [],
+        "activeRunId": "run-1",
+        "stateOwnerRunId": "run-1"
+      }
+    },
+    {
+      "caseId": "counterexample_p05",
+      "caseKind": "counterexample",
+      "description": "仅破坏 P05.declared_and_materialized_stage_order_equal 的人工反例",
+      "expectedConformant": false,
+      "targetCheckId": "P05.declared_and_materialized_stage_order_equal",
+      "dataset": {
+        "rowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "rowIdentityNonemptyMask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "filterInputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterOutputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterXRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterTargetRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterNameRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "testRowIds": [
+          4,
+          5
+        ],
+        "xTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "yTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "nameTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "xTestRowIds": [
+          4,
+          5
+        ],
+        "yTestRowIds": [
+          4,
+          5
+        ],
+        "nameTestRowIds": [
+          4,
+          5
+        ],
+        "featureColumns": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "targetColumns": [
+          "rock_type"
+        ],
+        "identifierColumns": [
+          "sample_id"
+        ],
+        "roleValidationPairs": [
+          "feature_target",
+          "feature_identifier",
+          "target_identifier"
+        ],
+        "featureEngineeringEnabled": true,
+        "allowedDerivedSourceColumns": [
+          "SiO2",
+          "MgO"
+        ],
+        "derivedFeatures": [
+          {
+            "name": "ratio",
+            "sourceColumns": [
+              "SiO2",
+              "MgO"
+            ],
+            "aggregateFitRowIds": []
+          }
+        ]
+      },
+      "pipeline": {
+        "preprocessingEnabled": true,
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "declaredStageIds": [
+          "other-stage"
+        ],
+        "materializedStageIds": [
+          "scale-1"
+        ],
+        "trainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "inferenceInputFeatureSchema": [
+          "sample_id",
+          "SiO2",
+          "MgO",
+          "ratio",
+          "unused"
+        ],
+        "effectiveInferenceFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineOutputFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "modelTrainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineTrainOutputDigest": "model-input-1",
+        "modelTrainInputDigest": "model-input-1",
+        "stages": [
+          {
+            "stageId": "scale-1",
+            "name": "StandardScaler",
+            "fitRowIds": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "fitCount": 1,
+            "trainingStateDigest": "state-1",
+            "inferenceStateDigest": "state-1",
+            "outputValueCount": 12,
+            "outputNonFiniteCount": 0
+          }
+        ]
+      },
+      "labels": {
+        "codecEnabled": true,
+        "sourceLabels": [
+          "basalt",
+          "granite"
+        ],
+        "runtimeMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "fullMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "trainMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "testMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "persistedMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "codecFitCount": 1,
+        "predictedCodes": [
+          4,
+          9
+        ],
+        "decodedPredictions": [
+          "basalt",
+          "granite"
+        ]
+      },
+      "prediction": {
+        "scope": "test",
+        "sourceRowIds": [
+          4,
+          5
+        ],
+        "predictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "sampleRowIds": [
+          4,
+          5
+        ],
+        "artifactRowIds": [
+          4,
+          5
+        ],
+        "artifactPredictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "artifactMismatchPolicy": "reject",
+        "modelRunId": "run-1",
+        "artifactRunId": "run-1"
+      },
+      "execution": {
+        "eligibleModels": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "selectedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelCount": 1,
+        "registryBefore": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryAfter": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryMutationOperations": [],
+        "activeRunId": "run-1",
+        "stateOwnerRunId": "run-1"
+      }
+    },
+    {
+      "caseId": "counterexample_p06",
+      "caseKind": "counterexample",
+      "description": "仅破坏 P06.observed_stage_outputs_finite 的人工反例",
+      "expectedConformant": false,
+      "targetCheckId": "P06.observed_stage_outputs_finite",
+      "dataset": {
+        "rowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "rowIdentityNonemptyMask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "filterInputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterOutputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterXRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterTargetRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterNameRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "testRowIds": [
+          4,
+          5
+        ],
+        "xTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "yTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "nameTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "xTestRowIds": [
+          4,
+          5
+        ],
+        "yTestRowIds": [
+          4,
+          5
+        ],
+        "nameTestRowIds": [
+          4,
+          5
+        ],
+        "featureColumns": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "targetColumns": [
+          "rock_type"
+        ],
+        "identifierColumns": [
+          "sample_id"
+        ],
+        "roleValidationPairs": [
+          "feature_target",
+          "feature_identifier",
+          "target_identifier"
+        ],
+        "featureEngineeringEnabled": true,
+        "allowedDerivedSourceColumns": [
+          "SiO2",
+          "MgO"
+        ],
+        "derivedFeatures": [
+          {
+            "name": "ratio",
+            "sourceColumns": [
+              "SiO2",
+              "MgO"
+            ],
+            "aggregateFitRowIds": []
+          }
+        ]
+      },
+      "pipeline": {
+        "preprocessingEnabled": true,
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "declaredStageIds": [
+          "scale-1"
+        ],
+        "materializedStageIds": [
+          "scale-1"
+        ],
+        "trainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "inferenceInputFeatureSchema": [
+          "sample_id",
+          "SiO2",
+          "MgO",
+          "ratio",
+          "unused"
+        ],
+        "effectiveInferenceFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineOutputFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "modelTrainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineTrainOutputDigest": "model-input-1",
+        "modelTrainInputDigest": "model-input-1",
+        "stages": [
+          {
+            "stageId": "scale-1",
+            "name": "StandardScaler",
+            "fitRowIds": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "fitCount": 1,
+            "trainingStateDigest": "state-1",
+            "inferenceStateDigest": "state-1",
+            "outputValueCount": 12,
+            "outputNonFiniteCount": 1
+          }
+        ]
+      },
+      "labels": {
+        "codecEnabled": true,
+        "sourceLabels": [
+          "basalt",
+          "granite"
+        ],
+        "runtimeMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "fullMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "trainMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "testMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "persistedMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "codecFitCount": 1,
+        "predictedCodes": [
+          4,
+          9
+        ],
+        "decodedPredictions": [
+          "basalt",
+          "granite"
+        ]
+      },
+      "prediction": {
+        "scope": "test",
+        "sourceRowIds": [
+          4,
+          5
+        ],
+        "predictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "sampleRowIds": [
+          4,
+          5
+        ],
+        "artifactRowIds": [
+          4,
+          5
+        ],
+        "artifactPredictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "artifactMismatchPolicy": "reject",
+        "modelRunId": "run-1",
+        "artifactRunId": "run-1"
+      },
+      "execution": {
+        "eligibleModels": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "selectedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelCount": 1,
+        "registryBefore": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryAfter": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryMutationOperations": [],
+        "activeRunId": "run-1",
+        "stateOwnerRunId": "run-1"
+      }
+    },
+    {
+      "caseId": "counterexample_l01",
+      "caseKind": "counterexample",
+      "description": "仅破坏 L01.codec_total_and_injective 的人工反例",
+      "expectedConformant": false,
+      "targetCheckId": "L01.codec_total_and_injective",
+      "dataset": {
+        "rowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "rowIdentityNonemptyMask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "filterInputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterOutputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterXRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterTargetRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterNameRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "testRowIds": [
+          4,
+          5
+        ],
+        "xTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "yTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "nameTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "xTestRowIds": [
+          4,
+          5
+        ],
+        "yTestRowIds": [
+          4,
+          5
+        ],
+        "nameTestRowIds": [
+          4,
+          5
+        ],
+        "featureColumns": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "targetColumns": [
+          "rock_type"
+        ],
+        "identifierColumns": [
+          "sample_id"
+        ],
+        "roleValidationPairs": [
+          "feature_target",
+          "feature_identifier",
+          "target_identifier"
+        ],
+        "featureEngineeringEnabled": true,
+        "allowedDerivedSourceColumns": [
+          "SiO2",
+          "MgO"
+        ],
+        "derivedFeatures": [
+          {
+            "name": "ratio",
+            "sourceColumns": [
+              "SiO2",
+              "MgO"
+            ],
+            "aggregateFitRowIds": []
+          }
+        ]
+      },
+      "pipeline": {
+        "preprocessingEnabled": true,
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "declaredStageIds": [
+          "scale-1"
+        ],
+        "materializedStageIds": [
+          "scale-1"
+        ],
+        "trainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "inferenceInputFeatureSchema": [
+          "sample_id",
+          "SiO2",
+          "MgO",
+          "ratio",
+          "unused"
+        ],
+        "effectiveInferenceFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineOutputFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "modelTrainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineTrainOutputDigest": "model-input-1",
+        "modelTrainInputDigest": "model-input-1",
+        "stages": [
+          {
+            "stageId": "scale-1",
+            "name": "StandardScaler",
+            "fitRowIds": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "fitCount": 1,
+            "trainingStateDigest": "state-1",
+            "inferenceStateDigest": "state-1",
+            "outputValueCount": 12,
+            "outputNonFiniteCount": 0
+          }
+        ]
+      },
+      "labels": {
+        "codecEnabled": true,
+        "sourceLabels": [
+          "basalt",
+          "granite"
+        ],
+        "runtimeMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 4
+          }
+        ],
+        "fullMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 4
+          }
+        ],
+        "trainMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 4
+          }
+        ],
+        "testMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 4
+          }
+        ],
+        "persistedMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 4
+          }
+        ],
+        "codecFitCount": 1,
+        "predictedCodes": [
+          4,
+          4
+        ],
+        "decodedPredictions": [
+          "basalt",
+          "basalt"
+        ]
+      },
+      "prediction": {
+        "scope": "test",
+        "sourceRowIds": [
+          4,
+          5
+        ],
+        "predictionValues": [
+          "basalt",
+          "basalt"
+        ],
+        "sampleRowIds": [
+          4,
+          5
+        ],
+        "artifactRowIds": [
+          4,
+          5
+        ],
+        "artifactPredictionValues": [
+          "basalt",
+          "basalt"
+        ],
+        "artifactMismatchPolicy": "reject",
+        "modelRunId": "run-1",
+        "artifactRunId": "run-1"
+      },
+      "execution": {
+        "eligibleModels": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "selectedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelCount": 1,
+        "registryBefore": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryAfter": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryMutationOperations": [],
+        "activeRunId": "run-1",
+        "stateOwnerRunId": "run-1"
+      }
+    },
+    {
+      "caseId": "counterexample_l02",
+      "caseKind": "counterexample",
+      "description": "仅破坏 L02.one_codec_fitted_once_for_all_splits 的人工反例",
+      "expectedConformant": false,
+      "targetCheckId": "L02.one_codec_fitted_once_for_all_splits",
+      "dataset": {
+        "rowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "rowIdentityNonemptyMask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "filterInputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterOutputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterXRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterTargetRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterNameRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "testRowIds": [
+          4,
+          5
+        ],
+        "xTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "yTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "nameTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "xTestRowIds": [
+          4,
+          5
+        ],
+        "yTestRowIds": [
+          4,
+          5
+        ],
+        "nameTestRowIds": [
+          4,
+          5
+        ],
+        "featureColumns": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "targetColumns": [
+          "rock_type"
+        ],
+        "identifierColumns": [
+          "sample_id"
+        ],
+        "roleValidationPairs": [
+          "feature_target",
+          "feature_identifier",
+          "target_identifier"
+        ],
+        "featureEngineeringEnabled": true,
+        "allowedDerivedSourceColumns": [
+          "SiO2",
+          "MgO"
+        ],
+        "derivedFeatures": [
+          {
+            "name": "ratio",
+            "sourceColumns": [
+              "SiO2",
+              "MgO"
+            ],
+            "aggregateFitRowIds": []
+          }
+        ]
+      },
+      "pipeline": {
+        "preprocessingEnabled": true,
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "declaredStageIds": [
+          "scale-1"
+        ],
+        "materializedStageIds": [
+          "scale-1"
+        ],
+        "trainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "inferenceInputFeatureSchema": [
+          "sample_id",
+          "SiO2",
+          "MgO",
+          "ratio",
+          "unused"
+        ],
+        "effectiveInferenceFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineOutputFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "modelTrainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineTrainOutputDigest": "model-input-1",
+        "modelTrainInputDigest": "model-input-1",
+        "stages": [
+          {
+            "stageId": "scale-1",
+            "name": "StandardScaler",
+            "fitRowIds": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "fitCount": 1,
+            "trainingStateDigest": "state-1",
+            "inferenceStateDigest": "state-1",
+            "outputValueCount": 12,
+            "outputNonFiniteCount": 0
+          }
+        ]
+      },
+      "labels": {
+        "codecEnabled": true,
+        "sourceLabels": [
+          "basalt",
+          "granite"
+        ],
+        "runtimeMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "fullMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "trainMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "testMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "persistedMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "codecFitCount": 2,
+        "predictedCodes": [
+          4,
+          9
+        ],
+        "decodedPredictions": [
+          "basalt",
+          "granite"
+        ]
+      },
+      "prediction": {
+        "scope": "test",
+        "sourceRowIds": [
+          4,
+          5
+        ],
+        "predictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "sampleRowIds": [
+          4,
+          5
+        ],
+        "artifactRowIds": [
+          4,
+          5
+        ],
+        "artifactPredictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "artifactMismatchPolicy": "reject",
+        "modelRunId": "run-1",
+        "artifactRunId": "run-1"
+      },
+      "execution": {
+        "eligibleModels": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "selectedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelCount": 1,
+        "registryBefore": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryAfter": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryMutationOperations": [],
+        "activeRunId": "run-1",
+        "stateOwnerRunId": "run-1"
+      }
+    },
+    {
+      "caseId": "counterexample_l03",
+      "caseKind": "counterexample",
+      "description": "仅破坏 L03.codec_persisted_and_predictions_decodable 的人工反例",
+      "expectedConformant": false,
+      "targetCheckId": "L03.codec_persisted_and_predictions_decodable",
+      "dataset": {
+        "rowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "rowIdentityNonemptyMask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "filterInputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterOutputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterXRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterTargetRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterNameRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "testRowIds": [
+          4,
+          5
+        ],
+        "xTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "yTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "nameTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "xTestRowIds": [
+          4,
+          5
+        ],
+        "yTestRowIds": [
+          4,
+          5
+        ],
+        "nameTestRowIds": [
+          4,
+          5
+        ],
+        "featureColumns": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "targetColumns": [
+          "rock_type"
+        ],
+        "identifierColumns": [
+          "sample_id"
+        ],
+        "roleValidationPairs": [
+          "feature_target",
+          "feature_identifier",
+          "target_identifier"
+        ],
+        "featureEngineeringEnabled": true,
+        "allowedDerivedSourceColumns": [
+          "SiO2",
+          "MgO"
+        ],
+        "derivedFeatures": [
+          {
+            "name": "ratio",
+            "sourceColumns": [
+              "SiO2",
+              "MgO"
+            ],
+            "aggregateFitRowIds": []
+          }
+        ]
+      },
+      "pipeline": {
+        "preprocessingEnabled": true,
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "declaredStageIds": [
+          "scale-1"
+        ],
+        "materializedStageIds": [
+          "scale-1"
+        ],
+        "trainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "inferenceInputFeatureSchema": [
+          "sample_id",
+          "SiO2",
+          "MgO",
+          "ratio",
+          "unused"
+        ],
+        "effectiveInferenceFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineOutputFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "modelTrainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineTrainOutputDigest": "model-input-1",
+        "modelTrainInputDigest": "model-input-1",
+        "stages": [
+          {
+            "stageId": "scale-1",
+            "name": "StandardScaler",
+            "fitRowIds": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "fitCount": 1,
+            "trainingStateDigest": "state-1",
+            "inferenceStateDigest": "state-1",
+            "outputValueCount": 12,
+            "outputNonFiniteCount": 0
+          }
+        ]
+      },
+      "labels": {
+        "codecEnabled": true,
+        "sourceLabels": [
+          "basalt",
+          "granite"
+        ],
+        "runtimeMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "fullMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "trainMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "testMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "persistedMappings": [],
+        "codecFitCount": 1,
+        "predictedCodes": [
+          4,
+          9
+        ],
+        "decodedPredictions": [
+          "basalt",
+          "granite"
+        ]
+      },
+      "prediction": {
+        "scope": "test",
+        "sourceRowIds": [
+          4,
+          5
+        ],
+        "predictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "sampleRowIds": [
+          4,
+          5
+        ],
+        "artifactRowIds": [
+          4,
+          5
+        ],
+        "artifactPredictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "artifactMismatchPolicy": "reject",
+        "modelRunId": "run-1",
+        "artifactRunId": "run-1"
+      },
+      "execution": {
+        "eligibleModels": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "selectedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelCount": 1,
+        "registryBefore": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryAfter": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryMutationOperations": [],
+        "activeRunId": "run-1",
+        "stateOwnerRunId": "run-1"
+      }
+    },
+    {
+      "caseId": "counterexample_a01",
+      "caseKind": "counterexample",
+      "description": "仅破坏 A01.predictions_bound_to_source_rows 的人工反例",
+      "expectedConformant": false,
+      "targetCheckId": "A01.predictions_bound_to_source_rows",
+      "dataset": {
+        "rowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "rowIdentityNonemptyMask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "filterInputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterOutputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterXRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterTargetRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterNameRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "testRowIds": [
+          4,
+          5
+        ],
+        "xTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "yTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "nameTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "xTestRowIds": [
+          4,
+          5
+        ],
+        "yTestRowIds": [
+          4,
+          5
+        ],
+        "nameTestRowIds": [
+          4,
+          5
+        ],
+        "featureColumns": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "targetColumns": [
+          "rock_type"
+        ],
+        "identifierColumns": [
+          "sample_id"
+        ],
+        "roleValidationPairs": [
+          "feature_target",
+          "feature_identifier",
+          "target_identifier"
+        ],
+        "featureEngineeringEnabled": true,
+        "allowedDerivedSourceColumns": [
+          "SiO2",
+          "MgO"
+        ],
+        "derivedFeatures": [
+          {
+            "name": "ratio",
+            "sourceColumns": [
+              "SiO2",
+              "MgO"
+            ],
+            "aggregateFitRowIds": []
+          }
+        ]
+      },
+      "pipeline": {
+        "preprocessingEnabled": true,
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "declaredStageIds": [
+          "scale-1"
+        ],
+        "materializedStageIds": [
+          "scale-1"
+        ],
+        "trainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "inferenceInputFeatureSchema": [
+          "sample_id",
+          "SiO2",
+          "MgO",
+          "ratio",
+          "unused"
+        ],
+        "effectiveInferenceFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineOutputFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "modelTrainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineTrainOutputDigest": "model-input-1",
+        "modelTrainInputDigest": "model-input-1",
+        "stages": [
+          {
+            "stageId": "scale-1",
+            "name": "StandardScaler",
+            "fitRowIds": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "fitCount": 1,
+            "trainingStateDigest": "state-1",
+            "inferenceStateDigest": "state-1",
+            "outputValueCount": 12,
+            "outputNonFiniteCount": 0
+          }
+        ]
+      },
+      "labels": {
+        "codecEnabled": true,
+        "sourceLabels": [
+          "basalt",
+          "granite"
+        ],
+        "runtimeMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "fullMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "trainMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "testMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "persistedMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "codecFitCount": 1,
+        "predictedCodes": [
+          4,
+          9
+        ],
+        "decodedPredictions": [
+          "basalt",
+          "granite"
+        ]
+      },
+      "prediction": {
+        "scope": "test",
+        "sourceRowIds": [
+          4,
+          5
+        ],
+        "predictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "sampleRowIds": [
+          5,
+          4
+        ],
+        "artifactRowIds": [
+          5,
+          4
+        ],
+        "artifactPredictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "artifactMismatchPolicy": "reject",
+        "modelRunId": "run-1",
+        "artifactRunId": "run-1"
+      },
+      "execution": {
+        "eligibleModels": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "selectedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelCount": 1,
+        "registryBefore": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryAfter": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryMutationOperations": [],
+        "activeRunId": "run-1",
+        "stateOwnerRunId": "run-1"
+      }
+    },
+    {
+      "caseId": "counterexample_a02",
+      "caseKind": "counterexample",
+      "description": "仅破坏 A02.artifact_pairs_aligned_and_mismatch_rejected 的人工反例",
+      "expectedConformant": false,
+      "targetCheckId": "A02.artifact_pairs_aligned_and_mismatch_rejected",
+      "dataset": {
+        "rowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "rowIdentityNonemptyMask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "filterInputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterOutputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterXRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterTargetRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterNameRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "testRowIds": [
+          4,
+          5
+        ],
+        "xTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "yTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "nameTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "xTestRowIds": [
+          4,
+          5
+        ],
+        "yTestRowIds": [
+          4,
+          5
+        ],
+        "nameTestRowIds": [
+          4,
+          5
+        ],
+        "featureColumns": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "targetColumns": [
+          "rock_type"
+        ],
+        "identifierColumns": [
+          "sample_id"
+        ],
+        "roleValidationPairs": [
+          "feature_target",
+          "feature_identifier",
+          "target_identifier"
+        ],
+        "featureEngineeringEnabled": true,
+        "allowedDerivedSourceColumns": [
+          "SiO2",
+          "MgO"
+        ],
+        "derivedFeatures": [
+          {
+            "name": "ratio",
+            "sourceColumns": [
+              "SiO2",
+              "MgO"
+            ],
+            "aggregateFitRowIds": []
+          }
+        ]
+      },
+      "pipeline": {
+        "preprocessingEnabled": true,
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "declaredStageIds": [
+          "scale-1"
+        ],
+        "materializedStageIds": [
+          "scale-1"
+        ],
+        "trainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "inferenceInputFeatureSchema": [
+          "sample_id",
+          "SiO2",
+          "MgO",
+          "ratio",
+          "unused"
+        ],
+        "effectiveInferenceFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineOutputFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "modelTrainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineTrainOutputDigest": "model-input-1",
+        "modelTrainInputDigest": "model-input-1",
+        "stages": [
+          {
+            "stageId": "scale-1",
+            "name": "StandardScaler",
+            "fitRowIds": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "fitCount": 1,
+            "trainingStateDigest": "state-1",
+            "inferenceStateDigest": "state-1",
+            "outputValueCount": 12,
+            "outputNonFiniteCount": 0
+          }
+        ]
+      },
+      "labels": {
+        "codecEnabled": true,
+        "sourceLabels": [
+          "basalt",
+          "granite"
+        ],
+        "runtimeMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "fullMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "trainMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "testMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "persistedMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "codecFitCount": 1,
+        "predictedCodes": [
+          4,
+          9
+        ],
+        "decodedPredictions": [
+          "basalt",
+          "granite"
+        ]
+      },
+      "prediction": {
+        "scope": "test",
+        "sourceRowIds": [
+          4,
+          5
+        ],
+        "predictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "sampleRowIds": [
+          4,
+          5
+        ],
+        "artifactRowIds": [
+          4,
+          5
+        ],
+        "artifactPredictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "artifactMismatchPolicy": "positional_fallback",
+        "modelRunId": "run-1",
+        "artifactRunId": "run-1"
+      },
+      "execution": {
+        "eligibleModels": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "selectedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelCount": 1,
+        "registryBefore": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryAfter": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryMutationOperations": [],
+        "activeRunId": "run-1",
+        "stateOwnerRunId": "run-1"
+      }
+    },
+    {
+      "caseId": "counterexample_a03",
+      "caseKind": "counterexample",
+      "description": "仅破坏 A03.model_artifact_and_state_share_run 的人工反例",
+      "expectedConformant": false,
+      "targetCheckId": "A03.model_artifact_and_state_share_run",
+      "dataset": {
+        "rowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "rowIdentityNonemptyMask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "filterInputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterOutputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterXRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterTargetRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterNameRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "testRowIds": [
+          4,
+          5
+        ],
+        "xTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "yTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "nameTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "xTestRowIds": [
+          4,
+          5
+        ],
+        "yTestRowIds": [
+          4,
+          5
+        ],
+        "nameTestRowIds": [
+          4,
+          5
+        ],
+        "featureColumns": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "targetColumns": [
+          "rock_type"
+        ],
+        "identifierColumns": [
+          "sample_id"
+        ],
+        "roleValidationPairs": [
+          "feature_target",
+          "feature_identifier",
+          "target_identifier"
+        ],
+        "featureEngineeringEnabled": true,
+        "allowedDerivedSourceColumns": [
+          "SiO2",
+          "MgO"
+        ],
+        "derivedFeatures": [
+          {
+            "name": "ratio",
+            "sourceColumns": [
+              "SiO2",
+              "MgO"
+            ],
+            "aggregateFitRowIds": []
+          }
+        ]
+      },
+      "pipeline": {
+        "preprocessingEnabled": true,
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "declaredStageIds": [
+          "scale-1"
+        ],
+        "materializedStageIds": [
+          "scale-1"
+        ],
+        "trainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "inferenceInputFeatureSchema": [
+          "sample_id",
+          "SiO2",
+          "MgO",
+          "ratio",
+          "unused"
+        ],
+        "effectiveInferenceFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineOutputFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "modelTrainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineTrainOutputDigest": "model-input-1",
+        "modelTrainInputDigest": "model-input-1",
+        "stages": [
+          {
+            "stageId": "scale-1",
+            "name": "StandardScaler",
+            "fitRowIds": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "fitCount": 1,
+            "trainingStateDigest": "state-1",
+            "inferenceStateDigest": "state-1",
+            "outputValueCount": 12,
+            "outputNonFiniteCount": 0
+          }
+        ]
+      },
+      "labels": {
+        "codecEnabled": true,
+        "sourceLabels": [
+          "basalt",
+          "granite"
+        ],
+        "runtimeMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "fullMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "trainMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "testMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "persistedMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "codecFitCount": 1,
+        "predictedCodes": [
+          4,
+          9
+        ],
+        "decodedPredictions": [
+          "basalt",
+          "granite"
+        ]
+      },
+      "prediction": {
+        "scope": "test",
+        "sourceRowIds": [
+          4,
+          5
+        ],
+        "predictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "sampleRowIds": [
+          4,
+          5
+        ],
+        "artifactRowIds": [
+          4,
+          5
+        ],
+        "artifactPredictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "artifactMismatchPolicy": "reject",
+        "modelRunId": "run-1",
+        "artifactRunId": "run-2"
+      },
+      "execution": {
+        "eligibleModels": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "selectedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelCount": 1,
+        "registryBefore": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryAfter": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryMutationOperations": [],
+        "activeRunId": "run-1",
+        "stateOwnerRunId": "run-1"
+      }
+    },
+    {
+      "caseId": "counterexample_e01",
+      "caseKind": "counterexample",
+      "description": "仅破坏 E01.selected_models_eligible_and_trained 的人工反例",
+      "expectedConformant": false,
+      "targetCheckId": "E01.selected_models_eligible_and_trained",
+      "dataset": {
+        "rowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "rowIdentityNonemptyMask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "filterInputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterOutputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterXRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterTargetRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterNameRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "testRowIds": [
+          4,
+          5
+        ],
+        "xTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "yTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "nameTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "xTestRowIds": [
+          4,
+          5
+        ],
+        "yTestRowIds": [
+          4,
+          5
+        ],
+        "nameTestRowIds": [
+          4,
+          5
+        ],
+        "featureColumns": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "targetColumns": [
+          "rock_type"
+        ],
+        "identifierColumns": [
+          "sample_id"
+        ],
+        "roleValidationPairs": [
+          "feature_target",
+          "feature_identifier",
+          "target_identifier"
+        ],
+        "featureEngineeringEnabled": true,
+        "allowedDerivedSourceColumns": [
+          "SiO2",
+          "MgO"
+        ],
+        "derivedFeatures": [
+          {
+            "name": "ratio",
+            "sourceColumns": [
+              "SiO2",
+              "MgO"
+            ],
+            "aggregateFitRowIds": []
+          }
+        ]
+      },
+      "pipeline": {
+        "preprocessingEnabled": true,
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "declaredStageIds": [
+          "scale-1"
+        ],
+        "materializedStageIds": [
+          "scale-1"
+        ],
+        "trainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "inferenceInputFeatureSchema": [
+          "sample_id",
+          "SiO2",
+          "MgO",
+          "ratio",
+          "unused"
+        ],
+        "effectiveInferenceFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineOutputFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "modelTrainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineTrainOutputDigest": "model-input-1",
+        "modelTrainInputDigest": "model-input-1",
+        "stages": [
+          {
+            "stageId": "scale-1",
+            "name": "StandardScaler",
+            "fitRowIds": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "fitCount": 1,
+            "trainingStateDigest": "state-1",
+            "inferenceStateDigest": "state-1",
+            "outputValueCount": 12,
+            "outputNonFiniteCount": 0
+          }
+        ]
+      },
+      "labels": {
+        "codecEnabled": true,
+        "sourceLabels": [
+          "basalt",
+          "granite"
+        ],
+        "runtimeMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "fullMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "trainMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "testMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "persistedMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "codecFitCount": 1,
+        "predictedCodes": [
+          4,
+          9
+        ],
+        "decodedPredictions": [
+          "basalt",
+          "granite"
+        ]
+      },
+      "prediction": {
+        "scope": "test",
+        "sourceRowIds": [
+          4,
+          5
+        ],
+        "predictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "sampleRowIds": [
+          4,
+          5
+        ],
+        "artifactRowIds": [
+          4,
+          5
+        ],
+        "artifactPredictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "artifactMismatchPolicy": "reject",
+        "modelRunId": "run-1",
+        "artifactRunId": "run-1"
+      },
+      "execution": {
+        "eligibleModels": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "selectedModelIds": [
+          "Unknown Model"
+        ],
+        "trainedModelIds": [
+          "Unknown Model"
+        ],
+        "trainedModelCount": 1,
+        "registryBefore": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryAfter": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryMutationOperations": [],
+        "activeRunId": "run-1",
+        "stateOwnerRunId": "run-1"
+      }
+    },
+    {
+      "caseId": "counterexample_e02",
+      "caseKind": "counterexample",
+      "description": "仅破坏 E02.model_registry_immutable_during_run 的人工反例",
+      "expectedConformant": false,
+      "targetCheckId": "E02.model_registry_immutable_during_run",
+      "dataset": {
+        "rowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "rowIdentityNonemptyMask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "filterInputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterOutputRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterXRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterTargetRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "filterNameRowIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "testRowIds": [
+          4,
+          5
+        ],
+        "xTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "yTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "nameTrainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "xTestRowIds": [
+          4,
+          5
+        ],
+        "yTestRowIds": [
+          4,
+          5
+        ],
+        "nameTestRowIds": [
+          4,
+          5
+        ],
+        "featureColumns": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "targetColumns": [
+          "rock_type"
+        ],
+        "identifierColumns": [
+          "sample_id"
+        ],
+        "roleValidationPairs": [
+          "feature_target",
+          "feature_identifier",
+          "target_identifier"
+        ],
+        "featureEngineeringEnabled": true,
+        "allowedDerivedSourceColumns": [
+          "SiO2",
+          "MgO"
+        ],
+        "derivedFeatures": [
+          {
+            "name": "ratio",
+            "sourceColumns": [
+              "SiO2",
+              "MgO"
+            ],
+            "aggregateFitRowIds": []
+          }
+        ]
+      },
+      "pipeline": {
+        "preprocessingEnabled": true,
+        "trainRowIds": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "declaredStageIds": [
+          "scale-1"
+        ],
+        "materializedStageIds": [
+          "scale-1"
+        ],
+        "trainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "inferenceInputFeatureSchema": [
+          "sample_id",
+          "SiO2",
+          "MgO",
+          "ratio",
+          "unused"
+        ],
+        "effectiveInferenceFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineOutputFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "modelTrainFeatureSchema": [
+          "SiO2",
+          "MgO",
+          "ratio"
+        ],
+        "pipelineTrainOutputDigest": "model-input-1",
+        "modelTrainInputDigest": "model-input-1",
+        "stages": [
+          {
+            "stageId": "scale-1",
+            "name": "StandardScaler",
+            "fitRowIds": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "fitCount": 1,
+            "trainingStateDigest": "state-1",
+            "inferenceStateDigest": "state-1",
+            "outputValueCount": 12,
+            "outputNonFiniteCount": 0
+          }
+        ]
+      },
+      "labels": {
+        "codecEnabled": true,
+        "sourceLabels": [
+          "basalt",
+          "granite"
+        ],
+        "runtimeMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "fullMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "trainMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "testMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "persistedMappings": [
+          {
+            "label": "basalt",
+            "code": 4
+          },
+          {
+            "label": "granite",
+            "code": 9
+          }
+        ],
+        "codecFitCount": 1,
+        "predictedCodes": [
+          4,
+          9
+        ],
+        "decodedPredictions": [
+          "basalt",
+          "granite"
+        ]
+      },
+      "prediction": {
+        "scope": "test",
+        "sourceRowIds": [
+          4,
+          5
+        ],
+        "predictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "sampleRowIds": [
+          4,
+          5
+        ],
+        "artifactRowIds": [
+          4,
+          5
+        ],
+        "artifactPredictionValues": [
+          "basalt",
+          "granite"
+        ],
+        "artifactMismatchPolicy": "reject",
+        "modelRunId": "run-1",
+        "artifactRunId": "run-1"
+      },
+      "execution": {
+        "eligibleModels": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "selectedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelIds": [
+          "Logistic Regression"
+        ],
+        "trainedModelCount": 1,
+        "registryBefore": [
+          "Logistic Regression",
+          "Decision Tree"
+        ],
+        "registryAfter": [
+          "Logistic Regression",
+          "Decision Tree",
+          "all_models"
+        ],
+        "registryMutationOperations": [
+          "append_all_models"
+        ],
+        "activeRunId": "run-1",
+        "stateOwnerRunId": "run-1"
+      }
+    }
+  ]
+}

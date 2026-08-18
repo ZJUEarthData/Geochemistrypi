@@ -1,0 +1,19 @@
+# Isolated verification environment; the GeoPi business dependency lock is untouched.
+setuptools==80.9.0
+numpy==2.3.5
+pandas==2.2.3
+scipy==1.18.0
+openpyxl==3.1.5
+scikit-learn==1.7.1
+imbalanced-learn==0.14.0
+xgboost==1.6.2
+matplotlib==3.10.5
+seaborn==0.13.2
+statsmodels==0.14.5
+rich==14.1.0
+multipledispatch==1.0.0
+pytest==8.4.1
+# Small Web/API dependencies used by the read-only ownership/atomicity probe.
+python-dotenv==1.0.0
+SQLAlchemy==2.0.13
+fastapi==0.95.2

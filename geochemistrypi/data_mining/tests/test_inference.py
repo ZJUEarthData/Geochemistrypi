@@ -1,8 +1,10 @@
 from types import SimpleNamespace
 
 import pandas as pd
+import pytest
 
 from geochemistrypi.data_mining.data import inference
+from geochemistrypi.data_mining.utils.base import save_data
 
 
 def test_build_transform_pipeline_accepts_unsupervised_target(monkeypatch):
@@ -37,3 +39,25 @@ def test_build_transform_pipeline_accepts_unsupervised_target(monkeypatch):
     assert transform_pipeline is pipeline
     pd.testing.assert_frame_equal(fitted["X"], X_train)
     assert fitted["y"] is None
+
+
+def test_save_data_realigns_by_identity_without_mutating_inputs(tmp_path, monkeypatch):
+    monkeypatch.setattr("geochemistrypi.data_mining.utils.base.mlflow.log_artifact", lambda *args, **kwargs: None)
+    values = pd.DataFrame({"prediction": [20, 10]}, index=[2, 1])
+    names = pd.Series(["sample-1", "sample-2"], index=[1, 2], name="SampleID")
+    original_values = values.copy(deep=True)
+    original_names = names.copy(deep=True)
+
+    save_data(values, names, "aligned", str(tmp_path))
+
+    pd.testing.assert_frame_equal(values, original_values)
+    pd.testing.assert_series_equal(names, original_names)
+    exported = pd.read_excel(tmp_path / "aligned.xlsx")
+    assert exported.to_dict(orient="records") == [
+        {"SampleID": "sample-2", "prediction": 20},
+        {"SampleID": "sample-1", "prediction": 10},
+    ]
+
+    mismatched_names = pd.Series(["sample-3", "sample-4"], index=[3, 4], name="SampleID")
+    with pytest.raises(ValueError, match="different identities"):
+        save_data(values, mismatched_names, "rejected", str(tmp_path))

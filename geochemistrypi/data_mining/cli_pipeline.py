@@ -527,15 +527,6 @@ def cli_pipeline(
         imputation_config = {}
         data_selected_imputed = data_selected
 
-    # <--- Feature Engineering --->
-    logger.debug("Feature Engineering")
-    print("[bold green]-*-*- Feature Engineering -*-*-[/bold green]")
-    feature_builder = FeatureConstructor(data_selected_imputed, process_name_column)
-    data_selected_imputed_fe = feature_builder.build()
-    # feature_engineering_config is possible to be {}
-    feature_engineering_config = feature_builder.config
-    del data_selected_imputed
-
     # <--- Mode Selection --->
     logger.debug("Mode Selection")
     print("[bold green]-*-*- Mode Selection -*-*-[/bold green]")
@@ -562,6 +553,9 @@ def cli_pipeline(
 
     if mode_num == 6:
         print("[bold green]-*-*- Time Series Configuration -*-*-[/bold green]")
+        logger.debug("Feature Engineering")
+        feature_builder = FeatureConstructor(data_selected_imputed, process_name_column)
+        data_selected_imputed_fe = feature_builder.build()
         age_column = Prompt.ask("Age Column", default="R_AGE")
         maximum_age_column = Prompt.ask("Maximum Age Column", default="R_MAX_AGE")
         probability_column = Prompt.ask("Probability Column", default="SBAP")
@@ -603,6 +597,8 @@ def cli_pipeline(
     # divide X and y data set when it is supervised learning
     logger.debug("Data Divsion")
     name_all = process_name_column
+    fitted_scaler = None
+    fitted_selector = None
     label_config = None
     metric_average = None
     if mode_num == 1 or mode_num == 2:
@@ -611,9 +607,9 @@ def cli_pipeline(
         print("Divide the processing data set into X (feature value) and Y (target value) respectively.")
         # create X data set
         print("Selected sub data set to create X data set:")
-        show_data_columns(data_selected_imputed_fe.columns)
+        show_data_columns(data_selected_imputed.columns)
         print("The selected X data set:")
-        X = create_sub_data_set(data_selected_imputed_fe, allow_empty_columns=False)
+        X = create_sub_data_set(data_selected_imputed, allow_empty_columns=False)
         print("Successfully create X data set.")
         print("The Selected Data Set:")
         print(X)
@@ -625,11 +621,11 @@ def cli_pipeline(
         # Create Y data set
         print("[bold green]-*-*- Data Segmentation - X Set and Y Set -*-*-[/bold green]")
         print("Selected sub data set to create Y data set:")
-        show_data_columns(data_selected_imputed_fe.columns)
+        show_data_columns(data_selected_imputed.columns)
         print("The selected Y data set:")
         print("Notice: Normally, please choose only one column to be tag column Y, not multiple columns.")
         print("Notice: For classification model training, the selected Y column can be existing class labels or a numeric value to be converted into user-defined classes.")
-        y = create_sub_data_set(data_selected_imputed_fe, allow_empty_columns=False, require_numeric=mode_num != 2)
+        y = create_sub_data_set(data_selected_imputed, allow_empty_columns=False, require_numeric=mode_num != 2)
         print("Successfully create Y data set.")
         print("The Selected Data Set:")
         print(y)
@@ -660,43 +656,25 @@ def cli_pipeline(
                 metric_average = "binary"
         clear_output()
 
-        # <--- Feature Scaling --->
-        print("[bold green]-*-*- Feature Scaling on X Set -*-*-[/bold green]")
-        num2option(OPTION)
-        is_feature_scaling = limit_num_input(OPTION, SECTION[1], num_input)
-        if is_feature_scaling == 1:
-            print("Which strategy do you want to apply?")
-            num2option(FEATURE_SCALING_STRATEGY)
-            feature_scaling_num = limit_num_input(FEATURE_SCALING_STRATEGY, SECTION[1], num_input)
-            feature_scaling_config, X_scaled_np = feature_scaler(X, FEATURE_SCALING_STRATEGY, feature_scaling_num - 1)
-            X = np2pd(X_scaled_np, X.columns)
-            del X_scaled_np
-            print("Data Set After Scaling:")
-            print(X)
-            print("Basic Statistical Information: ")
-            basic_statistic(X)
-            save_data(X, name_all, "X With Scaling", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
-        else:
-            feature_scaling_config = {}
-        clear_output()
+        # Explicit column-role boundary guards: stop the run when any two roles
+        # overlap instead of silently feeding an accidental overlap into training.
+        _feature_target_overlap = set(X.columns) & set(y.columns)
+        _feature_identifier_overlap = set(X.columns) & set(pd.Index([NAME]))
+        _target_identifier_overlap = set(y.columns) & set(pd.Index([NAME]))
+        if _feature_target_overlap or _feature_identifier_overlap or _target_identifier_overlap:
+            print("[bold red]The X, Y and identifier column roles overlap. Aborting the run to protect training integrity.[/bold red]")
+            exit(1)
 
-        # <--- Feature Selection --->
-        print("[bold green]-*-*- Feature Selection on X set -*-*-[/bold green]")
-        num2option(OPTION)
-        is_feature_selection = limit_num_input(OPTION, SECTION[1], num_input)
-        if is_feature_selection == 1:
-            print("Which strategy do you want to apply?")
-            num2option(FEATURE_SELECTION_STRATEGY)
-            feature_selection_num = limit_num_input(FEATURE_SELECTION_STRATEGY, SECTION[1], num_input)
-            feature_selection_config, X = feature_selector(X, y, mode_num, FEATURE_SELECTION_STRATEGY, feature_selection_num - 1)
-            print("--Selected Features-")
-            show_data_columns(X.columns)
-            save_data(X, name_all, "X After Feature Selection", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
-        else:
-            feature_selection_config = {}
-        clear_output()
+        # <--- Feature Engineering --->
+        logger.debug("Feature Engineering")
+        print("[bold green]-*-*- Feature Engineering -*-*-[/bold green]")
+        feature_builder = FeatureConstructor(X, process_name_column)
+        X = feature_builder.build()
+        # feature_engineering_config is possible to be {}
+        feature_engineering_config = feature_builder.config
 
-        # Create training data and testing data
+        # Create training data and testing data before stateful preprocessing,
+        # so that scalers and selectors only fit on training rows.
         print("[bold green]-*-*- Data Split - Train Set and Test Set -*-*-[/bold green]")
         print("Notice: Normally, set 20% of the dataset aside as test set, such as 0.2.")
         test_ratio = float_input(default=0.2, prefix=SECTION[1], slogan="@Test Ratio: ")
@@ -724,12 +702,8 @@ def cli_pipeline(
         X_train, X_test = train_test_data["X Train"], train_test_data["X Test"]
         y_train, y_test = train_test_data["Y Train"], train_test_data["Y Test"]
         name_train, name_test = train_test_data["Name Train"], train_test_data["Name Test"]
-        del data_selected_imputed_fe
         clear_output()
-    else:
-        # Unsupervised learning
-        # Create X data set without data split because it is unsupervised learning
-        X = data_selected_imputed_fe
+
         # <--- Feature Scaling --->
         print("[bold green]-*-*- Feature Scaling on X Set -*-*-[/bold green]")
         num2option(OPTION)
@@ -738,8 +712,57 @@ def cli_pipeline(
             print("Which strategy do you want to apply?")
             num2option(FEATURE_SCALING_STRATEGY)
             feature_scaling_num = limit_num_input(FEATURE_SCALING_STRATEGY, SECTION[1], num_input)
-            feature_scaling_config, X_scaled_np = feature_scaler(X, FEATURE_SCALING_STRATEGY, feature_scaling_num - 1)
-            X = np2pd(X_scaled_np, X.columns)
+            feature_scaling_config, X_train_scaled_np, fitted_scaler = feature_scaler(X_train, FEATURE_SCALING_STRATEGY, feature_scaling_num - 1)
+            X_train = pd.DataFrame(X_train_scaled_np, columns=X_train.columns, index=X_train.index)
+            del X_train_scaled_np
+            X_test = pd.DataFrame(fitted_scaler.transform(X_test), columns=X_test.columns, index=X_test.index)
+            print("Train Set After Scaling:")
+            print(X_train)
+            print("Basic Statistical Information: ")
+            basic_statistic(X_train)
+            save_data(X_train, name_train, "X Train With Scaling", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+            save_data(X_test, name_test, "X Test With Scaling", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+        else:
+            feature_scaling_config = {}
+        clear_output()
+
+        # <--- Feature Selection --->
+        print("[bold green]-*-*- Feature Selection on X set -*-*-[/bold green]")
+        num2option(OPTION)
+        is_feature_selection = limit_num_input(OPTION, SECTION[1], num_input)
+        if is_feature_selection == 1:
+            print("Which strategy do you want to apply?")
+            num2option(FEATURE_SELECTION_STRATEGY)
+            feature_selection_num = limit_num_input(FEATURE_SELECTION_STRATEGY, SECTION[1], num_input)
+            feature_selection_config, X_train, fitted_selector = feature_selector(X_train, y_train, mode_num, FEATURE_SELECTION_STRATEGY, feature_selection_num - 1)
+            X_test = X_test[X_train.columns]
+            print("--Selected Features-")
+            show_data_columns(X_train.columns)
+            save_data(X_train, name_train, "X Train After Feature Selection", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+            save_data(X_test, name_test, "X Test After Feature Selection", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+        else:
+            feature_selection_config = {}
+        clear_output()
+    else:
+        # Unsupervised learning
+        # Create X data set without data split because it is unsupervised learning
+        X = data_selected_imputed
+        # <--- Feature Engineering --->
+        logger.debug("Feature Engineering")
+        print("[bold green]-*-*- Feature Engineering -*-*-[/bold green]")
+        feature_builder = FeatureConstructor(X, process_name_column)
+        X = feature_builder.build()
+        feature_engineering_config = feature_builder.config
+        # <--- Feature Scaling --->
+        print("[bold green]-*-*- Feature Scaling on X Set -*-*-[/bold green]")
+        num2option(OPTION)
+        is_feature_scaling = limit_num_input(OPTION, SECTION[1], num_input)
+        if is_feature_scaling == 1:
+            print("Which strategy do you want to apply?")
+            num2option(FEATURE_SCALING_STRATEGY)
+            feature_scaling_num = limit_num_input(FEATURE_SCALING_STRATEGY, SECTION[1], num_input)
+            feature_scaling_config, X_scaled_np, _unused_fitted_scaler = feature_scaler(X, FEATURE_SCALING_STRATEGY, feature_scaling_num - 1)
+            X = pd.DataFrame(X_scaled_np, columns=X.columns, index=X.index)
             del X_scaled_np
             print("Data Set After Scaling:")
             print(X)
@@ -755,6 +778,12 @@ def cli_pipeline(
         X_train = X
         y, X_test, y_train, y_test, name_train, name_test = None, None, None, None, None, None
         name_all = process_name_column
+    # One fitted preprocessing state is reused for model training and inference.
+    fitted_steps = {}
+    if fitted_scaler is not None:
+        fitted_steps[type(fitted_scaler).__name__] = fitted_scaler
+    if fitted_selector is not None:
+        fitted_steps[type(fitted_selector).__name__] = fitted_selector
     # <--- Model Selection --->
     logger.debug("Model Selection")
     print("[bold green]-*-*- Model Selection -*-*-[/bold green]")
@@ -863,7 +892,7 @@ def cli_pipeline(
         # Construct the transform pipeline using sklearn.pipeline.make_pipeline method.
         logger.debug("Transform Pipeline")
         print("[bold green]-*-*- Transform Pipeline Construction -*-*-[/bold green]")
-        transformer_config, transform_pipeline = build_transform_pipeline(imputation_config, feature_scaling_config, feature_selection_config, run, X_train, y_train)
+        transformer_config, transform_pipeline = build_transform_pipeline(imputation_config, feature_scaling_config, feature_selection_config, run, X_train, y_train, fitted_steps)
         clear_output()
 
         # <--- Model Inference --->
@@ -958,6 +987,7 @@ def cli_pipeline(
                         run,
                         X_train,
                         y_train,
+                        fitted_steps,
                     )
 
                     logger.debug("Model Inference")
@@ -1024,7 +1054,7 @@ def cli_pipeline(
                         safe_child_error(exc),
                     )
                 )
-                print(f"[bold red]Model {child_model!r} failed; continuing with the remaining models.[/bold red]")
+                print(f"[bold red]Model {child_model!r} failed. Continuing with the remaining models.[/bold red]")
 
         create_geopi_output_dir(OUTPUT_PATH, experiment.name, run_name)
         write_aggregate_manifest(

@@ -202,6 +202,9 @@ class RegressionWorkflowBase(WorkflowBase):
         print(f"-----* {graph_name} *-----")
         residuals = plot_residuals(y_test_predict, y_test, algorithm_name)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+        # Residuals follow the test row order; keep the row identity so the
+        # concatenated table and the saved identifier stay aligned.
+        residuals.index = y_test.index
         data = pd.concat([y_test, residuals], axis=1)
         save_data(data, name_column, f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
 

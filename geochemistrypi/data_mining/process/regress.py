@@ -219,8 +219,8 @@ class RegressionModelSelection(ModelSelectionBase):
             # If the predicted result is 1D but Y is multi-column, reshape it
             y_train_predict = y_train_predict.reshape(-1, y_train.shape[1])
         y_train_predict = self.reg_workflow.np2pd(y_train_predict, y_train.columns)
+        y_train_predict.index = y_train.index
         y_train_predict = y_train_predict.dropna()
-        y_train_predict = y_train_predict.reset_index(drop=True)
         self.reg_workflow.data_upload(y_train_predict=y_train_predict)
         y_test_predict = self.reg_workflow.predict(X_test)
         # Support multiple Y columns: Make sure the number of columns in the predicted results matches the number of columns in the original Y
@@ -228,8 +228,8 @@ class RegressionModelSelection(ModelSelectionBase):
             # If the predicted result is 1D but Y is multi-column, reshape it
             y_test_predict = y_test_predict.reshape(-1, y_test.shape[1])
         y_test_predict = self.reg_workflow.np2pd(y_test_predict, y_test.columns)
+        y_test_predict.index = y_test.index
         y_test_predict = y_test_predict.dropna()
-        y_test_predict = y_test_predict.reset_index(drop=True)
         self.reg_workflow.data_upload(y_test_predict=y_test_predict)
 
         # Save the model hyper-parameters
@@ -313,8 +313,8 @@ class RegressionModelSelection(ModelSelectionBase):
             # If the predicted result is 1D but Y is multi-column, reshape it
             y_train_predict = y_train_predict.reshape(-1, y_train.shape[1])
         y_train_predict = self.reg_workflow.np2pd(y_train_predict, y_train.columns)
+        y_train_predict.index = y_train.index
         y_train_predict = y_train_predict.dropna()
-        y_train_predict = y_train_predict.reset_index(drop=True)
         self.reg_workflow.data_upload(y_train_predict=y_train_predict)
         y_test_predict = self.reg_workflow.predict(X_test, is_automl)
         # Support multiple Y columns: Make sure the number of columns in the predicted results matches the number of columns in the original Y
@@ -322,8 +322,8 @@ class RegressionModelSelection(ModelSelectionBase):
             # If the predicted result is 1D but Y is multi-column, reshape it
             y_test_predict = y_test_predict.reshape(-1, y_test.shape[1])
         y_test_predict = self.reg_workflow.np2pd(y_test_predict, y_test.columns)
+        y_test_predict.index = y_test.index
         y_test_predict = y_test_predict.dropna()
-        y_test_predict = y_test_predict.reset_index(drop=True)
         self.reg_workflow.data_upload(y_test_predict=y_test_predict)
 
         # Save the model hyper-parameters

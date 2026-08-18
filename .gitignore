@@ -72,5 +72,17 @@ docs/build
 mlruns
 geopi_tracking
 
+# Local scratch / render QA output
+tmp/
+
+# Local verification environments and research-only inputs
+.venv-lean/
+Lean_verification_docs/
+
+# Local development-tool state (not part of the product)
+.codegraph/
+.*_work/
+
+# Local generated multiclass artifacts
 multiclass_classification
 multiclass_cli_test.csv

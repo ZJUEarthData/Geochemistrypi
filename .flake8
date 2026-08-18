@@ -1,3 +1,5 @@
 [flake8]
 max-line-length = 200
 ignore = E203, F811, W503, W605
+per-file-ignores =
+    formal_verification/python/generate_current_run.py:E231

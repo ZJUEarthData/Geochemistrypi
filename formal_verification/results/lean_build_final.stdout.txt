@@ -1,0 +1,80 @@
+ℹ [5/19] Replayed GeoPiVerify.Theorems
+info: GeoPiVerify/Theorems.lean:29:0: 'GeoPiVerify.accepted_iff_conforms' does not depend on any axioms
+info: GeoPiVerify/Theorems.lean:30:0: 'GeoPiVerify.accepted_implies_role_boundary' does not depend on any axioms
+info: GeoPiVerify/Theorems.lean:31:0: 'GeoPiVerify.accepted_implies_fit_scope' does not depend on any axioms
+info: GeoPiVerify/Theorems.lean:32:0: 'GeoPiVerify.accepted_implies_codec_persistence' does not depend on any axioms
+info: GeoPiVerify/Theorems.lean:33:0: 'GeoPiVerify.accepted_implies_artifact_alignment' does not depend on any axioms
+ℹ [6/19] Replayed GeoPiVerify.Fixtures
+info: GeoPiVerify/Fixtures.lean:153:0: 'GeoPiVerify.good_fixture_conforms' does not depend on any axioms
+info: GeoPiVerify/Fixtures.lean:154:0: 'GeoPiVerify.role_guard_mutant_rejected' does not depend on any axioms
+info: GeoPiVerify/Fixtures.lean:155:0: 'GeoPiVerify.fit_leak_mutant_rejected' does not depend on any axioms
+info: GeoPiVerify/Fixtures.lean:156:0: 'GeoPiVerify.codec_persistence_mutant_rejected' does not depend on any axioms
+info: GeoPiVerify/Fixtures.lean:157:0: 'GeoPiVerify.artifact_policy_mutant_rejected' does not depend on any axioms
+ℹ [12/19] Built GeoPiVerify.Generated.CurrentRun (24s)
+info: GeoPiVerify/Generated/CurrentRun.lean:13:0: 'GeoPiVerify.Generated.counterexample_00_counterexample_baseline_overall_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:21:0: 'GeoPiVerify.Generated.counterexample_01_counterexample_d01_overall_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:26:0: 'GeoPiVerify.Generated.counterexample_01_counterexample_d01_d01_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:34:0: 'GeoPiVerify.Generated.counterexample_02_counterexample_d02_overall_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:39:0: 'GeoPiVerify.Generated.counterexample_02_counterexample_d02_d02_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:47:0: 'GeoPiVerify.Generated.counterexample_03_counterexample_d03_overall_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:52:0: 'GeoPiVerify.Generated.counterexample_03_counterexample_d03_d03_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:60:0: 'GeoPiVerify.Generated.counterexample_04_counterexample_d04_overall_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:65:0: 'GeoPiVerify.Generated.counterexample_04_counterexample_d04_d04_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:73:0: 'GeoPiVerify.Generated.counterexample_05_counterexample_d05_overall_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:78:0: 'GeoPiVerify.Generated.counterexample_05_counterexample_d05_d05_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:86:0: 'GeoPiVerify.Generated.counterexample_06_counterexample_d06_overall_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:91:0: 'GeoPiVerify.Generated.counterexample_06_counterexample_d06_d06_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:99:0: 'GeoPiVerify.Generated.counterexample_07_counterexample_p01_overall_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:104:0: 'GeoPiVerify.Generated.counterexample_07_counterexample_p01_p01_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:112:0: 'GeoPiVerify.Generated.counterexample_08_counterexample_p02_overall_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:117:0: 'GeoPiVerify.Generated.counterexample_08_counterexample_p02_p02_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:125:0: 'GeoPiVerify.Generated.counterexample_09_counterexample_p03_overall_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:130:0: 'GeoPiVerify.Generated.counterexample_09_counterexample_p03_p03_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:138:0: 'GeoPiVerify.Generated.counterexample_10_counterexample_p04_overall_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:143:0: 'GeoPiVerify.Generated.counterexample_10_counterexample_p04_p04_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:151:0: 'GeoPiVerify.Generated.counterexample_11_counterexample_p05_overall_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:156:0: 'GeoPiVerify.Generated.counterexample_11_counterexample_p05_p05_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:164:0: 'GeoPiVerify.Generated.counterexample_12_counterexample_p06_overall_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:169:0: 'GeoPiVerify.Generated.counterexample_12_counterexample_p06_p06_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:177:0: 'GeoPiVerify.Generated.counterexample_13_counterexample_l01_overall_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:182:0: 'GeoPiVerify.Generated.counterexample_13_counterexample_l01_l01_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:190:0: 'GeoPiVerify.Generated.counterexample_14_counterexample_l02_overall_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:195:0: 'GeoPiVerify.Generated.counterexample_14_counterexample_l02_l02_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:203:0: 'GeoPiVerify.Generated.counterexample_15_counterexample_l03_overall_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:208:0: 'GeoPiVerify.Generated.counterexample_15_counterexample_l03_l03_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:216:0: 'GeoPiVerify.Generated.counterexample_16_counterexample_a01_overall_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:221:0: 'GeoPiVerify.Generated.counterexample_16_counterexample_a01_a01_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:229:0: 'GeoPiVerify.Generated.counterexample_17_counterexample_a02_overall_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:234:0: 'GeoPiVerify.Generated.counterexample_17_counterexample_a02_a02_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:242:0: 'GeoPiVerify.Generated.counterexample_18_counterexample_a03_overall_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:247:0: 'GeoPiVerify.Generated.counterexample_18_counterexample_a03_a03_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:255:0: 'GeoPiVerify.Generated.counterexample_19_counterexample_e01_overall_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:260:0: 'GeoPiVerify.Generated.counterexample_19_counterexample_e01_e01_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:268:0: 'GeoPiVerify.Generated.counterexample_20_counterexample_e02_overall_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:273:0: 'GeoPiVerify.Generated.counterexample_20_counterexample_e02_e02_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:299:0: 'GeoPiVerify.Generated.production_00_geopi_builtin_classification_production_audit_d01_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:304:0: 'GeoPiVerify.Generated.production_00_geopi_builtin_classification_production_audit_d02_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:309:0: 'GeoPiVerify.Generated.production_00_geopi_builtin_classification_production_audit_d03_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:314:0: 'GeoPiVerify.Generated.production_00_geopi_builtin_classification_production_audit_d04_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:319:0: 'GeoPiVerify.Generated.production_00_geopi_builtin_classification_production_audit_d05_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:324:0: 'GeoPiVerify.Generated.production_00_geopi_builtin_classification_production_audit_d06_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:329:0: 'GeoPiVerify.Generated.production_00_geopi_builtin_classification_production_audit_p01_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:334:0: 'GeoPiVerify.Generated.production_00_geopi_builtin_classification_production_audit_p02_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:339:0: 'GeoPiVerify.Generated.production_00_geopi_builtin_classification_production_audit_p03_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:344:0: 'GeoPiVerify.Generated.production_00_geopi_builtin_classification_production_audit_p04_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:349:0: 'GeoPiVerify.Generated.production_00_geopi_builtin_classification_production_audit_p05_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:354:0: 'GeoPiVerify.Generated.production_00_geopi_builtin_classification_production_audit_p06_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:359:0: 'GeoPiVerify.Generated.production_00_geopi_builtin_classification_production_audit_l01_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:364:0: 'GeoPiVerify.Generated.production_00_geopi_builtin_classification_production_audit_l02_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:369:0: 'GeoPiVerify.Generated.production_00_geopi_builtin_classification_production_audit_l03_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:374:0: 'GeoPiVerify.Generated.production_00_geopi_builtin_classification_production_audit_a01_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:379:0: 'GeoPiVerify.Generated.production_00_geopi_builtin_classification_production_audit_a02_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:384:0: 'GeoPiVerify.Generated.production_00_geopi_builtin_classification_production_audit_a03_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:389:0: 'GeoPiVerify.Generated.production_00_geopi_builtin_classification_production_audit_e01_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:394:0: 'GeoPiVerify.Generated.production_00_geopi_builtin_classification_production_audit_e02_result' does not depend on any axioms
+info: GeoPiVerify/Generated/CurrentRun.lean:399:0: 'GeoPiVerify.Generated.production_00_geopi_builtin_classification_production_audit_overall_result' does not depend on any axioms
+✔ [13/19] Built GeoPiVerify.Generated.CurrentRun:c.o (298ms)
+✔ [14/19] Built GeoPiVerify (1.4s)
+✔ [17/19] Built GeoPiVerify.Main (475ms)
+✔ [19/19] Built «geopi-tracecheck»:exe (867ms)
+Build completed successfully (19 jobs).

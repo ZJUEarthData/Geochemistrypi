@@ -1,0 +1,10 @@
+name = "geopi-formal-verification"
+version = "0.1.0"
+defaultTargets = ["GeoPiVerify", "geopi-tracecheck"]
+
+[[lean_lib]]
+name = "GeoPiVerify"
+
+[[lean_exe]]
+name = "geopi-tracecheck"
+root = "GeoPiVerify.Main"

@@ -145,8 +145,8 @@ def test_regression_training_application_and_preprocessing_parity(tmp_path: Path
     )
     assert plan.public_command[6] == "--world-map-config"
     assert json.loads(plan.public_command[7])["enabled"] is False
-    assert responses["engineered_feature_1_formula"] == "b / c"
-    assert responses["feature_columns"] == "[2,4]"
+    assert responses["engineered_feature_1_formula"] == "a / b"
+    assert responses["feature_columns"] == "[2,3]"
     assert responses["mean_normalization"] == "3"
     assert responses["feature_selection_method"] == "2"
     assert responses["feature_selection_retain_count"] == "2"

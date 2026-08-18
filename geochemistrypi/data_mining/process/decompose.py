@@ -58,7 +58,10 @@ class DecompositionModelSelection(ModelSelectionBase):
 
         # Use Scikit-learn style API to process input data
         X_reduced = self.dcp_workflow.fit_transform(X)
-        X_reduced = self.dcp_workflow.np2pd(X_reduced, [f"Dimension {i+1}" for i in range(X_reduced.shape[1])])
+        X_reduced = self.dcp_workflow.np2pd(X_reduced, [f"Dimension {i + 1}" for i in range(X_reduced.shape[1])])
+        # Keep the source row identities so the reduced rows stay bound to
+        # the original samples instead of being aligned by position.
+        X_reduced.index = X.index
         self.dcp_workflow.data_upload(X=X)
 
         # Save the model hyper-parameters
