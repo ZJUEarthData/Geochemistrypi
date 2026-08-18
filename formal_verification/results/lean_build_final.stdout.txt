@@ -10,7 +10,7 @@ info: GeoPiVerify/Fixtures.lean:154:0: 'GeoPiVerify.role_guard_mutant_rejected' 
 info: GeoPiVerify/Fixtures.lean:155:0: 'GeoPiVerify.fit_leak_mutant_rejected' does not depend on any axioms
 info: GeoPiVerify/Fixtures.lean:156:0: 'GeoPiVerify.codec_persistence_mutant_rejected' does not depend on any axioms
 info: GeoPiVerify/Fixtures.lean:157:0: 'GeoPiVerify.artifact_policy_mutant_rejected' does not depend on any axioms
-ℹ [12/19] Built GeoPiVerify.Generated.CurrentRun (22s)
+ℹ [12/19] Built GeoPiVerify.Generated.CurrentRun (23s)
 info: GeoPiVerify/Generated/CurrentRun.lean:13:0: 'GeoPiVerify.Generated.counterexample_00_counterexample_baseline_overall_result' does not depend on any axioms
 info: GeoPiVerify/Generated/CurrentRun.lean:21:0: 'GeoPiVerify.Generated.counterexample_01_counterexample_d01_overall_result' does not depend on any axioms
 info: GeoPiVerify/Generated/CurrentRun.lean:26:0: 'GeoPiVerify.Generated.counterexample_01_counterexample_d01_d01_result' does not depend on any axioms
@@ -73,8 +73,8 @@ info: GeoPiVerify/Generated/CurrentRun.lean:384:0: 'GeoPiVerify.Generated.produc
 info: GeoPiVerify/Generated/CurrentRun.lean:389:0: 'GeoPiVerify.Generated.production_00_geopi_builtin_classification_production_audit_e01_result' does not depend on any axioms
 info: GeoPiVerify/Generated/CurrentRun.lean:394:0: 'GeoPiVerify.Generated.production_00_geopi_builtin_classification_production_audit_e02_result' does not depend on any axioms
 info: GeoPiVerify/Generated/CurrentRun.lean:399:0: 'GeoPiVerify.Generated.production_00_geopi_builtin_classification_production_audit_overall_result' does not depend on any axioms
-✔ [13/19] Built GeoPiVerify.Generated.CurrentRun:c.o (291ms)
-✔ [14/19] Built GeoPiVerify (1.4s)
-✔ [17/19] Built GeoPiVerify.Main (436ms)
-✔ [19/19] Built «geopi-tracecheck»:exe (847ms)
+✔ [13/19] Built GeoPiVerify.Generated.CurrentRun:c.o (297ms)
+✔ [14/19] Built GeoPiVerify (1.3s)
+✔ [17/19] Built GeoPiVerify.Main (447ms)
+✔ [19/19] Built «geopi-tracecheck»:exe (833ms)
 Build completed successfully (19 jobs).
