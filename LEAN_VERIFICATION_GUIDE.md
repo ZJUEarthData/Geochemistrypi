@@ -88,7 +88,7 @@ cd Geochemistrypi
 
 ```text
 git fetch origin
-git switch qzh
+git switch qzh/lean-verification-workflow
 ```
 
 后续所有命令默认从仓库根目录执行。路径中可以包含空格，但建议 Windows 用户把仓库放在较短路径下，避免旧版工具的路径长度限制。
@@ -641,10 +641,10 @@ gh auth status
 
 ```text
 git branch --show-current
-git push -u origin qzh
+git push -u origin qzh/lean-verification-workflow
 ```
 
-`-u` 会把本地 `qzh` 与远程同名分支建立跟踪关系；之后在该分支上通常只需执行 `git push`。GitHub 官方推荐对 HTTPS 使用 GitHub CLI 或 Git Credential Manager 保存凭据，参见 [GitHub CLI 登录手册](https://cli.github.com/manual/gh_auth_login) 和 [Git 凭据缓存说明](https://docs.github.com/en/get-started/git-basics/caching-your-github-credentials-in-git)。
+`-u` 会把本地 `qzh/lean-verification-workflow` 与远程同名分支建立跟踪关系；之后在该分支上通常只需执行 `git push`。GitHub 官方推荐对 HTTPS 使用 GitHub CLI 或 Git Credential Manager 保存凭据，参见 [GitHub CLI 登录手册](https://cli.github.com/manual/gh_auth_login) 和 [Git 凭据缓存说明](https://docs.github.com/en/get-started/git-basics/caching-your-github-credentials-in-git)。
 
 ### A.2 备用方式：细粒度 Personal Access Token
 
@@ -656,6 +656,6 @@ Personal Access Token（PAT，个人访问令牌）是 GitHub 签发给账户的
 4. `Repository access` 选择 **Only select repositories**，只选择 `Geochemistrypi`；
 5. 在 `Repository permissions` 中只把 **Contents** 设为 **Read and write**，其余维持默认；
 6. 生成后立即复制令牌；页面通常不会再次完整显示它；
-7. 执行 `git push -u origin qzh`。若终端询问 `Username`，输入 `quzhenghao`；询问 `Password` 时粘贴 PAT，而不是 GitHub 密码。终端在粘贴密码时不显示字符属于正常现象。
+7. 执行 `git push -u origin qzh/lean-verification-workflow`。若终端询问 `Username`，输入 `quzhenghao`；询问 `Password` 时粘贴 PAT，而不是 GitHub 密码。终端在粘贴密码时不显示字符属于正常现象。
 
 令牌只能粘贴到本机的认证提示中：不要写进代码、远程地址、配置文件、截图、聊天、Issue 或提交记录。若怀疑泄露，立即回到 GitHub 的令牌管理页面撤销并重新创建。创建、权限和安全规则以 [GitHub PAT 官方文档](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) 为准。
