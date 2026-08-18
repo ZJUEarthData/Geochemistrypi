@@ -1,24 +1,24 @@
-✔ [2/19] Built GeoPiVerify.Types (6.1s)
-✔ [3/19] Built GeoPiVerify.Predicates (663ms)
-✔ [4/19] Built GeoPiVerify.Predicates:c.o (594ms)
-✔ [5/19] Built GeoPiVerify.Checker (621ms)
-✔ [6/19] Built GeoPiVerify.Checker:c.o (260ms)
-ℹ [7/19] Built GeoPiVerify.Theorems (542ms)
+✔ [2/19] Built GeoPiVerify.Types (5.0s)
+✔ [3/19] Built GeoPiVerify.Predicates (707ms)
+✔ [4/19] Built GeoPiVerify.Checker (635ms)
+✔ [5/19] Built GeoPiVerify.Predicates:c.o (599ms)
+✔ [6/19] Built GeoPiVerify.Checker:c.o (286ms)
+ℹ [7/19] Built GeoPiVerify.Theorems (564ms)
 info: GeoPiVerify/Theorems.lean:29:0: 'GeoPiVerify.accepted_iff_conforms' does not depend on any axioms
 info: GeoPiVerify/Theorems.lean:30:0: 'GeoPiVerify.accepted_implies_role_boundary' does not depend on any axioms
 info: GeoPiVerify/Theorems.lean:31:0: 'GeoPiVerify.accepted_implies_fit_scope' does not depend on any axioms
 info: GeoPiVerify/Theorems.lean:32:0: 'GeoPiVerify.accepted_implies_codec_persistence' does not depend on any axioms
 info: GeoPiVerify/Theorems.lean:33:0: 'GeoPiVerify.accepted_implies_artifact_alignment' does not depend on any axioms
-✔ [8/19] Built GeoPiVerify.Theorems:c.o (36ms)
-✔ [9/19] Built GeoPiVerify.Types:c.o (1.0s)
-ℹ [10/19] Built GeoPiVerify.Fixtures (734ms)
+✔ [8/19] Built GeoPiVerify.Theorems:c.o (40ms)
+✔ [9/19] Built GeoPiVerify.Types:c.o (2.0s)
+ℹ [10/19] Built GeoPiVerify.Fixtures (774ms)
 info: GeoPiVerify/Fixtures.lean:153:0: 'GeoPiVerify.good_fixture_conforms' does not depend on any axioms
 info: GeoPiVerify/Fixtures.lean:154:0: 'GeoPiVerify.role_guard_mutant_rejected' does not depend on any axioms
 info: GeoPiVerify/Fixtures.lean:155:0: 'GeoPiVerify.fit_leak_mutant_rejected' does not depend on any axioms
 info: GeoPiVerify/Fixtures.lean:156:0: 'GeoPiVerify.codec_persistence_mutant_rejected' does not depend on any axioms
 info: GeoPiVerify/Fixtures.lean:157:0: 'GeoPiVerify.artifact_policy_mutant_rejected' does not depend on any axioms
-✔ [11/19] Built GeoPiVerify.Fixtures:c.o (64ms)
-ℹ [12/19] Built GeoPiVerify.Generated.CurrentRun (1.4s)
+✔ [11/19] Built GeoPiVerify.Fixtures:c.o (66ms)
+ℹ [12/19] Built GeoPiVerify.Generated.CurrentRun (1.5s)
 info: GeoPiVerify/Generated/CurrentRun.lean:13:0: 'GeoPiVerify.Generated.counterexample_00_counterexample_baseline_overall_result' does not depend on any axioms
 info: GeoPiVerify/Generated/CurrentRun.lean:21:0: 'GeoPiVerify.Generated.counterexample_01_counterexample_d01_overall_result' does not depend on any axioms
 info: GeoPiVerify/Generated/CurrentRun.lean:26:0: 'GeoPiVerify.Generated.counterexample_01_counterexample_d01_d01_result' does not depend on any axioms
@@ -60,10 +60,10 @@ info: GeoPiVerify/Generated/CurrentRun.lean:255:0: 'GeoPiVerify.Generated.counte
 info: GeoPiVerify/Generated/CurrentRun.lean:260:0: 'GeoPiVerify.Generated.counterexample_19_counterexample_e01_e01_result' does not depend on any axioms
 info: GeoPiVerify/Generated/CurrentRun.lean:268:0: 'GeoPiVerify.Generated.counterexample_20_counterexample_e02_overall_result' does not depend on any axioms
 info: GeoPiVerify/Generated/CurrentRun.lean:273:0: 'GeoPiVerify.Generated.counterexample_20_counterexample_e02_e02_result' does not depend on any axioms
-✔ [13/19] Built GeoPiVerify.Generated.CurrentRun:c.o (91ms)
-✔ [14/19] Built GeoPiVerify (452ms)
-✔ [16/19] Built GeoPiVerify:c.o (34ms)
-✔ [17/19] Built GeoPiVerify.Main (473ms)
-✔ [18/19] Built GeoPiVerify.Main:c.o (80ms)
-✔ [19/19] Built «geopi-tracecheck»:exe (1.2s)
+✔ [13/19] Built GeoPiVerify.Generated.CurrentRun:c.o (94ms)
+✔ [14/19] Built GeoPiVerify (434ms)
+✔ [16/19] Built GeoPiVerify:c.o (35ms)
+✔ [17/19] Built GeoPiVerify.Main (476ms)
+✔ [18/19] Built GeoPiVerify.Main:c.o (84ms)
+✔ [19/19] Built «geopi-tracecheck»:exe (962ms)
 Build completed successfully (19 jobs).
