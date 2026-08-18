@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "cli_version": "0.8.1",
+  "task": "decomposition",
+  "execution_owner": "geochemistrypi data-mining",
+  "models": [
+    {"id": "pca", "cli_name": "PCA"},
+    {"id": "tsne", "cli_name": "T-SNE"},
+    {"id": "mds", "cli_name": "MDS"}
+  ],
+  "interactions": {
+    "missing_values": ["error", "drop_rows", "impute"],
+    "scaling": ["none", "min_max", "standardization", "mean_normalization"],
+    "application_data": ["disabled"],
+    "target_column": ["not_applicable"],
+    "tuning": ["not_applicable"]
+  },
+  "common_outputs": [
+    "X Reduced",
+    "Decomposition Two-Dimensional Diagram",
+    "Decomposition Heatmap",
+    "Dimensionality Reduction Contour Plot",
+    "model joblib",
+    "Transform Pipeline Configuration"
+  ],
+  "unsupported": [
+    "all_models",
+    "application_data",
+    "target_column",
+    "automl",
+    "keep_missing_values",
+    "feature_selection",
+    "previous_experiment"
+  ]
+}

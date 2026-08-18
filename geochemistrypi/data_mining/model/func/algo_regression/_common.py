@@ -62,7 +62,7 @@ def display_cross_validation_scores(scores: np.ndarray, score_name: str) -> Dict
         The scores of cross-validation.
     """
     cv_scores = {
-        "Fold Scores": str(scores.tolist()),
+        "Fold Scores": scores.tolist(),
         "Mean": scores.mean(),
         "Standard Deviation": scores.std(),
     }
@@ -167,7 +167,14 @@ def plot_residuals(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, algorithm
         The residuals of the testing predict values and the testing target values.
     """
     residuals = y_test_predict.values - y_test.values
-    residuals = pd.DataFrame(residuals, columns=["Residuals"])
+    # Support multiple Y columns: create column names based on the actual number of columns
+    if y_test.shape[1] == 1:
+        residuals = pd.DataFrame(residuals, columns=["Residuals"])
+    else:
+        # Support multiple Y columns: create column names based on the actual number of columns
+        residual_columns = [f"Residuals_{col}" for col in y_test.columns]
+        residuals = pd.DataFrame(residuals, columns=residual_columns)
+
     plt.scatter(y_test_predict, residuals, color="b")
     plt.axhline(0, color="r", linestyle="--", label="Zero Residual Line")
     plt.title(f"Residuals Diagram - {algorithm_name}")

@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "cli_version": "0.8.1",
+  "task": "classification",
+  "execution_owner": "geochemistrypi data-mining",
+  "models": [
+    {"id": "logistic_regression", "cli_name": "Logistic Regression"},
+    {"id": "support_vector_machine", "cli_name": "Support Vector Machine"},
+    {"id": "decision_tree", "cli_name": "Decision Tree"},
+    {"id": "random_forest", "cli_name": "Random Forest"},
+    {"id": "extra_trees", "cli_name": "Extra-Trees"},
+    {"id": "xgboost", "cli_name": "XGBoost"},
+    {"id": "multi_layer_perceptron", "cli_name": "Multi-layer Perceptron"},
+    {"id": "gradient_boosting", "cli_name": "Gradient Boosting"},
+    {"id": "k_nearest_neighbors", "cli_name": "K-Nearest Neighbors"},
+    {"id": "stochastic_gradient_descent", "cli_name": "Stochastic Gradient Descent"},
+    {"id": "adaboost", "cli_name": "AdaBoost"}
+  ],
+  "interactions": {
+    "label_customization": ["encode_original", "map", "interval", "quantile"],
+    "missing_values": ["error", "keep", "drop_rows", "impute"],
+    "scaling": ["none", "min_max", "standardization", "mean_normalization"],
+    "feature_selection": ["none", "generic_univariate", "select_k_best"],
+    "tuning": ["manual", "automl"],
+    "application_data": ["disabled", "enabled"],
+    "sample_balancing": ["none"]
+  },
+  "unsupported": [
+    "all_models",
+    "sample_balancing",
+    "previous_experiment"
+  ]
+}

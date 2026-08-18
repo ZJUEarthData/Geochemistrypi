@@ -30,8 +30,18 @@ def create_geopi_output_dir(output_path: str, experiment_name: str, run_name: st
     sub_run_name : str, default=None
         The name of the sub run.
     """
+    # Check if output_path is a valid path
+    if not os.path.exists(output_path):
+        print(f"[yellow]Warning: output_path '{output_path}' does not exist. Creating it...[/yellow]")
+        try:
+            os.makedirs(output_path, exist_ok=True)
+        except PermissionError:
+            print(f"[red]Error: No permission to create '{output_path}'. Falling back to default path.[/red]")
+            output_path = os.path.expanduser("~/Desktop/geopi_output")
+            print(f"[green]Using fallback path: {output_path}[/green]")
+            os.makedirs(output_path, exist_ok=True)
+
     # Set the output path for the current run
-    # timestamp = datetime.datetime.now().strftime("%m-%d-%H-%M")
     if sub_run_name:
         geopi_output_path = os.path.join(output_path, experiment_name, f"{run_name}", sub_run_name)
     else:
@@ -176,6 +186,15 @@ def save_fig(fig_name: str, local_image_path: str, mlflow_artifact_image_path: s
     tight_layout : bool, default=True
         Automatically adjust subplot parameters to give specified padding.
     """
+    # Check if local_image_path is a valid path
+    if not os.path.exists(local_image_path):
+        print(f"[yellow]Warning: local_image_path '{local_image_path}' does not exist. Creating it...[/yellow]")
+        try:
+            os.makedirs(local_image_path, exist_ok=True)
+        except Exception as e:
+            print(f"[red]Error: Cannot create local_image_path '{local_image_path}': {e}[/red]")
+            return
+
     full_path = os.path.join(local_image_path, fig_name + ".png")
     print(f"Save figure '{fig_name}' in {local_image_path}.")
     if tight_layout:
@@ -190,10 +209,37 @@ def save_fig(fig_name: str, local_image_path: str, mlflow_artifact_image_path: s
         i = i + 1
     plt.savefig(full_path, format="png", dpi=300)
     plt.close()
-    if mlflow_artifact_image_path:
-        mlflow.log_artifact(full_path, artifact_path=mlflow_artifact_image_path)
-    else:
-        mlflow.log_artifact(full_path)
+
+    # MLflow logging with comprehensive error handling
+    try:
+        # Check if MLflow is running
+        if mlflow.active_run() is None:
+            print("[yellow]Warning: No active MLflow run. Skipping MLflow artifact logging.[/yellow]")
+            return
+
+        if mlflow_artifact_image_path:
+            # Validate MLflow artifact path
+            if not mlflow_artifact_image_path.startswith("/") and not mlflow_artifact_image_path.startswith("."):
+                print(f"[yellow]Warning: MLflow artifact path '{mlflow_artifact_image_path}' is not absolute. Using as relative path.[/yellow]")
+            try:
+                mlflow.log_artifact(full_path, artifact_path=mlflow_artifact_image_path)
+                print(f"[green]Successfully logged '{fig_name}' to MLflow artifact path: {mlflow_artifact_image_path}[/green]")
+            except Exception as e:
+                print(f"[yellow]Warning: Failed to log artifact to MLflow (artifact_path={mlflow_artifact_image_path}): {e}[/yellow]")
+                # Try logging without artifact_path
+                try:
+                    mlflow.log_artifact(full_path)
+                    print(f"[green]Successfully logged '{fig_name}' to MLflow root artifacts.[/green]")
+                except Exception as e2:
+                    print(f"[yellow]Warning: Also failed to log to MLflow root artifacts: {e2}[/yellow]")
+        else:
+            try:
+                mlflow.log_artifact(full_path)
+                print(f"[green]Successfully logged '{fig_name}' to MLflow root artifacts.[/green]")
+            except Exception as e:
+                print(f"[yellow]Warning: Failed to log artifact to MLflow root artifacts: {e}[/yellow]")
+    except Exception as e:
+        print(f"[yellow]Warning: General MLflow error: {e}[/yellow]")
 
 
 def save_data(df: pd.DataFrame, name_column: str, df_name: str, local_data_path: str, mlflow_artifact_data_path: str = None, index: bool = False) -> None:
@@ -219,6 +265,15 @@ def save_data(df: pd.DataFrame, name_column: str, df_name: str, local_data_path:
     index : bool, default=False
         Whether to write the index.
     """
+    # Check if local_data_path is a valid path
+    if not os.path.exists(local_data_path):
+        print(f"[yellow]Warning: local_data_path '{local_data_path}' does not exist. Creating it...[/yellow]")
+        try:
+            os.makedirs(local_data_path, exist_ok=True)
+        except Exception as e:
+            print(f"[red]Error: Cannot create local_data_path '{local_data_path}': {e}[/red]")
+            return
+
     if name_column is not None and len(df) == len(name_column):
         if not df.index.empty and len(name_column.index) == len(df.index) and set(df.index) != set(name_column.index):
             # Refuse to align by position when the identity sets differ: a
@@ -226,23 +281,35 @@ def save_data(df: pd.DataFrame, name_column: str, df_name: str, local_data_path:
             raise ValueError("Cannot save data: the identifier column and the data rows carry different identities")
         if not df.index.empty and len(name_column.index) == len(df.index):
             name_column = name_column.reindex(df.index)
-        df.reset_index(drop=True, inplace=True)
-        name_column.reset_index(drop=True, inplace=True)
-        df = pd.concat([name_column, df], axis=1)
+        # Saving must not erase the caller's row identities. Work on detached
+        # frames before normalizing the output-only index.
+        data_to_save = df.reset_index(drop=True)
+        names_to_save = name_column.reset_index(drop=True)
+        df = pd.concat([names_to_save, data_to_save], axis=1)
     try:
         # drop the index in case that the dimensions change
         full_path = os.path.join(local_data_path, "{}.xlsx".format(df_name))
         df.to_excel(full_path, index=index)
-        if mlflow_artifact_data_path:
-            mlflow.log_artifact(full_path, artifact_path=mlflow_artifact_data_path)
-        else:
-            mlflow.log_artifact(full_path)
+        try:
+            if mlflow_artifact_data_path:
+                mlflow.log_artifact(full_path, artifact_path=mlflow_artifact_data_path)
+            else:
+                mlflow.log_artifact(full_path)
+        except Exception as e:
+            print(f"[yellow]Warning: Failed to log data to MLflow: {e}[/yellow]")
         print(f"Successfully store '{df_name}' in '{df_name}.xlsx' in {local_data_path}.")
     except ModuleNotFoundError:
         print("** Please download openpyxl by pip3 **")
         print("** The data will be stored in .csv file **")
         full_path = os.path.join(local_data_path, "{}.csv".format(df_name))
         df.to_csv(full_path, index=index)
+        try:
+            if mlflow_artifact_data_path:
+                mlflow.log_artifact(full_path, artifact_path=mlflow_artifact_data_path)
+            else:
+                mlflow.log_artifact(full_path)
+        except Exception as e:
+            print(f"[yellow]Warning: Failed to log data to MLflow: {e}[/yellow]")
         print(f"Successfully store '{df_name}' in '{df_name}.csv' in {local_data_path}.")
 
 
@@ -266,20 +333,39 @@ def save_data_without_data_identifier(df: pd.DataFrame, df_name: str, local_data
     index : bool, default=False
         Whether to write the index.
     """
+    # Check if local_data_path is a valid path
+    if not os.path.exists(local_data_path):
+        print(f"[yellow]Warning: local_data_path '{local_data_path}' does not exist. Creating it...[/yellow]")
+        try:
+            os.makedirs(local_data_path, exist_ok=True)
+        except Exception as e:
+            print(f"[red]Error: Cannot create local_data_path '{local_data_path}': {e}[/red]")
+            return
+
     try:
         # drop the index in case that the dimensions change
         full_path = os.path.join(local_data_path, "{}.xlsx".format(df_name))
         df.to_excel(full_path, index=index)
-        if mlflow_artifact_data_path:
-            mlflow.log_artifact(full_path, artifact_path=mlflow_artifact_data_path)
-        else:
-            mlflow.log_artifact(full_path)
+        try:
+            if mlflow_artifact_data_path:
+                mlflow.log_artifact(full_path, artifact_path=mlflow_artifact_data_path)
+            else:
+                mlflow.log_artifact(full_path)
+        except Exception as e:
+            print(f"[yellow]Warning: Failed to log data to MLflow: {e}[/yellow]")
         print(f"Successfully store '{df_name}' in '{df_name}.xlsx' in {local_data_path}.")
     except ModuleNotFoundError:
         print("** Please download openpyxl by pip3 **")
         print("** The data will be stored in .csv file **")
         full_path = os.path.join(local_data_path, "{}.csv".format(df_name))
         df.to_csv(full_path, index=index)
+        try:
+            if mlflow_artifact_data_path:
+                mlflow.log_artifact(full_path, artifact_path=mlflow_artifact_data_path)
+            else:
+                mlflow.log_artifact(full_path)
+        except Exception as e:
+            print(f"[yellow]Warning: Failed to log data to MLflow: {e}[/yellow]")
         print(f"Successfully store '{df_name}' in '{df_name}.csv' in {local_data_path}.")
 
 
@@ -300,17 +386,29 @@ def save_text(string: str, text_name: str, local_text_path: str, mlflow_artifact
     mlflow_artifact_text_path : str, default=None
         The path to store the text in mlflow.
     """
+    # Check if local_text_path is a valid path
+    if not os.path.exists(local_text_path):
+        print(f"[yellow]Warning: local_text_path '{local_text_path}' does not exist. Creating it...[/yellow]")
+        try:
+            os.makedirs(local_text_path, exist_ok=True)
+        except Exception as e:
+            print(f"[red]Error: Cannot create local_text_path '{local_text_path}': {e}[/red]")
+            return
+
     full_path = os.path.join(local_text_path, text_name + ".txt")
     with open(full_path, "w") as f:
         f.write(string)
     print(f"Successfully store '{text_name}' in '{text_name}.txt' in {local_text_path}.")
-    if not mlflow_artifact_text_path:
-        pass
-    elif mlflow_artifact_text_path == "root":
-        # If artifact_path is "root", the artifact will be placed in the root artifacts directory.
-        mlflow.log_artifact(full_path)
-    else:
-        mlflow.log_artifact(full_path, artifact_path=mlflow_artifact_text_path)
+    try:
+        if not mlflow_artifact_text_path:
+            pass
+        elif mlflow_artifact_text_path == "root":
+            # If artifact_path is "root", the artifact will be placed in the root artifacts directory.
+            mlflow.log_artifact(full_path)
+        else:
+            mlflow.log_artifact(full_path, artifact_path=mlflow_artifact_text_path)
+    except Exception as e:
+        print(f"[yellow]Warning: Failed to log text to MLflow: {e}[/yellow]")
 
 
 def save_model(model: object, model_name: str, data_sample: pd.DataFrame, local_model_path: str, mlflow_artifact_model_path: str = None) -> None:
@@ -333,6 +431,15 @@ def save_model(model: object, model_name: str, data_sample: pd.DataFrame, local_
     mlflow_artifact_model_path : str, default=None
         The path to store the model in mlflow.
     """
+    # Check if local_model_path is a valid path
+    if not os.path.exists(local_model_path):
+        print(f"[yellow]Warning: local_model_path '{local_model_path}' does not exist. Creating it...[/yellow]")
+        try:
+            os.makedirs(local_model_path, exist_ok=True)
+        except Exception as e:
+            print(f"[red]Error: Cannot create local_model_path '{local_model_path}': {e}[/red]")
+            return
+
     pickle_filename = model_name + ".pkl"
     pickle_path = os.path.join(local_model_path, pickle_filename)
     with open(pickle_path, "wb") as f:
@@ -343,15 +450,17 @@ def save_model(model: object, model_name: str, data_sample: pd.DataFrame, local_
     with open(joblib_path, "wb") as f:
         joblib.dump(model, f)
     print(f"Successfully store '{model_name}' in '{joblib_filename}' in {local_model_path}.")
-    if not mlflow_artifact_model_path:
-        mlflow.sklearn.log_model(model, model_name, input_example=data_sample)
-    else:
-        mlflow.sklearn.log_model(model, mlflow_artifact_model_path, input_example=data_sample)
+    try:
+        if not mlflow_artifact_model_path:
+            mlflow.sklearn.log_model(model, model_name, input_example=data_sample)
+        else:
+            mlflow.sklearn.log_model(model, mlflow_artifact_model_path, input_example=data_sample)
+    except Exception as e:
+        print(f"[yellow]Warning: Failed to log model to MLflow: {e}[/yellow]")
 
 
 def log(log_path, log_name):
     # Create and configure logger
-    # LOG_FORMAT = "%(levelname)s %(asctime)s - %(message)s"
     LOG_FORMAT = "%(asctime)s %(name)s %(levelname)s %(pathname)s %(message)s"
     DATE_FORMAT = "%Y-%m-%d  %H:%M:%S %a "
     logging.basicConfig(filename=os.path.join(log_path, log_name), level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT, filemode="w")
@@ -368,7 +477,6 @@ def show_warning(is_show: bool = True) -> None:
             import os
 
             os.environ["PYTHONWARNINGS"] = "ignore"
-            # os.environ["PYTHONWARNINGS"] = "default"
 
 
 def copy_files(GEOPI_OUTPUT_ARTIFACTS_PATH: str, GEOPI_OUTPUT_METRICS_PATH: str, GEOPI_OUTPUT_PARAMETERS_PATH: str, GEOPI_OUTPUT_SUMMARY_PATH: str) -> None:
@@ -414,7 +522,7 @@ def copy_files_from_source_dir_to_dest_dir(source_dir: str, dest_dir: str) -> No
 
 
 def list_excel_files(directory: str) -> list:
-    """Recursively lists all Excel files (including .xlsx, .xls, and .csv) in the specified directory and its subdirectories.
+    """Recursively list supported .xlsx and .csv files.
 
     Parameters
     ----------
@@ -429,11 +537,11 @@ def list_excel_files(directory: str) -> list:
     Notes
     -----
     (1) The function uses `os.walk` to traverse the directory and its subdirectories.
-    (2) Only files with extensions .xlsx, .xls, and .csv are considered as Excel files.
+    (2) Only files with extensions .xlsx and .csv are supported by the CLI reader.
     """
     excel_files = []
     for root, dirs, files in os.walk(directory):
         for file in files:
-            if file.endswith(".xlsx") or file.endswith(".xls") or file.endswith(".csv"):
+            if file.endswith(".xlsx") or file.endswith(".csv"):
                 excel_files.append(os.path.join(root, file))
     return excel_files

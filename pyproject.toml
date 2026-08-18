@@ -1,10 +1,10 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling==1.27.0"]
 build-backend = "hatchling.build"
 
 [project]
 name = "geochemistrypi"
-version = "0.7.0"
+version = "0.8.1"
 authors = [
   { name="Can He", email="sanyhew1097618435@163.com"},
   { name="Jianhao Sun", email="sjh20171502@gmail.com"},
@@ -21,7 +21,7 @@ description = "A highly automated machine learning Python framework dedicating t
 keywords = ["Geochemistry π", "Automated", "Machine Learning", "MLOps", "Geochemistry Discovery", "Continuous Training", "Machine Learning Lifecycle Management", "Model Inference", "Data Mining"]
 readme = "README.md"
 license = { file="LICENSE" }
-requires-python = "~=3.9"
+requires-python = ">=3.9,<3.10"
 classifiers = [
     "Programming Language :: Python :: 3.9",
     "License :: OSI Approved :: MIT License",
@@ -30,8 +30,6 @@ classifiers = [
 
 dependencies = [
     "typer==0.7.0",
-    "ray==2.2.0",
-    "ray[tune]",
     "optuna==3.1.1",
     "pydantic<2.0.0",
     "scikit-learn==1.1.3",
@@ -43,7 +41,7 @@ dependencies = [
     "pandas==1.5.2",
     "joblib==1.2.0",
     "flaml==1.0.14",                # required to run XGBoost + FLMAL
-    "numpy==1.23.5",                # required to run XGBoost + FLMAL
+    "numpy==1.23.5",
     "xgboost==1.6.2",               # required to run XGBoost + FLAML and be compatible with M2 chip on Mac
     "threadpoolctl==3.1.0",         # required to draw 3d plot for KMeans
     "matplotlib==3.5.2",            # required to draw 3d plot for KMeans
@@ -51,13 +49,17 @@ dependencies = [
     "uvicorn==0.22.0",                      # required to run uvicorn
     "python-multipart==0.0.6",             # required to run uvicorn
     "dash==2.10.0",                         # required to run dash
+    "setuptools==80.9.0",                  # Dash 2.10 imports the legacy pkg_resources runtime module
     "sqlalchemy==2.0.13",                   # required to run sqlalchemy
+    "greenlet==3.1.1",                     # latest prebuilt wheel compatible with supported Python 3.9
     "passlib==1.7.4",                      # required to run passlib
     "python-jose[cryptography]",    # required to run python-jose
     "bcrypt==4.0.1",                       # required to run bcrypt
     "python-dotenv==1.0.0",                # required to run python-dotenv
     "rich==13.3.5",                         # color print
     "mlflow==2.4.1",                       # required to run mlflow
+    "basemap==1.3.8; platform_system != 'Darwin'",
+    "cartopy==0.22.0; platform_system == 'Darwin'",
     "imblearn==0.0",
 ]
 
@@ -74,3 +76,15 @@ test = [
 
 [project.scripts]
 geochemistrypi = "geochemistrypi.cli:app"
+
+[tool.hatch.build.targets.wheel]
+exclude = [
+    "/geochemistrypi/data_mining/tests",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["packages/geochemistrypi-mcp/src"]
+markers = [
+    "mcp_cli_parity: runs the real GeochemistryPi CLI in its separate environment",
+    "mcp_cli_full_parity: runs one sharded PR9I full real-model parity scenario",
+]

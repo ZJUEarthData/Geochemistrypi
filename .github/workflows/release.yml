@@ -1,0 +1,410 @@
+name: Signed release candidate
+
+on:
+  push:
+    tags:
+      - "mcp-v*-cli-v*"
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  build-sign-attest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out the tagged source
+        uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Set up release verification Python
+        uses: actions/setup-python@v6.2.0
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Verify the clean tagged source before building
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build==1.3.0
+          python packages/geochemistrypi-mcp/tools/release_artifacts.py verify-source --repository . --release-tag "${GITHUB_REF_NAME}"
+
+      - name: Set up exact CLI build Python
+        uses: actions/setup-python@v6.2.0
+        with:
+          python-version: "3.9"
+          cache: pip
+
+      - name: Build the CLI wheel and sdist exactly once
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build==1.3.0
+          python -c "from pathlib import Path; import shutil; [shutil.rmtree(path, ignore_errors=True) for path in (Path('cli-dist'), Path('release-bundle'))]"
+          python -m build --sdist --wheel --outdir cli-dist .
+          python -c "from pathlib import Path; import shutil; target=Path('release-bundle'); target.mkdir(); wheels=list(Path('cli-dist').glob('*.whl')); assert len(wheels)==1, wheels; shutil.copy2(wheels[0], target / wheels[0].name)"
+
+      - name: Set up exact MCP build Python
+        uses: actions/setup-python@v6.2.0
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Build the MCP wheel and install release verification
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build==1.3.0 "./packages/geochemistrypi-mcp[release]"
+          python -m build --wheel --outdir release-bundle packages/geochemistrypi-mcp
+
+      - name: Prove PyPI and MCP use the exact tagged CLI artifacts
+        run: >-
+          python packages/geochemistrypi-mcp/tools/release_artifacts.py verify-artifacts
+          --repository .
+          --cli-dist cli-dist
+          --release-bundle release-bundle
+          --release-tag "${GITHUB_REF_NAME}"
+
+      - name: Create and inspect the release manifest
+        run: |
+          geochemistrypi-mcp-release build-manifest --dist release-bundle --release-tag "${GITHUB_REF_NAME}" --source-commit "${GITHUB_SHA}"
+          geochemistrypi-mcp-release verify --bundle release-bundle --allow-unsigned
+
+      - name: Sign wheels and manifest with the tag workflow identity
+        uses: sigstore/gh-action-sigstore-python@v3.4.0
+        with:
+          inputs: |
+            release-bundle/*.whl
+            release-bundle/release-manifest.json
+          verify: true
+          verify-cert-identity: ${{ github.server_url }}/${{ github.repository }}/.github/workflows/release.yml@${{ github.ref }}
+          verify-oidc-issuer: https://token.actions.githubusercontent.com
+          release-signing-artifacts: false
+          upload-signing-artifacts: false
+
+      - name: Verify the signed bundle with the product verifier
+        run: geochemistrypi-mcp-release verify --bundle release-bundle
+
+      - name: Attest wheel provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: release-bundle/*.whl
+
+      - name: Attest manifest provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: release-bundle/release-manifest.json
+
+      - name: Attest CLI source distribution provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: cli-dist/*.tar.gz
+
+      - name: Retain the signed release candidate
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: geochemistrypi-${{ github.ref_name }}
+          path: release-bundle/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Retain the exact CLI PyPI distributions
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: geochemistrypi-cli-${{ github.ref_name }}
+          path: cli-dist/
+          if-no-files-found: error
+          retention-days: 30
+
+  verify-signed-install:
+    name: Signed install (${{ matrix.os }})
+    needs: build-sign-attest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        # The CLI remains Python 3.9-only.  Its legacy scientific stack is
+        # currently supported on Intel macOS, so do not imply arm64 support
+        # until a native arm64 release candidate passes this same gate.
+        os: [ubuntu-latest, windows-latest, macos-15-intel]
+
+    steps:
+      - name: Check out the tagged acceptance tests
+        uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Download the exact signed release candidate
+        uses: actions/download-artifact@v8.0.1
+        with:
+          name: geochemistrypi-${{ github.ref_name }}
+          path: release-bundle
+
+      - name: Set up the public installer runtime
+        uses: actions/setup-python@v6.2.0
+        with:
+          python-version: "3.11"
+
+      - name: Install the pinned bootstrap tool
+        run: python -m pip install uv==0.11.7
+
+      - name: Install the documented macOS OpenMP runtime
+        if: runner.os == 'macOS'
+        run: brew list libomp >/dev/null 2>&1 || brew install libomp
+
+      - name: Verify and install the downloaded signed bundle as a normal user
+        shell: python
+        run: |
+          import os
+          from pathlib import Path
+          import subprocess
+
+          bundle = Path("release-bundle").resolve()
+          files = {path.name for path in bundle.iterdir() if path.is_file()}
+          wheels = sorted(bundle.glob("*.whl"))
+          signatures = sorted(bundle.glob("*.sigstore.json"))
+          if len(wheels) != 2 or len(signatures) != 3 or len(files) != 6:
+              raise SystemExit(
+                  "Signed bundle must contain exactly two wheels, one manifest, "
+                  f"and three Sigstore bundles; found {sorted(files)}"
+              )
+          if "release-manifest.json" not in files:
+              raise SystemExit("Signed bundle is missing release-manifest.json")
+
+          mcp_wheel = next(bundle.glob("geochemistrypi_mcp-*.whl"))
+          requirement = f"geochemistrypi-mcp[release,test] @ {mcp_wheel.as_uri()}"
+          isolated = [
+              "uv", "run", "--isolated", "--no-project", "--python", "3.11",
+              "--with", requirement,
+          ]
+          environment = os.environ.copy()
+          environment["GEOCHEMISTRYPI_MCP_APP_ROOT"] = str(
+              Path(os.environ["RUNNER_TEMP"]) / "GeochemistryPi public acceptance 用户数据"
+          )
+          environment["SQLALCHEMY_DATABASE_URL"] = ""
+
+          def run(*arguments):
+              subprocess.check_call([*isolated, *arguments], env=environment)
+
+          run("geochemistrypi-mcp-release", "verify", "--bundle", str(bundle))
+          run(
+              "geochemistrypi-mcp-setup", "install",
+              "--bundle", str(bundle), "--client", "standard",
+          )
+          run("geochemistrypi-mcp-setup", "install", "--client", "standard")
+
+          app_root = Path(environment["GEOCHEMISTRYPI_MCP_APP_ROOT"])
+          cli_command = app_root / "environments" / "cli" / (
+              "Scripts/geochemistrypi.exe" if os.name == "nt" else "bin/geochemistrypi"
+          )
+          if not cli_command.is_file():
+              raise SystemExit(f"Installed CLI command is missing: {cli_command}")
+
+          run_artifact = app_root / "runs" / "release-user-data" / "result.json"
+          tracking_artifact = app_root / "tracking" / "release-user-data" / "meta.yaml"
+          run_artifact.parent.mkdir(parents=True, exist_ok=True)
+          tracking_artifact.parent.mkdir(parents=True, exist_ok=True)
+          run_artifact.write_text('{"preserved": true}\n', encoding="utf-8")
+          tracking_artifact.write_text("name: preserved\n", encoding="utf-8")
+
+          run("geochemistrypi-mcp-setup", "repair", "--client", "standard")
+          run("geochemistrypi-mcp-doctor", "--json")
+          run("geochemistrypi-mcp-setup", "uninstall")
+
+          if run_artifact.read_text(encoding="utf-8") != '{"preserved": true}\n':
+              raise SystemExit("Uninstall changed user run data")
+          if tracking_artifact.read_text(encoding="utf-8") != "name: preserved\n":
+              raise SystemExit("Uninstall changed user tracking data")
+
+  verify-signed-parity:
+    name: Signed parity (${{ matrix.os }}, ${{ matrix.shard }})
+    needs: build-sign-attest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        # Run expensive scientific branches independently. A failure in one
+        # branch or platform must not conceal the remaining release evidence.
+        os: [ubuntu-latest, windows-latest, macos-15-intel]
+        shard: [classification-automl, regression-automl]
+
+    steps:
+      - name: Check out the tagged acceptance tests
+        uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Download the exact signed release candidate
+        uses: actions/download-artifact@v8.0.1
+        with:
+          name: geochemistrypi-${{ github.ref_name }}
+          path: release-bundle
+
+      - name: Set up the public installer runtime
+        uses: actions/setup-python@v6.2.0
+        with:
+          python-version: "3.11"
+
+      - name: Install the pinned bootstrap tool
+        run: python -m pip install uv==0.11.7
+
+      - name: Install the documented macOS OpenMP runtime
+        if: runner.os == 'macOS'
+        run: brew list libomp >/dev/null 2>&1 || brew install libomp
+
+      - name: Install the signed wheel and compare the real CLI and MCP
+        shell: python
+        env:
+          GEOCHEMISTRYPI_PARITY_SHARD: ${{ matrix.shard }}
+        run: |
+          import os
+          from pathlib import Path
+          import subprocess
+
+          workspace = Path.cwd().resolve()
+          bundle = (workspace / "release-bundle").resolve()
+          mcp_wheel = next(bundle.glob("geochemistrypi_mcp-*.whl"))
+          requirement = f"geochemistrypi-mcp[release,test] @ {mcp_wheel.as_uri()}"
+          isolated = [
+              "uv", "run", "--isolated", "--no-project", "--python", "3.11",
+              "--with", requirement,
+          ]
+          app_root = Path(os.environ["RUNNER_TEMP"]) / "GeochemistryPi public acceptance 用户数据"
+          environment = os.environ.copy()
+          environment.update(
+              {
+                  "GEOCHEMISTRYPI_MCP_APP_ROOT": str(app_root),
+                  "GEOCHEMISTRYPI_FULL_PARITY": "1",
+                  "MPLBACKEND": "Agg",
+                  "SQLALCHEMY_DATABASE_URL": "",
+              }
+          )
+
+          def run(*arguments):
+              subprocess.check_call([*isolated, *arguments], env=environment)
+
+          run("geochemistrypi-mcp-release", "verify", "--bundle", str(bundle))
+          try:
+              run(
+                  "geochemistrypi-mcp-setup", "install",
+                  "--bundle", str(bundle), "--client", "standard",
+              )
+              cli_command = app_root / "environments" / "cli" / (
+                  "Scripts/geochemistrypi.exe" if os.name == "nt" else "bin/geochemistrypi"
+              )
+              if not cli_command.is_file():
+                  raise RuntimeError(f"Installed CLI command is missing: {cli_command}")
+              environment["GEOCHEMISTRYPI_CLI_EXECUTABLE"] = str(cli_command)
+              basetemp = Path(os.environ["RUNNER_TEMP"]) / f"gpf-{os.environ['GEOCHEMISTRYPI_PARITY_SHARD']}"
+              subprocess.check_call(
+                  [
+                      *isolated,
+                      "python", "-m", "pytest",
+                      "-c", str(workspace / "tests" / "installed-wheel-pytest.ini"),
+                      "--basetemp", str(basetemp),
+                      "-m", "mcp_cli_full_parity",
+                      str(workspace / "tests" / "mcp_wrapper" / "parity" / "test_full_parity_matrix.py"),
+                  ],
+                  cwd=os.environ["RUNNER_TEMP"],
+                  env=environment,
+              )
+          finally:
+              if app_root.exists():
+                  subprocess.run(
+                      [*isolated, "geochemistrypi-mcp-setup", "uninstall"],
+                      env=environment,
+                      check=False,
+                  )
+
+      - name: Retain failed process evidence
+        if: failure()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: signed-failure-${{ matrix.os }}-${{ matrix.shard }}
+          path: ${{ runner.temp }}/gpf-${{ matrix.shard }}/
+          if-no-files-found: warn
+          retention-days: 30
+
+  publish-cli-pypi:
+    name: Publish CLI to PyPI
+    needs: [build-sign-attest, verify-signed-install, verify-signed-parity]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/geochemistrypi
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Download the exact verified CLI distributions
+        uses: actions/download-artifact@v8.0.1
+        with:
+          name: geochemistrypi-cli-${{ github.ref_name }}
+          path: cli-dist
+
+      - name: Require exactly one wheel and one source distribution
+        shell: python
+        run: |
+          from pathlib import Path
+
+          files = sorted(path.name for path in Path("cli-dist").iterdir() if path.is_file())
+          wheels = [name for name in files if name.endswith(".whl")]
+          sdists = [name for name in files if name.endswith(".tar.gz")]
+          if len(files) != 2 or len(wheels) != 1 or len(sdists) != 1:
+              raise SystemExit(f"PyPI publication requires exactly one CLI wheel and one sdist; found {files}")
+
+      - name: Publish the already-verified CLI files without rebuilding
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: cli-dist/
+
+  publish-mcp-github-release:
+    name: Publish signed MCP bundle
+    needs: [build-sign-attest, verify-signed-install, verify-signed-parity, publish-cli-pypi]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download the exact verified signed bundle
+        uses: actions/download-artifact@v8.0.1
+        with:
+          name: geochemistrypi-${{ github.ref_name }}
+          path: release-bundle
+
+      - name: Create the scientist-facing bundle archive
+        shell: python
+        run: |
+          import os
+          from pathlib import Path
+          from zipfile import ZIP_DEFLATED, ZipFile
+
+          bundle = Path("release-bundle")
+          files = sorted(path for path in bundle.iterdir() if path.is_file())
+          names = {path.name for path in files}
+          if len(files) != 6 or len(list(bundle.glob("*.whl"))) != 2 or len(list(bundle.glob("*.sigstore.json"))) != 3:
+              raise SystemExit(f"Signed release must contain exactly six files; found {sorted(names)}")
+          if "release-manifest.json" not in names:
+              raise SystemExit("Signed release is missing release-manifest.json")
+          output = Path(f"geochemistrypi-{os.environ['GITHUB_REF_NAME']}.zip")
+          with ZipFile(output, "w", ZIP_DEFLATED) as archive:
+              for path in files:
+                  archive.write(path, path.name)
+          print(output)
+
+      - name: Create the permanent GitHub Release without rebuilding
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "${GITHUB_REF_NAME}"
+          "geochemistrypi-${GITHUB_REF_NAME}.zip"
+          --verify-tag
+          --title "GeochemistryPi ${GITHUB_REF_NAME}"
+          --notes "Signed GeochemistryPi MCP bundle. Download and extract the ZIP, then ask a supported Agent to install it. The bundled CLI is the exact wheel published to PyPI by this workflow."

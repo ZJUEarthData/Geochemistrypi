@@ -159,17 +159,16 @@ If you want to run classification algorithm, only supporting binary classificati
 
 The following are four built-in data set in our software stored on Google Drive, have a look on them.
 
-+ [Data_Regression.xlsx (International - Google drive)](https://docs.google.com/spreadsheets/d/13MB4t_2PiZ90tTMJKw7HcBUi2sb3tXej/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true)
-+ [Data_Regression.xlsx (China - Tencent Docs)](https://docs.qq.com/document/DQ3VmdWZCTGV3bmpM?&u=6868f96d4a384b309036e04e637e367a)
-
-+ [Data_Classification.xlsx (International - Google drive)](https://docs.google.com/spreadsheets/d/1xFBCYVmtZfuEAbeBljUlzqBjxVuLAt8x/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true)
-+ [Data_Classification.xlsx (China - Tencent Docs)](https://docs.qq.com/document/DQ0JUaUFsZnRaZkNG?&u=6868f96d4a384b309036e04e637e367a)
-
-+ [Data_Clustering.xlsx (International - Google drive)](https://docs.google.com/spreadsheets/d/1sbuJdOzGNQ2Pk-bVURfPYg1rltyBbn5J/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true)
-+ [Data_Clustering.xlsx (China - Tencent Docs)](https://docs.qq.com/document/DQ3dKdGtlWkhZS2xR?&u=6868f96d4a384b309036e04e637e367a)
-
-+ [Data_Decomposition.xlsx (International - Google drive)](https://docs.google.com/spreadsheets/d/1kix82qj5--vhnm8-KhuUBH9dqYH6zcY8/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true)
-+ [Data_Decomposition.xlsx (China - Tencent Docs)](https://docs.qq.com/document/DQ29oZ0lhUGtZUmdN?&u=6868f96d4a384b309036e04e637e367a)
+| Dataset | Google Drive | Tencent Docs |
+|---------|--------------|--------------|
+| Data_Regression.xlsx | [Link](https://docs.google.com/spreadsheets/d/13MB4t_2PiZ90tTMJKw7HcBUi2sb3tXej/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true) | [Link](https://docs.qq.com/document/DQ3VmdWZCTGV3bmpM?&u=6868f96d4a384b309036e04e637e367a) |
+| ApplicationData_Regression.xlsx | [Link](https://docs.google.com/spreadsheets/d/1FCek2OOYQD887jfQz21g0ovqVuUJIjVoNI77D-Ufr9Y/edit?usp=sharing) | [Link](https://docs.qq.com/document/DQ3BDeHhxRGNzSXZN) |
+| Data_Classification.xlsx | [Link](https://docs.google.com/spreadsheets/d/1xFBCYVmtZfuEAbeBljUlzqBjxVuLAt8x/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true) | [Link](https://docs.qq.com/document/DQ0JUaUFsZnRaZkNG?&u=6868f96d4a384b309036e04e637e367a) |
+| ApplicationData_Classification.xlsx | [Link](https://docs.google.com/spreadsheets/d/1J7QvdvbbHJMlKtiumBgKDW7ALghfQQZyKGEoOqhKQjw/edit?usp=sharing) | [Link](https://docs.qq.com/document/DQ2dnQWtubHRBTGtB) |
+| Data_Clustering.xlsx | [Link](https://docs.google.com/spreadsheets/d/1sbuJdOzGNQ2Pk-bVURfPYg1rltyBbn5J/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true) | [Link](https://docs.qq.com/document/DQ3dKdGtlWkhZS2xR?&u=6868f96d4a384b309036e04e637e367a) |
+| Data_Decomposition.xlsx | [Link](https://docs.google.com/spreadsheets/d/1kix82qj5--vhnm8-KhuUBH9dqYH6zcY8/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true) | [Link](https://docs.qq.com/document/DQ29oZ0lhUGtZUmdN?&u=6868f96d4a384b309036e04e637e367a) |
+| Data_AnomalyDetection.xlsx | [Link](https://docs.google.com/spreadsheets/d/1NqTQZCkv74Sn_iOJOKRc-QnJzpaWmnzC_lET_0ZreiQ/edit?usp=sharing) | [Link](https://docs.qq.com/document/DQ2hqQ2N2ZGlOUWlT) |
+| Data_Time_Series.xlsx | - | [Link](https://docs.qq.com/sheet/DTGJURWdBeHd0TFhR?u=6868f96d4a384b309036e04e637e367a&tab=000001) |
 
 ## 4. Use<a name="use"> </a>
 
@@ -178,7 +177,7 @@ The following are four built-in data set in our software stored on Google Drive,
 When you type geochemistrypi data-mining or geochemistrypi data-mining --data your_own_data_set.xlsx command,there are four algorithmic modes you can use,which are Regression,Classification,Clustering and Dimensional Reduction.
 
 ~~~
-Geochemistry Py v.1.0.0 - Beta Version
+Geochemistry Py v.0.8.1
 ....... Initializing .......
 -*-*- Data Loading -*-*-
 Built-in Data Option:
@@ -186,6 +185,8 @@ Built-in Data Option:
 2 - Data For Classification
 3 - Data For Clustering
 4 - Data For Dimensional Reduction
+5 - Data For Anomaly Detection
+6 - Data For Time Series
 (User) ➜ @Number:
 ~~~
 You can choose which one you want to use,just type in its number.
@@ -348,6 +349,8 @@ Choose your algorithm in the mode options.
 2 - Classification
 3 - Clustering
 4 - Dimensional Reduction
+5 - Data For Anomaly Detection
+6 - Data For Time Series
 (Model) ➜ @Number:
 ~~~
 
@@ -419,13 +422,20 @@ You can choose one in the model selection(Such as 8 is the algorithm to implemen
 -*-*- Model Selection -*-*-:
 1 - Linear Regression
 2 - Polynomial Regression
-3 - Support Vector Machine
-4 - Decision Tree
-5 - Random Forest
-6 - Extra-Trees
-7 - Xgboost
-8 - Multi-layer Perceptron
-9 - All models above to be trained
+3 - K-Nearest Neighbors
+4 - Support Vector Machine
+5 - Decision Tree
+6 - Random Forest
+7 - Extra-Trees
+8 - Gradient Boosting
+9 - XGBoost
+10 - Multi-layer Perceptron
+11 - Lasso Regression
+12 - Elastic Net
+13 - SGD Regression
+14 - BayesianRidge Regression
+15 - Ridge Regression
+16 - All models above to be trained
 Which model do you want to apply?(Enter the Corresponding Number)
 (Model) ➜ @Number:8
 ~~~

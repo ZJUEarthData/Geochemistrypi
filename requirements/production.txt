@@ -1,6 +1,4 @@
 typer==0.7.0
-ray==2.2.0
-ray[tune]
 optuna==3.1.1
 pydantic<2.0.0
 scikit-learn==1.1.3
@@ -16,11 +14,15 @@ numpy==1.23.5
 xgboost==1.6.2
 threadpoolctl==3.1.0
 matplotlib==3.5.2
+basemap==1.3.8; platform_system != "Darwin"
+cartopy==0.22.0; platform_system == "Darwin"
 fastapi==0.95.2
 uvicorn==0.22.0
 python-multipart==0.0.6
 dash==2.10.0
+setuptools==80.9.0
 sqlalchemy==2.0.13
+greenlet==3.1.1
 passlib==1.7.4
 python-jose[cryptography]
 bcrypt==4.0.1

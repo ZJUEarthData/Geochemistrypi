@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "cli_version": "0.8.1",
+  "task": "clustering",
+  "execution_owner": "geochemistrypi data-mining",
+  "models": [
+    {"id": "kmeans", "cli_name": "KMeans"},
+    {"id": "dbscan", "cli_name": "DBSCAN"},
+    {"id": "agglomerative", "cli_name": "Agglomerative"},
+    {"id": "affinity_propagation", "cli_name": "AffinityPropagation"},
+    {"id": "mean_shift", "cli_name": "MeanShift"}
+  ],
+  "interactions": {
+    "missing_values": ["error", "drop_rows", "impute"],
+    "scaling": ["none", "min_max", "standardization", "mean_normalization"],
+    "application_data": ["disabled"],
+    "target_column": ["not_applicable"],
+    "tuning": ["not_applicable"]
+  },
+  "common_outputs": [
+    "Cluster Labels",
+    "Model Score",
+    "Cluster Two-Dimensional Diagram",
+    "Silhouette Diagram",
+    "Silhouette value Diagram",
+    "model joblib",
+    "Transform Pipeline Configuration"
+  ],
+  "unsupported": [
+    "all_models",
+    "application_data",
+    "target_column",
+    "automl",
+    "keep_missing_values",
+    "optics",
+    "previous_experiment"
+  ]
+}

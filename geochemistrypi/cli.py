@@ -1,17 +1,86 @@
 # -*- coding: utf-8 -*-
+import inspect
 import os
 
 # import platform
 import subprocess
 import threading
-from typing import Optional
+from functools import wraps
+from pathlib import Path
 
+import click
 import typer
+import typer.core
 from rich import print
 
 from ._version import __version__
-from .data_mining.cli_pipeline import cli_pipeline
-from .data_mining.enum import DataSource
+
+
+def _patch_typer_option_flag_value_for_click_unset() -> None:
+    """Adapt Typer 0.7 option defaults to Click versions that use UNSET."""
+    unset = getattr(click.core, "UNSET", None)
+    flag_value_parameter = inspect.signature(click.Option.__init__).parameters.get("flag_value")
+    if unset is None or flag_value_parameter is None or flag_value_parameter.default is not unset:
+        return
+    if getattr(typer.core.TyperOption.__init__, "_geopi_click_unset_patch", False):
+        return
+
+    original_init = typer.core.TyperOption.__init__
+
+    @wraps(original_init)
+    def patched_init(self, *args, **kwargs):
+        if kwargs.get("flag_value") is None:
+            kwargs["flag_value"] = unset
+        return original_init(self, *args, **kwargs)
+
+    patched_init._geopi_click_unset_patch = True
+    typer.core.TyperOption.__init__ = patched_init
+
+
+def _patch_typer_make_metavar_for_click_context() -> None:
+    """Allow Typer's help code to work with both old and new Click metavar APIs."""
+    if getattr(click.core, "UNSET", None) is None:
+        return
+
+    if not getattr(typer.core.TyperOption.make_metavar, "_geopi_click_ctx_patch", False):
+        original_option_make_metavar = typer.core.TyperOption.make_metavar
+
+        @wraps(original_option_make_metavar)
+        def patched_option_make_metavar(self, ctx=None):
+            return original_option_make_metavar(self, ctx)
+
+        patched_option_make_metavar._geopi_click_ctx_patch = True
+        typer.core.TyperOption.make_metavar = patched_option_make_metavar
+
+    if not getattr(typer.core.TyperArgument.make_metavar, "_geopi_click_ctx_patch", False):
+
+        def patched_argument_make_metavar(self, ctx=None):
+            if self.metavar is not None:
+                return self.metavar
+            var = (self.name or "").upper()
+            if not self.required:
+                var = f"[{var}]"
+            type_var = self.type.get_metavar(param=self, ctx=ctx)
+            if type_var:
+                var += f":{type_var}"
+            if self.nargs != 1:
+                var += "..."
+            return var
+
+        patched_argument_make_metavar._geopi_click_ctx_patch = True
+        typer.core.TyperArgument.make_metavar = patched_argument_make_metavar
+
+
+def _use_click_help_when_typer_rich_help_is_incompatible() -> None:
+    """Keep Typer 0.7 help usable with Click versions that require ctx."""
+    ctx_parameter = inspect.signature(click.Parameter.make_metavar).parameters.get("ctx")
+    if ctx_parameter is not None and ctx_parameter.default is inspect.Parameter.empty:
+        typer.core.rich = None
+
+
+_patch_typer_option_flag_value_for_click_unset()
+_patch_typer_make_metavar_for_click_context()
+_use_click_help_when_typer_rich_help_is_incompatible()
 
 app = typer.Typer()
 
@@ -21,17 +90,55 @@ BACKEND_PATH = os.path.join(CURRENT_PATH, "start_dash_pipeline.py")
 PIPELINE_PATH = os.path.join(CURRENT_PATH, "start_cli_pipeline.py")
 
 
+def _run_cli_pipeline(
+    training_data_path: str,
+    application_data_path: str,
+    data_source_name: str,
+    automation_plan: str = "",
+    automation_events: str = "",
+    world_map_config: str = "",
+    tracking_root: str = "",
+    existing_experiment_id: str = "",
+) -> None:
+    def execute() -> None:
+        # Keep scientific imports inside the automation boundary.  If a native
+        # dependency is missing or incompatible, the CLI now emits a structured
+        # failure document instead of leaving the MCP driver with only a missing
+        # events-file symptom.
+        from .data_mining.cli_pipeline import cli_pipeline
+        from .data_mining.enum_ import DataSource
+        from .data_mining.plot.map_plot import WorldMapConfiguration
+
+        parsed_world_map_config = WorldMapConfiguration.from_json(world_map_config) if world_map_config else None
+        cli_pipeline(
+            training_data_path=training_data_path,
+            application_data_path=application_data_path,
+            data_source=DataSource[data_source_name],
+            world_map_configuration=parsed_world_map_config,
+            tracking_root=tracking_root or None,
+            existing_experiment_id=existing_experiment_id or None,
+        )
+
+    if automation_plan:
+        from .automation import automation_input_adapter
+
+        with automation_input_adapter(Path(automation_plan), Path(automation_events)):
+            execute()
+    else:
+        execute()
+
+
 def _version_callback(value: bool) -> None:
     """Show Geochemistry Pi version."""
     if value:
-        typer.echo(f"Geochemistry π {__version__}")
+        typer.echo(f"Geochemistry Pi {__version__}")
         raise typer.Exit()
 
 
 @app.callback()
-def main(version: Optional[bool] = typer.Option(None, "--version", "-v", help="Show version.", callback=_version_callback, is_eager=True)) -> None:
+def main(version: bool = typer.Option(False, "--version", "-v", help="Show version.", callback=_version_callback, is_eager=True, is_flag=True)) -> None:
     """
-    Geochemistry π is an open-sourced highly automated machine learning Python framework for data-driven geochemistry discovery.
+    Geochemistry Pi is an open-sourced highly automated machine learning Python framework for data-driven geochemistry discovery.
     It has the cores components of continous training, machine learning lifecycle management and model inference.
     """
     return
@@ -40,13 +147,36 @@ def main(version: Optional[bool] = typer.Option(None, "--version", "-v", help="S
 @app.command()
 def data_mining(
     data: str = typer.Option("", help="The path of the training data without model inference."),
-    desktop: bool = typer.Option(False, help="Use the data in the directory 'geopi_input' on the desktop for model training and model inference."),
+    desktop: bool = typer.Option(False, "--desktop", help="Use the data in the directory 'geopi_input' on the desktop for model training and model inference.", is_flag=True),
     training: str = typer.Option("", help="The path of the training data."),
     application: str = typer.Option("", help="The path of the inference data."),
-    mlflow: bool = typer.Option(False, help="Start the mlflow server."),
+    mlflow: bool = typer.Option(False, "--mlflow", help="Start the mlflow server.", is_flag=True),
+    automation_plan: str = typer.Option("", help="Absolute path to a versioned machine-input plan."),
+    automation_events: str = typer.Option("", help="Absolute path for versioned machine-input events."),
+    world_map_config: str = typer.Option(
+        "",
+        "--world-map-config",
+        help="Versioned JSON world-map configuration; omit it for the human interactive map flow.",
+    ),
+    tracking_root: str = typer.Option("", "--tracking-root", help="Absolute local MLflow tracking directory."),
+    existing_experiment_id: str = typer.Option("", "--existing-experiment-id", help="Stable MLflow experiment ID in --tracking-root."),
     # web: bool = False,
 ) -> None:
     """Implement the customized automated machine learning pipeline for geochemistry data mining."""
+
+    if bool(automation_plan) != bool(automation_events):
+        raise typer.BadParameter("--automation-plan and --automation-events must be provided together.")
+    selected_sources = int(bool(data)) + int(bool(training)) + int(bool(desktop))
+    if selected_sources > 1:
+        raise typer.BadParameter("Use exactly one training source: --data, --training, or --desktop.")
+    if application and not training:
+        raise typer.BadParameter("--application requires --training.")
+    if mlflow and (data or training or application or desktop or automation_plan or world_map_config):
+        raise typer.BadParameter("--mlflow cannot be combined with analysis or automation options.")
+    if existing_experiment_id and not tracking_root:
+        raise typer.BadParameter("--existing-experiment-id requires --tracking-root.")
+    if tracking_root and not Path(tracking_root).expanduser().is_absolute():
+        raise typer.BadParameter("--tracking-root must be an absolute local path.")
 
     def start_backend():
         """Start the backend server."""
@@ -103,20 +233,142 @@ def data_mining(
             # Start the CLI pipeline with the data in the directory 'geopi_input' on the desktop
             #   - Both continuous training and model inference
             #   - Continuous training only
-            cli_pipeline(training_data_path="", application_data_path="", data_source=DataSource.DESKTOP)
+            _run_cli_pipeline(
+                training_data_path="",
+                application_data_path="",
+                data_source_name="DESKTOP",
+                automation_plan=automation_plan,
+                automation_events=automation_events,
+                world_map_config=world_map_config,
+                tracking_root=tracking_root,
+                existing_experiment_id=existing_experiment_id,
+            )
         else:
             if data:
                 # If the data is provided, start the CLI pipeline with continuous training
-                cli_pipeline(training_data_path=data, application_data_path="", data_source=DataSource.ANY_PATH)
+                _run_cli_pipeline(
+                    training_data_path=data,
+                    application_data_path="",
+                    data_source_name="ANY_PATH",
+                    automation_plan=automation_plan,
+                    automation_events=automation_events,
+                    world_map_config=world_map_config,
+                    tracking_root=tracking_root,
+                    existing_experiment_id=existing_experiment_id,
+                )
             elif training and application:
                 # If the training data and inference data are provided, start the CLI pipeline with continuous training and inference
-                cli_pipeline(training_data_path=training, application_data_path=application, data_source=DataSource.ANY_PATH)
+                _run_cli_pipeline(
+                    training_data_path=training,
+                    application_data_path=application,
+                    data_source_name="ANY_PATH",
+                    automation_plan=automation_plan,
+                    automation_events=automation_events,
+                    world_map_config=world_map_config,
+                    tracking_root=tracking_root,
+                    existing_experiment_id=existing_experiment_id,
+                )
             elif training and not application:
                 # If the training data is provided, start the CLI pipeline with continuous training
-                cli_pipeline(training_data_path=training, application_data_path="", data_source=DataSource.ANY_PATH)
+                _run_cli_pipeline(
+                    training_data_path=training,
+                    application_data_path="",
+                    data_source_name="ANY_PATH",
+                    automation_plan=automation_plan,
+                    automation_events=automation_events,
+                    world_map_config=world_map_config,
+                    tracking_root=tracking_root,
+                    existing_experiment_id=existing_experiment_id,
+                )
             else:
                 # If no data is provided, use built-in data to start the CLI pipeline with continuous training and inference
-                cli_pipeline(training_data_path="", application_data_path="", data_source=DataSource.BUILT_IN)
+                _run_cli_pipeline(
+                    training_data_path="",
+                    application_data_path="",
+                    data_source_name="BUILT_IN",
+                    automation_plan=automation_plan,
+                    automation_events=automation_events,
+                    world_map_config=world_map_config,
+                    tracking_root=tracking_root,
+                    existing_experiment_id=existing_experiment_id,
+                )
+
+
+@app.command()
+def datasets(
+    source: str = typer.Option("all", help="Dataset source to list: all, builtin, or desktop."),
+    output: str = typer.Option("json", help="Machine-readable output format; currently json."),
+) -> None:
+    """List built-in and Desktop datasets without creating, copying, or modifying files."""
+    if source not in {"all", "builtin", "desktop"}:
+        raise typer.BadParameter("--source must be one of: all, builtin, desktop.")
+    if output != "json":
+        raise typer.BadParameter("--output currently supports only json.")
+    from .data_mining.datasets import dataset_catalog_json
+
+    typer.echo(dataset_catalog_json(source))
+
+
+@app.command("time-series")
+def time_series(
+    input_path: str = typer.Option(..., "--input", help="Path to a .csv or .xlsx Time Series dataset."),
+    bin_width: float = typer.Option(..., "--bin-width", help="Positive age-bin width in Ma."),
+    iterations: int = typer.Option(100, "--iterations", min=1, max=10_000, help="Bootstrap iterations (1-10000)."),
+    seed: int = typer.Option(2025, "--seed", min=0, help="Non-negative deterministic random seed."),
+    output_root: str = typer.Option("geopi_output", "--output-root", help="Root directory for standard GeochemistryPi outputs."),
+    experiment_name: str = typer.Option("Time Series", "--experiment-name"),
+    run_name: str = typer.Option("Subaerial Proportion", "--run-name"),
+    sheet: str = typer.Option("0", "--sheet", help="Excel sheet index or name; ignored for CSV."),
+    age_column: str = typer.Option("R_AGE", "--age-column"),
+    maximum_age_column: str = typer.Option("R_MAX_AGE", "--maximum-age-column"),
+    probability_column: str = typer.Option("SBAP", "--probability-column"),
+    latitude_column: str = typer.Option("LATITUDE", "--latitude-column"),
+    longitude_column: str = typer.Option("LONGITUDE", "--longitude-column"),
+    age_unit: str = typer.Option("Ma", "--age-unit", help="Output age unit: Ma or Ga."),
+    fit_curve: bool = typer.Option(True, "--fit-curve/--no-fit-curve", help="Include the fitted trend curve in the PDF."),
+    automation_plan: str = typer.Option("", help="Absolute path to a versioned machine-input plan."),
+    automation_events: str = typer.Option("", help="Absolute path for versioned machine-input events."),
+) -> None:
+    """Run reproducible subaerial-proportion Time Series analysis."""
+    if bool(automation_plan) != bool(automation_events):
+        raise typer.BadParameter("--automation-plan and --automation-events must be provided together.")
+
+    def execute() -> None:
+        from pathlib import Path
+
+        from .data_mining.run_time_series import run_time_series_analysis
+
+        try:
+            output_directory = run_time_series_analysis(
+                input_path=Path(input_path),
+                output_root=Path(output_root),
+                experiment_name=experiment_name,
+                run_name=run_name,
+                bin_width=bin_width,
+                iterations=iterations,
+                seed=seed,
+                sheet=sheet,
+                age_col=age_column,
+                age_max_col=maximum_age_column,
+                probability_col=probability_column,
+                latitude_col=latitude_column,
+                longitude_col=longitude_column,
+                age_unit=age_unit,
+                fit_curve=fit_curve,
+            )
+        except (OSError, ValueError) as exc:
+            raise typer.BadParameter(str(exc)) from exc
+        typer.echo(f"Saved Time Series outputs to {output_directory}")
+
+    if automation_plan:
+        from pathlib import Path
+
+        from .automation import automation_input_adapter
+
+        with automation_input_adapter(Path(automation_plan), Path(automation_events)):
+            execute()
+    else:
+        execute()
 
 
 # TODO: Currently, the web application is not fully implemented. It is disabled by default.

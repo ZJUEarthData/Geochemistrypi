@@ -1,6 +1,7 @@
-from database import Base
 from sqlalchemy import Column, ForeignKey, Integer, LargeBinary, String, Text
 from sqlalchemy.orm import relationship
+
+from ..database import Base
 
 
 class Dataset(Base):

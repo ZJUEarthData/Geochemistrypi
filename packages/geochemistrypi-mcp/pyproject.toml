@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling==1.29.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "geochemistrypi-mcp"
+version = "0.2.1"
+description = "Local MCP wrapper for the existing GeochemistryPi command-line workflow"
+readme = "README.md"
+requires-python = ">=3.10,<4"
+license = { text = "MIT" }
+authors = [{ name = "GeochemistryPi contributors" }]
+dependencies = [
+  "mcp==2.0.0",
+  "openpyxl>=3.1.5,<4",
+  "psutil>=6.1,<8",
+  "pydantic>=2.12,<3",
+  "ruamel.yaml>=0.18,<0.19",
+  "tomlkit>=0.13,<1",
+]
+
+[project.optional-dependencies]
+test = [
+  "build==1.3.0",
+  "pytest>=8.4,<9",
+]
+release = [
+  "sigstore==4.4.0",
+]
+
+[project.scripts]
+geochemistrypi-mcp = "geochemistrypi_mcp.__main__:main"
+geochemistrypi-mcp-doctor = "geochemistrypi_mcp.doctor:main"
+geochemistrypi-mcp-setup = "geochemistrypi_mcp.setup:main"
+geochemistrypi-mcp-release = "geochemistrypi_mcp.release:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/geochemistrypi_mcp"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers"
+pythonpath = ["src"]
+markers = [
+  "mcp_cli_parity: runs the real GeochemistryPi CLI in its separate environment",
+  "mcp_cli_full_parity: runs one sharded PR9I full real-model parity scenario",
+]

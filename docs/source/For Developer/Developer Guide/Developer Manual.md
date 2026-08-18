@@ -7,12 +7,13 @@
 
 #### Table of Contents
 
-1. [Installation](#installation)
-2. [Example](#example)
-3. [Data Format](#data)
-4. [Use](#use)
-5. [Bug Report](#bug)
-6. [Advice](#advice)
+1. [Installation](#1-installation)
+2. [Example](#2-example)
+3. [Data Format](#3-data-format)
+4. [Use](#4-use)
+5. [Bug Report](#5-bug-report)
+6. [Learning videos for developers](#6-learning-videos-for-developers)
+7. [Advice](#7-advice)
 
 
 
@@ -20,6 +21,7 @@
 
 Requirements: Python 3.9
 **Note**:You must have Python 3.9 installed on your computer to use the software.
+You can refer to the Geochemistry π framework analysis [Geochemistry π framework analysis - Jianhao Sun (Jin)](https://www.bilibili.com/video/BV1GTUMBhEo6/?spm_id_from=333.1387.collection.video_card.click&vd_source=cb3969d68c6d244384e336ba1783ea14)
 
 ### 1.1 Check Environment
 
@@ -161,6 +163,9 @@ The following are four built-in data set in our software stored on Google Drive,
 
 + [Data_Decomposition.xlsx (International - Google drive)](https://docs.google.com/spreadsheets/d/1kix82qj5--vhnm8-KhuUBH9dqYH6zcY8/edit?usp=sharing&ouid=110717816678586054594&rtpof=true&sd=true)
 + [Data_Decomposition.xlsx (China - Tencent Docs)](https://docs.qq.com/document/DQ29oZ0lhUGtZUmdN?&u=6868f96d4a384b309036e04e637e367a)
++ [Data_AnomalyDetection.xlsx (International - Google drive)](https://docs.google.com/spreadsheets/d/1NqTQZCkv74Sn_iOJOKRc-QnJzpaWmnzC_lET_0ZreiQ/edit?usp=sharing)
++ [Data_AnomalyDetection.xlsx (China - Tencent Docs)](https://docs.qq.com/document/DQ2hqQ2N2ZGlOUWlT)
++ [Data_Time_Series.xlsx (China - Tencent Docs)](https://docs.qq.com/sheet/DTGJURWdBeHd0TFhR?u=6868f96d4a384b309036e04e637e367a&tab=000001)
 
 ## 4. Use<a name="use"> </a>
 
@@ -450,9 +455,17 @@ $ pip install pip install -i https://pypi.tuna.tsinghua.edu.cn/simple pandas
 
 We promise to get you in contact as soon as possible.
 
+## 6. Learning videos for developers
 
+Some essential skills like Git collaboration, as well as a comprehensive understanding of the geochemistrypi framework, can be referenced in the following videos:
 
-## 6. Advice<a name="advice"> </a>
+- [Geochemistry π framework analysis - Jianhao Sun (Jin)](https://www.bilibili.com/video/BV1GTUMBhEo6/?spm_id_from=333.1387.collection.video_card.click&vd_source=cb3969d68c6d244384e336ba1783ea14)
+- [Geochemistry π-Git Workflow and Collaborative Work (Theory) - Zhao Jianming (Jamie)]( https://www.bilibili.com/video/BV1Sa4y1f74k/)
+- [Geochemistry π - How to Use GitHub for Collaboration and Submitting Bug Reports - He Can (sany)](https://www.bilibili.com/video/BV1LA4y1Q7Va/)
+- [Geochemistry π-Addition Algorithm Application (Pre-Framework Refactor Version) - Zhao Qiuhao](https://www.bilibili.com/video/BV1St4y177rE/)
+- [Geochemistry π-Framework Reconstruction: Design Concepts and Practical Operations - He Can (Sany)](https://www.bilibili.com/video/BV1Ra41137fT/)
+
+## 7. Advice<a name="advice"> </a>
 
 The software is in beta version currently. There are too many shortcomings which we need to improve in the future. It would be highly appreciated if you can share your opinions on how to make it better.
 

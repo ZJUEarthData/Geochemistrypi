@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "cli_version": "0.8.1",
+  "task": "regression",
+  "models": [
+    {"id": "linear_regression", "cli_name": "Linear Regression", "automl": false},
+    {"id": "polynomial_regression", "cli_name": "Polynomial Regression", "automl": false},
+    {"id": "k_nearest_neighbors", "cli_name": "K-Nearest Neighbors", "automl": true},
+    {"id": "support_vector_machine", "cli_name": "Support Vector Machine", "automl": true},
+    {"id": "decision_tree", "cli_name": "Decision Tree", "automl": true},
+    {"id": "random_forest", "cli_name": "Random Forest", "automl": true},
+    {"id": "extra_trees", "cli_name": "Extra-Trees", "automl": true},
+    {"id": "gradient_boosting", "cli_name": "Gradient Boosting", "automl": true},
+    {"id": "xgboost", "cli_name": "XGBoost", "automl": true, "supports_unprocessed_missing_values": true},
+    {"id": "multi_layer_perceptron", "cli_name": "Multi-layer Perceptron", "automl": true},
+    {"id": "lasso_regression", "cli_name": "Lasso Regression", "automl": true},
+    {"id": "elastic_net", "cli_name": "Elastic Net", "automl": true},
+    {"id": "stochastic_gradient_descent", "cli_name": "SGD Regression", "automl": true},
+    {"id": "bayesian_ridge", "cli_name": "BayesianRidge Regression", "automl": true},
+    {"id": "ridge_regression", "cli_name": "Ridge Regression", "automl": true}
+  ],
+  "target_contract": "single_numeric",
+  "common_model_outputs": [
+    "Model Score",
+    "Cross Validation",
+    "Predicted vs. Actual Diagram",
+    "Residuals Diagram",
+    "Permutation Importance Diagram",
+    "Y Train Predict",
+    "Y Test Predict",
+    "model joblib",
+    "Transform Pipeline.joblib"
+  ],
+  "unsupported": ["all_models", "multiple_targets", "previous_experiment"]
+}

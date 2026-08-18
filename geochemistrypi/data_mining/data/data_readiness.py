@@ -1,3 +1,4 @@
+import math
 import os
 import sys
 import time
@@ -45,6 +46,8 @@ def read_data(file_path: Optional[str] = None, is_own_data: int = 2, prefix: Opt
             data = pd.read_excel(data_path, engine="openpyxl")
         elif data_path.endswith(".csv"):
             data = pd.read_csv(data_path)
+        else:
+            raise ValueError(f"Unsupported data file type for path: {data_path}")
         return data
     except ImportError as err:
         print(err)
@@ -60,7 +63,7 @@ def read_data(file_path: Optional[str] = None, is_own_data: int = 2, prefix: Opt
         raise err
     except Exception:
         print(f"[red]Unexpected error: {sys.exc_info()[0]} - check the last line of Traceback about the error information[red]")
-        raise Exception
+        raise
 
 
 def basic_info(data: pd.DataFrame) -> None:
@@ -176,11 +179,15 @@ def select_column_name(data: pd.DataFrame) -> str:
                 continue
             column_name = data.columns[column_index - 1]
             return column_name
+        except UnicodeError:
+            # Encoding failures are environmental errors, not invalid user input.
+            # Re-raise instead of consuming stdin forever while retrying.
+            raise
         except ValueError:
             print("Invalid input, please enter an integer.")
 
 
-def create_sub_data_set(data: pd.DataFrame, allow_empty_columns: bool = False) -> pd.DataFrame:
+def create_sub_data_set(data: pd.DataFrame, allow_empty_columns: bool = False, require_numeric: bool = True) -> pd.DataFrame:
     """Create a sub data set.
 
     Parameters
@@ -190,6 +197,9 @@ def create_sub_data_set(data: pd.DataFrame, allow_empty_columns: bool = False) -
 
     allow_empty_columns : bool, optional
         Whether to include empty columns in the sub data set. The default is False.
+
+    require_numeric : bool, optional
+        Whether selected columns must be numeric. The default is True.
 
     Returns
     -------
@@ -293,10 +303,12 @@ def create_sub_data_set(data: pd.DataFrame, allow_empty_columns: bool = False) -
             for i in data_checking.columns.values:
                 df_test = pd.DataFrame(data_checking[i])
                 test_columns = df_test.columns
-                v_value = int(df_test.isnull().sum())
+                v_value = int(df_test.isnull().sum().iloc[0])
                 if not allow_empty_columns and v_value == len(df_test):
                     print(f"Warning: The selected column {df_test.columns.values} is an empty column! It will be automatically removed.")
-                if df_test[test_columns[0]].dtype in ["int64", "float64"]:
+                if not require_numeric:
+                    continue
+                if pd.api.types.is_numeric_dtype(df_test[test_columns[0]]):
                     continue
                 else:
                     print(f"Warning: The data type of selected column {df_test.columns.values} is not numeric!" " Please make sure that the selected data type is numeric and re-enter.")
@@ -314,7 +326,7 @@ def create_sub_data_set(data: pd.DataFrame, allow_empty_columns: bool = False) -
     return sub_data_set
 
 
-def data_split(X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], names: pd.DataFrame, test_size: float = 0.2) -> Dict:
+def data_split(X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], names: pd.DataFrame, test_size: float = 0.2, stratify: Optional[Union[pd.DataFrame, pd.Series]] = None) -> Dict:
     """Split arrays or matrices into random train and test subsets.
 
     Parameters
@@ -336,8 +348,24 @@ def data_split(X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], names: pd.Dat
     dict
         A dictionary containing the split data.
     """
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
-    name_train, name_test = train_test_split(names, test_size=test_size, random_state=42)
+    stratify_values = None
+    if stratify is not None:
+        stratify_values = stratify.squeeze() if isinstance(stratify, (pd.DataFrame, pd.Series)) else stratify
+        class_count = int(pd.Series(stratify_values).nunique())
+        if class_count > 0:
+            requested_test_samples = math.ceil(len(X) * test_size) if isinstance(test_size, float) else int(test_size)
+            min_test_samples = max(requested_test_samples, class_count)
+            max_test_samples = len(X) - class_count
+            if requested_test_samples < class_count <= max_test_samples:
+                test_size = min_test_samples
+    X_train, X_test, y_train, y_test, name_train, name_test = train_test_split(
+        X,
+        y,
+        names,
+        test_size=test_size,
+        random_state=42,
+        stratify=stratify_values,
+    )
     return {"X Train": X_train, "X Test": X_test, "Y Train": y_train, "Y Test": y_test, "Name Train": name_train, "Name Test": name_test}
 
 

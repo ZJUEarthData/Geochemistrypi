@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "matrix_id": "geochemistrypi-mcp-pr9j-clients-v1",
+  "canonical_user_prompt": "帮我分析桌面上的 rocks.xlsx，看看哪些元素最能区分不同岩性。",
+  "expected_client_behavior": [
+    "discover_and_inspect_before_execution",
+    "ask_only_plain_language_scientific_questions",
+    "preserve_explicit_scientific_choices",
+    "never_silently_replace_invalid_choices",
+    "preview_in_plain_language_and_wait_for_confirmation",
+    "poll_and_summarize_original_outputs"
+  ],
+  "required_steps": [
+    "discovery",
+    "atomic_registration",
+    "backup",
+    "tools_list",
+    "capability_discovery",
+    "natural_language_dataset_workflow",
+    "status_polling",
+    "result_retrieval",
+    "owned_unregistration",
+    "unrelated_settings_preserved"
+  ],
+  "targets": [
+    {"id":"standard","configuration":"json","registration_test":"tests/mcp_wrapper/installation/test_client_config.py","protocol_test":"tests/mcp_wrapper/protocol/test_mcp_protocol.py","real_client_status":"controlled_protocol_verified"},
+    {"id":"codex","configuration":"toml","registration_test":"tests/mcp_wrapper/installation/test_client_config.py::test_codex_registration_preserves_comments_and_tables","protocol_test":"tests/mcp_wrapper/protocol/test_mcp_protocol.py","real_client_status":"pending_external_client_run"},
+    {"id":"claude-desktop","configuration":"json","registration_test":"tests/mcp_wrapper/installation/test_client_config.py::test_windows_adapters_use_each_clients_supported_schema","protocol_test":"tests/mcp_wrapper/protocol/test_mcp_protocol.py","real_client_status":"pending_external_client_run"},
+    {"id":"claude-code","configuration":"official_cli","registration_test":"tests/mcp_wrapper/installation/test_client_config.py::test_claude_code_adapter_uses_supported_cli_and_repairs_owned_entry","protocol_test":"tests/mcp_wrapper/protocol/test_mcp_protocol.py","real_client_status":"pending_external_client_run"},
+    {"id":"cursor","configuration":"json","registration_test":"tests/mcp_wrapper/installation/test_client_config.py::test_windows_adapters_use_each_clients_supported_schema","protocol_test":"tests/mcp_wrapper/protocol/test_mcp_protocol.py","real_client_status":"pending_external_client_run"},
+    {"id":"vscode","configuration":"json","registration_test":"tests/mcp_wrapper/installation/test_client_config.py::test_windows_adapters_use_each_clients_supported_schema","protocol_test":"tests/mcp_wrapper/protocol/test_mcp_protocol.py","real_client_status":"pending_external_client_run"},
+    {"id":"gemini-cli","configuration":"json","registration_test":"tests/mcp_wrapper/installation/test_client_config.py::test_windows_adapters_use_each_clients_supported_schema","protocol_test":"tests/mcp_wrapper/protocol/test_mcp_protocol.py","real_client_status":"pending_external_client_run"},
+    {"id":"windsurf","configuration":"json","registration_test":"tests/mcp_wrapper/installation/test_client_config.py::test_windows_adapters_use_each_clients_supported_schema","protocol_test":"tests/mcp_wrapper/protocol/test_mcp_protocol.py","real_client_status":"pending_external_client_run"},
+    {"id":"cline","configuration":"json","registration_test":"tests/mcp_wrapper/installation/test_client_config.py::test_windows_adapters_use_each_clients_supported_schema","protocol_test":"tests/mcp_wrapper/protocol/test_mcp_protocol.py","real_client_status":"pending_external_client_run"},
+    {"id":"roo-code","configuration":"json","registration_test":"tests/mcp_wrapper/installation/test_client_config.py::test_windows_adapters_use_each_clients_supported_schema","protocol_test":"tests/mcp_wrapper/protocol/test_mcp_protocol.py","real_client_status":"pending_external_client_run"},
+    {"id":"zed","configuration":"json","registration_test":"tests/mcp_wrapper/installation/test_client_config.py::test_windows_adapters_use_each_clients_supported_schema","protocol_test":"tests/mcp_wrapper/protocol/test_mcp_protocol.py","real_client_status":"pending_external_client_run"},
+    {"id":"continue","configuration":"yaml","registration_test":"tests/mcp_wrapper/installation/test_client_config.py::test_continue_yaml_round_trip_preserves_comments_and_unrelated_entries","protocol_test":"tests/mcp_wrapper/protocol/test_mcp_protocol.py","real_client_status":"pending_external_client_run"},
+    {"id":"kiro","configuration":"json","registration_test":"tests/mcp_wrapper/installation/test_client_config.py::test_windows_adapters_use_each_clients_supported_schema","protocol_test":"tests/mcp_wrapper/protocol/test_mcp_protocol.py","real_client_status":"pending_external_client_run"},
+    {"id":"opencode","configuration":"nested_json","registration_test":"tests/mcp_wrapper/installation/test_client_config.py::test_opencode_uses_nested_schema_and_refuses_jsonc_rewrite","protocol_test":"tests/mcp_wrapper/protocol/test_mcp_protocol.py","real_client_status":"pending_external_client_run"}
+  ]
+}

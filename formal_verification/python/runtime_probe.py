@@ -440,20 +440,21 @@ def build_bundle() -> tuple[dict[str, Any], dict[str, Any]]:
         "checkResults": check_results,
         "failedCheckIds": report["cases"][0]["failedCheckIds"],
         "sourceLocations": {
-            "D04.column_roles_guarded_and_disjoint": ["geochemistrypi/data_mining/cli_pipeline.py 569"],
-            "D05.derived_feature_lineage_safe": ["geochemistrypi/data_mining/cli_pipeline.py 579"],
-            "P02.stateful_fit_uses_training_rows_only": ["geochemistrypi/data_mining/cli_pipeline.py 615"],
+            "D04.column_roles_guarded_and_disjoint": ["geochemistrypi/data_mining/cli_pipeline.py 661"],
+            "D05.derived_feature_lineage_safe": ["geochemistrypi/data_mining/cli_pipeline.py 671"],
+            "P02.stateful_fit_uses_training_rows_only": ["geochemistrypi/data_mining/cli_pipeline.py 715"],
             "P03.fitted_state_reused_for_model_and_inference": [
-                "geochemistrypi/data_mining/cli_pipeline.py 615",
-                "geochemistrypi/data_mining/cli_pipeline.py 792",
+                "geochemistrypi/data_mining/cli_pipeline.py 715",
+                "geochemistrypi/data_mining/cli_pipeline.py 895",
                 "geochemistrypi/data_mining/data/inference.py 67",
             ],
             "L03.codec_persisted_and_predictions_decodable": [
-                "geochemistrypi/data_mining/model/func/algo_classification/_common.py 502",
-                "geochemistrypi/data_mining/model/func/algo_classification/_common.py 548",
+                "geochemistrypi/data_mining/model/func/algo_classification/_common.py 476",
+                "geochemistrypi/data_mining/model/func/algo_classification/_common.py 570",
+                "geochemistrypi/data_mining/process/classify.py 50",
             ],
-            "A02.artifact_pairs_aligned_and_mismatch_rejected": ["geochemistrypi/data_mining/utils/base.py 222"],
-            "E02.model_registry_immutable_during_run": ["geochemistrypi/data_mining/cli_pipeline.py 712"],
+            "A02.artifact_pairs_aligned_and_mismatch_rejected": ["geochemistrypi/data_mining/utils/base.py 245"],
+            "E02.model_registry_immutable_during_run": ["geochemistrypi/data_mining/cli_pipeline.py 812"],
         },
     }
     return bundle, observations

@@ -23,6 +23,9 @@
 # Pycharm
 .idea
 
+# Local editors
+.vscode/
+
 # Bytecode
 __pycache__
 *.pyc
@@ -33,10 +36,15 @@ __pycache__
 # Python Virtual Environment
 venv_geo/*
 venv_geo
+/.conda/
+/conda/
+/Lib/
+
 
 # Ignore text files for the report
 report.txt
 output.txt
+changes.md
 
 # Web Dependency
 node_modules
@@ -74,3 +82,7 @@ Lean_verification_docs/
 # Local development-tool state (not part of the product)
 .codegraph/
 .*_work/
+
+# Local generated multiclass artifacts
+multiclass_classification
+multiclass_cli_test.csv
