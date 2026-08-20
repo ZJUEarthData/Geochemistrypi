@@ -11,6 +11,7 @@ from geochemistrypi_mcp import (
     ClassificationRequest,
     CliInteractionDriver,
     CliProcessError,
+    DatasetCompilationContext,
     InteractionPlan,
     InteractionStep,
     PlanCompilationError,
@@ -228,7 +229,7 @@ def test_time_series_plan_is_noninteractive_and_semantically_validated(
 def test_time_series_plan_rejects_invalid_rows_before_cli(tmp_path: Path) -> None:
     data_path = tmp_path / "invalid-time-series.csv"
     data_path.write_text(
-        "R_AGE,R_MAX_AGE,SBAP,LATITUDE,LONGITUDE\n" "20,10,1.2,95,181\n",
+        "R_AGE,R_MAX_AGE,SBAP,LATITUDE,LONGITUDE\n" "20,-10,0.5,45,120\n",
         encoding="utf-8",
     )
     request = TimeSeriesRequest(
@@ -236,8 +237,74 @@ def test_time_series_plan_rejects_invalid_rows_before_cli(tmp_path: Path) -> Non
         bin_width=10,
     )
 
-    with pytest.raises(PlanCompilationError, match="maximum age"):
+    with pytest.raises(PlanCompilationError, match="comparison ages"):
         TimeSeriesPlanCompiler().compile(request, cli_executable=Path(sys.executable))
+
+
+def test_time_series_plan_accepts_unsigned_age_uncertainty_and_drops_on_all_selected_columns(tmp_path: Path) -> None:
+    data_path = tmp_path / "prepared-time-series.csv"
+    data_path.write_text(
+        "ROCK NAME,LATITUDE,LONGITUDE,MIN_AGE,AGE,MAX_AGE,R_MIN_AGE,R_AGE,R_MAX_AGE,SBAP\n" "A,10,20,,9,11,8,10,8,0.6\n" "B,11,21,19,20,21,18,20,25,0.4\n",
+        encoding="utf-8",
+    )
+    selected_columns = (
+        "LATITUDE",
+        "LONGITUDE",
+        "MIN_AGE",
+        "AGE",
+        "MAX_AGE",
+        "R_MIN_AGE",
+        "R_AGE",
+        "R_MAX_AGE",
+        "SBAP",
+    )
+    request = TimeSeriesRequest(
+        training_dataset_path=data_path,
+        identifier_column="ROCK NAME",
+        selected_columns=selected_columns,
+        missing_values={"method": "drop_rows", "columns": []},
+        bin_width=10,
+    )
+
+    plan = TimeSeriesPlanCompiler().compile(request, cli_executable=Path(sys.executable))
+
+    assert plan.public_command.count("--selected-column") == len(selected_columns)
+    assert ("--missing-values", "drop_rows") == tuple(plan.public_command[plan.public_command.index("--missing-values") : plan.public_command.index("--missing-values") + 2])
+
+
+def test_real_builtin_time_series_compiles_the_liu_workflow_configuration() -> None:
+    dataset = Path(__file__).resolve().parents[3] / "geochemistrypi" / "data_mining" / "data" / "dataset" / "Data_Time_Series.xlsx"
+    selected_columns = (
+        "LATITUDE",
+        "LONGITUDE",
+        "MIN_AGE",
+        "AGE",
+        "MAX_AGE",
+        "R_MIN_AGE",
+        "R_AGE",
+        "R_MAX_AGE",
+        "Estimated Proportion of Subaerial Basalts",
+    )
+    request = TimeSeriesRequest(
+        training_dataset_path=dataset,
+        identifier_column="ROCK NAME",
+        selected_columns=selected_columns,
+        missing_values={"method": "drop_rows", "columns": []},
+        probability_column="Estimated Proportion of Subaerial Basalts",
+        bin_width=100,
+        iterations=100,
+        age_unit="Ma",
+        fit_curve=False,
+    )
+
+    plan = TimeSeriesPlanCompiler().compile(
+        request,
+        cli_executable=Path(sys.executable),
+        dataset_context=DatasetCompilationContext(training_source="builtin"),
+    )
+
+    assert plan.public_command.count("--selected-column") == 9
+    assert plan.public_command[-1] == "--no-fit-curve"
 
 
 @pytest.mark.parametrize(("os_name", "expected"), [("nt", "geochemistrypi.exe"), ("posix", "geochemistrypi")])

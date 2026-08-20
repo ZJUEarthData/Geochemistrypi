@@ -923,7 +923,15 @@ class RegressionRequest(StrictModel):
     run_name: str = Field(min_length=1, max_length=40)
     identifier_column: ColumnName
     feature_columns: tuple[ColumnName, ...] = Field(min_length=1, max_length=256)
-    target_column: ColumnName
+    target_column: ColumnName | None = Field(
+        default=None,
+        description="Backward-compatible single-target field. Do not combine it with target_columns.",
+    )
+    target_columns: tuple[ColumnName, ...] = Field(
+        default=(),
+        max_length=256,
+        description="One or more numeric regression targets. Do not combine this field with target_column.",
+    )
     application_dataset_path: Path | None = None
     application_dataset: DatasetReference | None = None
     world_map: WorldMapConfiguration = Field(default_factory=DisabledWorldMap)
@@ -948,9 +956,19 @@ class RegressionRequest(StrictModel):
             raise ValueError("uses a Windows-reserved output directory name")
         return normalized
 
-    @field_validator("identifier_column", "target_column")
+    @field_validator("identifier_column")
     @classmethod
     def validate_required_column_name(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("must not be blank")
+        return normalized
+
+    @field_validator("target_column")
+    @classmethod
+    def validate_legacy_target_column(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         normalized = value.strip()
         if not normalized:
             raise ValueError("must not be blank")
@@ -966,6 +984,23 @@ class RegressionRequest(StrictModel):
             raise ValueError("must not contain duplicate column names")
         return normalized
 
+    @field_validator("target_columns")
+    @classmethod
+    def validate_target_columns(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        normalized = tuple(column.strip() for column in value)
+        if any(not column for column in normalized):
+            raise ValueError("must not contain blank column names")
+        if len(normalized) != len(set(normalized)):
+            raise ValueError("must not contain duplicate column names")
+        return normalized
+
+    @property
+    def resolved_target_columns(self) -> tuple[str, ...]:
+        """Return the uniform one-or-more target contract for old and new clients."""
+        if self.target_columns:
+            return self.target_columns
+        return (self.target_column,) if self.target_column is not None else ()
+
     @model_validator(mode="after")
     def validate_regression_contract(self) -> "RegressionRequest":
         _validate_dataset_choice(self.training_dataset_path, self.training_dataset, "training_dataset")
@@ -975,23 +1010,29 @@ class RegressionRequest(StrictModel):
             "application_dataset",
             required=False,
         )
-        if self.identifier_column == self.target_column:
-            raise ValueError("identifier_column and target_column must be different")
+        if (self.target_column is None) == (not self.target_columns):
+            raise ValueError("provide exactly one of target_column or target_columns")
+        targets = self.resolved_target_columns
+        if self.identifier_column in targets:
+            raise ValueError("identifier_column and regression targets must be different")
         if self.identifier_column in self.feature_columns:
             raise ValueError("identifier_column must not also be a feature")
-        if self.target_column in self.feature_columns:
-            raise ValueError("target_column must not also be a feature")
+        target_features = sorted(set(targets) & set(self.feature_columns))
+        if target_features:
+            raise ValueError(f"regression targets must not also be features: {target_features}")
         engineered_names = [feature.name for feature in self.engineered_features]
         if len(engineered_names) != len(set(engineered_names)):
             raise ValueError("engineered feature names must be unique")
         source_names = {
             self.identifier_column,
-            self.target_column,
+            *targets,
             *self.feature_columns,
         }
         conflicts = sorted(set(engineered_names) & source_names)
         if conflicts:
             raise ValueError(f"engineered feature names conflict with source columns: {conflicts}")
+        if len(targets) > 1 and self.feature_selection.method != "none":
+            raise ValueError("multiple-target regression requires feature_selection.method='none' because the public CLI selectors are univariate")
         if self.tuning == "automl" and self.model.type in MODELS_WITHOUT_AUTOML:
             raise ValueError(f"the public CLI does not offer AutoML for {self.model.type}")
         if self.tuning == "automl":
@@ -1214,6 +1255,17 @@ class TimeSeriesRequest(StrictModel):
     longitude_column: ColumnName = "LONGITUDE"
     age_unit: Literal["Ma", "Ga"] = "Ma"
     fit_curve: bool = True
+    identifier_column: ColumnName | None = Field(
+        default=None,
+        description="Optional sample-name column used by the interactive data-preparation workflow.",
+    )
+    selected_columns: tuple[ColumnName, ...] = Field(
+        default=(),
+        max_length=256,
+        description="Columns selected before missing-value handling; an empty value selects the five analysis-role columns.",
+    )
+    missing_values: MissingValueHandling = Field(default_factory=RejectMissingValues)
+    feature_engineering: Literal["none"] = "none"
 
     @field_validator("experiment_name", "run_name")
     @classmethod
@@ -1241,6 +1293,39 @@ class TimeSeriesRequest(StrictModel):
             raise ValueError("must be a non-blank single-line column name")
         return normalized
 
+    @field_validator("identifier_column")
+    @classmethod
+    def validate_identifier_column(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized or "\n" in normalized or "\r" in normalized:
+            raise ValueError("must be a non-blank single-line column name")
+        return normalized
+
+    @field_validator("selected_columns")
+    @classmethod
+    def validate_selected_columns(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        normalized = tuple(column.strip() for column in value)
+        if any(not column or "\n" in column or "\r" in column for column in normalized):
+            raise ValueError("must contain non-blank single-line column names")
+        if len(normalized) != len(set(normalized)):
+            raise ValueError("must not contain duplicate column names")
+        return normalized
+
+    @property
+    def resolved_selected_columns(self) -> tuple[str, ...]:
+        """Return the explicit selected-data range or the five legacy role columns."""
+        if self.selected_columns:
+            return self.selected_columns
+        return (
+            self.age_column,
+            self.maximum_age_column,
+            self.probability_column,
+            self.latitude_column,
+            self.longitude_column,
+        )
+
     @field_validator("bin_width")
     @classmethod
     def validate_finite_bin_width(cls, value: float) -> float:
@@ -1260,6 +1345,15 @@ class TimeSeriesRequest(StrictModel):
         )
         if len(set(columns)) != len(columns):
             raise ValueError("Time Series roles must identify five different columns")
+        missing_roles = sorted(set(columns) - set(self.resolved_selected_columns))
+        if missing_roles:
+            raise ValueError(f"selected_columns must include every Time Series role: {missing_roles}")
+        if self.missing_values.method not in {"error", "drop_rows"}:
+            raise ValueError("Time Series missing_values supports only 'error' or 'drop_rows'")
+        drop_columns = tuple(getattr(self.missing_values, "columns", ()))
+        unknown_drop_columns = sorted(set(drop_columns) - set(self.resolved_selected_columns))
+        if unknown_drop_columns:
+            raise ValueError(f"missing_values.columns were not selected: {unknown_drop_columns}")
         return self
 
 
@@ -1541,14 +1635,21 @@ class AnalysisValidationResponse(StrictModel):
     training_dataset_path: str
     training_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     training_size_bytes: int = Field(ge=0)
+    source_row_count: int | None = Field(None, ge=0)
+    row_identity_scheme: str | None = None
+    row_identity_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
     columns: tuple[str, ...]
     identifier_column: str | None = None
     feature_columns: tuple[str, ...] = ()
+    selected_columns: tuple[str, ...] = ()
     target_column: str | None = None
+    target_columns: tuple[str, ...] = ()
     resolved_model_parameters: dict[str, ModelParameterValue] = Field(default_factory=dict, max_length=64)
     application_source: Literal["path", "builtin", "desktop"] | None = None
     application_dataset_path: str | None = None
     application_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+    application_source_row_count: int | None = Field(None, ge=0)
+    application_row_identity_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
     experiment_mode: Literal["new", "existing", "not_applicable"]
     experiment_name: str
     existing_experiment_id: str | None = None
@@ -1638,6 +1739,11 @@ class RunResultResponse(StrictModel):
     cli_version: str
     input_sha256: str
     input_hash_verified: bool
+    source_row_count: int | None = Field(None, ge=0)
+    row_identity_scheme: str | None = None
+    row_identity_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+    source_row_pairing_verified: bool | None = None
+    source_row_pairing_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
     application_input_sha256: str | None = None
     application_input_hash_verified: bool | None = None
     reported_metrics: dict[str, Any]

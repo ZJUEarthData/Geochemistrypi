@@ -7,6 +7,7 @@ import subprocess
 import threading
 from functools import wraps
 from pathlib import Path
+from typing import List, Optional
 
 import click
 import typer
@@ -326,6 +327,11 @@ def time_series(
     longitude_column: str = typer.Option("LONGITUDE", "--longitude-column"),
     age_unit: str = typer.Option("Ma", "--age-unit", help="Output age unit: Ma or Ga."),
     fit_curve: bool = typer.Option(True, "--fit-curve/--no-fit-curve", help="Include the fitted trend curve in the PDF."),
+    identifier_column: Optional[str] = typer.Option(None, "--identifier-column", help="Optional sample-name column validated against the source data."),
+    selected_column: Optional[List[str]] = typer.Option(None, "--selected-column", help="Repeat in source order to reproduce the interactive selected-data range."),
+    missing_values: str = typer.Option("error", "--missing-values", help="Missing-value handling: error or drop_rows."),
+    drop_missing_column: Optional[List[str]] = typer.Option(None, "--drop-missing-column", help="Repeat to drop on specific selected columns; omit to drop on every selected column."),
+    feature_engineering: str = typer.Option("none", "--feature-engineering", help="Time Series currently supports only none."),
     automation_plan: str = typer.Option("", help="Absolute path to a versioned machine-input plan."),
     automation_events: str = typer.Option("", help="Absolute path for versioned machine-input events."),
 ) -> None:
@@ -355,6 +361,11 @@ def time_series(
                 longitude_col=longitude_column,
                 age_unit=age_unit,
                 fit_curve=fit_curve,
+                identifier_column=identifier_column,
+                selected_columns=tuple(selected_column or ()),
+                missing_value_method=missing_values,
+                drop_missing_columns=tuple(drop_missing_column or ()),
+                feature_engineering=feature_engineering,
             )
         except (OSError, ValueError) as exc:
             raise typer.BadParameter(str(exc)) from exc

@@ -193,7 +193,10 @@ class RegressionWorkflowBase(WorkflowBase):
         print(f"-----* {graph_name} *-----")
         plot_predicted_vs_actual(y_test_predict, y_test, algorithm_name)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
-        data = pd.concat([y_test, y_test_predict], axis=1)
+        prediction_data = y_test_predict
+        if y_test.shape[1] > 1:
+            prediction_data = y_test_predict.rename(columns=lambda column: f"Predicted_{column}")
+        data = pd.concat([y_test, prediction_data], axis=1)
         save_data(data, name_column, f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
 
     @staticmethod
@@ -212,7 +215,7 @@ class RegressionWorkflowBase(WorkflowBase):
         scores = score(y_true, y_predict)
         scores_str = json.dumps(scores, indent=4)
         save_text(scores_str, f"{graph_name} - {algorithm_name}", store_path)
-        mlflow.log_metrics(scores)
+        mlflow.log_metrics({key: value for key, value in scores.items() if isinstance(value, (int, float, np.number))})
 
     @staticmethod
     def _cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, cv_num: int, algorithm_name: str, store_path: str, graph_name: str) -> None:
@@ -1313,7 +1316,7 @@ class ExtraTreesRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             func_name=ExtraTreesSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
         )
         self._plot_tree(
-            trained_model=self.model.estimators_[0],
+            trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -1336,7 +1339,7 @@ class ExtraTreesRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             func_name=ExtraTreesSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
         )
         self._plot_tree(
-            trained_model=self.auto_model.estimators_[0],
+            trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -1618,7 +1621,7 @@ class RandomForestRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             func_name=RandomForestSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
         )
         self._plot_tree(
-            trained_model=self.model.estimators_[0],
+            trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -1641,7 +1644,7 @@ class RandomForestRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             func_name=RandomForestSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
         )
         self._plot_tree(
-            trained_model=self.auto_model.estimators_[0],
+            trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -2781,7 +2784,7 @@ class GradientBoostingRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             func_name=GradientBoostingSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
         )
         self._plot_tree(
-            trained_model=self.model.estimators_[0][0],
+            trained_model=self.model,
             image_config=self.image_config,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
@@ -2804,7 +2807,7 @@ class GradientBoostingRegression(TreeWorkflowMixin, RegressionWorkflowBase):
             func_name=GradientBoostingSpecialFunction.FEATURE_IMPORTANCE_DIAGRAM.value,
         )
         self._plot_tree(
-            trained_model=self.auto_model.estimators_[0][0],
+            trained_model=self.auto_model,
             image_config=self.image_config,
             algorithm_name=self.naming,
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,

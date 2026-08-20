@@ -8,13 +8,15 @@ from pathlib import Path
 import psutil
 import pytest
 from geochemistrypi_mcp import CliInteractionDriver, InteractionPlan, InteractionStep, WorkspacePathError
-from geochemistrypi_mcp.api.schemas import BuiltInDatasetReference, ClassificationRequest, ClusteringRequest, DecompositionRequest, RandomForestSettings, TimeSeriesRequest
+from geochemistrypi_mcp.api.schemas import BuiltInDatasetReference, ClassificationRequest, ClusteringRequest, DecompositionRequest, RandomForestSettings, RegressionRequest, TimeSeriesRequest
 from geochemistrypi_mcp.config.constants import CLI_VERSION
 from geochemistrypi_mcp.config.settings import McpSettings
 from geochemistrypi_mcp.contracts.classification import MODEL_DISPLAY_NAMES as CLASSIFICATION_MODEL_DISPLAY_NAMES
 from geochemistrypi_mcp.contracts.classification import MODEL_ORDER as CLASSIFICATION_MODEL_ORDER
 from geochemistrypi_mcp.data.catalog import ResolvedDataset
+from geochemistrypi_mcp.planning.interaction_plan import AnalysisPlanCompiler, PlanCompilationError
 from geochemistrypi_mcp.runtime.runs import RunManager, RunStateError
+from openpyxl import Workbook
 
 
 def _request(
@@ -45,8 +47,10 @@ class ScriptPlanCompiler:
 
     def compile(
         self,
-        request: ClassificationRequest | ClusteringRequest | DecompositionRequest | TimeSeriesRequest,
+        request: ClassificationRequest | RegressionRequest | ClusteringRequest | DecompositionRequest | TimeSeriesRequest,
         cli_executable: Path | None = None,
+        *,
+        dataset_context=None,
     ) -> InteractionPlan:
         return InteractionPlan(
             schema_version=1,
@@ -84,6 +88,22 @@ class FixedDatasetCatalog:
     def resolve(self, reference, *, task=None, role=None) -> ResolvedDataset:
         assert reference.dataset_id == "builtin:classification"
         assert task == "classification"
+        assert role == "training"
+        return ResolvedDataset(
+            path=self.path,
+            expected_sha256=None,
+            dataset_id=reference.dataset_id,
+            source="builtin",
+        )
+
+
+class FixedTimeSeriesDatasetCatalog:
+    def __init__(self, path: Path):
+        self.path = path
+
+    def resolve(self, reference, *, task=None, role=None) -> ResolvedDataset:
+        assert reference.dataset_id == "builtin:time_series"
+        assert task == "time_series"
         assert role == "training"
         return ResolvedDataset(
             path=self.path,
@@ -144,6 +164,94 @@ def test_validate_analysis_previews_workload_without_creating_run_or_process(tmp
         manager.close()
 
 
+def test_validate_analysis_reports_resolved_multi_targets_in_dataset_order(tmp_path: Path) -> None:
+    script = tmp_path / "never-started.py"
+    script.write_text("raise AssertionError('must not start')\n", encoding="utf-8")
+    dataset = tmp_path / "multi-target.csv"
+    dataset.write_text(
+        "SampleID,Target,TargetB,SIO2\nA,1.0,10.0,50.1\nB,2.0,20.0,61.0\n",
+        encoding="utf-8",
+    )
+    manager = _manager(tmp_path, script)
+    request = RegressionRequest(
+        training_dataset_path=dataset,
+        experiment_name="MCP Contract",
+        run_name="Multi Target Preview",
+        identifier_column="SampleID",
+        feature_columns=("SIO2",),
+        target_columns=("TargetB", "Target"),
+    )
+    try:
+        preview = manager.validate(request)
+        assert preview.target_column is None
+        assert preview.target_columns == ("Target", "TargetB")
+        assert preview.analysis_process_started is False
+        assert not manager.settings.runs_root.exists()
+    finally:
+        manager.close()
+
+
+def test_validate_time_series_mangles_duplicate_headers_only_for_trusted_builtin(tmp_path: Path) -> None:
+    dataset = tmp_path / "time-series.xlsx"
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.append(
+        [
+            "R_AGE",
+            "R_MAX_AGE",
+            "Estimated Proportion of Subaerial Basalts",
+            "LATITUDE",
+            "LONGITUDE",
+            "FEOT",
+            "FEOT",
+        ]
+    )
+    worksheet.append([50, 100, 0.6, 10, 20, 8.1, 8.2])
+    workbook.save(dataset)
+    workbook.close()
+
+    settings = McpSettings(
+        runs_root=tmp_path / "runs",
+        cli_executable=Path(sys.executable),
+        maximum_dataset_bytes=1024 * 1024,
+    )
+    request_values = {
+        "experiment_name": "MCP Contract",
+        "run_name": "Trusted Built-in Time Series",
+        "bin_width": 100,
+        "probability_column": "Estimated Proportion of Subaerial Basalts",
+    }
+    external_manager = RunManager(
+        settings,
+        plan_compiler=AnalysisPlanCompiler(),
+        cli_resolver=lambda: (Path(sys.executable), CLI_VERSION),
+    )
+    try:
+        with pytest.raises(PlanCompilationError, match="duplicate or colliding column names"):
+            external_manager.validate(TimeSeriesRequest(training_dataset_path=dataset, **request_values))
+    finally:
+        external_manager.close()
+
+    builtin_manager = RunManager(
+        settings,
+        plan_compiler=AnalysisPlanCompiler(),
+        cli_resolver=lambda: (Path(sys.executable), CLI_VERSION),
+        dataset_catalog=FixedTimeSeriesDatasetCatalog(dataset.resolve()),
+    )
+    try:
+        preview = builtin_manager.validate(
+            TimeSeriesRequest(
+                training_dataset=BuiltInDatasetReference(dataset_id="builtin:time_series"),
+                **request_values,
+            )
+        )
+        assert preview.training_source == "builtin"
+        assert preview.columns[-2:] == ("FEOT", "FEOT.1")
+        assert preview.interaction_plan == "time-series-subaerial-proportion-v1"
+    finally:
+        builtin_manager.close()
+
+
 @pytest.mark.skipif(os.name != "nt", reason="Windows legacy path budget regression")
 def test_validate_and_start_reject_unsafe_output_paths_before_creating_a_run(tmp_path: Path) -> None:
     script = tmp_path / "never-started.py"
@@ -152,8 +260,12 @@ def test_validate_and_start_reject_unsafe_output_paths_before_creating_a_run(tmp
     manager = _manager(tmp_path, script)
     original_compile = manager.plan_compiler.compile
 
-    def compile_with_unsafe_output(request, cli_executable=None):
-        plan = original_compile(request, cli_executable=cli_executable)
+    def compile_with_unsafe_output(request, cli_executable=None, *, dataset_context=None):
+        plan = original_compile(
+            request,
+            cli_executable=cli_executable,
+            dataset_context=dataset_context,
+        )
         return InteractionPlan(
             schema_version=plan.schema_version,
             name=plan.name,

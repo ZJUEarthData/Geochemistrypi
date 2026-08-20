@@ -42,6 +42,20 @@ def score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> Dict:
         "R2 Score": r2,
         "Explained Variance Score": evs,
     }
+    if y_true.shape[1] > 1:
+        mse_by_target = mean_squared_error(y_true, y_predict, multioutput="raw_values")
+        mae_by_target = mean_absolute_error(y_true, y_predict, multioutput="raw_values")
+        r2_by_target = r2_score(y_true, y_predict, multioutput="raw_values")
+        evs_by_target = explained_variance_score(y_true, y_predict, multioutput="raw_values")
+        scores["Per Target"] = {
+            str(column): {
+                "Root Mean Square Error": float(np.sqrt(mse_by_target[index])),
+                "Mean Absolute Error": float(mae_by_target[index]),
+                "R2 Score": float(r2_by_target[index]),
+                "Explained Variance Score": float(evs_by_target[index]),
+            }
+            for index, column in enumerate(y_true.columns)
+        }
     return scores
 
 
@@ -139,8 +153,17 @@ def plot_predicted_vs_actual(y_test_predict: pd.DataFrame, y_test: pd.DataFrame,
     algorithm_name : str
         The name of the algorithm model.
     """
-    plt.scatter(y_test_predict, y_test, color="b")
-    plt.plot(y_test_predict, y_test_predict, color="r", linestyle="--", label="Perfect Prediction Line")
+    if y_test.shape[1] == 1:
+        plt.scatter(y_test_predict, y_test, color="b")
+        plt.plot(y_test_predict, y_test_predict, color="r", linestyle="--", label="Perfect Prediction Line")
+    else:
+        for column in y_test.columns:
+            predicted = y_test_predict[column]
+            actual = y_test[column]
+            plt.scatter(predicted, actual, label=str(column))
+        minimum = min(float(y_test_predict.min().min()), float(y_test.min().min()))
+        maximum = max(float(y_test_predict.max().max()), float(y_test.max().max()))
+        plt.plot([minimum, maximum], [minimum, maximum], color="r", linestyle="--", label="Perfect Prediction Line")
     plt.xlabel("Predicted Values")
     plt.ylabel("Actual Values")
     plt.legend()
@@ -166,7 +189,7 @@ def plot_residuals(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, algorithm
     residuals : pd.DataFrame (n_samples, n_components)
         The residuals of the testing predict values and the testing target values.
     """
-    residuals = y_test_predict.values - y_test.values
+    residuals = y_test.values - y_test_predict.values
     # Support multiple Y columns: create column names based on the actual number of columns
     if y_test.shape[1] == 1:
         residuals = pd.DataFrame(residuals, columns=["Residuals"])
@@ -175,7 +198,11 @@ def plot_residuals(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, algorithm
         residual_columns = [f"Residuals_{col}" for col in y_test.columns]
         residuals = pd.DataFrame(residuals, columns=residual_columns)
 
-    plt.scatter(y_test_predict, residuals, color="b")
+    if y_test.shape[1] == 1:
+        plt.scatter(y_test_predict, residuals, color="b")
+    else:
+        for index, column in enumerate(y_test.columns):
+            plt.scatter(y_test_predict[column], residuals.iloc[:, index], label=str(column))
     plt.axhline(0, color="r", linestyle="--", label="Zero Residual Line")
     plt.title(f"Residuals Diagram - {algorithm_name}")
     plt.xlabel("Predicted Values")

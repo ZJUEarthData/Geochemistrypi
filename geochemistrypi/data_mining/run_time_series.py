@@ -7,7 +7,7 @@ import os
 import re
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Sequence, Tuple
 
 import numpy as np
 import pandas as pd
@@ -91,6 +91,85 @@ def load_time_series_data(input_path: Path, sheet: str = "0") -> pd.DataFrame:
     raise ValueError("Time Series input must be a .csv or .xlsx file.")
 
 
+def prepare_time_series_dataframe(
+    df: pd.DataFrame,
+    *,
+    identifier_column: Optional[str] = None,
+    selected_columns: Sequence[str] = (),
+    missing_value_method: str = "error",
+    drop_missing_columns: Sequence[str] = (),
+    feature_engineering: str = "none",
+    age_col: str = "R_AGE",
+    age_max_col: str = "R_MAX_AGE",
+    probability_col: str = "SBAP",
+    latitude_col: str = "LATITUDE",
+    longitude_col: str = "LONGITUDE",
+) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+    """Apply the noninteractive equivalent of the interactive data-preparation steps."""
+    if not isinstance(df, pd.DataFrame) or df.empty:
+        raise ValueError("Time Series input must contain at least one data row.")
+    if feature_engineering != "none":
+        raise ValueError("Time Series feature_engineering currently supports only 'none'.")
+    if missing_value_method not in {"error", "drop_rows"}:
+        raise ValueError("Time Series missing values must use 'error' or 'drop_rows'.")
+
+    roles = (age_col, age_max_col, probability_col, latitude_col, longitude_col)
+    normalized_selected = tuple(column.strip() for column in selected_columns) or roles
+    if any(not column for column in normalized_selected):
+        raise ValueError("Time Series selected columns must be non-blank.")
+    if len(set(normalized_selected)) != len(normalized_selected):
+        raise ValueError("Time Series selected columns must not contain duplicates.")
+    missing_roles = sorted(set(roles) - set(normalized_selected))
+    if missing_roles:
+        raise ValueError(f"Time Series selected columns are missing required analysis roles: {missing_roles}.")
+
+    normalized_identifier = identifier_column.strip() if identifier_column is not None else None
+    if normalized_identifier == "":
+        raise ValueError("Time Series identifier column must be non-blank.")
+    required = set(normalized_selected)
+    if normalized_identifier is not None:
+        required.add(normalized_identifier)
+    missing = sorted(required - set(df.columns))
+    if missing:
+        raise ValueError(f"Time Series input is missing configured columns: {missing}.")
+
+    normalized_drop_columns = tuple(column.strip() for column in drop_missing_columns)
+    if any(not column for column in normalized_drop_columns) or len(set(normalized_drop_columns)) != len(normalized_drop_columns):
+        raise ValueError("Time Series drop-missing columns must contain unique, non-blank names.")
+    if normalized_drop_columns and missing_value_method != "drop_rows":
+        raise ValueError("Time Series drop-missing columns require missing_value_method='drop_rows'.")
+    unknown_drop_columns = sorted(set(normalized_drop_columns) - set(normalized_selected))
+    if unknown_drop_columns:
+        raise ValueError(f"Time Series drop-missing columns were not selected: {unknown_drop_columns}.")
+
+    selected = df.loc[:, list(normalized_selected)].copy()
+    input_row_count = int(selected.shape[0])
+    if missing_value_method == "error":
+        missing_mask = selected.isna().any(axis=1).to_numpy()
+        if bool(missing_mask.any()):
+            rows = [int(index) + 2 for index in np.flatnonzero(missing_mask)[:10]]
+            raise ValueError(f"Time Series selected columns contain missing values at data rows {rows}.")
+    else:
+        subset = list(normalized_drop_columns or normalized_selected)
+        selected = selected.dropna(subset=subset).reset_index(drop=True)
+    if selected.empty:
+        raise ValueError("Time Series missing-value handling removed every data row.")
+
+    analysis_row_count = int(selected.shape[0])
+    return selected, {
+        "identifier_column": normalized_identifier,
+        "selected_columns": list(normalized_selected),
+        "missing_values": {
+            "method": missing_value_method,
+            "columns": list(normalized_drop_columns),
+        },
+        "feature_engineering": feature_engineering,
+        "input_row_count": input_row_count,
+        "analysis_row_count": analysis_row_count,
+        "dropped_row_count": input_row_count - analysis_row_count,
+    }
+
+
 def run_time_series_dataframe(
     df: pd.DataFrame,
     source_path: Path,
@@ -107,6 +186,7 @@ def run_time_series_dataframe(
     longitude_col: str = "LONGITUDE",
     age_unit: str = "Ma",
     fit_curve: bool = True,
+    preprocessing: Optional[Dict[str, Any]] = None,
 ) -> Path:
     """Run the shared validated numerical workflow and write standard outputs."""
     experiment_name = _safe_output_name(experiment_name, "experiment_name")
@@ -172,6 +252,16 @@ def run_time_series_dataframe(
                 "latitude": latitude_col,
                 "longitude": longitude_col,
             },
+            "preprocessing": preprocessing
+            or {
+                "identifier_column": None,
+                "selected_columns": list(df.columns),
+                "missing_values": {"method": "already_prepared", "columns": []},
+                "feature_engineering": "unspecified",
+                "input_row_count": int(df.shape[0]),
+                "analysis_row_count": int(df.shape[0]),
+                "dropped_row_count": 0,
+            },
         },
     )
     copy_files(
@@ -199,10 +289,28 @@ def run_time_series_analysis(
     longitude_col: str = "LONGITUDE",
     age_unit: str = "Ma",
     fit_curve: bool = True,
+    identifier_column: Optional[str] = None,
+    selected_columns: Sequence[str] = (),
+    missing_value_method: str = "error",
+    drop_missing_columns: Sequence[str] = (),
+    feature_engineering: str = "none",
 ) -> Path:
     source = Path(input_path).expanduser().resolve(strict=True)
-    return run_time_series_dataframe(
+    prepared, preprocessing = prepare_time_series_dataframe(
         load_time_series_data(source, sheet),
+        identifier_column=identifier_column,
+        selected_columns=selected_columns,
+        missing_value_method=missing_value_method,
+        drop_missing_columns=drop_missing_columns,
+        feature_engineering=feature_engineering,
+        age_col=age_col,
+        age_max_col=age_max_col,
+        probability_col=probability_col,
+        latitude_col=latitude_col,
+        longitude_col=longitude_col,
+    )
+    return run_time_series_dataframe(
+        prepared,
         source,
         output_root,
         experiment_name,
@@ -217,6 +325,7 @@ def run_time_series_analysis(
         longitude_col,
         age_unit,
         fit_curve,
+        preprocessing,
     )
 
 

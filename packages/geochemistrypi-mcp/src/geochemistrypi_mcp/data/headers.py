@@ -10,6 +10,12 @@ class HeaderValidationError(ValueError):
     """Raised when a dataset header would be ambiguous or unsafe to address."""
 
 
+def source_allows_pandas_duplicate_mangling(source: str) -> bool:
+    """Return the single trusted-source exception to strict header identity."""
+
+    return source == "builtin"
+
+
 def normalize_dataset_header(
     raw_header: Sequence[Any],
     maximum_columns: int,

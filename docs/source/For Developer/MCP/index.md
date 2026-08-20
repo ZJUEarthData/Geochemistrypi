@@ -98,12 +98,30 @@ and managed MLflow UI control. Its analysis schemas cover:
 - world-map configuration;
 - time-series workflows;
 - exact all-model execution;
+- one-or-more-target regression with named per-target holdout metrics and
+  application predictions;
 - training-only and training-plus-application data paths;
 - built-in, local-path, and supported Desktop dataset sources.
 
 The versioned capability manifest is the machine-readable source of truth for
 supported tasks, models, modes, and known restrictions. Request schemas reject
 unknown fields and invalid combinations before a CLI process starts.
+
+Time-series requests preserve the interactive workflow's sample-name field,
+ordered selected-data range, missing-row policy, and explicit absence of
+feature engineering. The noninteractive CLI performs that preparation before
+calling the shared Liu et al. computation and records row counts and the final
+preprocessing configuration with the scientific parameters.
+
+Regression keeps `target_column` as the backward-compatible single-target
+request field and adds `target_columns` for one or more numeric outcomes. A
+request must provide exactly one form. The plan compiler validates every target,
+prevents target leakage, and uses source-dataset order because the public CLI
+normalizes selected column indices. `validate_analysis.target_columns` exposes
+that resolved order. Holdout metrics contain both the legacy uniformly averaged
+values and a named `Per Target` mapping; cross-validation remains uniformly
+averaged. Multi-target requests with feature selection fail before execution
+because the current public CLI selectors are univariate.
 
 ## Installation and client configuration
 

@@ -74,6 +74,7 @@ class FakeRunManager:
             identifier_column=request.identifier_column,
             feature_columns=request.feature_columns,
             target_column=request.target_column,
+            target_columns=(request.resolved_target_columns if isinstance(request, RegressionRequest) else ((request.target_column,) if isinstance(request, ClassificationRequest) else ())),
             resolved_model_parameters=request.model.model_dump(mode="python", exclude={"type"}),
             experiment_mode="new",
             experiment_name=request.experiment_name,
@@ -154,6 +155,11 @@ async def test_tool_discovery_strict_validation_and_structured_results(
         assert len(request_schema["oneOf"]) == 6
         assert request_schema["$defs"]["ClassificationRequest"]["additionalProperties"] is False
         assert request_schema["$defs"]["RegressionRequest"]["additionalProperties"] is False
+        regression_schema = request_schema["$defs"]["RegressionRequest"]
+        assert "target_columns" in regression_schema["properties"]
+        assert "target_column" not in regression_schema["required"]
+        assert "target_columns" not in regression_schema["required"]
+        assert "Do not combine" in regression_schema["properties"]["target_columns"]["description"]
         assert request_schema["$defs"]["ClusteringRequest"]["additionalProperties"] is False
         assert request_schema["$defs"]["DecompositionRequest"]["additionalProperties"] is False
         assert request_schema["$defs"]["AnomalyDetectionRequest"]["additionalProperties"] is False
@@ -200,7 +206,10 @@ async def test_tool_discovery_strict_validation_and_structured_results(
             "local_outlier_factor",
         ]
         assert capabilities.structured_content["classification_options"]["sample_balancing"] == ["none"]
-        assert capabilities.structured_content["regression_options"]["target_columns"] == ["single_numeric"]
+        assert capabilities.structured_content["regression_options"]["target_columns"] == [
+            "single_numeric",
+            "multiple_numeric",
+        ]
         assert capabilities.structured_content["clustering_options"]["target_columns"] == ["not_applicable"]
         assert capabilities.structured_content["decomposition_options"]["transformed_data"] == ["enabled"]
         assert capabilities.structured_content["anomaly_detection_options"]["detection_labels"] == [
@@ -308,6 +317,22 @@ async def test_tool_discovery_strict_validation_and_structured_results(
         )
         assert regression_started.is_error is False
         assert fake_runs.requests[-1].task == "regression"
+
+        multi_regression_started = await client.call_tool(
+            "start_analysis",
+            {
+                "task": "regression",
+                "training_dataset_path": str(dataset),
+                "experiment_name": "Protocol",
+                "run_name": "Multi Regression",
+                "identifier_column": "SampleID",
+                "feature_columns": ["SIO2"],
+                "target_columns": ["Label", "SIO2_Second_Target"],
+                "model": {"type": "ridge_regression"},
+            },
+        )
+        assert multi_regression_started.is_error is False
+        assert fake_runs.requests[-1].resolved_target_columns == ("Label", "SIO2_Second_Target")
 
         clustering_started = await client.call_tool(
             "start_analysis",

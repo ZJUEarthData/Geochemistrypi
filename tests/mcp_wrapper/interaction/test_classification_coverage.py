@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from geochemistrypi_mcp import ClassificationPlanCompiler, ClassificationRequest, PlanCompilationError
+from geochemistrypi_mcp import ClassificationPlanCompiler, ClassificationRequest, DatasetCompilationContext, PlanCompilationError
 from geochemistrypi_mcp.contracts.classification import MODEL_DISPLAY_NAMES, MODEL_ORDER
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
@@ -298,15 +298,18 @@ def test_application_feature_engineering_uses_the_cli_name_based_replay_branch(t
     assert any(step.id == "continue_after_inference" for step in plan.steps)
 
 
-def test_identifiers_application_values_and_engineered_formulas_are_validated_before_execution(tmp_path: Path) -> None:
+def test_identifier_values_are_not_system_keys_but_scientific_inputs_stay_fail_closed(tmp_path: Path) -> None:
     training = _dataset(tmp_path)
     duplicate_training = tmp_path / "duplicate.csv"
     duplicate_training.write_text(
-        training.read_text(encoding="utf-8").replace("S-2,granite", "S-1,granite"),
+        training.read_text(encoding="utf-8").replace("S-2,granite", "S-1,granite").replace("S-3,basalt", ",basalt"),
         encoding="utf-8",
     )
-    with pytest.raises(PlanCompilationError, match="duplicate value 'S-1'"):
-        ClassificationPlanCompiler().compile(_request(duplicate_training), cli_executable=Path(sys.executable))
+    plan = ClassificationPlanCompiler().compile(
+        _request(duplicate_training),
+        cli_executable=Path(sys.executable),
+    )
+    assert plan.requires_source_row_pairing is True
 
     application = tmp_path / "invalid-application.csv"
     application.write_text("SampleID,SIO2,TIO2\nA-1,not-a-number,1.1\n", encoding="utf-8")
@@ -329,3 +332,44 @@ def test_identifiers_application_values_and_engineered_formulas_are_validated_be
     )
     with pytest.raises(PlanCompilationError, match="must not use the target column"):
         ClassificationPlanCompiler().compile(leaking_formula, cli_executable=Path(sys.executable))
+
+
+def test_dataset_provenance_controls_duplicate_header_compatibility_per_role(tmp_path: Path) -> None:
+    training = _dataset(tmp_path)
+    training_rows = training.read_text(encoding="utf-8").splitlines()
+    duplicate_training = tmp_path / "builtin-training.csv"
+    duplicate_training.write_text(
+        "\n".join([f"{training_rows[0]},FEOT,FEOT", *(f"{row},8.1,8.2" for row in training_rows[1:])]) + "\n",
+        encoding="utf-8",
+    )
+    compiler = ClassificationPlanCompiler()
+
+    with pytest.raises(PlanCompilationError, match="duplicate or colliding column names"):
+        compiler.compile(_request(duplicate_training), cli_executable=Path(sys.executable))
+
+    trusted_training = compiler.compile(
+        _request(duplicate_training),
+        cli_executable=Path(sys.executable),
+        dataset_context=DatasetCompilationContext(training_source="builtin"),
+    )
+    assert trusted_training.name == "classification-logistic_regression-v1"
+
+    duplicate_application = tmp_path / "application.csv"
+    duplicate_application.write_text(
+        "SampleID,SIO2,TIO2,FEOT,FEOT\nA-1,55,1.1,8.1,8.2\n",
+        encoding="utf-8",
+    )
+    application_request = _request(training, application_dataset_path=duplicate_application)
+    with pytest.raises(PlanCompilationError, match="duplicate or colliding column names"):
+        compiler.compile(
+            application_request,
+            cli_executable=Path(sys.executable),
+            dataset_context=DatasetCompilationContext(training_source="builtin"),
+        )
+
+    trusted_application = compiler.compile(
+        application_request,
+        cli_executable=Path(sys.executable),
+        dataset_context=DatasetCompilationContext(application_source="builtin"),
+    )
+    assert "--application" in trusted_application.public_command

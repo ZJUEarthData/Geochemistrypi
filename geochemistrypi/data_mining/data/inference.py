@@ -189,6 +189,9 @@ def model_inference(
 
         # Support multi-output: generate column names based on the prediction shape
         if y_columns is not None and len(y_columns) > 0:
+            prediction_width = 1 if inference_data_predicted_np.ndim == 1 else inference_data_predicted_np.shape[1]
+            if len(y_columns) != prediction_width:
+                raise ValueError("The number of regression target names does not match the model prediction width: " f"{len(y_columns)} names for {prediction_width} outputs.")
             # Use the original Y column names as the base
             predicted_columns = [f"Predicted_{col}" for col in y_columns]
         else:

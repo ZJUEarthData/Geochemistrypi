@@ -23,6 +23,16 @@ def _dataset(tmp_path: Path, *, missing: bool = False, non_numeric_target: bool 
     return path
 
 
+def _multi_target_dataset(tmp_path: Path, *, invalid_second_target: str | None = None) -> Path:
+    path = tmp_path / "regression-multi-target.csv"
+    rows = ["SampleID,Target,TargetB,SIO2,TIO2"]
+    for index in range(1, 21):
+        target_b = invalid_second_target if invalid_second_target is not None and index == 4 else str(4 + index * 0.75)
+        rows.append(f"S-{index},{10 + index * 1.5},{target_b},{48 + index},{0.5 + index / 10}")
+    path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    return path
+
+
 def _request(path: Path, **overrides) -> RegressionRequest:
     values = {
         "task": "regression",
@@ -53,6 +63,93 @@ def test_versioned_regression_capability_matrix_matches_public_cli_constants() -
     assert [item["cli_name"] for item in fixture["models"]] == cli_models
     assert [MODEL_DISPLAY_NAMES[model] for model in MODEL_ORDER] == cli_models
     assert tuple(item["id"] for item in fixture["models"] if not item["automl"]) == MODELS_WITHOUT_AUTOML
+    assert fixture["target_contract"] == "one_or_more_numeric"
+    assert "multiple_targets" not in fixture["unsupported"]
+    assert "multiple_targets_with_feature_selection" in fixture["unsupported"]
+
+
+def test_regression_public_contract_accepts_legacy_single_and_plural_multi_targets(tmp_path: Path) -> None:
+    compiler = RegressionPlanCompiler()
+    legacy = _request(_dataset(tmp_path))
+    assert legacy.resolved_target_columns == ("Target",)
+    legacy_plan = compiler.compile(legacy, cli_executable=Path(sys.executable))
+    assert legacy_plan.name == "regression-linear_regression-v1"
+    assert {step.id: step.response for step in legacy_plan.steps}["target_column"] == "1"
+
+    training = _multi_target_dataset(tmp_path)
+    request = _request(
+        training,
+        target_column=None,
+        target_columns=("TargetB", "Target"),
+    )
+    assert request.resolved_target_columns == ("TargetB", "Target")
+    plan = compiler.compile(request, cli_executable=Path(sys.executable))
+    responses = {step.id: step.response for step in plan.steps}
+
+    assert plan.name == "regression-linear_regression-multi-output-v1"
+    assert responses["selected_data_columns"] == "[2,5]"
+    assert responses["target_columns"] == "[1,2]"
+    assert responses["feature_columns"] == "[3,4]"
+    assert "target_column" not in responses
+
+
+def test_regression_multi_target_contract_rejects_ambiguous_or_unsafe_requests(tmp_path: Path) -> None:
+    training = _multi_target_dataset(tmp_path)
+
+    with pytest.raises(ValidationError, match="exactly one of target_column or target_columns"):
+        _request(training, target_column=None)
+    with pytest.raises(ValidationError, match="exactly one of target_column or target_columns"):
+        _request(training, target_columns=("TargetB",))
+    with pytest.raises(ValidationError, match="duplicate column names"):
+        _request(training, target_column=None, target_columns=("Target", "Target"))
+    with pytest.raises(ValidationError, match="must not also be features"):
+        _request(training, target_column=None, target_columns=("Target", "TargetB"), feature_columns=("TargetB", "SIO2"))
+    with pytest.raises(ValidationError, match="requires feature_selection.method='none'"):
+        _request(
+            training,
+            target_column=None,
+            target_columns=("Target", "TargetB"),
+            feature_selection={"method": "select_k_best", "retain_count": 1},
+        )
+
+
+@pytest.mark.parametrize("invalid_value", ["high", "", "nan", "inf"])
+def test_regression_multi_target_scans_every_target_before_execution(tmp_path: Path, invalid_value: str) -> None:
+    request = _request(
+        _multi_target_dataset(tmp_path, invalid_second_target=invalid_value),
+        target_column=None,
+        target_columns=("Target", "TargetB"),
+    )
+    expected = "missing" if invalid_value in {"", "nan"} else "non-numeric" if invalid_value == "high" else "non-finite"
+    with pytest.raises(PlanCompilationError, match=rf"TargetB.*{expected}"):
+        RegressionPlanCompiler().compile(request, cli_executable=Path(sys.executable))
+
+
+def test_regression_multi_target_rejects_target_leakage_and_poisson_negatives(tmp_path: Path) -> None:
+    training = _multi_target_dataset(tmp_path)
+    with pytest.raises(PlanCompilationError, match="must not use the target column"):
+        RegressionPlanCompiler().compile(
+            _request(
+                training,
+                target_column=None,
+                target_columns=("Target", "TargetB"),
+                engineered_features=({"name": "Leak", "formula": "{TargetB} / {SIO2}"},),
+            ),
+            cli_executable=Path(sys.executable),
+        )
+
+    negative = _multi_target_dataset(tmp_path).read_text(encoding="utf-8").replace(",4.75,", ",-4.75,", 1)
+    training.write_text(negative, encoding="utf-8")
+    with pytest.raises(PlanCompilationError, match="poisson.*non-negative"):
+        RegressionPlanCompiler().compile(
+            _request(
+                training,
+                target_column=None,
+                target_columns=("Target", "TargetB"),
+                model={"type": "decision_tree", "criterion": "poisson"},
+            ),
+            cli_executable=Path(sys.executable),
+        )
 
 
 @pytest.mark.parametrize("model_name", MODEL_ORDER)

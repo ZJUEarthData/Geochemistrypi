@@ -42,7 +42,8 @@ from ..data.catalog import DatasetCatalog, ResolvedDataset
 from ..data.inspector import DatasetSnapshot
 from ..data.inspector import inspect_dataset as inspect_local_dataset
 from ..data.inspector import sha256_file, snapshot_dataset
-from ..planning.interaction_plan import AnalysisPlanCompiler, InteractionPlan
+from ..data.row_pairing import verify_original_row_pairing
+from ..planning.interaction_plan import AnalysisPlanCompiler, DatasetCompilationContext, InteractionPlan
 from ..tracking.experiments import ExperimentManager
 from .artifacts import discover_artifacts
 from .cli_driver import CliInteractionDriver, CliRunCancelledError, validate_workspace_path
@@ -373,13 +374,21 @@ class RunManager:
                 ),
             }
         )
-        plan = self.plan_compiler.compile(execution_request, cli_executable=cli_executable)
+        dataset_context = DatasetCompilationContext(
+            training_source=resolved_training.source,
+            application_source=resolved_application.source if resolved_application is not None else None,
+        )
+        plan = self.plan_compiler.compile(
+            execution_request,
+            cli_executable=cli_executable,
+            dataset_context=dataset_context,
+        )
         validation_paths = RunPaths.create(self.settings.runs_root, "run-0000000000000000")
         validate_workspace_path(plan, validation_paths.workspace)
         inspection = inspect_local_dataset(
             DatasetInspectionRequest(dataset_path=snapshot.resolved_path, sample_rows=0),
             self.settings,
-            allow_pandas_duplicate_mangling=resolved_training.source == "builtin",
+            allow_pandas_duplicate_mangling=dataset_context.allows_pandas_duplicate_mangling("training"),
         )
         models = _selected_models(request)
         tuning = _selected_tuning(request)
@@ -403,14 +412,25 @@ class RunManager:
             training_dataset_path=str(snapshot.resolved_path),
             training_sha256=snapshot.sha256,
             training_size_bytes=snapshot.size_bytes,
+            source_row_count=snapshot.row_lineage.source_row_count,
+            row_identity_scheme=snapshot.row_lineage.scheme,
+            row_identity_sha256=snapshot.row_lineage.ordered_identity_sha256,
             columns=tuple(column.name for column in inspection.columns),
             identifier_column=getattr(request, "identifier_column", None),
             feature_columns=tuple(getattr(request, "feature_columns", ())),
+            selected_columns=tuple(getattr(request, "resolved_selected_columns", ())),
             target_column=getattr(request, "target_column", None),
+            target_columns=(
+                tuple(column.name for column in inspection.columns if column.name in set(request.resolved_target_columns))
+                if isinstance(request, RegressionRequest)
+                else ((request.target_column,) if isinstance(request, ClassificationRequest) else ())
+            ),
             resolved_model_parameters=_resolved_model_parameters(request),
             application_source=resolved_application.source if resolved_application else None,
             application_dataset_path=str(application_snapshot.resolved_path) if application_snapshot else None,
             application_sha256=application_snapshot.sha256 if application_snapshot else None,
+            application_source_row_count=(application_snapshot.row_lineage.source_row_count if application_snapshot else None),
+            application_row_identity_sha256=(application_snapshot.row_lineage.ordered_identity_sha256 if application_snapshot else None),
             experiment_mode=("not_applicable" if request.task == "time_series" else "existing" if existing_experiment_id else "new"),
             experiment_name=request.experiment_name,
             existing_experiment_id=existing_experiment_id,
@@ -494,7 +514,15 @@ class RunManager:
                 ),
             }
         )
-        plan = self.plan_compiler.compile(execution_request, cli_executable=cli_executable)
+        dataset_context = DatasetCompilationContext(
+            training_source=resolved_training.source,
+            application_source=resolved_application.source if resolved_application is not None else None,
+        )
+        plan = self.plan_compiler.compile(
+            execution_request,
+            cli_executable=cli_executable,
+            dataset_context=dataset_context,
+        )
         if "data-mining" in plan.public_command:
             if self.settings.tracking_root is None:
                 raise RunStateError("The installer-owned MLflow tracking root is not configured.")
@@ -523,6 +551,7 @@ class RunManager:
                 "format": snapshot.format,
                 "source": resolved_training.source,
                 "dataset_id": resolved_training.dataset_id,
+                "row_identity": snapshot.row_lineage.as_record(),
             },
             "application_input": (
                 {
@@ -533,6 +562,7 @@ class RunManager:
                     "format": application_snapshot.format,
                     "source": resolved_application.source,
                     "dataset_id": resolved_application.dataset_id,
+                    "row_identity": application_snapshot.row_lineage.as_record(),
                 }
                 if application_snapshot is not None
                 else None
@@ -678,6 +708,16 @@ class RunManager:
                 if not application_hash_verified:
                     raise InputIntegrityError("The application dataset changed during CLI execution; the result was not published as valid.")
             output_directory = paths.workspace / "geopi_output" / request.experiment_name / request.run_name
+            source_row_pairing = (
+                verify_original_row_pairing(
+                    snapshot.resolved_path,
+                    output_directory,
+                    request.identifier_column,
+                    snapshot.row_lineage,
+                )
+                if plan.requires_source_row_pairing
+                else None
+            )
             discovered = discover_artifacts(output_directory, self.settings.maximum_artifact_references)
             is_aggregate = request.task != "time_series" and request.model_selection.mode == "all"
             aggregate_state, children = _aggregate_children(output_directory, request.task) if is_aggregate else (None, ())
@@ -686,6 +726,8 @@ class RunManager:
                 "schema_version": ARTIFACT_INDEX_SCHEMA_VERSION,
                 "run_id": run_id,
                 "output_directory": str(output_directory),
+                "source_row_lineage": snapshot.row_lineage.as_record(),
+                "source_row_pairing": source_row_pairing,
                 "artifacts": discovered.all_index_entries,
             }
             _atomic_write_json(paths.artifact_index, artifact_index)
@@ -703,6 +745,11 @@ class RunManager:
                 cli_version=cli_version,
                 input_sha256=snapshot.sha256,
                 input_hash_verified=True,
+                source_row_count=snapshot.row_lineage.source_row_count,
+                row_identity_scheme=snapshot.row_lineage.scheme,
+                row_identity_sha256=snapshot.row_lineage.ordered_identity_sha256,
+                source_row_pairing_verified=(source_row_pairing["verified"] if source_row_pairing else None),
+                source_row_pairing_sha256=(source_row_pairing["ordered_pairing_sha256"] if source_row_pairing else None),
                 application_input_sha256=(application_snapshot.sha256 if application_snapshot is not None else None),
                 application_input_hash_verified=application_hash_verified,
                 reported_metrics=discovered.reported_metrics,
@@ -725,7 +772,10 @@ class RunManager:
                     "The MCP wrapper does not recreate models, metrics, predictions, plots, or transformed datasets.",
                     {
                         "classification": "The public sample-balancing helper remains unwired in the CLI workflow.",
-                        "regression": "Partially supported multiple-target regression remains outside the public request contract.",
+                        "regression": (
+                            "Multiple-target regression exposes per-target holdout metrics, while cross-validation metrics remain uniformly "
+                            "averaged across targets; univariate feature selection is rejected for this branch."
+                        ),
                         "clustering": "Application inference, targets, unsupervised AutoML, and internal-only OPTICS remain outside the public workflow.",
                         "decomposition": "Application inference, targets, unsupervised AutoML, and unresolved missing values remain outside the public workflow.",
                         "anomaly_detection": "Application inference, targets, unsupervised AutoML, feature selection, and unresolved missing values remain outside the public workflow.",

@@ -265,7 +265,7 @@ geochemistrypi-mcp
 The command starts a stdio server and intentionally prints nothing while it
 waits for an MCP client. Standard output is reserved for MCP messages.
 
-## Classification, regression, clustering, decomposition, and anomaly-detection requests
+## Classification, regression, clustering, decomposition, anomaly-detection, and Time Series requests
 
 `start_analysis` uses the `task` field to select a strict task-specific schema.
 Requests created before regression support remain classification requests when
@@ -286,8 +286,20 @@ A minimal regression request is:
 }
 ```
 
-Regression exposes all 15 single-model CLI families. The target must be one
-finite numeric column. The wrapper validates the CLI's fixed 10-fold
+For several numeric outcomes from the same samples, replace `target_column`
+with `target_columns`, for example `"target_columns": ["MeasuredValue",
+"MeasuredValueB"]`. Send exactly one of these two fields. `target_column`
+remains the backward-compatible single-target form; `target_columns` accepts
+one or more targets. The CLI resolves target order from the source dataset and
+`validate_analysis.target_columns` reports that order before execution.
+
+Regression exposes all 15 single-model CLI families and the exact all-model
+branch. Every target must be a finite numeric column. Holdout results retain the
+legacy uniformly averaged metrics and add a named `Per Target` section;
+prediction artifacts use `Predicted_<target>` columns. Cross-validation remains
+uniformly averaged across targets. Because the public CLI feature selectors are
+univariate, multi-target requests with feature selection are rejected instead
+of silently dropping the scientist's choice. The wrapper validates the CLI's fixed 10-fold
 cross-validation minimum, XGBoost-only unprocessed-missing-value branch,
 feature-dependent regression plot prompts, and optional application-data
 preprocessing before execution. Linear Regression and Polynomial Regression do
@@ -313,7 +325,7 @@ Agglomerative, AffinityPropagation, and MeanShift. It intentionally has no
 target, train/test split, feature selection, AutoML, or application-data
 inference. OPTICS exists internally in GeochemistryPi 0.8.1 but is not in the
 public CLI menu and is therefore not advertised or accepted by MCP. The wrapper
-validates numeric finite features, unique identifiers, model/data-size
+validates numeric finite features, internal source-row lineage, model/data-size
 constraints, missing-value resolution, and plot dimensions before execution.
 
 A minimal decomposition request is:
@@ -358,6 +370,16 @@ AutoML, or application-data inference. The wrapper validates row and feature
 bounds before the CLI starts; the CLI remains responsible for the original
 normal/anomalous tables, diagrams, model files, and transform pipeline.
 
+A Time Series request can reproduce the complete selected-data and
+missing-value preparation performed by the interactive workflow. For example,
+`selected_columns` may contain the nine consecutive scientific fields selected
+by CLI range `[6,14]`; `missing_values={"method":"drop_rows","columns":[]}`
+means drop rows missing any selected field. `identifier_column` records the
+sample-name field, and `feature_engineering` currently accepts only `none`.
+The public noninteractive CLI applies these operations before the seeded Liu
+et al. bootstrap and records input, retained, and dropped row counts in
+`Time Series Parameters.json`.
+
 ## Development verification
 
 From the repository root, the cross-platform wrapper suite is:
@@ -387,6 +409,18 @@ CLI command in `GEOCHEMISTRYPI_CLI_EXECUTABLE`.
 
 The request schema contains scientific choices only. It never accepts raw CLI
 answers, shell commands, environment variables, or output directories.
+
+Scientific identifier columns such as sample or rock names retain their
+original user meaning. Their values may be duplicated or missing when the
+public CLI workflow does not require uniqueness; they are never promoted to ML
+features or targets. MCP separately derives a deterministic, non-null internal
+row identity from the input SHA-256 and the one-based effective source-row
+position. Effective Excel/CSV row boundaries match the public CLI readers, so
+all-empty worksheet tail rows are not misclassified as samples. For non-Time
+Series runs, the wrapper verifies the complete ordered `Data Original` table
+against the source before publishing the result. Identity collisions, schema or
+row-count mismatches, changed/reordered rows, and indeterminate pairing remain
+fail-closed.
 
 `list_datasets` discovers the eight datasets shipped with the installed CLI and
 supported `.csv`/`.xlsx` files directly inside `Desktop/geopi_input`. Discovery
@@ -424,8 +458,9 @@ classification, regression, clustering, decomposition, and anomaly-detection
 model matrices, the runtime compatibility policy, resource limits, and
 unsupported combinations. `model_selection.mode = "all"` executes the real CLI
 aggregate branch and returns a parent summary plus ordered child results;
-regression multiple-target behavior remains
-outside the validated contract; classification sample balancing is not offered
+regression supports one or more finite numeric targets, including named
+per-target metrics and application predictions, while explicitly rejecting
+multi-target use of the CLI's univariate feature selectors; classification sample balancing is not offered
 because the GeochemistryPi 0.8.1 public CLI does not call its internal balancing
 helper; and clustering, decomposition, or anomaly detection does not silently
 inherit supervised controls.

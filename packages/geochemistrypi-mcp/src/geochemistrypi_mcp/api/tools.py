@@ -50,6 +50,7 @@ from ..contracts.regression import MODEL_ORDER as REGRESSION_MODEL_ORDER
 from ..contracts.regression import MODELS_WITHOUT_AUTOML
 from ..contracts.regression import UNSUPPORTED_INTERACTIONS as REGRESSION_UNSUPPORTED_INTERACTIONS
 from ..data.catalog import DatasetCatalogError
+from ..data.headers import source_allows_pandas_duplicate_mangling
 from ..data.inspector import DatasetInspectionError
 from ..data.inspector import inspect_dataset as inspect_local_dataset
 from ..planning.interaction_plan import PlanCompilationError
@@ -370,7 +371,7 @@ def build_tool_handlers(
                 "tuning": TUNING_MODES,
                 "automl_models": tuple(model for model in REGRESSION_MODEL_ORDER if model not in MODELS_WITHOUT_AUTOML),
                 "application_data": ("disabled", "enabled"),
-                "target_columns": ("single_numeric",),
+                "target_columns": ("single_numeric", "multiple_numeric"),
                 "model_selection": ("single", "all"),
             },
             clustering_options={
@@ -438,7 +439,7 @@ def build_tool_handlers(
         response = inspect_local_dataset(
             request.model_copy(update={"dataset_path": resolved.path, "dataset": None}),
             settings,
-            allow_pandas_duplicate_mangling=resolved.source == "builtin",
+            allow_pandas_duplicate_mangling=source_allows_pandas_duplicate_mangling(resolved.source),
         )
         if resolved.expected_sha256 is not None and response.sha256 != resolved.expected_sha256:
             raise DatasetCatalogError("The dataset changed between source resolution and inspection.")

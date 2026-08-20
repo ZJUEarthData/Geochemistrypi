@@ -37,7 +37,7 @@ def test_csv_inspection_is_bounded_typed_and_read_only(tmp_path: Path) -> None:
     assert dataset.read_bytes() == before
 
 
-def test_xlsx_inspection_uses_bounded_rows_and_marks_metadata_count_as_inexact(tmp_path: Path) -> None:
+def test_xlsx_inspection_uses_bounded_rows_and_exact_cli_row_count(tmp_path: Path) -> None:
     dataset = tmp_path / "rocks.xlsx"
     workbook = Workbook()
     worksheet = workbook.active
@@ -51,7 +51,7 @@ def test_xlsx_inspection_uses_bounded_rows_and_marks_metadata_count_as_inexact(t
 
     assert result.format == "xlsx"
     assert result.row_count == 2
-    assert result.row_count_exact is False
+    assert result.row_count_exact is True
     assert result.sample_rows == ({"SampleID": "A", "SIO2": 50.1, "Label": "basalt"},)
 
 

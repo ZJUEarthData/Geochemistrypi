@@ -878,7 +878,15 @@ def cli_pipeline(
                 inference_data_fe_selected_dropped = inference_data_fe_selected.dropna()
                 inference_data_fe_selected_dropped_name = inference_data_name.dropna()
                 inference_name_column_drop = inference_data_fe_selected_dropped_name[NAME]
-                model_inference(inference_data_fe_selected_dropped, inference_name_column_drop, is_inference, run, transformer_config, transform_pipeline)
+                model_inference(
+                    inference_data_fe_selected_dropped,
+                    inference_name_column_drop,
+                    is_inference,
+                    run,
+                    transformer_config,
+                    transform_pipeline,
+                    y_columns=list(y.columns) if y.shape[1] > 1 else None,
+                )
                 save_data(
                     inference_data_fe_selected_dropped,
                     inference_name_column_drop,
@@ -888,7 +896,15 @@ def cli_pipeline(
                 )
             else:
                 inference_name_column = inference_data[NAME]
-                model_inference(inference_data_fe_selected, inference_name_column, is_inference, run, transformer_config, transform_pipeline)
+                model_inference(
+                    inference_data_fe_selected,
+                    inference_name_column,
+                    is_inference,
+                    run,
+                    transformer_config,
+                    transform_pipeline,
+                    y_columns=list(y.columns) if y.shape[1] > 1 else None,
+                )
             clear_output()
 
         # <--- Data Dumping --->
@@ -979,6 +995,7 @@ def cli_pipeline(
                                 run,
                                 transformer_config,
                                 transform_pipeline,
+                                y_columns=list(y.columns) if y.shape[1] > 1 else None,
                             )
                             save_data(
                                 inference_data_fe_selected_dropped,
@@ -996,6 +1013,7 @@ def cli_pipeline(
                                 run,
                                 transformer_config,
                                 transform_pipeline,
+                                y_columns=list(y.columns) if y.shape[1] > 1 else None,
                             )
                         clear_output()
 

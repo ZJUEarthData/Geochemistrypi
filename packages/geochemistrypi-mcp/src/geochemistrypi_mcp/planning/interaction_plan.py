@@ -12,7 +12,7 @@ import sysconfig
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Iterable, List, Literal, Optional, Sequence, Tuple
 
 from pydantic import TypeAdapter
 
@@ -46,11 +46,32 @@ from ..contracts.regression import MODEL_ORDER as REGRESSION_MODEL_ORDER
 from ..contracts.regression import MODELS_SUPPORTING_MISSING_VALUES as REGRESSION_MODELS_SUPPORTING_MISSING_VALUES
 from ..contracts.regression import MODELS_WITH_INTERACTIVE_PLOT_SELECTION as REGRESSION_MODELS_WITH_INTERACTIVE_PLOT_SELECTION
 from ..contracts.regression import MODELS_WITHOUT_AUTOML as REGRESSION_MODELS_WITHOUT_AUTOML
-from ..data.headers import HeaderValidationError, normalize_dataset_header
+from ..data.headers import HeaderValidationError, normalize_dataset_header, source_allows_pandas_duplicate_mangling
+from ..data.source_rows import iter_cli_csv_rows, iter_cli_excel_rows
 
 
 class PlanCompilationError(ValueError):
     """Raised when a semantic request cannot be represented by this driver."""
+
+
+DatasetSource = Literal["path", "builtin", "desktop"]
+DatasetRole = Literal["training", "application"]
+
+
+@dataclass(frozen=True)
+class DatasetCompilationContext:
+    """Preserve resolved dataset provenance after references become local paths."""
+
+    training_source: DatasetSource = "path"
+    application_source: DatasetSource | None = None
+
+    def source_for(self, role: DatasetRole) -> DatasetSource:
+        if role == "training":
+            return self.training_source
+        return self.application_source or "path"
+
+    def allows_pandas_duplicate_mangling(self, role: DatasetRole) -> bool:
+        return source_allows_pandas_duplicate_mangling(self.source_for(role))
 
 
 @dataclass(frozen=True)
@@ -82,6 +103,7 @@ class InteractionPlan:
     public_command: Tuple[str, ...]
     steps: Tuple[InteractionStep, ...]
     expected_output_relative_paths: Tuple[str, ...] = ()
+    requires_source_row_pairing: bool = False
 
     def __post_init__(self) -> None:
         if self.schema_version < 1:
@@ -145,7 +167,11 @@ def resolve_public_cli_executable() -> Path:
     raise PlanCompilationError("The public 'geochemistrypi' command is unavailable. Install the GeochemistryPi package in the current Python environment.")
 
 
-def _read_dataset_columns(path: Path) -> Tuple[str, ...]:
+def _read_dataset_columns(
+    path: Path,
+    *,
+    source: DatasetSource = "path",
+) -> Tuple[str, ...]:
     suffix = path.suffix.lower()
     if suffix == ".csv":
         try:
@@ -168,7 +194,11 @@ def _read_dataset_columns(path: Path) -> Tuple[str, ...]:
     else:
         raise PlanCompilationError(f"PR3 supports .csv and .xlsx data; received {path.suffix or 'a file without an extension'}.")
     try:
-        return normalize_dataset_header(row, 256)
+        return normalize_dataset_header(
+            row,
+            256,
+            allow_pandas_duplicate_mangling=source_allows_pandas_duplicate_mangling(source),
+        )
     except HeaderValidationError as exc:
         raise PlanCompilationError(str(exc)) from exc
 
@@ -254,7 +284,7 @@ def _iter_selected_rows(path: Path, positions: Sequence[int]) -> Iterable[tuple[
             with path.open(encoding="utf-8-sig", newline="") as stream:
                 reader = csv.reader(stream)
                 next(reader)
-                for row_number, row in enumerate(reader, start=2):
+                for row_number, row in enumerate(iter_cli_csv_rows(reader), start=2):
                     if len(row) <= max(positions):
                         raise PlanCompilationError(f"CSV row {row_number} has fewer values than the header.")
                     yield tuple(row[position] for position in positions)
@@ -272,7 +302,7 @@ def _iter_selected_rows(path: Path, positions: Sequence[int]) -> Iterable[tuple[
             try:
                 rows = workbook.active.iter_rows(values_only=True)
                 next(rows)
-                for row_number, row in enumerate(rows, start=2):
+                for row_number, row in enumerate(iter_cli_excel_rows(rows), start=2):
                     if len(row) <= max(positions):
                         raise PlanCompilationError(f"Excel row {row_number} has fewer values than the header.")
                     yield tuple(row[position] for position in positions)
@@ -352,7 +382,7 @@ def _quantile_counts(values: list[float], number_of_classes: int, labels: tuple[
 
 def _scan_training_dataset(path: Path, columns: tuple[str, ...], request: ClassificationRequest) -> _DatasetProfile:
     selected_names = tuple(column for column in columns if column == request.target_column or column in request.feature_columns)
-    scan_names = (request.identifier_column, *selected_names)
+    scan_names = selected_names
     positions = [columns.index(column) for column in scan_names]
     drop_columns = set(getattr(request.missing_values, "columns", ()))
     unknown_drop_columns = sorted(drop_columns - set(selected_names))
@@ -368,25 +398,17 @@ def _scan_training_dataset(path: Path, columns: tuple[str, ...], request: Classi
     mapping = getattr(request.label_customization, "mapping", {})
     cut_points = getattr(request.label_customization, "cut_points", ())
     interval_labels = getattr(request.label_customization, "labels", None)
-    identifiers: set[str] = set()
 
     for row_number, row in enumerate(_iter_selected_rows(path, positions), start=1):
         values = dict(zip(scan_names, row))
-        identifier = values[request.identifier_column]
-        if _is_missing(identifier):
-            raise PlanCompilationError(f"Identifier column {request.identifier_column!r} is missing at data row {row_number}.")
-        identifier_key = str(identifier)
-        if identifier_key in identifiers:
-            raise PlanCompilationError(f"Identifier column {request.identifier_column!r} contains duplicate value {identifier_key!r}.")
-        identifiers.add(identifier_key)
-        target = values[request.target_column]
-        if _is_missing(target):
-            raise PlanCompilationError(f"Target column {request.target_column!r} contains a missing label at data row {row_number}.")
         row_missing = {column for column in selected_names if _is_missing(values[column])}
         missing_columns.update(row_missing)
         should_drop = request.missing_values.method == "drop_rows" and bool(row_missing & (drop_columns or set(selected_names)))
         if should_drop:
             continue
+        target = values[request.target_column]
+        if _is_missing(target):
+            raise PlanCompilationError(f"Target column {request.target_column!r} contains a missing label at data row {row_number}.")
         unresolved_missing.update(row_missing)
         for feature in request.feature_columns:
             if not _is_missing(values[feature]):
@@ -469,8 +491,10 @@ def _scan_regression_training_dataset(
     columns: tuple[str, ...],
     request: RegressionRequest,
 ) -> _RegressionDatasetProfile:
-    selected_names = tuple(column for column in columns if column == request.target_column or column in request.feature_columns)
-    scan_names = (request.identifier_column, *selected_names)
+    target_columns = request.resolved_target_columns
+    target_set = set(target_columns)
+    selected_names = tuple(column for column in columns if column in target_set or column in request.feature_columns)
+    scan_names = selected_names
     positions = [columns.index(column) for column in scan_names]
     drop_columns = set(getattr(request.missing_values, "columns", ()))
     unknown_drop_columns = sorted(drop_columns - set(selected_names))
@@ -479,35 +503,27 @@ def _scan_regression_training_dataset(
 
     missing_columns: set[str] = set()
     unresolved_missing: set[str] = set()
-    identifiers: set[str] = set()
     kept_rows = 0
     has_negative_target = False
     for row_number, row in enumerate(_iter_selected_rows(path, positions), start=1):
         values = dict(zip(scan_names, row))
-        identifier = values[request.identifier_column]
-        if _is_missing(identifier):
-            raise PlanCompilationError(f"Identifier column {request.identifier_column!r} is missing at data row {row_number}.")
-        identifier_key = str(identifier)
-        if identifier_key in identifiers:
-            raise PlanCompilationError(f"Identifier column {request.identifier_column!r} contains duplicate value {identifier_key!r}.")
-        identifiers.add(identifier_key)
-
-        target = values[request.target_column]
-        if _is_missing(target):
-            raise PlanCompilationError(f"Regression target column {request.target_column!r} is missing at data row {row_number}.")
-        try:
-            target_number = float(target)
-        except (TypeError, ValueError) as exc:
-            raise PlanCompilationError(f"Regression target column {request.target_column!r} contains a non-numeric value at data row {row_number}: {target!r}.") from exc
-        if not math.isfinite(target_number):
-            raise PlanCompilationError(f"Regression target column {request.target_column!r} contains a non-finite value at data row {row_number}.")
-        has_negative_target = has_negative_target or target_number < 0
-
-        row_missing = {feature for feature in request.feature_columns if _is_missing(values[feature])}
+        row_missing = {column for column in selected_names if _is_missing(values[column])}
         missing_columns.update(row_missing)
         should_drop = request.missing_values.method == "drop_rows" and bool(row_missing & (drop_columns or set(selected_names)))
         if should_drop:
             continue
+        for target_column in target_columns:
+            target = values[target_column]
+            if _is_missing(target):
+                raise PlanCompilationError(f"Regression target column {target_column!r} is missing at data row {row_number}.")
+            try:
+                target_number = float(target)
+            except (TypeError, ValueError) as exc:
+                raise PlanCompilationError(f"Regression target column {target_column!r} contains a non-numeric value at data row {row_number}: {target!r}.") from exc
+            if not math.isfinite(target_number):
+                raise PlanCompilationError(f"Regression target column {target_column!r} contains a non-finite value at data row {row_number}.")
+            has_negative_target = has_negative_target or target_number < 0
+
         unresolved_missing.update(row_missing)
         for feature in request.feature_columns:
             if feature not in row_missing:
@@ -546,7 +562,7 @@ def _scan_clustering_training_dataset(
     columns: tuple[str, ...],
     request: ClusteringRequest,
 ) -> _ClusteringDatasetProfile:
-    scan_names = (request.identifier_column, *request.feature_columns)
+    scan_names = request.feature_columns
     positions = [columns.index(column) for column in scan_names]
     drop_columns = set(getattr(request.missing_values, "columns", ()))
     unknown_drop_columns = sorted(drop_columns - set(request.feature_columns))
@@ -555,18 +571,9 @@ def _scan_clustering_training_dataset(
 
     missing_columns: set[str] = set()
     unresolved_missing: set[str] = set()
-    identifiers: set[str] = set()
     kept_rows = 0
     for row_number, row in enumerate(_iter_selected_rows(path, positions), start=1):
         values = dict(zip(scan_names, row))
-        identifier = values[request.identifier_column]
-        if _is_missing(identifier):
-            raise PlanCompilationError(f"Identifier column {request.identifier_column!r} is missing at data row {row_number}.")
-        identifier_key = str(identifier)
-        if identifier_key in identifiers:
-            raise PlanCompilationError(f"Identifier column {request.identifier_column!r} contains duplicate value {identifier_key!r}.")
-        identifiers.add(identifier_key)
-
         row_missing = {feature for feature in request.feature_columns if _is_missing(values[feature])}
         missing_columns.update(row_missing)
         should_drop = request.missing_values.method == "drop_rows" and bool(row_missing & (drop_columns or set(request.feature_columns)))
@@ -612,7 +619,7 @@ def _scan_decomposition_training_dataset(
     columns: tuple[str, ...],
     request: DecompositionRequest,
 ) -> _DecompositionDatasetProfile:
-    scan_names = (request.identifier_column, *request.feature_columns)
+    scan_names = request.feature_columns
     positions = [columns.index(column) for column in scan_names]
     drop_columns = set(getattr(request.missing_values, "columns", ()))
     unknown_drop_columns = sorted(drop_columns - set(request.feature_columns))
@@ -621,18 +628,9 @@ def _scan_decomposition_training_dataset(
 
     missing_columns: set[str] = set()
     unresolved_missing: set[str] = set()
-    identifiers: set[str] = set()
     kept_rows = 0
     for row_number, row in enumerate(_iter_selected_rows(path, positions), start=1):
         values = dict(zip(scan_names, row))
-        identifier = values[request.identifier_column]
-        if _is_missing(identifier):
-            raise PlanCompilationError(f"Identifier column {request.identifier_column!r} is missing at data row {row_number}.")
-        identifier_key = str(identifier)
-        if identifier_key in identifiers:
-            raise PlanCompilationError(f"Identifier column {request.identifier_column!r} contains duplicate value {identifier_key!r}.")
-        identifiers.add(identifier_key)
-
         row_missing = {feature for feature in request.feature_columns if _is_missing(values[feature])}
         missing_columns.update(row_missing)
         should_drop = request.missing_values.method == "drop_rows" and bool(row_missing & (drop_columns or set(request.feature_columns)))
@@ -667,7 +665,7 @@ def _scan_anomaly_detection_training_dataset(
     columns: tuple[str, ...],
     request: AnomalyDetectionRequest,
 ) -> _AnomalyDetectionDatasetProfile:
-    scan_names = (request.identifier_column, *request.feature_columns)
+    scan_names = request.feature_columns
     positions = [columns.index(column) for column in scan_names]
     drop_columns = set(getattr(request.missing_values, "columns", ()))
     unknown_drop_columns = sorted(drop_columns - set(request.feature_columns))
@@ -676,18 +674,9 @@ def _scan_anomaly_detection_training_dataset(
 
     missing_columns: set[str] = set()
     unresolved_missing: set[str] = set()
-    identifiers: set[str] = set()
     kept_rows = 0
     for row_number, row in enumerate(_iter_selected_rows(path, positions), start=1):
         values = dict(zip(scan_names, row))
-        identifier = values[request.identifier_column]
-        if _is_missing(identifier):
-            raise PlanCompilationError(f"Identifier column {request.identifier_column!r} is missing at data row {row_number}.")
-        identifier_key = str(identifier)
-        if identifier_key in identifiers:
-            raise PlanCompilationError(f"Identifier column {request.identifier_column!r} contains duplicate value {identifier_key!r}.")
-        identifiers.add(identifier_key)
-
         row_missing = {feature for feature in request.feature_columns if _is_missing(values[feature])}
         missing_columns.update(row_missing)
         should_drop = request.missing_values.method == "drop_rows" and bool(row_missing & (drop_columns or set(request.feature_columns)))
@@ -722,21 +711,13 @@ def _validate_application_dataset(
     columns: tuple[str, ...],
     request: ClassificationRequest | RegressionRequest,
 ) -> None:
-    scan_names = (request.identifier_column, *request.feature_columns)
+    scan_names = request.feature_columns
     positions = [columns.index(column) for column in scan_names]
-    identifiers: set[str] = set()
     row_count = 0
     usable_rows = 0
     for row_number, row in enumerate(_iter_selected_rows(path, positions), start=1):
         row_count += 1
         values = dict(zip(scan_names, row))
-        identifier = values[request.identifier_column]
-        if _is_missing(identifier):
-            raise PlanCompilationError(f"Application identifier {request.identifier_column!r} is missing at data row {row_number}.")
-        identifier_key = str(identifier)
-        if identifier_key in identifiers:
-            raise PlanCompilationError(f"Application identifier {request.identifier_column!r} contains duplicate value {identifier_key!r}.")
-        identifiers.add(identifier_key)
         missing_features = {feature for feature in request.feature_columns if _is_missing(values[feature])}
         for feature in request.feature_columns:
             if feature not in missing_features:
@@ -790,6 +771,10 @@ def _compile_engineered_features(
         return ()
     if len(selected_names) + len(request.engineered_features) > 26:
         raise PlanCompilationError("The CLI letter-based feature builder can address at most 26 selected and engineered columns.")
+    request_target_columns = set(getattr(request, "resolved_target_columns", ()))
+    if not request_target_columns:
+        target_column = getattr(request, "target_column", None)
+        request_target_columns = {target_column} if target_column is not None else set()
     available = list(selected_names)
     compiled: list[tuple[str, str]] = []
     for feature in request.engineered_features:
@@ -799,7 +784,7 @@ def _compile_engineered_features(
             column = match.group(1).strip()
             if column not in available:
                 raise PlanCompilationError(f"Engineered feature {feature.name!r} references unavailable column {column!r}.")
-            if column == getattr(request, "target_column", None):
+            if column in request_target_columns:
                 raise PlanCompilationError(f"Engineered feature {feature.name!r} must not use the target column; that would leak labels into model inputs.")
             referenced.add(column)
             return chr(ord("a") + available.index(column))
@@ -1431,11 +1416,18 @@ def _anomaly_detection_model_steps(
 class ClassificationPlanCompiler:
     """Compile supported classification branches without importing ML code."""
 
-    def compile(self, request: ClassificationRequest, cli_executable: Optional[Path] = None) -> InteractionPlan:
+    def compile(
+        self,
+        request: ClassificationRequest,
+        cli_executable: Optional[Path] = None,
+        *,
+        dataset_context: DatasetCompilationContext | None = None,
+    ) -> InteractionPlan:
+        dataset_context = dataset_context or DatasetCompilationContext()
         data_path = request.training_dataset_path.expanduser().resolve()
         if not data_path.is_file():
             raise PlanCompilationError(f"Training data file does not exist: {data_path}")
-        columns = _read_dataset_columns(data_path)
+        columns = _read_dataset_columns(data_path, source=dataset_context.training_source)
         _validate_world_map(data_path, columns, request.world_map)
         requested_columns = (
             request.identifier_column,
@@ -1450,7 +1442,10 @@ class ClassificationPlanCompiler:
             application_path = request.application_dataset_path.expanduser().resolve()
             if not application_path.is_file():
                 raise PlanCompilationError(f"Application data file does not exist: {application_path}")
-            application_columns = _read_dataset_columns(application_path)
+            application_columns = _read_dataset_columns(
+                application_path,
+                source=dataset_context.source_for("application"),
+            )
             required_application = {request.identifier_column, *request.feature_columns}
             application_missing = sorted(required_application - set(application_columns))
             if application_missing:
@@ -1641,6 +1636,7 @@ class ClassificationPlanCompiler:
                 str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "model" / "Transform Pipeline.joblib"),
                 str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "image" / "model_output" / f"Precision-Recall vs. Threshold Diagram - {model_display}.png"),
             ),
+            requires_source_row_pairing=True,
         )
 
     @staticmethod
@@ -2017,15 +2013,24 @@ class ClassificationPlanCompiler:
 class RegressionPlanCompiler:
     """Compile every supported single-model regression branch without importing ML code."""
 
-    def compile(self, request: RegressionRequest, cli_executable: Optional[Path] = None) -> InteractionPlan:
+    def compile(
+        self,
+        request: RegressionRequest,
+        cli_executable: Optional[Path] = None,
+        *,
+        dataset_context: DatasetCompilationContext | None = None,
+    ) -> InteractionPlan:
+        dataset_context = dataset_context or DatasetCompilationContext()
         data_path = request.training_dataset_path.expanduser().resolve()
         if not data_path.is_file():
             raise PlanCompilationError(f"Training data file does not exist: {data_path}")
-        columns = _read_dataset_columns(data_path)
+        columns = _read_dataset_columns(data_path, source=dataset_context.training_source)
         _validate_world_map(data_path, columns, request.world_map)
+        target_columns = request.resolved_target_columns
+        target_set = set(target_columns)
         requested_columns = (
             request.identifier_column,
-            request.target_column,
+            *target_columns,
             *request.feature_columns,
         )
         missing = sorted({column for column in requested_columns if column not in columns})
@@ -2037,14 +2042,17 @@ class RegressionPlanCompiler:
             application_path = request.application_dataset_path.expanduser().resolve()
             if not application_path.is_file():
                 raise PlanCompilationError(f"Application data file does not exist: {application_path}")
-            application_columns = _read_dataset_columns(application_path)
+            application_columns = _read_dataset_columns(
+                application_path,
+                source=dataset_context.source_for("application"),
+            )
             required_application = {request.identifier_column, *request.feature_columns}
             application_missing = sorted(required_application - set(application_columns))
             if application_missing:
                 raise PlanCompilationError(f"Application dataset is missing required identifier or feature columns: {application_missing}")
             _validate_application_dataset(application_path, application_columns, request)
 
-        selected_names = tuple(column for column in columns if column == request.target_column or column in request.feature_columns)
+        selected_names = tuple(column for column in columns if column in target_set or column in request.feature_columns)
         engineered = _compile_engineered_features(request, selected_names)
         profile = _scan_regression_training_dataset(data_path, columns, request)
         final_feature_names = (
@@ -2053,6 +2061,8 @@ class RegressionPlanCompiler:
         )
         final_feature_count = len(final_feature_names)
         selected_feature_count = getattr(request.feature_selection, "retain_count", final_feature_count)
+        if len(target_columns) > 1 and request.feature_selection.method != "none":
+            raise PlanCompilationError("Multiple-target regression cannot use the CLI's univariate feature-selection methods.")
         if request.feature_selection.method != "none" and selected_feature_count >= final_feature_count:
             raise PlanCompilationError(f"feature_selection.retain_count must be less than the {final_feature_count} input features because that is the CLI's enforced contract.")
         maximum_features = getattr(request.model, "maximum_features", None)
@@ -2063,7 +2073,7 @@ class RegressionPlanCompiler:
         selected_positions = {column: index + 1 for index, column in enumerate((*selected_names, *(name for name, _ in engineered)))}
         selected_expression = _selection_expression([original_positions[column] for column in selected_names])
         feature_expression = _selection_expression([selected_positions[column] for column in final_feature_names])
-        target_expression = _selection_expression([selected_positions[request.target_column]])
+        target_expression = _selection_expression([selected_positions[column] for column in target_columns])
         executable = Path(cli_executable).expanduser().resolve() if cli_executable else resolve_public_cli_executable()
         if not executable.is_file():
             raise PlanCompilationError(f"CLI executable does not exist: {executable}")
@@ -2130,7 +2140,7 @@ class RegressionPlanCompiler:
                     timeout_seconds=180,
                 ),
                 InteractionStep(
-                    "target_column",
+                    "target_columns" if len(target_columns) > 1 else "target_column",
                     (
                         "The selected Y data set",
                         "Select the data range you want to process.",
@@ -2257,7 +2267,7 @@ class RegressionPlanCompiler:
         command = _command_with_analysis_options(command, request.world_map, request.existing_experiment_id)
         return InteractionPlan(
             schema_version=INTERACTION_PLAN_VERSION,
-            name=f"regression-{request.model.type}-v1",
+            name=(f"regression-{request.model.type}-multi-output-v1" if len(target_columns) > 1 else f"regression-{request.model.type}-v1"),
             public_command=command,
             steps=tuple(steps),
             expected_output_relative_paths=(
@@ -2265,6 +2275,7 @@ class RegressionPlanCompiler:
                 str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "model" / "Transform Pipeline.joblib"),
                 str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "image" / "model_output" / f"Predicted vs. Actual Diagram - {model_display}.png"),
             ),
+            requires_source_row_pairing=True,
         )
 
 
@@ -2275,11 +2286,14 @@ class ClusteringPlanCompiler:
         self,
         request: ClusteringRequest,
         cli_executable: Optional[Path] = None,
+        *,
+        dataset_context: DatasetCompilationContext | None = None,
     ) -> InteractionPlan:
+        dataset_context = dataset_context or DatasetCompilationContext()
         data_path = request.training_dataset_path.expanduser().resolve()
         if not data_path.is_file():
             raise PlanCompilationError(f"Training data file does not exist: {data_path}")
-        columns = _read_dataset_columns(data_path)
+        columns = _read_dataset_columns(data_path, source=dataset_context.training_source)
         _validate_world_map(data_path, columns, request.world_map)
         requested_columns = (request.identifier_column, *request.feature_columns)
         missing = sorted({column for column in requested_columns if column not in columns})
@@ -2509,6 +2523,7 @@ class ClusteringPlanCompiler:
             ),
             steps=tuple(steps),
             expected_output_relative_paths=tuple(expected_outputs),
+            requires_source_row_pairing=True,
         )
 
 
@@ -2519,11 +2534,14 @@ class DecompositionPlanCompiler:
         self,
         request: DecompositionRequest,
         cli_executable: Optional[Path] = None,
+        *,
+        dataset_context: DatasetCompilationContext | None = None,
     ) -> InteractionPlan:
+        dataset_context = dataset_context or DatasetCompilationContext()
         data_path = request.training_dataset_path.expanduser().resolve()
         if not data_path.is_file():
             raise PlanCompilationError(f"Training data file does not exist: {data_path}")
-        columns = _read_dataset_columns(data_path)
+        columns = _read_dataset_columns(data_path, source=dataset_context.training_source)
         _validate_world_map(data_path, columns, request.world_map)
         requested_columns = (request.identifier_column, *request.feature_columns)
         missing = sorted({column for column in requested_columns if column not in columns})
@@ -2764,6 +2782,7 @@ class DecompositionPlanCompiler:
             ),
             steps=tuple(steps),
             expected_output_relative_paths=tuple(expected_outputs),
+            requires_source_row_pairing=True,
         )
 
 
@@ -2774,11 +2793,14 @@ class AnomalyDetectionPlanCompiler:
         self,
         request: AnomalyDetectionRequest,
         cli_executable: Optional[Path] = None,
+        *,
+        dataset_context: DatasetCompilationContext | None = None,
     ) -> InteractionPlan:
+        dataset_context = dataset_context or DatasetCompilationContext()
         data_path = request.training_dataset_path.expanduser().resolve()
         if not data_path.is_file():
             raise PlanCompilationError(f"Training data file does not exist: {data_path}")
-        columns = _read_dataset_columns(data_path)
+        columns = _read_dataset_columns(data_path, source=dataset_context.training_source)
         _validate_world_map(data_path, columns, request.world_map)
         requested_columns = (request.identifier_column, *request.feature_columns)
         missing = sorted({column for column in requested_columns if column not in columns})
@@ -3043,6 +3065,7 @@ class AnomalyDetectionPlanCompiler:
             ),
             steps=tuple(steps),
             expected_output_relative_paths=tuple(expected_outputs),
+            requires_source_row_pairing=True,
         )
 
 
@@ -3053,11 +3076,17 @@ class TimeSeriesPlanCompiler:
         self,
         request: TimeSeriesRequest,
         cli_executable: Optional[Path] = None,
+        *,
+        dataset_context: DatasetCompilationContext | None = None,
     ) -> InteractionPlan:
+        dataset_context = dataset_context or DatasetCompilationContext()
         data_path = request.training_dataset_path.expanduser().resolve()
         if not data_path.is_file():
             raise PlanCompilationError(f"Training data file does not exist: {data_path}")
-        columns = _read_dataset_columns(data_path)
+        columns = _read_dataset_columns(
+            data_path,
+            source=dataset_context.training_source,
+        )
         roles = (
             request.age_column,
             request.maximum_age_column,
@@ -3065,16 +3094,32 @@ class TimeSeriesPlanCompiler:
             request.latitude_column,
             request.longitude_column,
         )
-        missing = sorted(set(roles) - set(columns))
+        selected_columns = request.resolved_selected_columns
+        required_columns = set(selected_columns)
+        if request.identifier_column is not None:
+            required_columns.add(request.identifier_column)
+        missing = sorted(required_columns - set(columns))
         if missing:
-            raise PlanCompilationError(f"Time Series columns are absent from the training dataset: {missing}")
-        positions = [columns.index(column) for column in roles]
+            raise PlanCompilationError(f"Time Series configured columns are absent from the training dataset: {missing}")
+        scan_columns = tuple(dict.fromkeys(selected_columns))
+        positions = [columns.index(column) for column in scan_columns]
+        drop_columns = tuple(getattr(request.missing_values, "columns", ()))
+        if request.missing_values.method == "drop_rows" and not drop_columns:
+            drop_columns = selected_columns
         row_count = 0
-        maximum_age = 0.0
+        maximum_observed_age = 0.0
         for row_number, raw_values in enumerate(_iter_selected_rows(data_path, positions), start=2):
+            row = dict(zip(scan_columns, raw_values))
+            if request.missing_values.method == "drop_rows" and any(_is_missing(row[column]) for column in drop_columns):
+                continue
+            if request.missing_values.method == "error":
+                missing_selected = [column for column in selected_columns if _is_missing(row[column])]
+                if missing_selected:
+                    raise PlanCompilationError(f"Time Series selected columns contain missing values at data row {row_number}: {missing_selected}.")
             row_count += 1
             values = []
-            for column, raw in zip(roles, raw_values):
+            for column in roles:
+                raw = row[column]
                 try:
                     number = float(raw)
                 except (TypeError, ValueError) as exc:
@@ -3085,25 +3130,25 @@ class TimeSeriesPlanCompiler:
             age, age_max, probability, latitude, longitude = values
             if age < 0:
                 raise PlanCompilationError(f"Time Series ages must be non-negative; data row {row_number} contains {age}.")
-            if age_max < age:
-                raise PlanCompilationError(f"Time Series maximum age must be greater than or equal to age at data row {row_number}.")
+            if age_max < 0:
+                raise PlanCompilationError(f"Time Series comparison ages must be non-negative; data row {row_number} contains {age_max}.")
             if probability < 0 or probability > 1:
                 raise PlanCompilationError(f"Time Series probability must be between 0 and 1 at data row {row_number}.")
             if latitude < -90 or latitude > 90:
                 raise PlanCompilationError(f"Time Series latitude must be between -90 and 90 degrees at data row {row_number}.")
             if longitude < -180 or longitude > 180:
                 raise PlanCompilationError(f"Time Series longitude must be between -180 and 180 degrees at data row {row_number}.")
-            maximum_age = max(maximum_age, age_max)
+            maximum_observed_age = max(maximum_observed_age, age)
         if row_count == 0:
             raise PlanCompilationError("Time Series input must contain at least one data row.")
-        if maximum_age <= 0:
-            raise PlanCompilationError("Time Series input must contain at least one positive maximum age.")
-        bin_count = math.ceil(maximum_age / request.bin_width)
+        if maximum_observed_age <= 0:
+            raise PlanCompilationError("Time Series input must contain at least one positive age.")
+        bin_count = math.ceil(maximum_observed_age / request.bin_width)
         if bin_count > 10_000:
             raise PlanCompilationError(f"bin_width creates {bin_count} bins; the safety limit is 10000.")
 
         executable = Path(cli_executable).expanduser().resolve() if cli_executable is not None else resolve_public_cli_executable()
-        command = (
+        command = [
             str(executable),
             "time-series",
             "--input",
@@ -3128,15 +3173,28 @@ class TimeSeriesPlanCompiler:
             request.latitude_column,
             "--longitude-column",
             request.longitude_column,
-            "--age-unit",
-            request.age_unit,
-            "--fit-curve" if request.fit_curve else "--no-fit-curve",
+        ]
+        if request.identifier_column is not None:
+            command.extend(("--identifier-column", request.identifier_column))
+        for column in selected_columns:
+            command.extend(("--selected-column", column))
+        command.extend(("--missing-values", request.missing_values.method))
+        for column in tuple(getattr(request.missing_values, "columns", ())):
+            command.extend(("--drop-missing-column", column))
+        command.extend(
+            (
+                "--feature-engineering",
+                request.feature_engineering,
+                "--age-unit",
+                request.age_unit,
+                "--fit-curve" if request.fit_curve else "--no-fit-curve",
+            )
         )
         base = Path(request.experiment_name) / request.run_name
         return InteractionPlan(
             schema_version=INTERACTION_PLAN_VERSION,
             name="time-series-subaerial-proportion-v1",
-            public_command=command,
+            public_command=tuple(command),
             steps=(),
             expected_output_relative_paths=(
                 (base / "artifacts" / "data" / "Subaerial Proportion.csv").as_posix(),
@@ -3190,6 +3248,7 @@ class AnalysisPlanCompiler:
         self,
         request: ClassificationRequest | RegressionRequest | ClusteringRequest | DecompositionRequest | AnomalyDetectionRequest,
         cli_executable: Optional[Path],
+        dataset_context: DatasetCompilationContext,
     ) -> InteractionPlan:
         if getattr(request.missing_values, "method", None) == "keep":
             raise PlanCompilationError("model_selection.mode='all' requires missing values to be rejected, dropped, or imputed so every task model receives compatible data.")
@@ -3241,7 +3300,11 @@ class AnalysisPlanCompiler:
             plans.append(
                 (
                     model_name,
-                    compiler.compile(child, cli_executable=cli_executable),
+                    compiler.compile(
+                        child,
+                        cli_executable=cli_executable,
+                        dataset_context=dataset_context,
+                    ),
                 )
             )
 
@@ -3316,27 +3379,37 @@ class AnalysisPlanCompiler:
                 expected_outputs.append((base / display / child_tail).as_posix())
         return InteractionPlan(
             schema_version=INTERACTION_PLAN_VERSION,
-            name=f"{request.task}-all-models-{tuning}-v1",
+            name=(
+                f"regression-all-models-{tuning}-multi-output-v1" if isinstance(request, RegressionRequest) and len(request.resolved_target_columns) > 1 else f"{request.task}-all-models-{tuning}-v1"
+            ),
             public_command=first_plan.public_command,
             steps=tuple(steps),
             expected_output_relative_paths=tuple(dict.fromkeys(expected_outputs)),
+            requires_source_row_pairing=True,
         )
 
     def compile(
         self,
         request: ClassificationRequest | RegressionRequest | ClusteringRequest | DecompositionRequest | AnomalyDetectionRequest | TimeSeriesRequest,
         cli_executable: Optional[Path] = None,
+        *,
+        dataset_context: DatasetCompilationContext | None = None,
     ) -> InteractionPlan:
+        dataset_context = dataset_context or DatasetCompilationContext()
         if request.task != "time_series" and request.model_selection.mode == "all":
-            return self._compile_all_models(request, cli_executable)
+            return self._compile_all_models(request, cli_executable, dataset_context)
         if request.task == "classification":
-            return self.classification.compile(request, cli_executable=cli_executable)
+            return self.classification.compile(request, cli_executable=cli_executable, dataset_context=dataset_context)
         if request.task == "regression":
-            return self.regression.compile(request, cli_executable=cli_executable)
+            return self.regression.compile(request, cli_executable=cli_executable, dataset_context=dataset_context)
         if request.task == "clustering":
-            return self.clustering.compile(request, cli_executable=cli_executable)
+            return self.clustering.compile(request, cli_executable=cli_executable, dataset_context=dataset_context)
         if request.task == "decomposition":
-            return self.decomposition.compile(request, cli_executable=cli_executable)
+            return self.decomposition.compile(request, cli_executable=cli_executable, dataset_context=dataset_context)
         if request.task == "time_series":
-            return self.time_series.compile(request, cli_executable=cli_executable)
-        return self.anomaly_detection.compile(request, cli_executable=cli_executable)
+            return self.time_series.compile(
+                request,
+                cli_executable=cli_executable,
+                dataset_context=dataset_context,
+            )
+        return self.anomaly_detection.compile(request, cli_executable=cli_executable, dataset_context=dataset_context)

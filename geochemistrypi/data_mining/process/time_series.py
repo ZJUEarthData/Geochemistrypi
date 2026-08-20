@@ -67,17 +67,19 @@ def _validated_time_series_arrays(
     longitude = arrays["longitude"]
     if bool((age < 0).any()):
         raise TimeSeriesValidationError("Time Series ages must be non-negative.")
-    if bool((age_max < age).any()):
-        raise TimeSeriesValidationError("Time Series maximum ages must be greater than or equal to ages.")
+    if bool((age_max < 0).any()):
+        raise TimeSeriesValidationError("Time Series comparison ages must be non-negative.")
     if bool(((probability < 0) | (probability > 1)).any()):
         raise TimeSeriesValidationError("Time Series probability values must be between 0 and 1.")
     if bool(((latitude < -90) | (latitude > 90)).any()):
         raise TimeSeriesValidationError("Time Series latitude values must be between -90 and 90 degrees.")
     if bool(((longitude < -180) | (longitude > 180)).any()):
         raise TimeSeriesValidationError("Time Series longitude values must be between -180 and 180 degrees.")
-    data_max = float(np.max(age_max))
+    # Preserve the published workflow: the central reconstructed age defines
+    # the plotted time span; the comparison age only defines uncertainty.
+    data_max = float(np.max(age))
     if data_max <= 0:
-        raise TimeSeriesValidationError("Time Series input must contain at least one positive maximum age.")
+        raise TimeSeriesValidationError("Time Series input must contain at least one positive age.")
     num_bins = int(math.ceil(data_max / bin_width))
     if num_bins < 1 or num_bins > MAX_TIME_BINS:
         raise TimeSeriesValidationError(f"bin_width creates {num_bins} bins; the safety limit is {MAX_TIME_BINS}.")
@@ -111,7 +113,11 @@ def compute_subaerial_proportion(
         lat_col,
         lon_col,
     )
-    age_error = (age_max - age) / 2
+    # The Liu et al. workflow treats the distance between the reconstructed
+    # age and its comparison age as an unsigned uncertainty.  In the bundled
+    # workbook R_AGE is rounded more coarsely than R_MAX_AGE, so either value
+    # can be the larger one for otherwise valid rows.
+    age_error = np.abs(age_max - age) / 2
     random = np.random.RandomState(seed)
 
     WEI = np.ones((age.size, 1))
