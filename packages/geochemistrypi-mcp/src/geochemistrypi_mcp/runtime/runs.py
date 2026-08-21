@@ -5,6 +5,7 @@ import os
 import re
 import tempfile
 import threading
+import time
 import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, replace
@@ -50,6 +51,7 @@ from .cli_driver import CliInteractionDriver, CliRunCancelledError, validate_wor
 
 _RUN_ID = re.compile(r"^run-[0-9a-f]{16}$")
 _TERMINAL_STATES = {"succeeded", "partial_failure", "failed", "cancelled"}
+_ATOMIC_REPLACE_RETRY_DELAYS_SECONDS = (0.01, 0.02, 0.04)
 
 
 def _selected_models(request: Any) -> tuple[str, ...]:
@@ -102,6 +104,20 @@ def _new_run_id() -> str:
     return f"run-{uuid.uuid4().hex[:16]}"
 
 
+def _replace_with_bounded_permission_retry(source: Path, destination: Path) -> None:
+    """Retry only transient permission failures while publishing metadata."""
+    for attempt in range(len(_ATOMIC_REPLACE_RETRY_DELAYS_SECONDS) + 1):
+        try:
+            os.replace(source, destination)
+            return
+        except PermissionError as exc:
+            if attempt == len(_ATOMIC_REPLACE_RETRY_DELAYS_SECONDS):
+                raise PermissionError(
+                    f"Atomic metadata replacement failed after {attempt + 1} attempts for {destination}: {exc}"
+                ) from exc
+            time.sleep(_ATOMIC_REPLACE_RETRY_DELAYS_SECONDS[attempt])
+
+
 def _atomic_write_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     serialized = json.dumps(value, indent=2, ensure_ascii=False) + "\n"
@@ -118,7 +134,7 @@ def _atomic_write_json(path: Path, value: Any) -> None:
         stream.flush()
         os.fsync(stream.fileno())
     try:
-        os.replace(temporary_path, path)
+        _replace_with_bounded_permission_retry(temporary_path, path)
     finally:
         temporary_path.unlink(missing_ok=True)
 

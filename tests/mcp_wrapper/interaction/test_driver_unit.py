@@ -83,6 +83,31 @@ def test_semantic_request_rejects_unknown_fields_and_conflicting_columns(tmp_pat
         _request(data_path, run_name="unsafe/name")
 
 
+def test_time_series_missing_value_schema_keeps_strict_variants(tmp_path: Path) -> None:
+    data_path = tmp_path / "time-series.csv"
+
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        TimeSeriesRequest(
+            training_dataset_path=data_path,
+            bin_width=100,
+            missing_values={"method": "error", "columns": []},
+        )
+
+    reject_request = TimeSeriesRequest(
+        training_dataset_path=data_path,
+        bin_width=100,
+        missing_values={"method": "error"},
+    )
+    drop_request = TimeSeriesRequest(
+        training_dataset_path=data_path,
+        bin_width=100,
+        missing_values={"method": "drop_rows", "columns": []},
+    )
+
+    assert reject_request.missing_values.model_dump(mode="json") == {"method": "error"}
+    assert drop_request.missing_values.model_dump(mode="json") == {"method": "drop_rows", "columns": []}
+
+
 def test_semantic_request_accepts_one_dataset_source_and_rejects_ambiguity(
     tmp_path: Path,
 ) -> None:
