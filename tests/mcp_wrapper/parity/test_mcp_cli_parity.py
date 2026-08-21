@@ -292,6 +292,11 @@ async def test_stdio_mcp_time_series_matches_noninteractive_public_cli(
     assert result["model"] == "subaerial_proportion_bootstrap"
     assert result["tuning"] == "not_applicable"
     assert result["input_sha256"] == _sha256(source)
+    assert result["preprocessing_summary"] == {
+        "input_row_count": 4,
+        "analysis_row_count": 4,
+        "dropped_row_count": 0,
+    }
     assert _all_files(direct_run) == _all_files(wrapped_run)
     assert (direct_run / "artifacts" / "data" / "Subaerial Proportion.csv").read_bytes() == (wrapped_run / "artifacts" / "data" / "Subaerial Proportion.csv").read_bytes()
     assert _load_json(direct_run / "metrics" / "Time Series Metrics.json") == _load_json(wrapped_run / "metrics" / "Time Series Metrics.json")

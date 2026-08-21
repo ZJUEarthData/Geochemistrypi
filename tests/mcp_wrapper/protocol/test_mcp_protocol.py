@@ -27,6 +27,18 @@ def anyio_backend() -> str:
     return "asyncio"
 
 
+def _assert_strict_object_schemas(schema: dict) -> None:
+    if schema.get("type") == "object" and "properties" in schema:
+        assert schema.get("additionalProperties") is False
+    for value in schema.values():
+        if isinstance(value, dict):
+            _assert_strict_object_schemas(value)
+        elif isinstance(value, list):
+            for item in value:
+                if isinstance(item, dict):
+                    _assert_strict_object_schemas(item)
+
+
 def test_server_keeps_the_user_conversation_non_technical() -> None:
     instructions = " ".join(SERVER_INSTRUCTIONS.lower().split())
 
@@ -163,6 +175,51 @@ async def test_tool_discovery_strict_validation_and_structured_results(
         assert request_schema["$defs"]["ClusteringRequest"]["additionalProperties"] is False
         assert request_schema["$defs"]["DecompositionRequest"]["additionalProperties"] is False
         assert request_schema["$defs"]["AnomalyDetectionRequest"]["additionalProperties"] is False
+        for analysis_tool in ("validate_analysis", "start_analysis"):
+            analysis_schema = tools[analysis_tool].input_schema
+            assert analysis_schema == request_schema
+            _assert_strict_object_schemas(analysis_schema)
+            time_series_schema = analysis_schema["$defs"]["TimeSeriesRequest"]
+            assert time_series_schema["additionalProperties"] is False
+            assert "top-level" in time_series_schema["description"]
+            properties = time_series_schema["properties"]
+            assert {
+                "task",
+                "training_dataset",
+                "bin_width",
+                "iterations",
+                "seed",
+                "age_column",
+                "maximum_age_column",
+                "probability_column",
+                "latitude_column",
+                "longitude_column",
+                "identifier_column",
+                "selected_columns",
+                "missing_values",
+                "feature_engineering",
+                "age_unit",
+                "fit_curve",
+                "experiment_name",
+                "run_name",
+            } <= set(properties)
+            assert {
+                "dataset",
+                "model",
+                "model_parameters",
+                "bin_width_ma",
+                "bootstrap_iterations",
+                "random_seed",
+            }.isdisjoint(properties)
+            assert "top-level" in properties["training_dataset"]["description"]
+            assert "top-level" in properties["bin_width"]["description"]
+            assert "iterations" in properties["iterations"]["description"]
+            assert "seed" in properties["seed"]["description"]
+            assert "Time Series" in tools[analysis_tool].description
+            assert "training_dataset" in tools[analysis_tool].description
+            assert "bin_width" in tools[analysis_tool].description
+        builtin_dataset = request_schema["$defs"]["BuiltInDatasetReference"]
+        assert "builtin:" in builtin_dataset["properties"]["dataset_id"]["description"]
 
         capabilities = await client.call_tool("get_capabilities", {})
         assert capabilities.is_error is False
@@ -267,6 +324,68 @@ async def test_tool_discovery_strict_validation_and_structured_results(
         assert missing.is_error is True
         assert "Resolve it from the conversation or earlier tool results" in missing.content[0].text
         assert "never ask the user for a schema field name or JSON" in missing.content[0].text
+
+        malformed_time_series = {
+            "task": "time_series",
+            "dataset": {
+                "source": "builtin",
+                "dataset_id": "builtin:time_series",
+            },
+            "model": "subaerial_proportion_bootstrap",
+            "model_parameters": {"bin_width_ma": 100},
+            "bootstrap_iterations": 100,
+            "random_seed": 2025,
+        }
+        invalid_time_series = await client.call_tool(
+            "validate_analysis",
+            malformed_time_series,
+        )
+        assert invalid_time_series.is_error is True
+        validation_text = invalid_time_series.content[0].text
+        assert "time_series.bin_width" in validation_text
+        assert "time_series.dataset" in validation_text
+        assert "training_dataset" in validation_text
+        assert "time_series.model" in validation_text
+        assert "time_series.model_parameters" in validation_text
+        assert "bin_width" in validation_text
+        assert "time_series.bootstrap_iterations" in validation_text
+        assert "iterations" in validation_text
+        assert "time_series.random_seed" in validation_text
+        assert "seed" in validation_text
+        assert validation_text.count("Next action:") == 1
+        assert len(validation_text) <= 3035
+
+        requests_before_invalid_start = len(fake_runs.requests)
+        invalid_start = await client.call_tool(
+            "start_analysis",
+            malformed_time_series,
+        )
+        assert invalid_start.is_error is True
+        assert len(fake_runs.requests) == requests_before_invalid_start
+
+        bounded_invalid = await client.call_tool(
+            "validate_analysis",
+            {
+                "task": "time_series",
+                "training_dataset": {
+                    "source": "builtin",
+                    "dataset_id": "time_series",
+                },
+                "bin_width": 0,
+                "iterations": 0,
+                "age_unit": "years",
+                **{f"unsupported_{index}": "sensitive-value" for index in range(20)},
+            },
+        )
+        assert bounded_invalid.is_error is True
+        bounded_text = bounded_invalid.content[0].text
+        assert "pattern" in bounded_text
+        assert "range" in bounded_text
+        assert "literal" in bounded_text
+        assert "Additional issues omitted" in bounded_text
+        assert "sensitive-value" not in bounded_text
+        assert bounded_text.count("Next action:") == 1
+        assert len(bounded_text) <= 3035
 
         preview = await client.call_tool(
             "validate_analysis",
@@ -406,6 +525,8 @@ async def test_real_stdio_server_reserves_stdout_for_protocol_after_tool_error(
         )
         assert failed.is_error is True
         assert "does not exist" in failed.content[0].text
+        assert str(tmp_path) not in failed.content[0].text
+        assert "<local-path>" in failed.content[0].text
         after = await client.call_tool("get_capabilities", {})
         assert after.is_error is False
         assert after.structured_content["server_version"] == SERVER_VERSION

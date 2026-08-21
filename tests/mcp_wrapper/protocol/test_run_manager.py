@@ -303,6 +303,8 @@ for name in ("artifacts", "metrics", "parameters", "summary"):
 (root / "metrics" / "Model Score.txt").write_text(json.dumps({"accuracy": 0.75, "f1": 0.73}), encoding="utf-8")
 (root / "parameters" / "Model Parameters.txt").write_text(json.dumps({"solver": "lbfgs"}), encoding="utf-8")
 (root / "summary" / "Model Score.txt").write_text(json.dumps({"accuracy": 0.75, "f1": 0.73}), encoding="utf-8")
+if sys.argv[2] == "Time Series Run":
+    (root / "parameters" / "Time Series Parameters.json").write_text(json.dumps({"preprocessing": {"input_row_count": 2, "analysis_row_count": 2, "dropped_row_count": 0}}), encoding="utf-8")
 """,
         encoding="utf-8",
     )
@@ -377,6 +379,12 @@ for name in ("artifacts", "metrics", "parameters", "summary"):
         assert time_series_result.task == "time_series"
         assert time_series_result.model == "subaerial_proportion_bootstrap"
         assert time_series_result.tuning == "not_applicable"
+        assert time_series_result.preprocessing_summary is not None
+        assert time_series_result.preprocessing_summary.model_dump() == {
+            "input_row_count": 2,
+            "analysis_row_count": 2,
+            "dropped_row_count": 0,
+        }
     finally:
         manager.close()
 

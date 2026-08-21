@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "preprocessing": {
+    "input_row_count": 22640,
+    "analysis_row_count": 22623,
+    "dropped_row_count": 17
+  }
+}

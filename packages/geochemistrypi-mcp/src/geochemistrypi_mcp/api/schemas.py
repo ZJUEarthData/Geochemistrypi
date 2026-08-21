@@ -56,7 +56,11 @@ class BuiltInDatasetReference(StrictModel):
     """One stable dataset ID shipped with the installed CLI."""
 
     source: Literal["builtin"] = "builtin"
-    dataset_id: str = Field(pattern=r"^builtin:[a-z0-9_]+$", max_length=80)
+    dataset_id: str = Field(
+        pattern=r"^builtin:[a-z0-9_]+$",
+        max_length=80,
+        description="Exact stable ID returned by list_datasets; retain the required 'builtin:' prefix.",
+    )
     expected_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
 
 
@@ -1238,21 +1242,43 @@ class AnomalyDetectionRequest(StrictModel):
 
 
 class TimeSeriesRequest(StrictModel):
-    """Validated inputs for reproducible subaerial-proportion Time Series analysis."""
+    """Time Series uses top-level training_dataset, bin_width, iterations, seed, and role fields; do not send dataset, model, model_parameters, bin_width_ma, bootstrap_iterations, or random_seed."""
 
-    task: Literal["time_series"] = "time_series"
-    training_dataset_path: Path | None = None
-    training_dataset: DatasetReference | None = None
+    task: Literal["time_series"] = Field(
+        "time_series",
+        description="Select the fixed, validated subaerial-proportion Time Series workflow.",
+    )
+    training_dataset_path: Path | None = Field(
+        None,
+        description="Top-level local-path alternative to training_dataset; provide exactly one of the two.",
+    )
+    training_dataset: DatasetReference | None = Field(
+        None,
+        description="Required top-level input reference alternative; use this field, not dataset, and provide exactly one training input form.",
+    )
     experiment_name: str = Field("Time Series", min_length=1, max_length=40)
     run_name: str = Field("Subaerial Proportion", min_length=1, max_length=40)
-    bin_width: float = Field(gt=0)
-    iterations: int = Field(100, ge=1, le=10_000)
-    seed: int = Field(2025, ge=0, le=2**32 - 1)
-    age_column: ColumnName = "R_AGE"
-    maximum_age_column: ColumnName = "R_MAX_AGE"
-    probability_column: ColumnName = "SBAP"
-    latitude_column: ColumnName = "LATITUDE"
-    longitude_column: ColumnName = "LONGITUDE"
+    bin_width: float = Field(
+        gt=0,
+        description="Required top-level bin width in age_unit; use bin_width, not bin_width_ma or model_parameters.",
+    )
+    iterations: int = Field(
+        100,
+        ge=1,
+        le=10_000,
+        description="Top-level bootstrap iterations; use iterations, not bootstrap_iterations.",
+    )
+    seed: int = Field(
+        2025,
+        ge=0,
+        le=2**32 - 1,
+        description="Top-level deterministic random seed; use seed, not random_seed.",
+    )
+    age_column: ColumnName = Field("R_AGE", description="Top-level central-age column role.")
+    maximum_age_column: ColumnName = Field("R_MAX_AGE", description="Top-level comparison/maximum-age column role.")
+    probability_column: ColumnName = Field("SBAP", description="Top-level subaerial-proportion probability column role.")
+    latitude_column: ColumnName = Field("LATITUDE", description="Top-level latitude column role.")
+    longitude_column: ColumnName = Field("LONGITUDE", description="Top-level longitude column role.")
     age_unit: Literal["Ma", "Ga"] = "Ma"
     fit_curve: bool = True
     identifier_column: ColumnName | None = Field(
@@ -1716,6 +1742,22 @@ class AggregateResultSummary(StrictModel):
     failed_count: int = Field(ge=0)
 
 
+class PreprocessingSummary(StrictModel):
+    """Strict row counts copied from an original CLI preprocessing record."""
+
+    input_row_count: int = Field(ge=0, strict=True)
+    analysis_row_count: int = Field(ge=0, strict=True)
+    dropped_row_count: int = Field(ge=0, strict=True)
+
+    @model_validator(mode="after")
+    def validate_row_count_invariants(self) -> "PreprocessingSummary":
+        if self.analysis_row_count > self.input_row_count:
+            raise ValueError("analysis_row_count must not exceed input_row_count")
+        if self.dropped_row_count != self.input_row_count - self.analysis_row_count:
+            raise ValueError("dropped_row_count must equal input_row_count - analysis_row_count")
+        return self
+
+
 class RunResultResponse(StrictModel):
     """Bounded result composed only from wrapper metadata and original CLI outputs."""
 
@@ -1744,6 +1786,10 @@ class RunResultResponse(StrictModel):
     row_identity_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
     source_row_pairing_verified: bool | None = None
     source_row_pairing_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+    preprocessing_summary: PreprocessingSummary | None = Field(
+        None,
+        description="Optional strict row counts copied from the original indexed CLI parameter artifact; MCP never recalculates them.",
+    )
     application_input_sha256: str | None = None
     application_input_hash_verified: bool | None = None
     reported_metrics: dict[str, Any]
@@ -1754,6 +1800,16 @@ class RunResultResponse(StrictModel):
     aggregate_summary: AggregateResultSummary | None = None
     children: tuple[ChildModelResult, ...] = ()
     limitations: tuple[str, ...]
+
+    @model_validator(mode="after")
+    def validate_preprocessing_summary_source(self) -> "RunResultResponse":
+        if self.preprocessing_summary is None:
+            return self
+        if self.task != "time_series":
+            raise ValueError("preprocessing_summary is available only for Time Series results")
+        if self.source_row_count is None or self.preprocessing_summary.input_row_count != self.source_row_count:
+            raise ValueError("preprocessing_summary input rows must match source_row_count")
+        return self
 
 
 class CancelRunResponse(StrictModel):

@@ -7,13 +7,17 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from ..api.schemas import ArtifactReference
+from pydantic import ValidationError
+
+from ..api.schemas import ArtifactReference, PreprocessingSummary
 
 _REQUIRED_OUTPUT_DIRECTORIES = ("artifacts", "metrics", "parameters", "summary")
 _MAX_INDEXED_ARTIFACTS = 10_000
 _MAX_METRIC_FILES = 20
 _MAX_METRIC_FILE_BYTES = 1024 * 1024
 _MAX_METRIC_VALUES = 100
+_MAX_PARAMETERS_FILE_BYTES = 1024 * 1024
+_TIME_SERIES_PARAMETERS_RELATIVE_PATH = "parameters/Time Series Parameters.json"
 
 
 class ArtifactDiscoveryError(RuntimeError):
@@ -90,6 +94,43 @@ def _reported_metrics(output_directory: Path) -> dict[str, Any]:
         if remaining[0] <= 0:
             break
     return metrics
+
+
+def read_time_series_preprocessing_summary(
+    output_directory: Path,
+    *,
+    source_row_count: int,
+    indexed_relative_paths: tuple[str, ...] | list[str] | set[str],
+) -> PreprocessingSummary:
+    """Read strict row counts from the indexed original Time Series parameter artifact."""
+    normalized_index = {str(path).replace("\\", "/") for path in indexed_relative_paths}
+    if _TIME_SERIES_PARAMETERS_RELATIVE_PATH not in normalized_index:
+        raise ArtifactDiscoveryError("The original Time Series parameter artifact was not indexed.")
+    parameters_path = Path(output_directory).resolve() / Path(_TIME_SERIES_PARAMETERS_RELATIVE_PATH)
+    if not parameters_path.is_file():
+        raise ArtifactDiscoveryError("The original Time Series parameter artifact is missing.")
+    try:
+        if parameters_path.stat().st_size > _MAX_PARAMETERS_FILE_BYTES:
+            raise ArtifactDiscoveryError("The original Time Series parameter artifact exceeds the safety limit.")
+        parsed = json.loads(parameters_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ArtifactDiscoveryError("The original Time Series parameter artifact is unavailable or malformed.") from exc
+    if not isinstance(parsed, dict) or not isinstance(parsed.get("preprocessing"), dict):
+        raise ArtifactDiscoveryError("The original Time Series parameter artifact has no preprocessing object.")
+    preprocessing = parsed["preprocessing"]
+    try:
+        summary = PreprocessingSummary.model_validate(
+            {
+                "input_row_count": preprocessing.get("input_row_count"),
+                "analysis_row_count": preprocessing.get("analysis_row_count"),
+                "dropped_row_count": preprocessing.get("dropped_row_count"),
+            }
+        )
+    except ValidationError as exc:
+        raise ArtifactDiscoveryError("The original Time Series preprocessing row counts are invalid.") from exc
+    if summary.input_row_count != source_row_count:
+        raise ArtifactDiscoveryError("The original Time Series input row count does not match the indexed source rows.")
+    return summary
 
 
 def discover_artifacts(output_directory: Path, maximum_response_references: int) -> ArtifactDiscovery:

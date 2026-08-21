@@ -140,9 +140,7 @@ def test_multi_target_tree_output_uses_one_real_representative_tree_per_target(b
     feature, target = _multi_target_data()
     model = MultiOutputRegressor(base_estimator).fit(feature, target)
 
-    with patch("geochemistrypi.data_mining.model._base.plot_decision_tree") as plot_tree, patch(
-        "geochemistrypi.data_mining.model._base.save_fig"
-    ) as save_figure:
+    with patch("geochemistrypi.data_mining.model._base.plot_decision_tree") as plot_tree, patch("geochemistrypi.data_mining.model._base.save_fig") as save_figure:
         TreeWorkflowMixin._plot_tree(model, {}, "Tree Model", "Single Tree Diagram", ".", None)
 
     assert plot_tree.call_count == 2
@@ -158,9 +156,9 @@ def test_linear_plot_data_names_each_multi_target_prediction_column() -> None:
     feature = feature[["SIO2"]]
     predicted = target.copy()
 
-    with patch("geochemistrypi.data_mining.model._base.plot_2d_line_diagram"), patch(
-        "geochemistrypi.data_mining.model._base.save_fig"
-    ), patch("geochemistrypi.data_mining.model._base.save_data") as save_data:
+    with patch("geochemistrypi.data_mining.model._base.plot_2d_line_diagram"), patch("geochemistrypi.data_mining.model._base.save_fig"), patch(
+        "geochemistrypi.data_mining.model._base.save_data"
+    ) as save_data:
         LinearWorkflowMixin._plot_2d_line_diagram(
             feature,
             target,

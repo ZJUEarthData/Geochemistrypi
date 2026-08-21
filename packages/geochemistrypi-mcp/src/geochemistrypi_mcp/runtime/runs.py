@@ -46,7 +46,7 @@ from ..data.inspector import sha256_file, snapshot_dataset
 from ..data.row_pairing import verify_original_row_pairing
 from ..planning.interaction_plan import AnalysisPlanCompiler, DatasetCompilationContext, InteractionPlan
 from ..tracking.experiments import ExperimentManager
-from .artifacts import discover_artifacts
+from .artifacts import discover_artifacts, read_time_series_preprocessing_summary
 from .cli_driver import CliInteractionDriver, CliRunCancelledError, validate_workspace_path
 
 _RUN_ID = re.compile(r"^run-[0-9a-f]{16}$")
@@ -112,9 +112,7 @@ def _replace_with_bounded_permission_retry(source: Path, destination: Path) -> N
             return
         except PermissionError as exc:
             if attempt == len(_ATOMIC_REPLACE_RETRY_DELAYS_SECONDS):
-                raise PermissionError(
-                    f"Atomic metadata replacement failed after {attempt + 1} attempts for {destination}: {exc}"
-                ) from exc
+                raise PermissionError(f"Atomic metadata replacement failed after {attempt + 1} attempts for {destination}: {exc}") from exc
             time.sleep(_ATOMIC_REPLACE_RETRY_DELAYS_SECONDS[attempt])
 
 
@@ -735,6 +733,15 @@ class RunManager:
                 else None
             )
             discovered = discover_artifacts(output_directory, self.settings.maximum_artifact_references)
+            preprocessing_summary = (
+                read_time_series_preprocessing_summary(
+                    output_directory,
+                    source_row_count=snapshot.row_lineage.source_row_count,
+                    indexed_relative_paths=tuple(entry["relative_path"] for entry in discovered.all_index_entries),
+                )
+                if request.task == "time_series"
+                else None
+            )
             is_aggregate = request.task != "time_series" and request.model_selection.mode == "all"
             aggregate_state, children = _aggregate_children(output_directory, request.task) if is_aggregate else (None, ())
             result_state = "partial_failure" if aggregate_state == "partial_failure" else "succeeded"
@@ -766,6 +773,7 @@ class RunManager:
                 row_identity_sha256=snapshot.row_lineage.ordered_identity_sha256,
                 source_row_pairing_verified=(source_row_pairing["verified"] if source_row_pairing else None),
                 source_row_pairing_sha256=(source_row_pairing["ordered_pairing_sha256"] if source_row_pairing else None),
+                preprocessing_summary=preprocessing_summary,
                 application_input_sha256=(application_snapshot.sha256 if application_snapshot is not None else None),
                 application_input_hash_verified=application_hash_verified,
                 reported_metrics=discovered.reported_metrics,

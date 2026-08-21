@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -83,6 +84,12 @@ from .schemas import (
 
 LOGGER = logging.getLogger(__name__)
 _MAX_MODEL_TEXT = 4000
+_MAX_ACTIONABLE_ERROR_TEXT = 3000
+_MAX_VALIDATION_ERRORS = 8
+_MAX_VALIDATION_ISSUE_TEXT = 360
+_SAFE_FIELD_PART = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]{0,63}$")
+_WINDOWS_LOCAL_PATH = re.compile(r"(?i)(?:[A-Z]:[\\/]|\\\\)[^\r\n,;]+")
+_POSIX_LOCAL_PATH = re.compile(r"(?<![\w:])/(?:[^\s'\",;]+/)*[^\s'\",;]*")
 
 
 class EmptyRequest(BaseModel):
@@ -142,54 +149,145 @@ def _compact_text(name: str, response: BaseModel) -> str:
         return f"Run {data['run_id']} is {data['state']} at stage {data['stage']}: {data['progress_message']}"[:_MAX_MODEL_TEXT]
     if name == "get_run_result":
         metrics = json.dumps(data["reported_metrics"], ensure_ascii=False, separators=(",", ":"))
-        text = f"Run {data['run_id']} is {data['state']}. Original output: {data['output_directory']}. Artifacts: {data['artifact_count']}. CLI-reported metrics: {metrics}"
+        preprocessing = data.get("preprocessing_summary")
+        row_summary = (
+            " Preprocessing rows: " f"input={preprocessing['input_row_count']}, " f"analysis={preprocessing['analysis_row_count']}, " f"dropped={preprocessing['dropped_row_count']}."
+            if preprocessing is not None
+            else ""
+        )
+        text = f"Run {data['run_id']} is {data['state']}. Original output: {data['output_directory']}. Artifacts: {data['artifact_count']}.{row_summary} CLI-reported metrics: {metrics}"
         return text[:_MAX_MODEL_TEXT]
     return f"Run {data['run_id']}: {data['message']}"[:_MAX_MODEL_TEXT]
 
 
 def _bounded_actual(value: Any) -> str:
     if isinstance(value, dict):
-        return "object with fields " + ", ".join(sorted(str(key) for key in value)[:12])
+        return f"object with {len(value)} field(s)"
     if isinstance(value, (list, tuple)):
         return f"{type(value).__name__} with {len(value)} item(s)"
-    text = repr(value)
-    return text if len(text) <= 160 else text[:157] + "..."
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, str):
+        return f"string with {len(value)} character(s)"
+    return "value of an unsupported type"
+
+
+def _safe_error_field(error: dict[str, Any]) -> str:
+    parts = []
+    for part in error.get("loc", ()):
+        if isinstance(part, int):
+            parts.append(str(part))
+            continue
+        text = str(part)
+        parts.append(text if _SAFE_FIELD_PART.fullmatch(text) else "unknown_field")
+    return ".".join(parts) or "request"
+
+
+def _validation_error_kind(error_type: str) -> str:
+    if error_type == "missing":
+        return "missing"
+    if error_type == "extra_forbidden":
+        return "extra_forbidden"
+    if error_type == "string_pattern_mismatch":
+        return "pattern"
+    if error_type in {"greater_than", "greater_than_equal", "less_than", "less_than_equal"}:
+        return "range"
+    if error_type in {"literal_error", "union_tag_invalid", "union_tag_not_found"}:
+        return "literal"
+    if error_type.endswith("_type") or error_type.endswith("_parsing"):
+        return "type"
+    return "value"
+
+
+def _validation_problem(kind: str) -> str:
+    return {
+        "missing": "Required field is missing",
+        "extra_forbidden": "Extra input is not permitted",
+        "pattern": "String does not match the declared pattern",
+        "range": "Value is outside the declared range",
+        "literal": "Value is not one of the declared literals",
+        "type": "Value has the wrong JSON type",
+        "value": "Value does not satisfy the declared field contract",
+    }[kind]
+
+
+def _validation_alternative(field: str, kind: str) -> str:
+    if field.startswith("time_series.") and kind == "extra_forbidden":
+        replacement = {
+            "dataset": "remove it and use top-level 'training_dataset'",
+            "model": "remove it because the Time Series workflow has a fixed model",
+            "model_parameters": "remove it and place supported fields such as 'bin_width', 'iterations', and 'seed' at the top level",
+            "bin_width_ma": "remove it and use top-level 'bin_width'",
+            "bootstrap_iterations": "remove it and use top-level 'iterations'",
+            "random_seed": "remove it and use top-level 'seed'",
+        }.get(field.rsplit(".", 1)[-1])
+        if replacement is not None:
+            return replacement
+    if kind == "missing":
+        return "provide this required field at the location shown"
+    if kind == "extra_forbidden":
+        return "remove this unsupported field"
+    if kind == "pattern" and field.endswith("dataset_id"):
+        return "use the exact 'builtin:<id>' value returned by list_datasets, including its prefix"
+    if kind == "pattern":
+        return "use a value matching the field's declared pattern"
+    if kind == "range":
+        return "use a value within the field's declared minimum and maximum"
+    if kind == "literal":
+        return "use one of the field's declared literal values"
+    if kind == "type":
+        return "use the field's declared JSON type"
+    return "inspect the field description and supported capabilities"
+
+
+def _validation_issue(error: dict[str, Any]) -> tuple[tuple[str, str], str]:
+    field = _safe_error_field(error)
+    error_type = str(error.get("type", ""))
+    kind = _validation_error_kind(error_type)
+    text = (
+        f"[{kind}] Invalid field '{field}'. Actual value: {_bounded_actual(error.get('input'))}. "
+        f"Problem: {_validation_problem(kind)}. "
+        f"Valid alternatives: {_validation_alternative(field, kind)}."
+    )
+    return (field, kind), text[:_MAX_VALIDATION_ISSUE_TEXT]
+
+
+def _redacted_public_error(exc: BaseException) -> str:
+    message = " ".join(str(exc).split())
+    message = _WINDOWS_LOCAL_PATH.sub("<local-path>", message)
+    message = _POSIX_LOCAL_PATH.sub("<local-path>", message)
+    return message[:700] or type(exc).__name__
 
 
 def _actionable_error(exc: BaseException) -> str:
     if isinstance(exc, ValidationError):
-        error = exc.errors(include_url=False)[0]
-        field = ".".join(str(part) for part in error.get("loc", ())) or "request"
-        error_type = str(error.get("type", ""))
-        context = error.get("ctx") or {}
-        alternatives = context.get("expected") or context.get("expected_tags")
-        if error_type == "missing":
-            alternatives = "provide this required field"
-            next_action = (
-                "Resolve it from the conversation or earlier tool results when possible. "
-                "Only if it is a scientific choice the user must make, ask one plain-language "
-                "question; never ask the user for a schema field name or JSON."
-            )
-        elif error_type == "extra_forbidden":
-            alternatives = "remove unknown fields"
-            next_action = f"Remove the unsupported internal field '{field}' and validate again; " "do not ask the user to edit JSON."
-        elif alternatives:
-            next_action = f"Ask the user to choose a scientific option for '{field}' in plain language, " "then validate again."
-        else:
-            alternatives = "inspect the dataset and supported capabilities"
-            next_action = "Resolve what can be resolved automatically, ask one plain-language " "scientific question if needed, and validate again."
-        return (
-            f"Invalid field '{field}'. Actual value: {_bounded_actual(error.get('input'))}. "
-            f"Problem: {error.get('msg', 'validation failed')}. Valid alternatives: {alternatives}. "
-            f"Next action: {next_action}"
-        )[:1000]
-    message = " ".join(str(exc).split())[:700] or type(exc).__name__
+        unique: dict[tuple[str, str], str] = {}
+        for error in exc.errors(include_url=False):
+            key, issue = _validation_issue(error)
+            unique.setdefault(key, issue)
+        ordered = [unique[key] for key in sorted(unique)]
+        shown = ordered[:_MAX_VALIDATION_ERRORS]
+        issue_text = " ".join(f"{index}. {issue}" for index, issue in enumerate(shown, start=1))
+        omitted = len(ordered) - len(shown)
+        omitted_text = f" Additional issues omitted: {omitted}." if omitted else ""
+        next_action = (
+            "Next action: Resolve it from the conversation or earlier tool results when possible, "
+            "apply every listed fix in one request, and validate once. Only if an unresolved scientific "
+            "choice belongs to the user, ask one plain-language question; never ask the user for a schema "
+            "field name or JSON, and do not ask the user to edit JSON."
+        )
+        return (f"Validation failed with {len(ordered)} independent issue(s): {issue_text}{omitted_text} {next_action}")[:_MAX_ACTIONABLE_ERROR_TEXT]
+    message = _redacted_public_error(exc)
     return (
         f"Invalid analysis configuration. Problem: {message}. "
         "Valid alternatives: inspect the dataset for exact columns and check the supported scientific workflows. "
         "Next action: resolve safe defaults automatically, ask the user one plain-language scientific question "
         "if needed, and preview the corrected analysis before starting it."
-    )[:1000]
+    )[:_MAX_ACTIONABLE_ERROR_TEXT]
 
 
 def build_tool_handlers(
@@ -252,13 +350,13 @@ def build_tool_handlers(
         ),
         _tool(
             "validate_analysis",
-            "Resolve datasets and preview task, column roles, exact model parameters, source, experiment selection, workload count, and warnings without starting an analysis process.",
+            "Validate without starting science. Time Series uses top-level training_dataset, bin_width, iterations, seed, and role fields; do not send dataset, model, or model_parameters.",
             AnalysisRequest,
             AnalysisValidationResponse,
         ),
         _tool(
             "start_analysis",
-            "Queue a validated local classification, regression, clustering, decomposition, anomaly-detection, or Time Series run through the existing GeochemistryPi CLI and return immediately.",
+            "Queue one validated CLI run. Time Series uses top-level training_dataset, bin_width, iterations, seed, and role fields; do not send dataset, model, or model_parameters.",
             AnalysisRequest,
             StartAnalysisResponse,
         ),
