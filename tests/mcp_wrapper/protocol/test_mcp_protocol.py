@@ -52,6 +52,8 @@ def test_server_keeps_the_user_conversation_non_technical() -> None:
     assert "infer or default only choices the user omitted" in instructions
     assert "rather than silently substituting another choice" in instructions
     assert "never expose implementation details" in instructions
+    assert "one bounded result wait" in instructions
+    assert "never poll in a tight loop" in instructions
 
 
 class FakeRunManager:
@@ -74,6 +76,9 @@ class FakeRunManager:
 
     def validate(self, request) -> AnalysisValidationResponse:
         return AnalysisValidationResponse(
+            validation_id="val-0123456789abcdef0123456789abcdef",
+            request_hash="1" * 64,
+            validation_expires_at="2026-08-22T06:00:00+00:00",
             task=request.task,
             models=(request.model.type,),
             estimated_model_count=1,
@@ -93,7 +98,7 @@ class FakeRunManager:
             interaction_plan="fake-plan",
         )
 
-    def get_status(self, run_id: str) -> RunStatusResponse:
+    def get_status(self, run_id: str, *, wait_seconds: float = 0) -> RunStatusResponse:
         return RunStatusResponse(
             run_id=run_id,
             state="running",
@@ -104,7 +109,14 @@ class FakeRunManager:
             progress_message="running",
         )
 
-    def get_result(self, run_id: str) -> RunResultResponse:
+    def get_result(
+        self,
+        run_id: str,
+        *,
+        wait_seconds: float = 0,
+        artifact_offset: int = 0,
+        artifact_limit: int | None = None,
+    ) -> RunResultResponse:
         return RunResultResponse(
             run_id=run_id,
             state="succeeded",
@@ -160,8 +172,8 @@ async def test_tool_discovery_strict_validation_and_structured_results(
             "validate_analysis",
             "start_analysis",
         }
-        request_schema = tools["start_analysis"].input_schema
-        assert request_schema["title"] == "AnalysisRequest"
+        request_schema = tools["validate_analysis"].input_schema
+        assert "title" not in request_schema
         assert request_schema["type"] == "object"
         assert request_schema["discriminator"]["propertyName"] == "task"
         assert len(request_schema["oneOf"]) == 6
@@ -171,55 +183,54 @@ async def test_tool_discovery_strict_validation_and_structured_results(
         assert "target_columns" in regression_schema["properties"]
         assert "target_column" not in regression_schema["required"]
         assert "target_columns" not in regression_schema["required"]
-        assert "Do not combine" in regression_schema["properties"]["target_columns"]["description"]
+        assert "description" not in regression_schema["properties"]["target_columns"]
         assert request_schema["$defs"]["ClusteringRequest"]["additionalProperties"] is False
         assert request_schema["$defs"]["DecompositionRequest"]["additionalProperties"] is False
         assert request_schema["$defs"]["AnomalyDetectionRequest"]["additionalProperties"] is False
-        for analysis_tool in ("validate_analysis", "start_analysis"):
-            analysis_schema = tools[analysis_tool].input_schema
-            assert analysis_schema == request_schema
-            _assert_strict_object_schemas(analysis_schema)
-            time_series_schema = analysis_schema["$defs"]["TimeSeriesRequest"]
-            assert time_series_schema["additionalProperties"] is False
-            assert "top-level" in time_series_schema["description"]
-            properties = time_series_schema["properties"]
-            assert {
-                "task",
-                "training_dataset",
-                "bin_width",
-                "iterations",
-                "seed",
-                "age_column",
-                "maximum_age_column",
-                "probability_column",
-                "latitude_column",
-                "longitude_column",
-                "identifier_column",
-                "selected_columns",
-                "missing_values",
-                "feature_engineering",
-                "age_unit",
-                "fit_curve",
-                "experiment_name",
-                "run_name",
-            } <= set(properties)
-            assert {
-                "dataset",
-                "model",
-                "model_parameters",
-                "bin_width_ma",
-                "bootstrap_iterations",
-                "random_seed",
-            }.isdisjoint(properties)
-            assert "top-level" in properties["training_dataset"]["description"]
-            assert "top-level" in properties["bin_width"]["description"]
-            assert "iterations" in properties["iterations"]["description"]
-            assert "seed" in properties["seed"]["description"]
-            assert "Time Series" in tools[analysis_tool].description
-            assert "training_dataset" in tools[analysis_tool].description
-            assert "bin_width" in tools[analysis_tool].description
+        _assert_strict_object_schemas(request_schema)
+        time_series_schema = request_schema["$defs"]["TimeSeriesRequest"]
+        assert time_series_schema["additionalProperties"] is False
+        assert "description" not in time_series_schema
+        properties = time_series_schema["properties"]
+        assert {
+            "task",
+            "training_dataset",
+            "bin_width",
+            "iterations",
+            "seed",
+            "age_column",
+            "maximum_age_column",
+            "probability_column",
+            "latitude_column",
+            "longitude_column",
+            "identifier_column",
+            "selected_columns",
+            "missing_values",
+            "feature_engineering",
+            "age_unit",
+            "fit_curve",
+            "experiment_name",
+            "run_name",
+        } <= set(properties)
+        assert {
+            "dataset",
+            "model",
+            "model_parameters",
+            "bin_width_ma",
+            "bootstrap_iterations",
+            "random_seed",
+        }.isdisjoint(properties)
+        assert "description" not in properties["training_dataset"]
+        assert "description" not in properties["bin_width"]
+        assert "description" not in properties["iterations"]
+        assert "description" not in properties["seed"]
+        start_schema = tools["start_analysis"].input_schema
+        assert "title" not in start_schema
+        assert set(start_schema["properties"]) == {"validation_id", "request_hash"}
+        assert start_schema["additionalProperties"] is False
+        assert all(tool.output_schema is None for tool in tools.values())
         builtin_dataset = request_schema["$defs"]["BuiltInDatasetReference"]
-        assert "builtin:" in builtin_dataset["properties"]["dataset_id"]["description"]
+        assert "description" not in builtin_dataset["properties"]["dataset_id"]
 
         capabilities = await client.call_tool("get_capabilities", {})
         assert capabilities.is_error is False

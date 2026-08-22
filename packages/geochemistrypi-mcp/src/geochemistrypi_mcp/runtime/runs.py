@@ -1,21 +1,27 @@
 """Durable, non-blocking lifecycle control for local CLI subprocess runs."""
 
+import hashlib
+import hmac
 import json
 import os
 import re
+import secrets
 import tempfile
 import threading
 import time
 import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
-from dataclasses import dataclass, replace
+from concurrent.futures import TimeoutError as FutureTimeoutError
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
 from ..api.schemas import (
+    AnalysisRequest,
     AnalysisValidationResponse,
     AnomalyDetectionRequest,
+    ArtifactReference,
     CancelRunResponse,
     ClassificationRequest,
     ClusteringRequest,
@@ -50,8 +56,24 @@ from .artifacts import discover_artifacts, read_time_series_preprocessing_summar
 from .cli_driver import CliInteractionDriver, CliRunCancelledError, validate_workspace_path
 
 _RUN_ID = re.compile(r"^run-[0-9a-f]{16}$")
+_VALIDATION_ID = re.compile(r"^val-[0-9a-f]{32}$")
 _TERMINAL_STATES = {"succeeded", "partial_failure", "failed", "cancelled"}
 _ATOMIC_REPLACE_RETRY_DELAYS_SECONDS = (0.01, 0.02, 0.04)
+_VALIDATION_TTL_SECONDS = 1800
+_VALIDATION_RECEIPT_FIELDS = {
+    "schema_version",
+    "validation_id",
+    "request_hash",
+    "request",
+    "task",
+    "created_at_epoch",
+    "expires_at_epoch",
+    "training",
+    "application",
+    "cli",
+    "interaction_plan",
+    "integrity_hmac_sha256",
+}
 
 
 def _selected_models(request: Any) -> tuple[str, ...]:
@@ -102,6 +124,23 @@ def _utc_now() -> str:
 
 def _new_run_id() -> str:
     return f"run-{uuid.uuid4().hex[:16]}"
+
+
+def _canonical_json_bytes(value: Any) -> bytes:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def _json_sha256(value: Any) -> str:
+    return hashlib.sha256(_canonical_json_bytes(value)).hexdigest()
+
+
+def _plan_identity(plan: InteractionPlan) -> dict[str, Any]:
+    value = asdict(plan)
+    return {
+        "name": plan.name,
+        "schema_version": plan.schema_version,
+        "sha256": _json_sha256(value),
+    }
 
 
 def _replace_with_bounded_permission_retry(source: Path, destination: Path) -> None:
@@ -340,12 +379,214 @@ class RunManager:
         public_status = {field: status.get(field) for field in RunStatusResponse.model_fields}
         return RunStatusResponse.model_validate(public_status)
 
+    def _validation_secret(self) -> bytes:
+        state_root = self.settings.service_state_root
+        if state_root is None:  # McpSettings normalizes this in __post_init__.
+            raise RunStateError("The MCP validation state root is not configured.")
+        secret_path = state_root / "validation-receipt.key"
+        secret_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            descriptor = os.open(
+                secret_path,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0),
+                0o600,
+            )
+        except FileExistsError:
+            descriptor = None
+        if descriptor is not None:
+            try:
+                secret = secrets.token_bytes(32)
+                remaining = memoryview(secret)
+                while remaining:
+                    written = os.write(descriptor, remaining)
+                    if written <= 0:
+                        raise OSError("Validation receipt integrity key write made no progress.")
+                    remaining = remaining[written:]
+                os.fsync(descriptor)
+            finally:
+                os.close(descriptor)
+        try:
+            secret = secret_path.read_bytes()
+        except OSError as exc:
+            raise RunStateError("The validation receipt integrity key is unavailable.") from exc
+        if len(secret) != 32:
+            raise RunStateError("The validation receipt integrity key is corrupt.")
+        return secret
+
+    def _receipt_integrity(self, receipt_without_integrity: dict[str, Any]) -> str:
+        return hmac.new(
+            self._validation_secret(),
+            _canonical_json_bytes(receipt_without_integrity),
+            hashlib.sha256,
+        ).hexdigest()
+
+    def _write_validation_receipt(
+        self,
+        request: Any,
+        snapshot: DatasetSnapshot,
+        resolved_training: ResolvedDataset,
+        application_snapshot: DatasetSnapshot | None,
+        resolved_application: ResolvedDataset | None,
+        cli_executable: Path,
+        cli_version: str,
+        plan: InteractionPlan,
+    ) -> dict[str, Any]:
+        request_value = request.model_dump(mode="json")
+        request_hash = _json_sha256(request_value)
+        training = {
+            "resolved_path": str(snapshot.resolved_path),
+            "size_bytes": snapshot.size_bytes,
+            "sha256": snapshot.sha256,
+            "source": resolved_training.source,
+            "dataset_id": resolved_training.dataset_id,
+        }
+        application = (
+            {
+                "resolved_path": str(application_snapshot.resolved_path),
+                "size_bytes": application_snapshot.size_bytes,
+                "sha256": application_snapshot.sha256,
+                "source": resolved_application.source,
+                "dataset_id": resolved_application.dataset_id,
+            }
+            if application_snapshot is not None and resolved_application is not None
+            else None
+        )
+        cli = {
+            "executable": str(cli_executable.resolve()),
+            "executable_sha256": sha256_file(cli_executable),
+            "version": cli_version,
+        }
+        plan_identity = _plan_identity(plan)
+        stable_identity = {
+            "schema_version": 1,
+            "request_hash": request_hash,
+            "request": request_value,
+            "task": request.task,
+            "training": training,
+            "application": application,
+            "cli": cli,
+            "interaction_plan": plan_identity,
+        }
+        validation_id = f"val-{_json_sha256(stable_identity)[:32]}"
+        created_at_epoch = int(time.time())
+        receipt_without_integrity = {
+            "schema_version": 1,
+            "validation_id": validation_id,
+            "request_hash": request_hash,
+            "request": request_value,
+            "task": request.task,
+            "created_at_epoch": created_at_epoch,
+            "expires_at_epoch": created_at_epoch + _VALIDATION_TTL_SECONDS,
+            "training": training,
+            "application": application,
+            "cli": cli,
+            "interaction_plan": plan_identity,
+        }
+        receipt = {
+            **receipt_without_integrity,
+            "integrity_hmac_sha256": self._receipt_integrity(receipt_without_integrity),
+        }
+        state_root = self.settings.service_state_root
+        if state_root is None:
+            raise RunStateError("The MCP validation state root is not configured.")
+        _atomic_write_json(state_root / "validations" / f"{validation_id}.json", receipt)
+        return receipt
+
+    def _load_validation_receipt(
+        self,
+        validation_id: str,
+        request_hash: str,
+        *,
+        expected_task: str | None,
+    ) -> tuple[Any, dict[str, Any]]:
+        if not _VALIDATION_ID.fullmatch(validation_id):
+            raise RunStateError("Invalid validation ID.")
+        if not re.fullmatch(r"[0-9a-f]{64}", request_hash):
+            raise RunStateError("Invalid validation request hash.")
+        state_root = self.settings.service_state_root
+        if state_root is None:
+            raise RunStateError("The MCP validation state root is not configured.")
+        receipt_path = state_root / "validations" / f"{validation_id}.json"
+        try:
+            receipt = _read_json(receipt_path)
+        except RunStateError as exc:
+            raise RunStateError(f"Validation receipt does not exist or is unreadable: {validation_id}") from exc
+        if set(receipt) != _VALIDATION_RECEIPT_FIELDS:
+            raise RunStateError("Validation receipt integrity check failed: unknown or missing fields.")
+        recorded_integrity = receipt.pop("integrity_hmac_sha256")
+        if not isinstance(recorded_integrity, str) or not hmac.compare_digest(
+            recorded_integrity,
+            self._receipt_integrity(receipt),
+        ):
+            raise RunStateError("Validation receipt integrity check failed.")
+        receipt["integrity_hmac_sha256"] = recorded_integrity
+        if receipt["schema_version"] != 1 or receipt["validation_id"] != validation_id:
+            raise RunStateError("Validation receipt identity is invalid.")
+        if not hmac.compare_digest(str(receipt["request_hash"]), request_hash):
+            raise RunStateError("Validation request hash does not match the receipt.")
+        if not isinstance(receipt["expires_at_epoch"], int) or time.time() > receipt["expires_at_epoch"]:
+            raise RunStateError("Validation receipt expired; call validate_analysis again.")
+        if expected_task is not None and receipt["task"] != expected_task:
+            raise RunStateError(f"Validation receipt task must be {expected_task!r} in this scoped session.")
+        if _json_sha256(receipt["request"]) != request_hash:
+            raise RunStateError("Validation request integrity check failed.")
+        try:
+            request = AnalysisRequest.model_validate(receipt["request"]).root
+        except Exception as exc:
+            raise RunStateError("Validated analysis request is no longer readable by the strict protocol.") from exc
+        if request.task != receipt["task"]:
+            raise RunStateError("Validation receipt task identity is invalid.")
+        return request, receipt
+
+    def _assert_validation_still_matches(
+        self,
+        receipt: dict[str, Any],
+        snapshot: DatasetSnapshot,
+        resolved_training: ResolvedDataset,
+        application_snapshot: DatasetSnapshot | None,
+        resolved_application: ResolvedDataset | None,
+        cli_executable: Path,
+        cli_version: str,
+        plan: InteractionPlan,
+    ) -> None:
+        current_training = {
+            "resolved_path": str(snapshot.resolved_path),
+            "size_bytes": snapshot.size_bytes,
+            "sha256": snapshot.sha256,
+            "source": resolved_training.source,
+            "dataset_id": resolved_training.dataset_id,
+        }
+        if receipt["training"] != current_training:
+            raise RunStateError("The training dataset changed since validation; validate the request again.")
+        current_application = (
+            {
+                "resolved_path": str(application_snapshot.resolved_path),
+                "size_bytes": application_snapshot.size_bytes,
+                "sha256": application_snapshot.sha256,
+                "source": resolved_application.source,
+                "dataset_id": resolved_application.dataset_id,
+            }
+            if application_snapshot is not None and resolved_application is not None
+            else None
+        )
+        if receipt["application"] != current_application:
+            raise RunStateError("The application dataset changed since validation; validate the request again.")
+        current_cli = {
+            "executable": str(cli_executable.resolve()),
+            "executable_sha256": sha256_file(cli_executable),
+            "version": cli_version,
+        }
+        if receipt["cli"] != current_cli:
+            raise RunStateError("The configured GeochemistryPi CLI changed since validation; validate the request again.")
+        if receipt["interaction_plan"] != _plan_identity(plan):
+            raise RunStateError("The compiled interaction plan changed since validation; validate the request again.")
+
     def validate(
         self,
         request: ClassificationRequest | RegressionRequest | ClusteringRequest | DecompositionRequest | AnomalyDetectionRequest | TimeSeriesRequest,
     ) -> AnalysisValidationResponse:
         """Resolve and compile an analysis without creating a run or CLI process."""
-        cli_executable, _ = self.cli_resolver()
+        cli_executable, cli_version = self.cli_resolver()
         existing_experiment_id = getattr(request, "existing_experiment_id", None)
         if existing_experiment_id:
             self.experiment_manager.require_matching_name(existing_experiment_id, request.experiment_name)
@@ -417,7 +658,23 @@ class RunManager:
             warnings.append("World-map rendering is enabled and may add platform-dependent image artifacts.")
         if existing_experiment_id:
             warnings.append("The new run will be attached to the verified existing MLflow experiment ID.")
+        receipt = self._write_validation_receipt(
+            request,
+            snapshot,
+            resolved_training,
+            application_snapshot,
+            resolved_application,
+            cli_executable,
+            cli_version,
+            plan,
+        )
         return AnalysisValidationResponse(
+            validation_id=receipt["validation_id"],
+            request_hash=receipt["request_hash"],
+            validation_expires_at=datetime.fromtimestamp(
+                receipt["expires_at_epoch"],
+                timezone.utc,
+            ).isoformat(),
             task=request.task,
             models=models,
             estimated_model_count=len(models),
@@ -452,9 +709,33 @@ class RunManager:
             warnings=tuple(warnings),
         )
 
+    def start_validated(
+        self,
+        validation_id: str,
+        request_hash: str,
+        *,
+        expected_task: str | None = None,
+    ) -> StartAnalysisResponse:
+        """Start only the immutable request and inputs covered by a validation receipt."""
+        request, receipt = self._load_validation_receipt(
+            validation_id,
+            request_hash,
+            expected_task=expected_task,
+        )
+        return self._start(request, validation=receipt)
+
     def start(
         self,
         request: ClassificationRequest | RegressionRequest | ClusteringRequest | DecompositionRequest | AnomalyDetectionRequest | TimeSeriesRequest,
+    ) -> StartAnalysisResponse:
+        """Retain the strict legacy full-request start path for compatibility."""
+        return self._start(request, validation=None)
+
+    def _start(
+        self,
+        request: ClassificationRequest | RegressionRequest | ClusteringRequest | DecompositionRequest | AnomalyDetectionRequest | TimeSeriesRequest,
+        *,
+        validation: dict[str, Any] | None,
     ) -> StartAnalysisResponse:
         """Validate synchronously, then queue the long-running CLI work."""
         self._ensure_initialized()
@@ -537,6 +818,17 @@ class RunManager:
             cli_executable=cli_executable,
             dataset_context=dataset_context,
         )
+        if validation is not None:
+            self._assert_validation_still_matches(
+                validation,
+                snapshot,
+                resolved_training,
+                application_snapshot,
+                resolved_application,
+                cli_executable,
+                cli_version,
+                plan,
+            )
         if "data-mining" in plan.public_command:
             if self.settings.tracking_root is None:
                 raise RunStateError("The installer-owned MLflow tracking root is not configured.")
@@ -557,6 +849,14 @@ class RunManager:
             "schema_version": 1,
             "run_id": run_id,
             "request": request.model_dump(mode="json"),
+            "validation": (
+                {
+                    "validation_id": validation["validation_id"],
+                    "request_hash": validation["request_hash"],
+                }
+                if validation is not None
+                else None
+            ),
             "input": {
                 "source_path": str(snapshot.source_path),
                 "resolved_path": str(snapshot.resolved_path),
@@ -630,7 +930,9 @@ class RunManager:
             state="queued",
             models=_selected_models(request),
             estimated_model_count=len(_selected_models(request)),
-            status_hint=f"Poll get_run_status with run_id {run_id}; call get_run_result after state becomes succeeded or partial_failure.",
+            status_hint=(f"Call get_run_result once with run_id {run_id} and wait_seconds up to 300; " "use get_run_status only when progress detail is needed."),
+            request_hash=(validation["request_hash"] if validation is not None else None),
+            started_from_validation=validation is not None,
         )
 
     def _mark_running(self, paths: RunPaths, control: _RunControl, pid: int, create_time: float) -> None:
@@ -778,6 +1080,9 @@ class RunManager:
                 application_input_hash_verified=application_hash_verified,
                 reported_metrics=discovered.reported_metrics,
                 artifact_count=len(discovered.all_index_entries),
+                artifact_offset=0,
+                returned_artifact_count=len(discovered.response_references),
+                next_artifact_offset=(len(discovered.response_references) if discovered.truncated else None),
                 artifacts=discovered.response_references,
                 artifacts_truncated=discovered.truncated,
                 aggregate_state=aggregate_state,
@@ -832,18 +1137,67 @@ class RunManager:
             with self._lock:
                 self._active.pop(run_id, None)
 
-    def get_status(self, run_id: str) -> RunStatusResponse:
+    def _wait_for_run(self, run_id: str, wait_seconds: float) -> None:
+        if wait_seconds < 0 or wait_seconds > 300:
+            raise RunStateError("wait_seconds must be between 0 and 300.")
+        if wait_seconds == 0:
+            return
+        with self._lock:
+            control = self._active.get(run_id)
+            future = control.future if control is not None else None
+        if future is None:
+            return
+        try:
+            future.result(timeout=wait_seconds)
+        except FutureTimeoutError:
+            return
+
+    def get_status(self, run_id: str, *, wait_seconds: float = 0) -> RunStatusResponse:
         self._ensure_initialized()
         paths = self._paths(run_id)
+        self._wait_for_run(run_id, wait_seconds)
         return self._status_response(_read_json(paths.status))
 
-    def get_result(self, run_id: str) -> RunResultResponse:
+    def get_result(
+        self,
+        run_id: str,
+        *,
+        wait_seconds: float = 0,
+        artifact_offset: int = 0,
+        artifact_limit: int | None = None,
+    ) -> RunResultResponse:
         self._ensure_initialized()
         paths = self._paths(run_id)
+        self._wait_for_run(run_id, wait_seconds)
         status = _read_json(paths.status)
         if status.get("state") not in {"succeeded", "partial_failure"}:
             raise RunStateError(f"Run {run_id} is {status.get('state')}; a result is available only after it succeeds or completes with partial failures.")
-        return RunResultResponse.model_validate(_read_json(paths.result))
+        if artifact_offset < 0:
+            raise RunStateError("artifact_offset must be non-negative.")
+        if artifact_limit is not None and (artifact_limit < 1 or artifact_limit > 200):
+            raise RunStateError("artifact_limit must be between 1 and 200.")
+        response = RunResultResponse.model_validate(_read_json(paths.result))
+        artifact_index = _read_json(paths.artifact_index)
+        if artifact_index.get("schema_version") != ARTIFACT_INDEX_SCHEMA_VERSION or artifact_index.get("run_id") != run_id or not isinstance(artifact_index.get("artifacts"), list):
+            raise RunStateError("The complete artifact index identity is invalid.")
+        entries = artifact_index["artifacts"]
+        if len(entries) != response.artifact_count:
+            raise RunStateError("The complete artifact index count is inconsistent with the run result.")
+        if artifact_offset > len(entries):
+            raise RunStateError("artifact_offset is beyond the complete artifact index.")
+        page_limit = artifact_limit or self.settings.maximum_artifact_references
+        page_end = min(len(entries), artifact_offset + page_limit)
+        page = tuple(ArtifactReference.model_validate(entry) for entry in entries[artifact_offset:page_end])
+        next_offset = page_end if page_end < len(entries) else None
+        return response.model_copy(
+            update={
+                "artifact_offset": artifact_offset,
+                "returned_artifact_count": len(page),
+                "next_artifact_offset": next_offset,
+                "artifacts": page,
+                "artifacts_truncated": next_offset is not None,
+            }
+        )
 
     def cancel(self, run_id: str) -> CancelRunResponse:
         self._ensure_initialized()

@@ -1421,6 +1421,7 @@ class DatasetInspectionRequest(StrictModel):
     dataset_path: Path | None = None
     dataset: DatasetReference | None = None
     sample_rows: int = Field(5, ge=0, le=10)
+    detail: Literal["full", "names"] = "full"
 
     @model_validator(mode="after")
     def validate_dataset(self) -> "DatasetInspectionRequest":
@@ -1537,6 +1538,27 @@ class RunLookupRequest(StrictModel):
     run_id: str = Field(pattern=r"^run-[0-9a-f]{16}$")
 
 
+class RunStatusRequest(RunLookupRequest):
+    """Read one run immediately or wait for at most five minutes."""
+
+    wait_seconds: float = Field(0, ge=0, le=300)
+
+
+class RunResultRequest(RunLookupRequest):
+    """Read one bounded artifact page, optionally waiting for terminal success."""
+
+    wait_seconds: float = Field(0, ge=0, le=300)
+    artifact_offset: int = Field(0, ge=0)
+    artifact_limit: int | None = Field(None, ge=1, le=200)
+
+
+class StartAnalysisByValidationRequest(StrictModel):
+    """Start the exact immutable request identified by validate_analysis."""
+
+    validation_id: str = Field(pattern=r"^val-[0-9a-f]{32}$")
+    request_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
 class DatasetColumnSummary(StrictModel):
     """Type information inferred from a bounded local sample."""
 
@@ -1556,7 +1578,9 @@ class DatasetInspectionResponse(StrictModel):
     row_count: int = Field(ge=0)
     row_count_exact: bool
     column_count: int = Field(ge=1)
-    columns: tuple[DatasetColumnSummary, ...]
+    detail: Literal["full", "names"] = "full"
+    columns: tuple[DatasetColumnSummary, ...] = ()
+    column_names: tuple[str, ...] = ()
     header_warnings: tuple[str, ...] = ()
     sample_rows: tuple[dict[str, Any], ...]
     sample_truncated: bool
@@ -1608,6 +1632,18 @@ class CapabilitiesResponse(StrictModel):
     server_version: str
     supported_cli_versions: tuple[str, ...]
     supported_tasks: tuple[str, ...]
+    analysis_schema_task_scope: Literal[
+        "classification",
+        "regression",
+        "clustering",
+        "decomposition",
+        "anomaly_detection",
+        "time_series",
+    ] | None = None
+    analysis_start_modes: tuple[Literal["validation_reference", "legacy_full_request"], ...] = (
+        "validation_reference",
+        "legacy_full_request",
+    )
     supported_models: tuple[str, ...]
     supported_dataset_formats: tuple[str, ...]
     maximum_dataset_bytes: int
@@ -1640,11 +1676,16 @@ class StartAnalysisResponse(StrictModel):
     models: tuple[str, ...]
     estimated_model_count: int = Field(ge=1)
     status_hint: str
+    request_hash: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+    started_from_validation: bool = False
 
 
 class AnalysisValidationResponse(StrictModel):
     """Read-only execution preview produced before any analysis process starts."""
 
+    validation_id: str = Field(pattern=r"^val-[0-9a-f]{32}$")
+    request_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    validation_expires_at: str
     valid: Literal[True] = True
     task: Literal[
         "classification",
@@ -1794,6 +1835,9 @@ class RunResultResponse(StrictModel):
     application_input_hash_verified: bool | None = None
     reported_metrics: dict[str, Any]
     artifact_count: int = Field(ge=0)
+    artifact_offset: int = Field(0, ge=0)
+    returned_artifact_count: int = Field(0, ge=0)
+    next_artifact_offset: int | None = Field(None, ge=0)
     artifacts: tuple[ArtifactReference, ...]
     artifacts_truncated: bool
     aggregate_state: Literal["complete", "partial_failure"] | None = None

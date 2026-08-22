@@ -157,9 +157,93 @@ def test_validate_analysis_previews_workload_without_creating_run_or_process(tmp
         assert preview.target_column == "Label"
         assert preview.resolved_model_parameters["number_of_estimators"] == 500
         assert preview.training_sha256
+        assert preview.validation_id.startswith("val-")
+        assert len(preview.validation_id) == 36
+        assert len(preview.request_hash) == 64
+        assert preview.validation_expires_at
         assert preview.analysis_process_started is False
         assert "inference will be skipped" in " ".join(preview.warnings)
-        assert not manager.settings.runs_root.exists()
+        assert not list(manager.settings.runs_root.glob("run-*"))
+    finally:
+        manager.close()
+
+
+def test_validation_reference_is_stable_tamper_evident_and_starts_the_exact_request(
+    tmp_path: Path,
+) -> None:
+    script = tmp_path / "validated_cli.py"
+    script.write_text(
+        """import json
+import sys
+from pathlib import Path
+
+print("READY>", flush=True)
+input()
+root = Path("geopi_output") / sys.argv[1] / sys.argv[2]
+for name in ("artifacts", "metrics", "parameters", "summary"):
+    (root / name).mkdir(parents=True)
+(root / "artifacts" / "model.joblib").write_bytes(b"real-cli-model")
+(root / "metrics" / "Model Score.txt").write_text(json.dumps({"accuracy": 0.75}), encoding="utf-8")
+(root / "parameters" / "Model Parameters.txt").write_text(json.dumps({"solver": "lbfgs"}), encoding="utf-8")
+(root / "summary" / "Model Score.txt").write_text(json.dumps({"accuracy": 0.75}), encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
+    dataset = _dataset(tmp_path)
+    manager = _manager(tmp_path, script)
+    request = _request(dataset, run_name="Validated")
+    try:
+        first = manager.validate(request)
+        second = manager.validate(request)
+        assert first.validation_id == second.validation_id
+        assert first.request_hash == second.request_hash
+        assert not list(manager.settings.runs_root.glob("run-*"))
+
+        with pytest.raises(RunStateError, match="request hash"):
+            manager.start_validated(first.validation_id, "f" * 64)
+        assert not list(manager.settings.runs_root.glob("run-*"))
+
+        acknowledgement = manager.start_validated(first.validation_id, first.request_hash)
+        assert acknowledgement.started_from_validation is True
+        assert acknowledgement.request_hash == first.request_hash
+        assert manager.get_result(acknowledgement.run_id, wait_seconds=5).state == "succeeded"
+        request_record = json.loads((manager.settings.runs_root / acknowledgement.run_id / "wrapper" / "request.json").read_text(encoding="utf-8"))
+        assert request_record["request"] == request.model_dump(mode="json")
+        assert request_record["validation"] == {
+            "validation_id": first.validation_id,
+            "request_hash": first.request_hash,
+        }
+
+        tampered_preview = manager.validate(_request(dataset, run_name="Tampered"))
+        receipt_path = manager.settings.service_state_root / "validations" / f"{tampered_preview.validation_id}.json"
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+        receipt["request"]["run_name"] = "Changed after validation"
+        receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+        with pytest.raises(RunStateError, match="integrity"):
+            manager.start_validated(
+                tampered_preview.validation_id,
+                tampered_preview.request_hash,
+            )
+    finally:
+        manager.close()
+
+
+def test_validation_reference_rejects_dataset_change_before_process_creation(
+    tmp_path: Path,
+) -> None:
+    script = tmp_path / "must-not-start.py"
+    script.write_text("raise AssertionError('must not start')\n", encoding="utf-8")
+    dataset = _dataset(tmp_path)
+    manager = _manager(tmp_path, script)
+    try:
+        preview = manager.validate(_request(dataset))
+        dataset.write_text(
+            dataset.read_text(encoding="utf-8") + "C,52.0,basalt\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(RunStateError, match="changed since validation"):
+            manager.start_validated(preview.validation_id, preview.request_hash)
+        assert not list(manager.settings.runs_root.glob("run-*"))
     finally:
         manager.close()
 
@@ -317,13 +401,35 @@ if sys.argv[2] == "Time Series Run":
     try:
         assert elapsed < 0.5
         assert acknowledgement.state == "queued"
-        assert _wait_for_state(manager, acknowledgement.run_id, {"succeeded"}) == "succeeded"
-        result = manager.get_result(acknowledgement.run_id)
+        result = manager.get_result(
+            acknowledgement.run_id,
+            wait_seconds=3,
+            artifact_offset=0,
+            artifact_limit=2,
+        )
+        assert result.state == "succeeded"
         assert result.input_hash_verified is True
         assert result.reported_metrics["Model Score.txt"] == {"accuracy": 0.75, "f1": 0.73}
         assert result.artifact_count == 4
+        assert result.artifact_offset == 0
+        assert result.returned_artifact_count == 2
+        assert result.next_artifact_offset == 2
+        assert result.artifacts_truncated is True
         assert all(Path(item.local_path).is_relative_to(Path(result.output_directory)) for item in result.artifacts)
-        assert {item.category for item in result.artifacts} == {"artifacts", "metrics", "parameters", "summary"}
+        second_page = manager.get_result(
+            acknowledgement.run_id,
+            artifact_offset=2,
+            artifact_limit=2,
+        )
+        assert second_page.returned_artifact_count == 2
+        assert second_page.next_artifact_offset is None
+        assert second_page.artifacts_truncated is False
+        assert {item.category for item in (*result.artifacts, *second_page.artifacts)} == {
+            "artifacts",
+            "metrics",
+            "parameters",
+            "summary",
+        }
         wrapper = tmp_path / "runs" / acknowledgement.run_id / "wrapper"
         assert json.loads((wrapper / "status.json").read_text(encoding="utf-8"))["state"] == "succeeded"
         assert json.loads((wrapper / "artifact-index.json").read_text(encoding="utf-8"))["artifacts"]

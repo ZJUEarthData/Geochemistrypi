@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 import re
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -62,11 +63,15 @@ from ..tracking.ui import MlflowUiError, MlflowUiManager
 from .schemas import (
     AnalysisRequest,
     AnalysisValidationResponse,
+    AnomalyDetectionRequest,
     CancelRunResponse,
     CapabilitiesResponse,
+    ClassificationRequest,
+    ClusteringRequest,
     CompatibilityPolicy,
     DatasetInspectionRequest,
     DatasetInspectionResponse,
+    DecompositionRequest,
     GetExperimentRequest,
     GetExperimentResponse,
     ListDatasetsRequest,
@@ -74,12 +79,17 @@ from .schemas import (
     ListExperimentsRequest,
     ListExperimentsResponse,
     MlflowUiStatusResponse,
+    RegressionRequest,
     ResourceLimits,
     RunLookupRequest,
+    RunResultRequest,
     RunResultResponse,
+    RunStatusRequest,
     RunStatusResponse,
+    StartAnalysisByValidationRequest,
     StartAnalysisResponse,
     StartMlflowUiRequest,
+    TimeSeriesRequest,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -90,6 +100,15 @@ _MAX_VALIDATION_ISSUE_TEXT = 360
 _SAFE_FIELD_PART = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]{0,63}$")
 _WINDOWS_LOCAL_PATH = re.compile(r"(?i)(?:[A-Z]:[\\/]|\\\\)[^\r\n,;]+")
 _POSIX_LOCAL_PATH = re.compile(r"(?<![\w:])/(?:[^\s'\",;]+/)*[^\s'\",;]*")
+ANALYSIS_SCHEMA_TASK_ENV = "GEOCHEMISTRYPI_MCP_ANALYSIS_SCHEMA_TASK"
+_ANALYSIS_REQUEST_MODELS: dict[str, type[BaseModel]] = {
+    "classification": ClassificationRequest,
+    "regression": RegressionRequest,
+    "clustering": ClusteringRequest,
+    "decomposition": DecompositionRequest,
+    "anomaly_detection": AnomalyDetectionRequest,
+    "time_series": TimeSeriesRequest,
+}
 
 
 class EmptyRequest(BaseModel):
@@ -99,6 +118,7 @@ class EmptyRequest(BaseModel):
 
 
 _ToolFunction = Callable[[BaseModel], BaseModel]
+_SCHEMA_ANNOTATION_KEYS = frozenset({"title", "description", "default", "examples"})
 _PUBLIC_ERRORS = (
     CliDriverError,
     DatasetCatalogError,
@@ -113,12 +133,24 @@ _PUBLIC_ERRORS = (
 )
 
 
+def _advertised_input_schema(value: Any) -> Any:
+    """Remove JSON Schema annotations without changing validation semantics."""
+    if isinstance(value, dict):
+        return {key: _advertised_input_schema(child) for key, child in value.items() if key not in _SCHEMA_ANNOTATION_KEYS}
+    if isinstance(value, list):
+        return [_advertised_input_schema(child) for child in value]
+    return value
+
+
 def _tool(name: str, description: str, request: type[BaseModel], response: type[BaseModel]) -> Tool:
     return Tool(
         name=name,
         description=description,
-        input_schema=request.model_json_schema(),
-        output_schema=response.model_json_schema(),
+        input_schema=_advertised_input_schema(request.model_json_schema()),
+        # MCP clients replay advertised schemas into every model turn. Runtime
+        # responses remain strictly validated below; omitting duplicated output
+        # schemas removes context overhead without weakening response validation.
+        output_schema=None,
     )
 
 
@@ -128,7 +160,7 @@ def _compact_text(name: str, response: BaseModel) -> str:
         text = f"GeochemistryPi MCP {data['server_version']} supports {', '.join(data['supported_tasks'])} with {', '.join(data['supported_models'])}."
         return text[:_MAX_MODEL_TEXT]
     if name == "inspect_dataset":
-        columns = ", ".join(column["name"] for column in data["columns"])
+        columns = ", ".join(data["column_names"] or [column["name"] for column in data["columns"]])
         text = f"Dataset: {data['row_count']} rows, {data['column_count']} columns. Columns: {columns}. SHA-256: {data['sha256']}."
         return text[:_MAX_MODEL_TEXT]
     if name == "list_datasets":
@@ -144,7 +176,11 @@ def _compact_text(name: str, response: BaseModel) -> str:
     if name == "start_analysis":
         return (f"Queued GeochemistryPi run {data['run_id']} for {data['estimated_model_count']} model(s): " f"{', '.join(data['models'])}. {data['status_hint']}")[:_MAX_MODEL_TEXT]
     if name == "validate_analysis":
-        return (f"Analysis is valid for {data['task']} with {data['estimated_model_count']} model(s): " f"{', '.join(data['models'])}. No analysis process was started.")[:_MAX_MODEL_TEXT]
+        return (
+            f"Analysis is valid for {data['task']} with {data['estimated_model_count']} model(s): "
+            f"{', '.join(data['models'])}. Start this exact request with validation_id "
+            f"{data['validation_id']} and request_hash {data['request_hash']}. No analysis process was started."
+        )[:_MAX_MODEL_TEXT]
     if name == "get_run_status":
         return f"Run {data['run_id']} is {data['state']} at stage {data['stage']}: {data['progress_message']}"[:_MAX_MODEL_TEXT]
     if name == "get_run_result":
@@ -155,7 +191,11 @@ def _compact_text(name: str, response: BaseModel) -> str:
             if preprocessing is not None
             else ""
         )
-        text = f"Run {data['run_id']} is {data['state']}. Original output: {data['output_directory']}. Artifacts: {data['artifact_count']}.{row_summary} CLI-reported metrics: {metrics}"
+        text = (
+            f"Run {data['run_id']} is {data['state']}. Original output: {data['output_directory']}. "
+            f"Artifacts returned: {data['returned_artifact_count']} of {data['artifact_count']} "
+            f"from offset {data['artifact_offset']}.{row_summary} CLI-reported metrics: {metrics}"
+        )
         return text[:_MAX_MODEL_TEXT]
     return f"Run {data['run_id']}: {data['message']}"[:_MAX_MODEL_TEXT]
 
@@ -299,82 +339,91 @@ def build_tool_handlers(
     """Build strict schemas and a sanitized dispatcher for one server."""
     experiment_store = experiments or getattr(runs, "experiment_manager", None) or ExperimentManager(settings)
     ui_manager = mlflow_ui or MlflowUiManager(settings)
+    analysis_schema_task_scope = os.environ.get(ANALYSIS_SCHEMA_TASK_ENV)
+    if analysis_schema_task_scope is None:
+        analysis_request_model: type[BaseModel] = AnalysisRequest
+    else:
+        try:
+            analysis_request_model = _ANALYSIS_REQUEST_MODELS[analysis_schema_task_scope]
+        except KeyError as exc:
+            allowed = ", ".join(_ANALYSIS_REQUEST_MODELS)
+            raise SettingsError(f"{ANALYSIS_SCHEMA_TASK_ENV} must be one of: {allowed}.") from exc
     definitions = (
         _tool(
             "get_capabilities",
-            "Discover supported scientific workflows and limits before planning an analysis.",
+            "List supported workflows, options, and limits",
             EmptyRequest,
             CapabilitiesResponse,
         ),
         _tool(
             "list_datasets",
-            "List built-in datasets and safe immediate files in Desktop/geopi_input without modifying them.",
+            "List trusted built-in and Desktop datasets.",
             ListDatasetsRequest,
             ListDatasetsResponse,
         ),
         _tool(
             "inspect_dataset",
-            "Inspect one explicit, built-in, or Desktop CSV/XLSX dataset read-only; return only bounded rows and inferred types.",
+            "Inspect bounded dataset metadata, types, and rows.",
             DatasetInspectionRequest,
             DatasetInspectionResponse,
         ),
         _tool(
             "list_experiments",
-            "List active experiments in the installer-owned persistent MLflow tracking store using stable IDs.",
+            "List MLflow experiments by stable ID.",
             ListExperimentsRequest,
             ListExperimentsResponse,
         ),
         _tool(
             "get_experiment",
-            "Read one persistent MLflow experiment and a bounded list of its newest runs by stable experiment ID.",
+            "Read an experiment and recent runs.",
             GetExperimentRequest,
             GetExperimentResponse,
         ),
         _tool(
             "start_mlflow_ui",
-            "Explicitly start the installer-owned MLflow UI on 127.0.0.1; it is never started automatically.",
+            "Start the managed local MLflow UI.",
             StartMlflowUiRequest,
             MlflowUiStatusResponse,
         ),
         _tool(
             "mlflow_ui_status",
-            "Inspect and recover durable managed MLflow UI state without starting or stopping any process.",
+            "Read managed MLflow UI state.",
             EmptyRequest,
             MlflowUiStatusResponse,
         ),
         _tool(
             "stop_mlflow_ui",
-            "Stop only the MLflow UI process tree whose PID, creation time, command, and tracking root are verified.",
+            "Stop the verified managed MLflow UI.",
             EmptyRequest,
             MlflowUiStatusResponse,
         ),
         _tool(
             "validate_analysis",
-            "Validate without starting science. Time Series uses top-level training_dataset, bin_width, iterations, seed, and role fields; do not send dataset, model, or model_parameters.",
-            AnalysisRequest,
+            "Validate only; Time Series uses top-level fields.",
+            analysis_request_model,
             AnalysisValidationResponse,
         ),
         _tool(
             "start_analysis",
-            "Queue one validated CLI run. Time Series uses top-level training_dataset, bin_width, iterations, seed, and role fields; do not send dataset, model, or model_parameters.",
-            AnalysisRequest,
+            "Start by validation reference; legacy full requests remain strict.",
+            StartAnalysisByValidationRequest,
             StartAnalysisResponse,
         ),
         _tool(
             "get_run_status",
-            "Read the durable state of one wrapper-owned run without blocking on the CLI.",
-            RunLookupRequest,
+            "Read state or wait once for at most 300 seconds.",
+            RunStatusRequest,
             RunStatusResponse,
         ),
         _tool(
             "get_run_result",
-            "Return bounded metrics and references to original CLI outputs after a run succeeds.",
-            RunLookupRequest,
+            "Wait once; return metrics and paged artifacts.",
+            RunResultRequest,
             RunResultResponse,
         ),
         _tool(
             "cancel_run",
-            "Cancel only the live CLI process tree recorded for the specified wrapper-owned run.",
+            "Cancel the recorded live CLI process tree.",
             RunLookupRequest,
             CancelRunResponse,
         ),
@@ -385,13 +434,13 @@ def build_tool_handlers(
         "inspect_dataset": DatasetInspectionRequest,
         "list_experiments": ListExperimentsRequest,
         "get_experiment": GetExperimentRequest,
-        "validate_analysis": AnalysisRequest,
+        "validate_analysis": analysis_request_model,
         "start_mlflow_ui": StartMlflowUiRequest,
         "mlflow_ui_status": EmptyRequest,
         "stop_mlflow_ui": EmptyRequest,
-        "start_analysis": AnalysisRequest,
-        "get_run_status": RunLookupRequest,
-        "get_run_result": RunLookupRequest,
+        "start_analysis": StartAnalysisByValidationRequest,
+        "get_run_status": RunStatusRequest,
+        "get_run_result": RunResultRequest,
         "cancel_run": RunLookupRequest,
     }
 
@@ -409,6 +458,7 @@ def build_tool_handlers(
                 "anomaly_detection",
                 "time_series",
             ),
+            analysis_schema_task_scope=analysis_schema_task_scope,
             supported_models=tuple(
                 dict.fromkeys(
                     (
@@ -543,19 +593,39 @@ def build_tool_handlers(
             raise DatasetCatalogError("The dataset changed between source resolution and inspection.")
         return response
 
+    def analysis_value(request: BaseModel) -> BaseModel:
+        return request.root if isinstance(request, AnalysisRequest) else request
+
+    def start_analysis_request(request: BaseModel) -> StartAnalysisResponse:
+        if isinstance(request, StartAnalysisByValidationRequest):
+            return runs.start_validated(
+                request.validation_id,
+                request.request_hash,
+                expected_task=analysis_schema_task_scope,
+            )
+        return runs.start(analysis_value(request))
+
     functions: dict[str, _ToolFunction] = {
         "get_capabilities": capabilities,
         "list_datasets": lambda request: runs.dataset_catalog.list(request),
         "inspect_dataset": inspect_dataset_request,
         "list_experiments": lambda request: experiment_store.list(request),
         "get_experiment": lambda request: experiment_store.get(request),
-        "validate_analysis": lambda request: runs.validate(request.root),
+        "validate_analysis": lambda request: runs.validate(analysis_value(request)),
         "start_mlflow_ui": lambda request: ui_manager.start(request),
         "mlflow_ui_status": lambda request: ui_manager.status(),
         "stop_mlflow_ui": lambda request: ui_manager.stop(),
-        "start_analysis": lambda request: runs.start(request.root),
-        "get_run_status": lambda request: runs.get_status(request.run_id),
-        "get_run_result": lambda request: runs.get_result(request.run_id),
+        "start_analysis": start_analysis_request,
+        "get_run_status": lambda request: runs.get_status(
+            request.run_id,
+            wait_seconds=request.wait_seconds,
+        ),
+        "get_run_result": lambda request: runs.get_result(
+            request.run_id,
+            wait_seconds=request.wait_seconds,
+            artifact_offset=request.artifact_offset,
+            artifact_limit=request.artifact_limit,
+        ),
         "cancel_run": lambda request: runs.cancel(request.run_id),
     }
 
@@ -566,7 +636,11 @@ def build_tool_handlers(
         if params.name not in functions:
             raise MCPError(INVALID_PARAMS, f"Unknown tool: {params.name}")
         try:
-            request = request_models[params.name].model_validate(params.arguments or {})
+            arguments = params.arguments or {}
+            if params.name == "start_analysis" and not ("validation_id" in arguments or "request_hash" in arguments):
+                request = analysis_request_model.model_validate(arguments)
+            else:
+                request = request_models[params.name].model_validate(arguments)
             response = await anyio.to_thread.run_sync(functions[params.name], request)
             structured = response.model_dump(mode="json")
             return CallToolResult(

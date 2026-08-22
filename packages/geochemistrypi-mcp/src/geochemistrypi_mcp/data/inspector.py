@@ -207,11 +207,12 @@ def _inspect_csv(
             )
             returned_rows: list[list[Any]] = []
             type_rows: list[list[Any]] = []
+            type_sample_rows = _TYPE_SAMPLE_ROWS if request.detail == "full" else 0
             row_count = 0
             for row in iter_cli_csv_rows(reader):
                 row_count += 1
                 normalized = list(row[: len(columns)]) + [None] * max(0, len(columns) - len(row))
-                if len(type_rows) < _TYPE_SAMPLE_ROWS:
+                if len(type_rows) < type_sample_rows:
                     type_rows.append(normalized)
                 if len(returned_rows) < request.sample_rows:
                     returned_rows.append(normalized)
@@ -239,13 +240,14 @@ def _inspect_xlsx(
                 )
                 returned_rows: list[list[Any]] = []
                 type_rows: list[list[Any]] = []
+                type_sample_rows = _TYPE_SAMPLE_ROWS if request.detail == "full" else 0
                 for row in iter_cli_excel_rows(rows):
                     normalized = list(row[: len(columns)]) + [None] * max(0, len(columns) - len(row))
-                    if len(type_rows) < _TYPE_SAMPLE_ROWS:
+                    if len(type_rows) < type_sample_rows:
                         type_rows.append(normalized)
                     if len(returned_rows) < request.sample_rows:
                         returned_rows.append(normalized)
-                    if len(type_rows) >= _TYPE_SAMPLE_ROWS and len(returned_rows) >= request.sample_rows:
+                    if len(type_rows) >= type_sample_rows and len(returned_rows) >= request.sample_rows:
                         break
                 row_count = snapshot.row_lineage.source_row_count
             finally:
@@ -289,7 +291,9 @@ def inspect_dataset(
         row_count=row_count,
         row_count_exact=exact,
         column_count=len(columns),
-        columns=_column_summaries(columns, type_rows),
+        detail=request.detail,
+        columns=_column_summaries(columns, type_rows) if request.detail == "full" else (),
+        column_names=columns if request.detail == "names" else (),
         header_warnings=header_warnings,
         sample_rows=sample,
         sample_truncated=row_count > len(sample),

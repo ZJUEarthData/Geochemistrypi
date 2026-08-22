@@ -235,6 +235,7 @@ GEOCHEMISTRYPI_CLI_EXECUTABLE=<absolute path to geochemistrypi executable>
 GEOCHEMISTRYPI_MCP_RUNS_ROOT=<absolute path for managed runs>
 GEOCHEMISTRYPI_MCP_TRACKING_ROOT=<absolute path for persistent MLflow data>
 GEOCHEMISTRYPI_MCP_SERVICE_STATE_ROOT=<absolute path for managed UI state>
+GEOCHEMISTRYPI_MCP_ANALYSIS_SCHEMA_TASK=<classification|regression|clustering|decomposition|anomaly_detection|time_series>
 GEOCHEMISTRYPI_MCP_SETTINGS_FILE=<absolute path to a test settings file>
 GEOCHEMISTRYPI_MCP_MAX_DATASET_BYTES=<positive byte limit>
 GEOCHEMISTRYPI_MCP_MAX_PENDING_RUNS=<positive active-and-queued run limit>
@@ -267,9 +268,28 @@ waits for an MCP client. Standard output is reserved for MCP messages.
 
 ## Classification, regression, clustering, decomposition, anomaly-detection, and Time Series requests
 
-`start_analysis` uses the `task` field to select a strict task-specific schema.
-Requests created before regression support remain classification requests when
-`task` is omitted. New clients should always send it explicitly.
+`validate_analysis` uses the `task` field to select a strict task-specific
+schema. It returns a stable `validation_id`, a `request_hash`, and an expiry.
+The preferred `start_analysis` request contains only that ID and hash. Before a
+run is created, the wrapper verifies the HMAC-protected validation receipt and
+checks that the exact request, input files, CLI executable/version, and compiled
+interaction plan are unchanged. A changed or expired validation fails closed
+and must be validated again. Strict full-request calls to `start_analysis`
+remain accepted for backward compatibility.
+
+For a development or experiment session already restricted to one analysis
+family, `GEOCHEMISTRYPI_MCP_ANALYSIS_SCHEMA_TASK` limits only the advertised
+`validate_analysis` schema to one of the six exact task names shown above. All
+13 tool names and all six capabilities remain available. An unknown scope
+prevents server construction. Requests created before regression support remain
+classification requests when `task` is omitted in an unscoped session; new
+clients should always send it explicitly.
+
+Advertised input schemas omit annotation-only JSON Schema fields (`title`,
+`description`, `default`, and `examples`) to avoid replaying prose in every model
+turn. Required fields, types, enums, numeric and string constraints,
+discriminators, and closed-object rules remain advertised, and the original
+Pydantic models still perform every runtime validation.
 
 A minimal regression request is:
 
@@ -407,8 +427,11 @@ CLI command in `GEOCHEMISTRYPI_CLI_EXECUTABLE`.
 - `get_run_result`
 - `cancel_run`
 
-The request schema contains scientific choices only. It never accepts raw CLI
-answers, shell commands, environment variables, or output directories.
+The `validate_analysis` request schema contains scientific choices only. It
+never accepts raw CLI answers, shell commands, environment variables, or output
+directories. The preferred start request contains only the immutable validation
+reference; runtime responses are still strictly validated even though repeated
+output schemas are not advertised in every MCP model turn.
 
 Scientific identifier columns such as sample or rock names retain their
 original user meaning. Their values may be duplicated or missing when the
@@ -451,7 +474,9 @@ Explicit datasets with duplicate or unsafe headers fail deterministically;
 trusted bundled data can use pandas-compatible duplicate suffixes and returns a
 visible `header_warnings` entry. GeochemistryPi deliberately supports `.csv`
 and `.xlsx`; `.xls` is not advertised because the CLI reader has no reliable
-legacy Excel dependency.
+legacy Excel dependency. Use `detail: "names"` with `sample_rows: 0` when an
+agent needs only column-role decisions; `detail: "full"` remains the compatible
+default for inferred types and bounded samples.
 
 Call `get_capabilities` before planning a run. It returns separate versioned
 classification, regression, clustering, decomposition, and anomaly-detection
@@ -512,15 +537,20 @@ choices. The client translates them to the validated request without changing
 them. If a requested model or value is unsupported or unsafe, it explains the
 conflict and asks what to do; it never silently selects a replacement.
 
-After confirmation, the client starts the work, watches it until completion,
-and returns a concise scientific summary with links or references to the
-original GeochemistryPi outputs. These tool calls are automatic and should not
-be turned into extra instructions for the user.
+After confirmation, the client starts the exact validated request and normally
+calls `get_run_result` once with `wait_seconds` up to 300. It returns a concise
+scientific summary with links or references to the original GeochemistryPi
+outputs. `artifact_offset` and `artifact_limit` retrieve a bounded page while
+the complete wrapper-owned artifact index remains available. Use
+`get_run_status` only when progress detail is needed; it supports the same
+bounded wait and should not be polled in a tight loop. These tool calls are
+automatic and should not be turned into extra instructions for the user.
 
-`validate_analysis` never creates a run or starts the analysis CLI. A run status
-uses the stable stages `queued`, `running_cli`, `indexing_outputs`, and a final
-`completed`, `failed`, or `cancelled` stage. Large aggregate and AutoML requests
-report their model count before execution.
+`validate_analysis` never creates a run or starts the analysis CLI. Its
+30-minute validation receipt is wrapper state, not a scientific result. A run
+status uses the stable stages `queued`, `running_cli`, `indexing_outputs`, and a
+final `completed`, `failed`, or `cancelled` stage. Large aggregate and AutoML
+requests report their model count before execution.
 
 For lifecycle work, first call `list_experiments`, then reuse the returned
 stable ID with `existing_experiment_id` and the exact returned experiment name.
