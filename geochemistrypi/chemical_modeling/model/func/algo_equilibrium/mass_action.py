@@ -1,44 +1,108 @@
-"""
-质量作用定律通用求解器
-支持多组分反应的平衡浓度计算
-"""
-from typing import Dict
+"""One-reaction equilibrium solver based on the law of mass action."""
 
-import numpy as np
-from scipy.optimize import fsolve
+from __future__ import annotations
+
+import math
+from typing import Mapping
 
 
-def law_of_mass_action(K: float, stoich: Dict[str, int], init_conc: Dict[str, float]) -> Dict[str, float]:
+def _validate_inputs(
+    K: float,
+    stoich: Mapping[str, float],
+    init_conc: Mapping[str, float],
+) -> tuple[list[str], list[float], list[float]]:
+    if not math.isfinite(K) or K <= 0:
+        raise ValueError("K must be a finite number greater than 0")
+    if not stoich:
+        raise ValueError("stoich must not be empty")
+    if set(stoich) != set(init_conc):
+        raise ValueError("stoich and initial_concentrations must contain the same species")
+
+    species = list(stoich)
+    coefficients: list[float] = []
+    concentrations: list[float] = []
+    for name in species:
+        coefficient = float(stoich[name])
+        concentration = float(init_conc[name])
+        if not math.isfinite(coefficient) or coefficient == 0:
+            raise ValueError(f"Stoichiometric coefficient for '{name}' must be finite and non-zero")
+        if not math.isfinite(concentration) or concentration < 0:
+            raise ValueError(f"Initial concentration for '{name}' must be finite and non-negative")
+        coefficients.append(coefficient)
+        concentrations.append(concentration)
+    if not any(value < 0 for value in coefficients) or not any(value > 0 for value in coefficients):
+        raise ValueError("stoich must contain at least one reactant and one product")
+    return species, coefficients, concentrations
+
+
+def _log_reaction_quotient(
+    extent: float,
+    coefficients: list[float],
+    concentrations: list[float],
+) -> float:
+    total = 0.0
+    for coefficient, initial in zip(coefficients, concentrations):
+        concentration = initial + coefficient * extent
+        if concentration <= 0:
+            return -math.inf if coefficient > 0 else math.inf
+        total += coefficient * math.log(concentration)
+    return total
+
+
+def law_of_mass_action(
+    K: float,
+    stoich: Mapping[str, float],
+    init_conc: Mapping[str, float],
+    *,
+    tolerance: float = 1e-12,
+    max_iterations: int = 200,
+) -> dict[str, float]:
+    """Solve a single ideal reaction by bisection on its reaction extent.
+
+    Positive stoichiometric coefficients denote products and negative
+    coefficients denote reactants.  For positive concentrations,
+    ``log(Q)`` is strictly increasing with reaction extent, so bisection gives
+    a deterministic solution without requiring SciPy.
     """
-    通用质量作用定律平衡浓度求解
-    例如: aA + bB <-> cC + dD, K = ([C]^c [D]^d)/([A]^a [B]^b)
-    :param K: 平衡常数
-    :param stoich: 物种化学计量数, 正为生成物, 负为反应物, 如{"A":-1, "B":-1, "C":1, "D":1}
-    :param init_conc: 初始浓度, {物种:浓度}
-    :return: 平衡浓度, {物种:浓度}
-    """
-    species = list(stoich.keys())
-    nu = np.array([stoich[s] for s in species])
-    c0 = np.array([init_conc.get(s, 0.0) for s in species])
 
-    def equations(x):
-        c = c0 + nu * x[0]
-        if np.any(c < 0):
-            return 1e6  # 不允许负浓度
-        prod_num = np.prod([c[i] ** max(nu[i], 0) for i in range(len(species)) if nu[i] > 0])
-        prod_den = np.prod([c[i] ** abs(min(nu[i], 0)) for i in range(len(species)) if nu[i] < 0])
-        Q = prod_num / prod_den if prod_den != 0 else 1e6
-        return Q - K
+    species, coefficients, concentrations = _validate_inputs(K, stoich, init_conc)
+    lower = max(
+        (-initial / coefficient for coefficient, initial in zip(coefficients, concentrations) if coefficient > 0),
+        default=-math.inf,
+    )
+    upper = min(
+        (initial / -coefficient for coefficient, initial in zip(coefficients, concentrations) if coefficient < 0),
+        default=math.inf,
+    )
+    if not math.isfinite(lower) or not math.isfinite(upper) or lower >= upper:
+        raise ValueError("The reaction has no finite feasible concentration interval")
 
-    (x_sol,) = fsolve(equations, [0.0])
-    c_eq = c0 + nu * x_sol
-    return {s: max(0.0, c_eq[i]) for i, s in enumerate(species)}
+    span = upper - lower
+    margin = max(span * 1e-14, 1e-15)
+    left = lower + margin
+    right = upper - margin
+    target = math.log(K)
 
+    left_value = _log_reaction_quotient(left, coefficients, concentrations) - target
+    right_value = _log_reaction_quotient(right, coefficients, concentrations) - target
+    if left_value > 0 or right_value < 0:
+        raise ValueError("The supplied reaction cannot reach the requested equilibrium constant")
 
-if __name__ == "__main__":
-    # 示例: H2 + I2 <-> 2HI, K=50, 初始各1 mol/L
-    K = 50
-    stoich = {"H2": -1, "I2": -1, "HI": 2}
-    init_conc = {"H2": 1.0, "I2": 1.0, "HI": 0.0}
-    eq = law_of_mass_action(K, stoich, init_conc)
-    print("平衡浓度:", eq)
+    midpoint = (left + right) / 2
+    for _ in range(max_iterations):
+        midpoint = (left + right) / 2
+        value = _log_reaction_quotient(midpoint, coefficients, concentrations) - target
+        if abs(value) <= tolerance or (right - left) <= tolerance * max(1.0, abs(midpoint)):
+            break
+        if value < 0:
+            left = midpoint
+        else:
+            right = midpoint
+    else:
+        raise RuntimeError("Mass-action solver did not converge")
+
+    result: dict[str, float] = {}
+    for name, coefficient, initial in zip(species, coefficients, concentrations):
+        value = initial + coefficient * midpoint
+        result[name] = max(0.0, float(value))
+    return result

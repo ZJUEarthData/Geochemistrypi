@@ -30,10 +30,27 @@ def run(method: str, element: str, input_path: str, out_dir: str, **kwargs):
         from .gibbs_minimization import gibbs_minimization
 
         df = pd.read_excel(input_path)
-        # 假设输入有gibbs_energies, n（都为list字符串）
-        import ast
+        import json
 
-        df["Gibbs"] = df.apply(lambda row: gibbs_minimization(ast.literal_eval(row["gibbs_energies"]), ast.literal_eval(row["n"])), axis=1)
+        results = df.apply(
+            lambda row: gibbs_minimization(
+                json.loads(row["gibbs_energies"]),
+                json.loads(row["stoichiometry"]),
+                json.loads(row["component_totals"]),
+            ),
+            axis=1,
+        )
+        df["minimum_gibbs"] = results.map(lambda result: result["minimum_gibbs"])
+        df["equilibrium_moles"] = results.map(
+            lambda result: json.dumps(
+                result["equilibrium_moles"],
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+        )
+        df["max_balance_residual"] = results.map(
+            lambda result: result["max_balance_residual"]
+        )
         os.makedirs(out_dir, exist_ok=True)
         out_path = os.path.join(out_dir, "gibbs_minimization_results.xlsx")
         df.to_excel(out_path, index=False)
