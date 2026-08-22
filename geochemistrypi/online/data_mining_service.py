@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from datetime import date, datetime, timezone
 from html import escape
 from io import BytesIO
@@ -15,6 +16,7 @@ import joblib
 import numpy as np
 import pandas as pd
 from sklearn import __version__ as sklearn_version
+from sklearn.decomposition import PCA
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import (
     accuracy_score,
@@ -121,6 +123,52 @@ class DataMiningService:
         "fill_median",
         "fill_mode",
     }
+    anomaly_reproduction_profiles = {
+        "general",
+        "sharapatov_2025_figure_3a",
+        "zhu_2024_figure_8a",
+    }
+    sharapatov_figure3a_columns = (
+        "source_row_id",
+        "Name",
+        "PC1_full_svd_reference",
+        "PC2_full_svd_reference",
+        "PC1_notebook_auto_solver_rs42",
+        "PC2_notebook_auto_solver_rs42",
+        "if_prediction_notebook_raw_features",
+        "if_anomaly_notebook_raw_features",
+        "if_score_samples_notebook_raw_features",
+        "if_decision_notebook_raw_features",
+        "if_anomaly_scaled_features_contamination_0_05",
+        "if_anomaly_pca5_contamination_0_05",
+        "if_anomaly_online_scaled_contamination_auto",
+        "if_score_samples_online_scaled_contamination_auto",
+        "if_decision_online_scaled_contamination_auto",
+    )
+    zhu_figure8a_ratio_columns = (
+        "Na_Cl_ratio",
+        "Na_F_ratio",
+        "Na_SO4_ratio",
+        "F_Cl_ratio",
+        "SO4_Cl_ratio",
+    )
+    zhu_figure8a_series_columns = (
+        "Date",
+        *zhu_figure8a_ratio_columns,
+        "Published_LOF_Outlier_P0_08",
+    )
+    zhu_figure8a_earthquake_columns = (
+        "Event_ID",
+        "Event_DateTime",
+        "Longitude_deg_E",
+        "Latitude_deg_N",
+        "Epicentral_Depth_km",
+        "Magnitude",
+        "GA_Epicentral_Distance_km",
+        "Use_in_Figure8a",
+        "Marker_Criterion",
+        "Table_S1_Source_Row",
+    )
 
     def __init__(
         self,
@@ -302,12 +350,13 @@ class DataMiningService:
                     status_message=(
                         "已接入 v0.8 Isolation Forest 和 Local Outlier Factor，"
                         "完成数值特征标准化、逐行异常标签、统一方向异常分数、"
-                        "异常样品预览和结果下载验证。"
+                        "PCA/异常分数诊断图、异常样品预览和结果下载验证。"
                     ),
                     input_formats=[".xlsx", ".csv"],
                     outputs=[
                         "正常/异常样品统计",
                         "异常分数与标签",
+                        "异常检测诊断图 SVG/PNG",
                         "异常检测结果 CSV",
                         "JSON 模型报告",
                     ],
@@ -326,11 +375,11 @@ class DataMiningService:
                     status="verified",
                     status_message=(
                         "已接入 v0.8 陆上玄武岩比例时间序列工作流，完成字段映射、"
-                        "年龄分箱、固定随机种子 Bootstrap、2σ 不确定度、曲线图和结果下载验证。"
+                        "年龄分箱、固定随机种子 Bootstrap、2σ 不确定度、散点误差图和结果下载验证。"
                     ),
                     input_formats=[".xlsx", ".csv"],
                     outputs=[
-                        "陆上玄武岩比例曲线",
+                        "陆上玄武岩比例散点误差图",
                         "年龄分箱结果表",
                         "时间序列结果 CSV",
                         "SVG 矢量图",
@@ -2231,17 +2280,93 @@ class DataMiningService:
         content: bytes,
         feature_columns: list[str],
         model_name: str = "isolation_forest",
+        contamination: str | float = "auto",
+        reproduction_profile: str = "general",
     ) -> AnomalyDetectionResponse:
+        normalized_profile = str(reproduction_profile).strip().lower()
+        if normalized_profile not in self.anomaly_reproduction_profiles:
+            choices = ", ".join(sorted(self.anomaly_reproduction_profiles))
+            raise InvalidDatasetError(
+                "Unknown anomaly reproduction profile "
+                f"'{reproduction_profile}'. Choose one of: {choices}"
+            )
+        normalized_contamination = self._validate_anomaly_contamination(
+            contamination
+        )
+        if normalized_profile == "sharapatov_2025_figure_3a":
+            if model_name != "isolation_forest":
+                raise InvalidDatasetError(
+                    "Sharapatov et al. (2025) Figure 3a requires "
+                    "the isolation_forest model"
+                )
+            if normalized_contamination == "auto":
+                normalized_contamination = 0.05
+            elif not math.isclose(normalized_contamination, 0.05, abs_tol=1e-12):
+                raise InvalidDatasetError(
+                    "Sharapatov et al. (2025) Figure 3a requires "
+                    "contamination = 0.05"
+                )
+        elif normalized_profile == "zhu_2024_figure_8a":
+            if model_name != "local_outlier_factor":
+                raise InvalidDatasetError(
+                    "Zhu et al. (2024) Figure 8a requires "
+                    "the local_outlier_factor model"
+                )
+            if normalized_contamination == "auto":
+                normalized_contamination = 0.08
+            elif not math.isclose(normalized_contamination, 0.08, abs_tol=1e-12):
+                raise InvalidDatasetError(
+                    "Zhu et al. (2024) Figure 8a requires contamination = 0.08"
+                )
         try:
             model_definition = get_anomaly_detection_model(model_name)
         except ValueError as exc:
             raise InvalidDatasetError(str(exc)) from exc
         suffix = self._validate_upload(filename, content)
+        if (
+            normalized_profile == "sharapatov_2025_figure_3a"
+            and suffix != ".xlsx"
+        ):
+            raise InvalidDatasetError(
+                "Sharapatov et al. (2025) Figure 3a reproduction requires an "
+                "XLSX workbook containing the Figure3a_Data audit sheet"
+            )
+        if normalized_profile == "zhu_2024_figure_8a" and suffix != ".xlsx":
+            raise InvalidDatasetError(
+                "Zhu et al. (2024) Figure 8a reproduction requires an XLSX "
+                "workbook containing Figure8a_Series and Earthquakes sheets"
+            )
         dataframe = self._read_dataframe(suffix, content)
         self._validate_dataframe(dataframe)
         dataframe.columns = [str(column) for column in dataframe.columns]
 
+        sharapatov_reference: pd.DataFrame | None = None
+        zhu_reference: tuple[pd.DataFrame, pd.DataFrame] | None = None
+        if normalized_profile == "sharapatov_2025_figure_3a":
+            sharapatov_reference = self._read_sharapatov_figure3a_reference(
+                content
+            )
+        elif normalized_profile == "zhu_2024_figure_8a":
+            zhu_reference = self._read_zhu_figure8a_reference(content)
+
         features = self._validate_selected_columns(dataframe, feature_columns)
+        reserved_output_columns = {
+            "source_row",
+            "visualization_x",
+            "visualization_y",
+            "visualization_observation",
+            "anomaly_label",
+            "is_anomaly",
+            "anomaly_score",
+        }
+        conflicting_columns = [
+            column for column in features if column in reserved_output_columns
+        ]
+        if conflicting_columns:
+            raise InvalidDatasetError(
+                "Anomaly detection feature columns conflict with reserved output "
+                "columns: " + ", ".join(conflicting_columns)
+            )
         non_numeric = [
             column
             for column in features
@@ -2274,44 +2399,249 @@ class DataMiningService:
                 "Anomaly detection requires at least two distinct feature rows"
             )
 
+        if normalized_profile == "sharapatov_2025_figure_3a":
+            if dataframe.shape[0] != 3_112 or len(features) != 138:
+                raise InvalidDatasetError(
+                    "Sharapatov et al. (2025) Figure 3a requires the audited "
+                    "3,112-row dataset with exactly 138 selected features"
+                )
+            if usable_rows != 3_112 or dropped_rows != 0:
+                raise InvalidDatasetError(
+                    "Sharapatov et al. (2025) Figure 3a requires 3,112 complete "
+                    "finite feature rows"
+                )
+            assert sharapatov_reference is not None
+            self._validate_sharapatov_figure3a_input_alignment(
+                dataframe=dataframe,
+                model_index=model_data.index,
+                reference=sharapatov_reference,
+            )
+        elif normalized_profile == "zhu_2024_figure_8a":
+            if set(features) != set(self.zhu_figure8a_ratio_columns) or len(
+                features
+            ) != len(self.zhu_figure8a_ratio_columns):
+                raise InvalidDatasetError(
+                    "Zhu et al. (2024) Figure 8a requires exactly these five "
+                    "selected features: "
+                    + ", ".join(self.zhu_figure8a_ratio_columns)
+                )
+            if dataframe.shape[0] != 302 or usable_rows != 302 or dropped_rows != 0:
+                raise InvalidDatasetError(
+                    "Zhu et al. (2024) Figure 8a requires 302 complete finite "
+                    "GA ratio observations"
+                )
+            if "Date" not in dataframe.columns:
+                raise InvalidDatasetError(
+                    "Zhu et al. (2024) Figure 8a requires a Date column in "
+                    "the Online_Input sheet"
+                )
+            assert zhu_reference is not None
+            self._validate_zhu_figure8a_input_alignment(
+                dataframe=dataframe,
+                model_index=model_data.index,
+                series=zhu_reference[0],
+            )
+
         scaler = StandardScaler()
         scaled_features = scaler.fit_transform(feature_data)
-        model = model_definition.factory(usable_rows)
+        model = model_definition.factory(usable_rows, normalized_contamination)
         labels = np.asarray(model.fit_predict(scaled_features), dtype=int)
         if model_name == "local_outlier_factor":
             anomaly_scores = -np.asarray(
                 model.negative_outlier_factor_,
                 dtype=float,
             )
+            decision_threshold = -float(model.offset_)
         else:
             anomaly_scores = -np.asarray(
                 model.decision_function(scaled_features),
                 dtype=float,
             )
+            decision_threshold = 0.0
         if not np.isfinite(anomaly_scores).all():
             raise InvalidDatasetError(
                 f"{model_definition.display_name} returned non-finite anomaly scores"
             )
 
+        if len(features) >= 2:
+            projection_solver = (
+                "full"
+                if normalized_profile == "sharapatov_2025_figure_3a"
+                else "randomized"
+            )
+            projection_model = PCA(
+                n_components=2,
+                svd_solver=projection_solver,
+                random_state=(42 if projection_solver == "randomized" else None),
+            )
+            visualization_coordinates = projection_model.fit_transform(
+                scaled_features
+            )
+            explained_variance_ratio = [
+                float(value)
+                for value in projection_model.explained_variance_ratio_
+            ]
+            visualization_kind = "pca"
+            visualization_x_label = (
+                f"PC1 ({explained_variance_ratio[0] * 100:.1f}% variance)"
+            )
+            visualization_y_label = (
+                f"PC2 ({explained_variance_ratio[1] * 100:.1f}% variance)"
+            )
+        else:
+            projection_solver = None
+            visualization_coordinates = np.column_stack(
+                (scaled_features[:, 0], anomaly_scores)
+            )
+            explained_variance_ratio = []
+            visualization_kind = "single_feature"
+            visualization_x_label = f"{features[0]} (standardized)"
+            visualization_y_label = "Anomaly score"
+        if not np.isfinite(visualization_coordinates).all():
+            raise InvalidDatasetError(
+                "Anomaly visualization returned non-finite coordinates"
+            )
+
         anomaly_mask = labels == -1
         anomaly_rows = int(np.sum(anomaly_mask))
         normal_rows = int(usable_rows - anomaly_rows)
+        paper_reproduction_payload: dict[str, Any] | None = None
+        if normalized_profile == "sharapatov_2025_figure_3a":
+            if anomaly_rows != 156:
+                raise InvalidDatasetError(
+                    "Sharapatov et al. (2025) Figure 3a audited reproduction "
+                    f"expects 156 Online anomalies, but this run produced {anomaly_rows}"
+                )
+            assert sharapatov_reference is not None
+            sharapatov_agreement = self._sharapatov_figure3a_label_agreement(
+                model_index=model_data.index,
+                fresh_anomaly_mask=anomaly_mask,
+                reference=sharapatov_reference,
+            )
+            paper_reproduction_payload = {
+                "profile": normalized_profile,
+                "artifact": "paper_reproduction_figure.svg",
+                "reference": (
+                    "Sharapatov et al. (2025), Applied Computing and "
+                    "Geosciences 26, 100250, Figure 3a"
+                ),
+                "doi": "10.1016/j.acags.2025.100250",
+                "figure_contract": "single_panel_pca_isolation_forest",
+                "published_figure_label_source": (
+                    "Figure3a_Data.if_anomaly_notebook_raw_features "
+                    "(audited author-notebook raw-feature labels)"
+                ),
+                "published_figure_coordinate_source": (
+                    "Figure3a_Data.PC1_full_svd_reference and "
+                    "PC2_full_svd_reference"
+                ),
+                "fresh_online_label_source": (
+                    "IsolationForest recalculated from 138 standardized "
+                    "uploaded features"
+                ),
+                "label_agreement": sharapatov_agreement,
+                "figure_uses_fresh_online_labels": False,
+                "figure_uses_archived_reference_labels": True,
+                "displayed_rows": usable_rows,
+                "normal_rows": normal_rows,
+                "anomaly_rows": anomaly_rows,
+                "contamination": normalized_contamination,
+                "random_state": 42,
+                "pca_solver": projection_solver,
+                "published_axis_variance_percent": [63.39, 36.61],
+                "uploaded_data_variance_percent": [
+                    float(value * 100) for value in explained_variance_ratio
+                ],
+                "variance_discrepancy": (
+                    "The paper prints 63.39% and 36.61% on the axes, whereas "
+                    "PCA of the audited uploaded 138-feature matrix yields the "
+                    "uploaded_data_variance_percent values. Printed axis text is "
+                    "retained only for visual fidelity."
+                ),
+                "model_input_distinction": (
+                    "The archived notebook labels were audited from 138 raw "
+                    "features; the fresh Online Isolation Forest was fit to the "
+                    "same 138 features after StandardScaler transformation."
+                ),
+                "audited_input": {
+                    "rows": 3_112,
+                    "features": 138,
+                    "expected_anomalies": 156,
+                },
+            }
+        elif normalized_profile == "zhu_2024_figure_8a":
+            if anomaly_rows != 25:
+                raise InvalidDatasetError(
+                    "Zhu et al. (2024) Figure 8a audited Online run expects 25 "
+                    f"fresh LOF anomalies at contamination 0.08, but produced {anomaly_rows}"
+                )
+            assert zhu_reference is not None
+            label_agreement = self._zhu_figure8a_label_agreement(
+                dataframe=dataframe,
+                model_index=model_data.index,
+                fresh_anomaly_mask=anomaly_mask,
+                series=zhu_reference[0],
+            )
+            paper_reproduction_payload = {
+                "profile": normalized_profile,
+                "artifact": "paper_reproduction_figure.svg",
+                "reference": (
+                    "Zhu et al. (2024), Water Resources Research 60, "
+                    "e2023WR034748, Figure 8a"
+                ),
+                "doi": "10.1029/2023WR034748",
+                "figure_contract": "five_ratio_series_with_reference_events",
+                "ratio_columns": list(self.zhu_figure8a_ratio_columns),
+                "ratio_units": "dimensionless",
+                "series_rows": 302,
+                "published_reference_outliers": 25,
+                "earthquake_catalog_rows": 60,
+                "retained_earthquake_markers": 56,
+                "contamination": normalized_contamination,
+                "published_label_source": (
+                    "Figure8a_Series.Published_LOF_Outlier_P0_08 "
+                    "(archived Data Set S3 reference)"
+                ),
+                "fresh_online_label_source": (
+                    "LocalOutlierFactor recalculated from the five selected "
+                    "standardized ratio columns"
+                ),
+                "label_agreement": label_agreement,
+                "P": 0.08,
+                "M_days": 30,
+                "M_role": (
+                    "earthquake-response evaluation window; not an LOF "
+                    "fitting parameter"
+                ),
+                "figure_uses_fresh_online_labels": False,
+                "figure_uses_archived_reference_labels": True,
+            }
         score_summary = AnomalyScoreSummary(
             minimum=float(np.min(anomaly_scores)),
             maximum=float(np.max(anomaly_scores)),
             mean=float(np.mean(anomaly_scores)),
         )
+        source_rows = [
+            int(index) + 2
+            if isinstance(index, (int, np.integer))
+            else str(index)
+            for index in feature_data.index
+        ]
+        observation_axis = self._anomaly_observation_axis(
+            dataframe=dataframe,
+            model_index=model_data.index,
+            feature_columns=features,
+            source_rows=source_rows,
+        )
         detection_frame = feature_data.copy()
         detection_frame.insert(
             0,
             "source_row",
-            [
-                int(index) + 2
-                if isinstance(index, (int, np.integer))
-                else str(index)
-                for index in detection_frame.index
-            ],
+            source_rows,
         )
+        detection_frame["visualization_x"] = visualization_coordinates[:, 0]
+        detection_frame["visualization_y"] = visualization_coordinates[:, 1]
+        detection_frame["visualization_observation"] = observation_axis[4]
         detection_frame["anomaly_label"] = np.where(
             anomaly_mask,
             "anomaly",
@@ -2345,6 +2675,42 @@ class DataMiningService:
         warnings.append(
             "异常分数已统一为数值越大越异常；不同算法之间的绝对分数不可直接比较。"
         )
+        if normalized_profile == "sharapatov_2025_figure_3a":
+            actual_pc1 = explained_variance_ratio[0] * 100
+            actual_pc2 = explained_variance_ratio[1] * 100
+            warnings.append(
+                "Sharapatov et al. (2025) Figure 3a prints PC1 = 63.39% and "
+                "PC2 = 36.61%, but PCA of the audited uploaded data yields "
+                f"PC1 = {actual_pc1:.4f}% and PC2 = {actual_pc2:.4f}%. The "
+                "paper-reproduction SVG retains the published axis text for "
+                "visual fidelity and records the computed variance separately."
+            )
+            assert paper_reproduction_payload is not None
+            agreement = paper_reproduction_payload["label_agreement"]
+            warnings.append(
+                "The Sharapatov paper-reproduction SVG uses archived full-SVD "
+                "coordinates and audited author-notebook labels from 138 raw "
+                "features. The generic Online diagnostic uses fresh PCA and "
+                "fresh Isolation Forest labels from 138 standardized features. "
+                f"The archived and fresh anomaly sets contain "
+                f"{agreement['archived_notebook_anomalies']} and "
+                f"{agreement['fresh_online_anomalies']} minerals, with "
+                f"{agreement['intersection']} shared (Jaccard = "
+                f"{agreement['jaccard']:.6f})."
+            )
+        elif normalized_profile == "zhu_2024_figure_8a":
+            assert paper_reproduction_payload is not None
+            agreement = paper_reproduction_payload["label_agreement"]
+            warnings.append(
+                "Zhu et al. (2024) Figure 8a uses 25 archived S3 reference "
+                "outlier dates in the paper-reproduction SVG, not the freshly "
+                "computed Online LOF labels. The fresh and archived sets contain "
+                f"{agreement['fresh_online_anomalies']} and "
+                f"{agreement['published_reference_anomalies']} dates, with "
+                f"{agreement['intersection']} shared (Jaccard = "
+                f"{agreement['jaccard']:.6f}); equal counts do not imply label "
+                "equivalence."
+            )
         summary = AnomalyDetectionSummary(
             original_rows=int(dataframe.shape[0]),
             usable_rows=usable_rows,
@@ -2358,18 +2724,108 @@ class DataMiningService:
         output_dir = self.jobs_dir / job_id / "output"
         output_dir.mkdir(parents=True)
         results_path = output_dir / "anomaly_detection_results.csv"
+        figure_path = output_dir / "anomaly_detection_figure.svg"
         report_path = output_dir / "anomaly_detection_report.json"
         detection_frame.to_csv(results_path, index=False, encoding="utf-8-sig")
+        display_indices = self._select_anomaly_visualization_indices(
+            anomaly_mask,
+            maximum_points=10_000,
+        )
+        self._write_anomaly_detection_svg(
+            figure_path,
+            model_display_name=model_definition.display_name,
+            source_filename=Path(filename or "dataset").name,
+            feature_columns=features,
+            visualization_kind=visualization_kind,
+            visualization_coordinates=visualization_coordinates,
+            visualization_x_label=visualization_x_label,
+            visualization_y_label=visualization_y_label,
+            anomaly_scores=anomaly_scores,
+            anomaly_mask=anomaly_mask,
+            decision_threshold=decision_threshold,
+            source_rows=source_rows,
+            display_indices=display_indices,
+            observation_axis=observation_axis,
+        )
+        paper_figure_path: Path | None = None
+        if normalized_profile == "sharapatov_2025_figure_3a":
+            assert sharapatov_reference is not None
+            paper_figure_path = output_dir / "paper_reproduction_figure.svg"
+            archived_coordinates = sharapatov_reference.loc[
+                :, ["PC1_full_svd_reference", "PC2_full_svd_reference"]
+            ].to_numpy(dtype=float)
+            archived_anomaly_mask = sharapatov_reference[
+                "if_anomaly_notebook_raw_features"
+            ].to_numpy(dtype=int).astype(bool)
+            self._write_sharapatov_figure3a_svg(
+                paper_figure_path,
+                coordinates=archived_coordinates,
+                anomaly_mask=archived_anomaly_mask,
+                source_row_ids=sharapatov_reference["source_row_id"].tolist(),
+            )
+        elif normalized_profile == "zhu_2024_figure_8a":
+            assert zhu_reference is not None
+            paper_figure_path = output_dir / "paper_reproduction_figure.svg"
+            self._write_zhu_figure8a_svg(
+                paper_figure_path,
+                series=zhu_reference[0],
+                earthquakes=zhu_reference[1],
+            )
+        visualization_payload = {
+            "kind": "two_panel_anomaly_diagnostics",
+            "artifact": figure_path.name,
+            "format": "svg",
+            "displayed_rows": int(display_indices.size),
+            "sampled_out_rows": int(usable_rows - display_indices.size),
+            "total_rows": usable_rows,
+            "sampling": (
+                "all_rows"
+                if display_indices.size == usable_rows
+                else "deterministic_evenly_spaced_within_label"
+            ),
+            "scientific_scope": (
+                "The projection is visualization only; anomaly labels and scores "
+                "were computed from all selected standardized features."
+            ),
+            "panel_a": {
+                "kind": visualization_kind,
+                "x_column": "visualization_x",
+                "y_column": "visualization_y",
+                "x_axis": visualization_x_label,
+                "y_axis": visualization_y_label,
+                "explained_variance_ratio": explained_variance_ratio,
+                "pca_solver": projection_solver,
+                "projection_random_state": (
+                    42 if projection_solver == "randomized" else None
+                ),
+            },
+            "panel_b": {
+                "kind": "anomaly_score_profile",
+                "x_axis": observation_axis[0],
+                "x_axis_kind": observation_axis[3],
+                "x_column": "visualization_observation",
+                "y_axis": "Anomaly score (higher = more anomalous)",
+                "decision_threshold": decision_threshold,
+            },
+            "markers": {
+                "normal": "filled_circle",
+                "anomaly": "diamond_with_outline",
+            },
+        }
         report_payload = {
-            "report_version": "v080-anomaly-detection-v1",
+            "report_version": "v080-anomaly-detection-v2",
             "created_utc": datetime.now(timezone.utc).isoformat(),
             "source_filename": Path(filename or "dataset").name,
             "model": model_name,
             "model_display_name": model_definition.display_name,
             "feature_columns": features,
+            "contamination": normalized_contamination,
+            "reproduction_profile": normalized_profile,
             "random_state": 42 if model_name == "isolation_forest" else None,
             "summary": summary.model_dump(),
             "score_summary": score_summary.model_dump(),
+            "visualization": visualization_payload,
+            "paper_reproduction": paper_reproduction_payload,
             "anomaly_preview": preview,
             "warnings": warnings,
         }
@@ -2386,6 +2842,8 @@ class DataMiningService:
             model=model_name,
             model_display_name=model_definition.display_name,
             feature_columns=features,
+            contamination=normalized_contamination,
+            reproduction_profile=normalized_profile,
             random_state=42 if model_name == "isolation_forest" else None,
             summary=summary,
             score_summary=score_summary,
@@ -2399,6 +2857,27 @@ class DataMiningService:
                         f"{results_path.name}"
                     ),
                     size_bytes=results_path.stat().st_size,
+                ),
+                ArtifactResponse(
+                    name=figure_path.name,
+                    download_url=(
+                        f"/api/data-mining/jobs/{job_id}/files/{figure_path.name}"
+                    ),
+                    size_bytes=figure_path.stat().st_size,
+                ),
+                *(
+                    [
+                        ArtifactResponse(
+                            name=paper_figure_path.name,
+                            download_url=(
+                                f"/api/data-mining/jobs/{job_id}/files/"
+                                f"{paper_figure_path.name}"
+                            ),
+                            size_bytes=paper_figure_path.stat().st_size,
+                        )
+                    ]
+                    if paper_figure_path is not None
+                    else []
                 ),
                 ArtifactResponse(
                     name=report_path.name,
@@ -3115,6 +3594,1067 @@ class DataMiningService:
         )
 
     @staticmethod
+    def _validate_anomaly_contamination(value: str | float) -> str | float:
+        if isinstance(value, bool):
+            raise InvalidDatasetError(
+                "Anomaly contamination must be 'auto' or a number from "
+                "0.001 through 0.5"
+            )
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized == "auto":
+                return "auto"
+            try:
+                numeric_value = float(normalized)
+            except ValueError as exc:
+                raise InvalidDatasetError(
+                    "Anomaly contamination must be 'auto' or a number from "
+                    "0.001 through 0.5"
+                ) from exc
+        else:
+            try:
+                numeric_value = float(value)
+            except (TypeError, ValueError) as exc:
+                raise InvalidDatasetError(
+                    "Anomaly contamination must be 'auto' or a number from "
+                    "0.001 through 0.5"
+                ) from exc
+        if (
+            not math.isfinite(numeric_value)
+            or numeric_value < 0.001
+            or numeric_value > 0.5
+        ):
+            raise InvalidDatasetError(
+                "Anomaly contamination must be from 0.001 through 0.5"
+            )
+        return numeric_value
+
+    @classmethod
+    def _read_sharapatov_figure3a_reference(
+        cls,
+        content: bytes,
+    ) -> pd.DataFrame:
+        try:
+            reference = pd.read_excel(
+                BytesIO(content),
+                sheet_name="Figure3a_Data",
+            )
+        except Exception as exc:
+            raise InvalidDatasetError(
+                "Sharapatov et al. (2025) Figure 3a requires a readable "
+                "Figure3a_Data worksheet"
+            ) from exc
+        reference.columns = [str(column) for column in reference.columns]
+        if tuple(reference.columns) != cls.sharapatov_figure3a_columns:
+            raise InvalidDatasetError(
+                "Figure3a_Data must contain the exact audited 15-column schema"
+            )
+        if reference.shape[0] != 3_112:
+            raise InvalidDatasetError(
+                "Figure3a_Data must contain exactly 3,112 mineral records"
+            )
+        normalized = reference.copy()
+        source_ids = pd.to_numeric(
+            normalized["source_row_id"], errors="coerce"
+        ).to_numpy(dtype=float)
+        if (
+            not np.isfinite(source_ids).all()
+            or not np.array_equal(source_ids, np.arange(3_112, dtype=float))
+        ):
+            raise InvalidDatasetError(
+                "Figure3a_Data.source_row_id must be the complete zero-based "
+                "sequence 0 through 3,111"
+            )
+        if normalized["Name"].isna().any() or normalized["Name"].duplicated().any():
+            raise InvalidDatasetError(
+                "Figure3a_Data.Name must contain 3,112 unique mineral names"
+            )
+        coordinate_columns = [
+            "PC1_full_svd_reference",
+            "PC2_full_svd_reference",
+        ]
+        coordinates = normalized.loc[:, coordinate_columns].apply(
+            pd.to_numeric, errors="coerce"
+        )
+        if not np.isfinite(coordinates.to_numpy(dtype=float)).all():
+            raise InvalidDatasetError(
+                "Figure3a_Data archived full-SVD coordinates must be finite"
+            )
+        archived_flags = pd.to_numeric(
+            normalized["if_anomaly_notebook_raw_features"],
+            errors="coerce",
+        )
+        if (
+            archived_flags.isna().any()
+            or not archived_flags.isin([0, 1]).all()
+            or int(archived_flags.sum()) != 156
+        ):
+            raise InvalidDatasetError(
+                "Figure3a_Data must contain exactly 156 audited notebook "
+                "anomaly flags encoded as 0 or 1"
+            )
+        normalized["source_row_id"] = source_ids.astype(int)
+        normalized.loc[:, coordinate_columns] = coordinates
+        normalized["if_anomaly_notebook_raw_features"] = archived_flags.astype(int)
+        return normalized
+
+    @staticmethod
+    def _validate_sharapatov_figure3a_input_alignment(
+        *,
+        dataframe: pd.DataFrame,
+        model_index: pd.Index,
+        reference: pd.DataFrame,
+    ) -> None:
+        if "Name" not in dataframe.columns:
+            raise InvalidDatasetError(
+                "Sharapatov et al. (2025) Figure 3a requires the Name column"
+            )
+        try:
+            online_indices = np.asarray(model_index, dtype=int)
+        except (TypeError, ValueError) as exc:
+            raise InvalidDatasetError(
+                "Sharapatov Figure3a_Data cannot be aligned to Online_Input rows"
+            ) from exc
+        reference_ids = reference["source_row_id"].to_numpy(dtype=int)
+        if not np.array_equal(online_indices, reference_ids):
+            raise InvalidDatasetError(
+                "Figure3a_Data source_row_id values do not align with the "
+                "Online_Input row order"
+            )
+        online_names = dataframe.loc[model_index, "Name"].astype(str).to_numpy()
+        archived_names = reference["Name"].astype(str).to_numpy()
+        if not np.array_equal(online_names, archived_names):
+            raise InvalidDatasetError(
+                "Figure3a_Data mineral names do not align with Online_Input"
+            )
+
+    @staticmethod
+    def _sharapatov_figure3a_label_agreement(
+        *,
+        model_index: pd.Index,
+        fresh_anomaly_mask: np.ndarray,
+        reference: pd.DataFrame,
+    ) -> dict[str, Any]:
+        online_indices = np.asarray(model_index, dtype=int)
+        archived = reference.set_index("source_row_id").loc[
+            online_indices, "if_anomaly_notebook_raw_features"
+        ].to_numpy(dtype=int).astype(bool)
+        fresh = np.asarray(fresh_anomaly_mask, dtype=bool)
+        intersection = int(np.sum(fresh & archived))
+        union = int(np.sum(fresh | archived))
+        symmetric_difference = int(np.sum(fresh ^ archived))
+        return {
+            "alignment_key": "source_row_id_and_Name",
+            "fresh_online_anomalies": int(np.sum(fresh)),
+            "archived_notebook_anomalies": int(np.sum(archived)),
+            "intersection": intersection,
+            "symmetric_difference": symmetric_difference,
+            "union": union,
+            "jaccard": float(intersection / union) if union else 1.0,
+            "rowwise_agreement": float(np.mean(fresh == archived)),
+            "equivalent": bool(np.array_equal(fresh, archived)),
+        }
+
+    @classmethod
+    def _read_zhu_figure8a_reference(
+        cls,
+        content: bytes,
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        try:
+            sheets = pd.read_excel(
+                BytesIO(content),
+                sheet_name=["Figure8a_Series", "Earthquakes"],
+            )
+        except Exception as exc:
+            raise InvalidDatasetError(
+                "Zhu et al. (2024) Figure 8a requires readable "
+                "Figure8a_Series and Earthquakes worksheets"
+            ) from exc
+        series = sheets["Figure8a_Series"].copy()
+        earthquakes = sheets["Earthquakes"].copy()
+        series.columns = [str(column) for column in series.columns]
+        earthquakes.columns = [str(column) for column in earthquakes.columns]
+        if tuple(series.columns) != cls.zhu_figure8a_series_columns:
+            raise InvalidDatasetError(
+                "Figure8a_Series must contain the exact audited seven-column schema"
+            )
+        if tuple(earthquakes.columns) != cls.zhu_figure8a_earthquake_columns:
+            raise InvalidDatasetError(
+                "Earthquakes must contain the exact audited ten-column schema"
+            )
+        if series.shape[0] != 302:
+            raise InvalidDatasetError(
+                "Figure8a_Series must contain exactly 302 GA observations"
+            )
+        parsed_dates = pd.to_datetime(series["Date"], errors="coerce", utc=True)
+        if parsed_dates.isna().any() or parsed_dates.duplicated().any():
+            raise InvalidDatasetError(
+                "Figure8a_Series.Date must contain 302 unique valid dates"
+            )
+        ratios = series.loc[:, cls.zhu_figure8a_ratio_columns].apply(
+            pd.to_numeric, errors="coerce"
+        )
+        if not np.isfinite(ratios.to_numpy(dtype=float)).all():
+            raise InvalidDatasetError(
+                "Figure8a_Series ratio values must all be finite numbers"
+            )
+        published_flags = pd.to_numeric(
+            series["Published_LOF_Outlier_P0_08"], errors="coerce"
+        )
+        if (
+            published_flags.isna().any()
+            or not published_flags.isin([0, 1]).all()
+            or int(published_flags.sum()) != 25
+        ):
+            raise InvalidDatasetError(
+                "Figure8a_Series must contain exactly 25 archived P = 0.08 "
+                "outlier flags encoded as 0 or 1"
+            )
+        if earthquakes.shape[0] != 60:
+            raise InvalidDatasetError(
+                "Earthquakes must contain exactly 60 catalog events"
+            )
+        parsed_events = pd.to_datetime(
+            earthquakes["Event_DateTime"], errors="coerce", utc=True
+        )
+        if parsed_events.isna().any():
+            raise InvalidDatasetError(
+                "Earthquakes.Event_DateTime must contain 60 valid timestamps"
+            )
+        normalized_use = earthquakes["Use_in_Figure8a"].map(
+            lambda value: str(value).strip().lower()
+        )
+        allowed_flags = {"true", "false", "1", "0"}
+        if not normalized_use.isin(allowed_flags).all():
+            raise InvalidDatasetError(
+                "Earthquakes.Use_in_Figure8a must contain only true/false flags"
+            )
+        retained = normalized_use.isin({"true", "1"})
+        if int(retained.sum()) != 56:
+            raise InvalidDatasetError(
+                "Earthquakes must retain exactly 56 Figure 8a marker events"
+            )
+        series.loc[:, cls.zhu_figure8a_ratio_columns] = ratios
+        series["Published_LOF_Outlier_P0_08"] = published_flags.astype(int)
+        series["_parsed_date"] = parsed_dates
+        earthquakes["_parsed_event_datetime"] = parsed_events
+        earthquakes["_use_in_figure8a"] = retained.to_numpy(dtype=bool)
+        return series, earthquakes
+
+    @classmethod
+    def _validate_zhu_figure8a_input_alignment(
+        cls,
+        *,
+        dataframe: pd.DataFrame,
+        model_index: pd.Index,
+        series: pd.DataFrame,
+    ) -> None:
+        online = dataframe.loc[
+            model_index, ["Date", *cls.zhu_figure8a_ratio_columns]
+        ].copy()
+        online["_parsed_date"] = pd.to_datetime(
+            online["Date"], errors="coerce", utc=True
+        )
+        if online["_parsed_date"].isna().any() or online[
+            "_parsed_date"
+        ].duplicated().any():
+            raise InvalidDatasetError(
+                "Online_Input.Date must contain 302 unique valid dates"
+            )
+        for column in cls.zhu_figure8a_ratio_columns:
+            online[column] = pd.to_numeric(online[column], errors="coerce")
+        aligned = online.merge(
+            series.loc[:, ["_parsed_date", *cls.zhu_figure8a_ratio_columns]],
+            on="_parsed_date",
+            how="outer",
+            suffixes=("_online", "_reference"),
+            validate="one_to_one",
+            indicator=True,
+        )
+        if not aligned["_merge"].eq("both").all() or aligned.shape[0] != 302:
+            raise InvalidDatasetError(
+                "Figure8a_Series dates do not align exactly with Online_Input"
+            )
+        for column in cls.zhu_figure8a_ratio_columns:
+            if not np.allclose(
+                aligned[f"{column}_online"].to_numpy(dtype=float),
+                aligned[f"{column}_reference"].to_numpy(dtype=float),
+                rtol=1e-10,
+                atol=1e-12,
+            ):
+                raise InvalidDatasetError(
+                    "Figure8a_Series ratio values do not align exactly with "
+                    f"Online_Input for {column}"
+                )
+
+    @staticmethod
+    def _zhu_figure8a_label_agreement(
+        *,
+        dataframe: pd.DataFrame,
+        model_index: pd.Index,
+        fresh_anomaly_mask: np.ndarray,
+        series: pd.DataFrame,
+    ) -> dict[str, Any]:
+        fresh = pd.DataFrame(
+            {
+                "_parsed_date": pd.to_datetime(
+                    dataframe.loc[model_index, "Date"],
+                    errors="coerce",
+                    utc=True,
+                ),
+                "fresh": np.asarray(fresh_anomaly_mask, dtype=bool),
+            }
+        )
+        archived = series.loc[
+            :, ["_parsed_date", "Published_LOF_Outlier_P0_08"]
+        ].rename(columns={"Published_LOF_Outlier_P0_08": "archived"})
+        aligned = fresh.merge(
+            archived,
+            on="_parsed_date",
+            how="inner",
+            validate="one_to_one",
+        ).sort_values("_parsed_date", kind="stable")
+        if aligned.shape[0] != 302:
+            raise InvalidDatasetError(
+                "Fresh Online and archived Zhu labels could not be aligned by Date"
+            )
+        fresh_mask = aligned["fresh"].to_numpy(dtype=bool)
+        archived_mask = aligned["archived"].to_numpy(dtype=int).astype(bool)
+        intersection = int(np.sum(fresh_mask & archived_mask))
+        union = int(np.sum(fresh_mask | archived_mask))
+        return {
+            "alignment_key": "Date",
+            "aligned_rows": 302,
+            "fresh_online_anomalies": int(np.sum(fresh_mask)),
+            "published_reference_anomalies": int(np.sum(archived_mask)),
+            "intersection": intersection,
+            "symmetric_difference": int(np.sum(fresh_mask ^ archived_mask)),
+            "union": union,
+            "jaccard": float(intersection / union) if union else 1.0,
+            "rowwise_agreement": float(np.mean(fresh_mask == archived_mask)),
+            "equivalent": bool(np.array_equal(fresh_mask, archived_mask)),
+        }
+
+    @staticmethod
+    def _write_sharapatov_figure3a_svg(
+        path: Path,
+        *,
+        coordinates: np.ndarray,
+        anomaly_mask: np.ndarray,
+        source_row_ids: list[int | str],
+    ) -> None:
+        """Render the audited evidence layer corresponding to paper Figure 3a."""
+
+        coordinates = np.asarray(coordinates, dtype=float)
+        anomaly_mask = np.asarray(anomaly_mask, dtype=bool)
+        if (
+            coordinates.ndim != 2
+            or coordinates.shape[1] != 2
+            or coordinates.shape[0] != anomaly_mask.size
+            or coordinates.shape[0] != len(source_row_ids)
+            or not np.isfinite(coordinates).all()
+        ):
+            raise InvalidDatasetError(
+                "Sharapatov Figure 3a archived coordinates and labels are invalid"
+            )
+
+        width = 960
+        height = 700
+        left = 104
+        right = 48
+        top = 126
+        bottom = 92
+        plot_width = width - left - right
+        plot_height = height - top - bottom
+
+        def padded_bounds(values: np.ndarray) -> tuple[float, float]:
+            minimum = float(np.min(values))
+            maximum = float(np.max(values))
+            span = maximum - minimum
+            if span == 0:
+                span = max(abs(maximum), 1.0)
+            padding = span * 0.055
+            return minimum - padding, maximum + padding
+
+        x_minimum, x_maximum = padded_bounds(coordinates[:, 0])
+        y_minimum, y_maximum = padded_bounds(coordinates[:, 1])
+
+        def x_position(value: float) -> float:
+            return left + (value - x_minimum) / (x_maximum - x_minimum) * plot_width
+
+        def y_position(value: float) -> float:
+            return top + (y_maximum - value) / (y_maximum - y_minimum) * plot_height
+
+        def tick_text(value: float) -> str:
+            if abs(value) >= 100:
+                return f"{value:.0f}"
+            if abs(value) >= 10:
+                return f"{value:.1f}"
+            return f"{value:.2f}"
+
+        grid: list[str] = []
+        for tick_index in range(6):
+            x_value = x_minimum + (x_maximum - x_minimum) * tick_index / 5
+            x = x_position(x_value)
+            grid.append(
+                f'<line x1="{x:.2f}" y1="{top}" x2="{x:.2f}" '
+                f'y2="{top + plot_height}" class="grid"/>'
+            )
+            grid.append(
+                f'<text x="{x:.2f}" y="{top + plot_height + 25}" '
+                f'text-anchor="middle" class="tick">{escape(tick_text(x_value))}</text>'
+            )
+            y_value = y_minimum + (y_maximum - y_minimum) * tick_index / 5
+            y = y_position(y_value)
+            grid.append(
+                f'<line x1="{left}" y1="{y:.2f}" x2="{left + plot_width}" '
+                f'y2="{y:.2f}" class="grid"/>'
+            )
+            grid.append(
+                f'<text x="{left - 13}" y="{y + 4:.2f}" text-anchor="end" '
+                f'class="tick">{escape(tick_text(y_value))}</text>'
+            )
+
+        markers: list[str] = []
+        for is_anomaly in (False, True):
+            for row_index in np.flatnonzero(anomaly_mask == is_anomaly):
+                x = x_position(float(coordinates[row_index, 0]))
+                y = y_position(float(coordinates[row_index, 1]))
+                source_id = escape(str(source_row_ids[int(row_index)]), quote=True)
+                label = "anomaly" if is_anomaly else "normal"
+                tooltip = escape(
+                    f"source_row_id {source_id}; archived notebook label {label}; "
+                    f"PC1 {coordinates[row_index, 0]:.6g}; "
+                    f"PC2 {coordinates[row_index, 1]:.6g}"
+                )
+                css_class = (
+                    "paper-anomaly-point" if is_anomaly else "paper-normal-point"
+                )
+                radius = 4.2 if is_anomaly else 2.5
+                markers.append(
+                    f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{radius:.1f}" '
+                    f'class="{css_class}" data-source-row-id="{source_id}">'
+                    f'<title>{tooltip}</title></circle>'
+                )
+
+        normal_count = int(np.sum(~anomaly_mask))
+        anomaly_count = int(np.sum(anomaly_mask))
+        svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img" aria-labelledby="sharapatov-title sharapatov-description">
+<title id="sharapatov-title">Isolation Forest Anomaly Detection</title>
+<desc id="sharapatov-description">Audited reconstruction of Sharapatov et al. (2025) Figure 3a using all {coordinates.shape[0]:,} archived full-SVD PCA coordinates and the archived raw-feature Isolation Forest notebook labels. This reference evidence layer is distinct from the freshly computed Online diagnostic.</desc>
+<style>
+text{{font-family:Arial,Helvetica,sans-serif;fill:#111827}}
+.title{{font-size:24px;font-weight:700}} .subtitle{{font-size:12px;fill:#53636d}}
+.panel-label{{font-size:20px;font-weight:700}} .axis{{stroke:#202b33;stroke-width:1.5}}
+.grid{{stroke:#dfe5e8;stroke-width:1}} .tick{{font-size:11px;fill:#4d5c65}}
+.axis-label{{font-size:15px;font-weight:600}} .legend{{font-size:12px;fill:#263640}}
+.paper-normal-point,.paper-normal-legend{{fill:#2474b5;fill-opacity:.72;stroke:#ffffff;stroke-width:.45}}
+.paper-anomaly-point,.paper-anomaly-legend{{fill:#d8342a;fill-opacity:.90;stroke:#551610;stroke-width:.75}}
+.frame{{fill:#ffffff;stroke:#b8c4ca;stroke-width:1}}
+</style>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="{left}" y="38" class="title">Isolation Forest Anomaly Detection</text>
+<text x="{left}" y="61" class="subtitle">Sharapatov et al. (2025), Figure 3a — archived full-SVD coordinates and raw-feature notebook labels</text>
+<g class="legend" transform="translate({left} 86)">
+  <circle cx="0" cy="0" r="4" class="paper-normal-legend"/><text x="10" y="4">Normal Minerals ({normal_count:,})</text>
+  <circle cx="190" cy="0" r="5" class="paper-anomaly-legend"/><text x="202" y="4">Anomalies (Isolation Forest; {anomaly_count:,})</text>
+</g>
+<text x="{left - 54}" y="{top - 15}" class="panel-label">(a)</text>
+<rect x="{left}" y="{top}" width="{plot_width}" height="{plot_height}" class="frame"/>
+{''.join(grid)}
+<line x1="{left}" y1="{top}" x2="{left}" y2="{top + plot_height}" class="axis"/>
+<line x1="{left}" y1="{top + plot_height}" x2="{left + plot_width}" y2="{top + plot_height}" class="axis"/>
+{''.join(markers)}
+<text x="{left + plot_width / 2:.2f}" y="{height - 31}" text-anchor="middle" class="axis-label">Principal Component 1 (63.39% variance)</text>
+<text x="28" y="{top + plot_height / 2:.2f}" text-anchor="middle" class="axis-label" transform="rotate(-90 28 {top + plot_height / 2:.2f})">Principal Component 2 (36.61% variance)</text>
+</svg>'''
+        path.write_text(svg, encoding="utf-8")
+
+    @classmethod
+    def _write_zhu_figure8a_svg(
+        cls,
+        path: Path,
+        *,
+        series: pd.DataFrame,
+        earthquakes: pd.DataFrame,
+    ) -> None:
+        """Render the archived time-series evidence layer corresponding to Figure 8a."""
+
+        ordered_series = series.sort_values("_parsed_date", kind="stable").copy()
+        retained_events = earthquakes.loc[
+            earthquakes["_use_in_figure8a"]
+        ].sort_values("_parsed_event_datetime", kind="stable")
+        if (
+            ordered_series.shape[0] != 302
+            or int(ordered_series["Published_LOF_Outlier_P0_08"].sum()) != 25
+            or retained_events.shape[0] != 56
+        ):
+            raise InvalidDatasetError(
+                "Zhu Figure 8a archived series or event counts are invalid"
+            )
+
+        width = 1180
+        height = 650
+        left = 90
+        right = 42
+        top = 118
+        bottom = 82
+        plot_width = width - left - right
+        plot_height = height - top - bottom
+        x_minimum = pd.Timestamp("2020-01-01", tz="UTC").timestamp()
+        x_maximum = pd.Timestamp("2022-08-15", tz="UTC").timestamp()
+        y_minimum = -1.0
+        y_maximum = 11.1
+
+        def x_position(value: pd.Timestamp) -> float:
+            epoch = value.timestamp()
+            return left + (epoch - x_minimum) / (x_maximum - x_minimum) * plot_width
+
+        def y_position(value: float) -> float:
+            return top + (y_maximum - value) / (y_maximum - y_minimum) * plot_height
+
+        dates = ordered_series["_parsed_date"]
+        if (
+            dates.min().timestamp() < x_minimum
+            or dates.max().timestamp() > x_maximum
+            or retained_events["_parsed_event_datetime"].min().timestamp()
+            < x_minimum
+            or retained_events["_parsed_event_datetime"].max().timestamp()
+            > x_maximum
+        ):
+            raise InvalidDatasetError(
+                "Zhu Figure 8a archived dates fall outside the audited plot domain"
+            )
+
+        ratio_styles = (
+            ("Na_Cl_ratio", "Na⁺/Cl⁻", "#C51B1D"),
+            ("Na_F_ratio", "Na⁺/F⁻", "#32CD32"),
+            ("Na_SO4_ratio", "Na⁺/SO₄²⁻", "#6A1A14"),
+            ("F_Cl_ratio", "F⁻/Cl⁻", "#192A92"),
+            ("SO4_Cl_ratio", "SO₄²⁻/Cl⁻", "#25D8D5"),
+        )
+        ratio_lines: list[str] = []
+        for column, label, colour in ratio_styles:
+            points = " ".join(
+                f"{x_position(moment):.2f},{y_position(float(value)):.2f}"
+                for moment, value in zip(
+                    ordered_series["_parsed_date"],
+                    ordered_series[column],
+                    strict=True,
+                )
+            )
+            ratio_lines.append(
+                f'<polyline points="{points}" class="ratio-line" '
+                f'stroke="{colour}" data-series="{escape(column, quote=True)}">'
+                f'<title>{escape(label)} raw ratio series (302 observations)</title>'
+                f'</polyline>'
+            )
+
+        archived_outliers = ordered_series.loc[
+            ordered_series["Published_LOF_Outlier_P0_08"].astype(bool)
+        ]
+        outlier_markers = "".join(
+            f'<circle cx="{x_position(moment):.2f}" '
+            f'cy="{y_position(10.38):.2f}" r="4.8" '
+            f'class="published-outlier-marker"><title>Archived Data Set S3 '
+            f'LOF outlier: {escape(moment.strftime("%Y-%m-%d"))}</title>'
+            f'</circle>'
+            for moment in archived_outliers["_parsed_date"]
+        )
+        earthquake_markers: list[str] = []
+        event_y = y_position(10.86)
+        for moment, raw_event_id in zip(
+            retained_events["_parsed_event_datetime"],
+            retained_events["Event_ID"],
+            strict=True,
+        ):
+            x = x_position(moment)
+            event_id = escape(str(raw_event_id))
+            event_date = escape(moment.strftime("%Y-%m-%d"))
+            earthquake_markers.append(
+                f'<path d="M {x - 5:.2f} {event_y - 4:.2f} '
+                f'L {x + 5:.2f} {event_y - 4:.2f} L {x:.2f} {event_y + 5:.2f} Z" '
+                f'class="earthquake-marker"><title>Retained earthquake '
+                f'{event_id}: {event_date}</title></path>'
+            )
+
+        grid: list[str] = []
+        for y_value in range(0, 11, 2):
+            y = y_position(float(y_value))
+            grid.append(
+                f'<line x1="{left}" y1="{y:.2f}" x2="{left + plot_width}" '
+                f'y2="{y:.2f}" class="grid"/>'
+                f'<text x="{left - 12}" y="{y + 4:.2f}" text-anchor="end" '
+                f'class="tick">{y_value}</text>'
+            )
+        x_ticks = pd.to_datetime(
+            [
+                "2020-01-01",
+                "2020-07-01",
+                "2021-01-01",
+                "2021-07-01",
+                "2022-01-01",
+                "2022-07-01",
+            ],
+            utc=True,
+        )
+        for moment in x_ticks:
+            x = x_position(moment)
+            grid.append(
+                f'<line x1="{x:.2f}" y1="{top}" x2="{x:.2f}" '
+                f'y2="{top + plot_height}" class="grid"/>'
+                f'<text x="{x:.2f}" y="{top + plot_height + 25}" '
+                f'text-anchor="middle" class="tick">'
+                f'{moment.year}/{moment.month}/{moment.day}</text>'
+            )
+
+        legend_items: list[str] = []
+        legend_x = left
+        for _, label, colour in ratio_styles:
+            legend_items.append(
+                f'<line x1="{legend_x}" y1="82" x2="{legend_x + 23}" y2="82" '
+                f'stroke="{colour}" stroke-width="2"/>'
+                f'<text x="{legend_x + 29}" y="86" class="legend">'
+                f'{escape(label)}</text>'
+            )
+            legend_x += 115
+        legend_items.append(
+            f'<circle cx="{legend_x + 4}" cy="82" r="4.8" '
+            f'class="published-outlier-legend"/><text x="{legend_x + 14}" '
+            f'y="86" class="legend">Outliers (25)</text>'
+        )
+        legend_x += 128
+        legend_items.append(
+            f'<path d="M {legend_x} 77 L {legend_x + 10} 77 '
+            f'L {legend_x + 5} 87 Z" class="earthquake-legend"/>'
+            f'<text x="{legend_x + 16}" y="86" class="legend">Earthquake (56)</text>'
+        )
+
+        svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img" aria-labelledby="zhu-title zhu-description">
+<title id="zhu-title">Zhu et al. (2024), Figure 8a reference reconstruction</title>
+<desc id="zhu-description">Five unsmoothed raw ion-ratio series from 302 observations, 25 archived open-circle LOF outlier dates from Data Set S3, and 56 retained earthquake markers. The archived outlier markers are a published reference evidence layer and are not the freshly computed Online LOF labels.</desc>
+<style>
+text{{font-family:Arial,Helvetica,sans-serif;fill:#151d22}}
+.title{{font-size:21px;font-weight:700}} .subtitle{{font-size:12px;fill:#596a73}}
+.panel-label{{font-size:20px;font-weight:700}} .axis{{stroke:#222c32;stroke-width:1.4}}
+.grid{{stroke:#e1e6e8;stroke-width:1}} .tick{{font-size:11px;fill:#4c5c64}}
+.axis-label{{font-size:14px;font-weight:600}} .legend{{font-size:11px}}
+.ratio-line{{fill:none;stroke-width:1.55;stroke-linejoin:round;stroke-linecap:round}}
+.published-outlier-marker,.published-outlier-legend{{fill:#ffffff;stroke:#00aeb3;stroke-width:2}}
+.earthquake-marker,.earthquake-legend{{fill:#e31a1c;stroke:#7d080a;stroke-width:.55}}
+.frame{{fill:#ffffff;stroke:#b8c3c8;stroke-width:1}}
+</style>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="{left}" y="34" class="title">Zhu et al. (2024), Figure 8a reference reconstruction</text>
+<text x="{left}" y="55" class="subtitle">Archived published outlier dates and earthquake catalogue are shown separately from the freshly computed Online LOF diagnostic.</text>
+{''.join(legend_items)}
+<text x="{left - 52}" y="{top - 13}" class="panel-label">(a)</text>
+<rect x="{left}" y="{top}" width="{plot_width}" height="{plot_height}" class="frame"/>
+{''.join(grid)}
+<line x1="{left}" y1="{top}" x2="{left}" y2="{top + plot_height}" class="axis"/>
+<line x1="{left}" y1="{top + plot_height}" x2="{left + plot_width}" y2="{top + plot_height}" class="axis"/>
+{''.join(ratio_lines)}
+{outlier_markers}
+{''.join(earthquake_markers)}
+<text x="{left + plot_width / 2:.2f}" y="{height - 28}" text-anchor="middle" class="axis-label">Date</text>
+<text x="27" y="{top + plot_height / 2:.2f}" text-anchor="middle" class="axis-label" transform="rotate(-90 27 {top + plot_height / 2:.2f})">Ion ratio (dimensionless)</text>
+</svg>'''
+        path.write_text(svg, encoding="utf-8")
+
+    @staticmethod
+    def _select_anomaly_visualization_indices(
+        anomaly_mask: np.ndarray,
+        *,
+        maximum_points: int,
+    ) -> np.ndarray:
+        """Return a deterministic, anomaly-preserving subset for SVG rendering."""
+
+        total_rows = int(anomaly_mask.size)
+        all_indices = np.arange(total_rows, dtype=int)
+        if total_rows <= maximum_points:
+            return all_indices
+
+        anomaly_indices = all_indices[np.asarray(anomaly_mask, dtype=bool)]
+        normal_indices = all_indices[~np.asarray(anomaly_mask, dtype=bool)]
+
+        def evenly_spaced(indices: np.ndarray, count: int) -> np.ndarray:
+            if count <= 0 or indices.size == 0:
+                return np.asarray([], dtype=int)
+            if indices.size <= count:
+                return indices
+            positions = np.linspace(0, indices.size - 1, num=count, dtype=int)
+            return indices[positions]
+
+        half_quota = maximum_points // 2
+        anomaly_quota = min(anomaly_indices.size, half_quota)
+        normal_quota = min(normal_indices.size, half_quota)
+        remaining = maximum_points - anomaly_quota - normal_quota
+        anomaly_extra = min(anomaly_indices.size - anomaly_quota, remaining)
+        anomaly_quota += anomaly_extra
+        remaining -= anomaly_extra
+        normal_quota += min(normal_indices.size - normal_quota, remaining)
+        selected_anomalies = evenly_spaced(anomaly_indices, anomaly_quota)
+        selected_normals = evenly_spaced(normal_indices, normal_quota)
+        return np.sort(np.concatenate((selected_anomalies, selected_normals)))
+
+    @staticmethod
+    def _anomaly_observation_axis(
+        *,
+        dataframe: pd.DataFrame,
+        model_index: pd.Index,
+        feature_columns: list[str],
+        source_rows: list[int | str],
+    ) -> tuple[str, np.ndarray, bool, str, list[Any]]:
+        """Use an explicit date/time column when it is complete, else source rows."""
+
+        candidates = []
+        for column in dataframe.columns:
+            if column in feature_columns:
+                continue
+            series = dataframe[column]
+            normalized_name = str(column).strip().lower()
+            is_named_time = bool(
+                re.search(
+                    r"(?:^|[^a-z0-9])(?:date|time|year|age)(?:$|[^a-z0-9])",
+                    normalized_name,
+                )
+            ) or any(
+                token in normalized_name for token in ("日期", "时间", "年代")
+            )
+            is_datetime = pd.api.types.is_datetime64_any_dtype(series)
+            if is_named_time or is_datetime:
+                candidates.append((not is_datetime, not is_named_time, str(column)))
+        candidates.sort()
+
+        for _, _, column in candidates:
+            values = dataframe.loc[model_index, column]
+            if pd.api.types.is_bool_dtype(values):
+                continue
+            if pd.api.types.is_numeric_dtype(values):
+                numeric_values = pd.to_numeric(values, errors="coerce").to_numpy(
+                    dtype=float
+                )
+                if (
+                    np.isfinite(numeric_values).all()
+                    and np.unique(numeric_values).size >= 2
+                ):
+                    return (
+                        column,
+                        numeric_values,
+                        False,
+                        "numeric_time",
+                        numeric_values.tolist(),
+                    )
+                continue
+            parsed = pd.to_datetime(values, errors="coerce", utc=True)
+            if parsed.notna().all() and parsed.nunique() >= 2:
+                seconds = parsed.map(
+                    lambda value: value.timestamp()
+                ).to_numpy(dtype=float)
+                exported = parsed.dt.strftime("%Y-%m-%dT%H:%M:%SZ").tolist()
+                return column, seconds, True, "datetime", exported
+
+        try:
+            numeric_source_rows = np.asarray(source_rows, dtype=float)
+        except (TypeError, ValueError):
+            numeric_source_rows = np.arange(1, len(source_rows) + 1, dtype=float)
+        return (
+            "Source row",
+            numeric_source_rows,
+            False,
+            "source_row",
+            list(source_rows),
+        )
+
+    @staticmethod
+    def _write_anomaly_detection_svg(
+        path: Path,
+        *,
+        model_display_name: str,
+        source_filename: str,
+        feature_columns: list[str],
+        visualization_kind: str,
+        visualization_coordinates: np.ndarray,
+        visualization_x_label: str,
+        visualization_y_label: str,
+        anomaly_scores: np.ndarray,
+        anomaly_mask: np.ndarray,
+        decision_threshold: float,
+        source_rows: list[int | str],
+        display_indices: np.ndarray,
+        observation_axis: tuple[str, np.ndarray, bool, str, list[Any]],
+    ) -> None:
+        """Write a dependency-free, publication-oriented anomaly diagnostic SVG."""
+
+        width, height = 1200, 660
+        plot_top, plot_height = 158, 350
+        panel_width = 470
+        left_x, right_x = 76, 668
+        bottom_y = plot_top + plot_height
+        observation_label = observation_axis[0]
+        observation_values = observation_axis[1]
+        observation_is_datetime = observation_axis[2]
+
+        def padded_bounds(
+            values: np.ndarray,
+            *,
+            include: float | None = None,
+        ) -> tuple[float, float]:
+            finite_values = np.asarray(values, dtype=float)
+            finite_values = finite_values[np.isfinite(finite_values)]
+            if include is not None and math.isfinite(include):
+                finite_values = np.append(finite_values, include)
+            minimum = float(np.min(finite_values))
+            maximum = float(np.max(finite_values))
+            span = maximum - minimum
+            if span == 0:
+                span = max(abs(maximum), 1.0)
+            padding = span * 0.08
+            return minimum - padding, maximum + padding
+
+        def axis_tick(value: float) -> str:
+            absolute = abs(value)
+            if absolute >= 10_000 or (0 < absolute < 0.001):
+                return f"{value:.2e}"
+            if absolute >= 100:
+                return f"{value:.0f}"
+            return f"{value:.3g}"
+
+        def date_tick(value: float, span: float) -> str:
+            moment = datetime.fromtimestamp(value, tz=timezone.utc)
+            if span > 60 * 60 * 24 * 365 * 3:
+                return moment.strftime("%Y")
+            if span > 60 * 60 * 24 * 90:
+                return moment.strftime("%Y-%m")
+            return moment.strftime("%Y-%m-%d")
+
+        left_values = visualization_coordinates[display_indices]
+        score_values = anomaly_scores[display_indices]
+        axis_values = observation_values[display_indices]
+        displayed_mask = anomaly_mask[display_indices]
+        left_x_min, left_x_max = padded_bounds(left_values[:, 0])
+        left_y_min, left_y_max = padded_bounds(left_values[:, 1])
+        right_x_min, right_x_max = padded_bounds(axis_values)
+        score_min, score_max = padded_bounds(
+            score_values,
+            include=decision_threshold,
+        )
+
+        def map_x(value: float, panel_x: float, minimum: float, maximum: float) -> float:
+            return panel_x + (value - minimum) / (maximum - minimum) * panel_width
+
+        def map_y(value: float, minimum: float, maximum: float) -> float:
+            return plot_top + (maximum - value) / (maximum - minimum) * plot_height
+
+        def axes(
+            *,
+            panel_x: int,
+            x_minimum: float,
+            x_maximum: float,
+            y_minimum: float,
+            y_maximum: float,
+            x_label: str,
+            y_label: str,
+            datetime_axis: bool = False,
+        ) -> str:
+            elements: list[str] = []
+            x_span = x_maximum - x_minimum
+            for index in range(5):
+                value = x_minimum + x_span * index / 4
+                x = map_x(value, panel_x, x_minimum, x_maximum)
+                tick_text = (
+                    date_tick(value, x_span)
+                    if datetime_axis
+                    else axis_tick(value)
+                )
+                elements.append(
+                    f'<line x1="{x:.2f}" y1="{plot_top}" x2="{x:.2f}" '
+                    f'y2="{bottom_y}" class="grid"/>'
+                )
+                elements.append(
+                    f'<text x="{x:.2f}" y="{bottom_y + 24}" text-anchor="middle" '
+                    f'class="tick">{escape(tick_text)}</text>'
+                )
+            y_span = y_maximum - y_minimum
+            for index in range(5):
+                value = y_minimum + y_span * index / 4
+                y = map_y(value, y_minimum, y_maximum)
+                elements.append(
+                    f'<line x1="{panel_x}" y1="{y:.2f}" '
+                    f'x2="{panel_x + panel_width}" y2="{y:.2f}" class="grid"/>'
+                )
+                elements.append(
+                    f'<text x="{panel_x - 12}" y="{y + 4:.2f}" text-anchor="end" '
+                    f'class="tick">{escape(axis_tick(value))}</text>'
+                )
+            elements.extend(
+                [
+                    f'<line x1="{panel_x}" y1="{plot_top}" x2="{panel_x}" '
+                    f'y2="{bottom_y}" class="axis"/>',
+                    f'<line x1="{panel_x}" y1="{bottom_y}" '
+                    f'x2="{panel_x + panel_width}" y2="{bottom_y}" class="axis"/>',
+                    f'<text x="{panel_x + panel_width / 2:.2f}" y="{bottom_y + 53}" '
+                    f'text-anchor="middle" class="axis-label">{escape(x_label)}</text>',
+                    f'<text x="{panel_x - 54}" y="{plot_top + plot_height / 2:.2f}" '
+                    f'text-anchor="middle" class="axis-label" '
+                    f'transform="rotate(-90 {panel_x - 54} '
+                    f'{plot_top + plot_height / 2:.2f})">{escape(y_label)}</text>',
+                ]
+            )
+            return "".join(elements)
+
+        def marker(
+            *,
+            x: float,
+            y: float,
+            is_anomaly: bool,
+            source_row: int | str,
+            score: float,
+            panel: str,
+        ) -> str:
+            tooltip = escape(
+                f"Source row {source_row}; anomaly score {score:.6g}; "
+                f"label {'anomaly' if is_anomaly else 'normal'}; panel {panel}"
+            )
+            source_attribute = escape(str(source_row), quote=True)
+            if is_anomaly:
+                return (
+                    f'<path d="M {x:.2f} {y - 5.5:.2f} L {x + 5.5:.2f} {y:.2f} '
+                    f'L {x:.2f} {y + 5.5:.2f} L {x - 5.5:.2f} {y:.2f} Z" '
+                    f'class="anomaly-point" data-source-row="{source_attribute}">'
+                    f'<title>{tooltip}</title></path>'
+                )
+            return (
+                f'<circle cx="{x:.2f}" cy="{y:.2f}" r="3.0" '
+                f'class="normal-point" data-source-row="{source_attribute}">'
+                f'<title>{tooltip}</title></circle>'
+            )
+
+        left_points: list[str] = []
+        right_points: list[str] = []
+        for anomaly_value in (False, True):
+            for local_index, source_index in enumerate(display_indices):
+                if bool(displayed_mask[local_index]) != anomaly_value:
+                    continue
+                score = float(score_values[local_index])
+                source_row = source_rows[int(source_index)]
+                left_points.append(
+                    marker(
+                        x=map_x(
+                            float(left_values[local_index, 0]),
+                            left_x,
+                            left_x_min,
+                            left_x_max,
+                        ),
+                        y=map_y(
+                            float(left_values[local_index, 1]),
+                            left_y_min,
+                            left_y_max,
+                        ),
+                        is_anomaly=anomaly_value,
+                        source_row=source_row,
+                        score=score,
+                        panel="a",
+                    )
+                )
+                right_points.append(
+                    marker(
+                        x=map_x(
+                            float(axis_values[local_index]),
+                            right_x,
+                            right_x_min,
+                            right_x_max,
+                        ),
+                        y=map_y(score, score_min, score_max),
+                        is_anomaly=anomaly_value,
+                        source_row=source_row,
+                        score=score,
+                        panel="b",
+                    )
+                )
+
+        threshold_y = map_y(decision_threshold, score_min, score_max)
+        panel_a_title = (
+            "(a) PCA projection of standardized features"
+            if visualization_kind == "pca"
+            else "(a) Standardized feature versus anomaly score"
+        )
+        panel_b_title = (
+            "(b) Anomaly scores by source row"
+            if observation_label == "Source row"
+            else f"(b) Anomaly scores through {observation_label}"
+        )
+        displayed_rows = int(display_indices.size)
+        total_rows = int(anomaly_mask.size)
+        sample_note = (
+            f"Displayed {displayed_rows:,} of {total_rows:,} usable rows; "
+            "model fitting, scores, labels, and CSV use all usable rows."
+            if displayed_rows < total_rows
+            else f"Displayed all {total_rows:,} usable rows."
+        )
+        feature_note = (
+            f"{len(feature_columns)} standardized feature"
+            f"{'s' if len(feature_columns) != 1 else ''}"
+        )
+        root_title = escape("Anomaly detection diagnostics")
+        projection_description = (
+            "PCA is used only for visualization."
+            if visualization_kind == "pca"
+            else "The single standardized feature is shown against anomaly score."
+        )
+        root_description = escape(
+            "Two-panel anomaly diagnostic. Normal observations are circles and "
+            f"anomalies are diamonds. {projection_description}"
+        )
+        subtitle = escape(
+            f"{model_display_name} - {source_filename} - {feature_note}"
+        )
+        scope_note = escape(
+            "Projection is visualization only; detection used all selected "
+            "standardized features. Higher scores are more anomalous."
+        )
+        svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img" aria-labelledby="figure-title figure-description">
+<title id="figure-title">{root_title}</title>
+<desc id="figure-description">{root_description}</desc>
+<style>
+text{{font-family:Arial,Helvetica,sans-serif;fill:#18323a}}
+.figure-title{{font-size:24px;font-weight:700}} .subtitle{{font-size:13px;fill:#5c7078}}
+.panel-title{{font-size:16px;font-weight:700}} .panel-note{{font-size:12px;fill:#60757d}}
+.panel-frame{{fill:#ffffff;stroke:#d6e6e3;stroke-width:1}}
+.axis{{stroke:#244c54;stroke-width:1.3}} .grid{{stroke:#dde7e9;stroke-width:1;stroke-dasharray:4 5}}
+.tick{{font-size:11px;fill:#60757d}} .axis-label{{font-size:13px;font-weight:600}}
+.normal-point{{fill:#287fba;fill-opacity:.64;stroke:#ffffff;stroke-width:.65}}
+.anomaly-point{{fill:#dc6a45;fill-opacity:.92;stroke:#71351f;stroke-width:1.1}}
+.decision-boundary{{stroke:#68757b;stroke-width:1.5;stroke-dasharray:7 5}}
+.threshold-label{{font-size:11px;fill:#59666b}} .legend{{font-size:12px;fill:#456169}}
+.footer{{font-size:11px;fill:#60757d}}
+</style>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="42" y="38" class="figure-title">{root_title}</text>
+<text x="42" y="61" class="subtitle">{subtitle}</text>
+<text x="42" y="82" class="panel-note">{scope_note}</text>
+<g class="legend" transform="translate(932 42)">
+  <circle cx="0" cy="0" r="4" class="normal-point"/><text x="10" y="4">Normal</text>
+  <path d="M 82 -5.5 L 87.5 0 L 82 5.5 L 76.5 0 Z" class="anomaly-point"/><text x="94" y="4">Anomaly</text>
+</g>
+<text x="{left_x}" y="116" class="panel-title">{escape(panel_a_title)}</text>
+<text x="{left_x}" y="137" class="panel-note">{escape(feature_note)}; display coordinates are included in the CSV.</text>
+<rect x="{left_x}" y="{plot_top}" width="{panel_width}" height="{plot_height}" class="panel-frame"/>
+{axes(panel_x=left_x, x_minimum=left_x_min, x_maximum=left_x_max, y_minimum=left_y_min, y_maximum=left_y_max, x_label=visualization_x_label, y_label=visualization_y_label)}
+{''.join(left_points)}
+<text x="{right_x}" y="116" class="panel-title">{escape(panel_b_title)}</text>
+<text x="{right_x}" y="137" class="panel-note">Dashed line: model decision threshold ({decision_threshold:.4g}).</text>
+<rect x="{right_x}" y="{plot_top}" width="{panel_width}" height="{plot_height}" class="panel-frame"/>
+{axes(panel_x=right_x, x_minimum=right_x_min, x_maximum=right_x_max, y_minimum=score_min, y_maximum=score_max, x_label=observation_label, y_label='Anomaly score', datetime_axis=observation_is_datetime)}
+<line x1="{right_x}" y1="{threshold_y:.2f}" x2="{right_x + panel_width}" y2="{threshold_y:.2f}" class="decision-boundary"/>
+<text x="{right_x + panel_width - 4}" y="{threshold_y - 7:.2f}" text-anchor="end" class="threshold-label">decision threshold</text>
+{''.join(right_points)}
+<text x="42" y="620" class="footer">{escape(sample_note)}</text>
+<text x="42" y="640" class="footer">Normal observations use circles; anomalies use diamonds and a contrasting outline, so labels do not depend on colour alone.</text>
+</svg>'''
+        path.write_text(svg, encoding="utf-8")
+
+    @staticmethod
     def _write_element_time_series_svg(
         path: Path,
         *,
@@ -3160,25 +4700,23 @@ class DataMiningService:
         def y_position(value: float) -> float:
             return top + (y_max - value) / (y_max - y_min) * plot_height
 
-        line_points = " ".join(
-            f"{x_position(item.age):.2f},{y_position(item.mean_proportion or 0):.2f}"
-            for item in valid
-        )
-        upper = [
-            (
-                x_position(item.age),
-                y_position((item.mean_proportion or 0) + (item.uncertainty_2sigma or 0)),
+        observations = []
+        for item in valid:
+            mean = item.mean_proportion or 0
+            uncertainty = item.uncertainty_2sigma or 0
+            x = x_position(item.age)
+            mean_y = y_position(mean)
+            upper_y = y_position(mean + uncertainty)
+            lower_y = y_position(mean - uncertainty)
+            observations.append(
+                f'<g class="observation"><line x1="{x:.2f}" y1="{upper_y:.2f}" '
+                f'x2="{x:.2f}" y2="{lower_y:.2f}" class="error-bar"/>'
+                f'<line x1="{x-6:.2f}" y1="{upper_y:.2f}" x2="{x+6:.2f}" '
+                f'y2="{upper_y:.2f}" class="error-bar"/>'
+                f'<line x1="{x-6:.2f}" y1="{lower_y:.2f}" x2="{x+6:.2f}" '
+                f'y2="{lower_y:.2f}" class="error-bar"/>'
+                f'<circle cx="{x:.2f}" cy="{mean_y:.2f}" r="4.5" class="point"/></g>'
             )
-            for item in valid
-        ]
-        lower = [
-            (
-                x_position(item.age),
-                y_position((item.mean_proportion or 0) - (item.uncertainty_2sigma or 0)),
-            )
-            for item in reversed(valid)
-        ]
-        band_points = " ".join(f"{x:.2f},{y:.2f}" for x, y in [*upper, *lower])
         grid_lines = []
         for index in range(6):
             value = y_min + (y_max - y_min) * index / 5
@@ -3198,17 +4736,16 @@ class DataMiningService:
 text{{font-family:Arial,Helvetica,sans-serif;fill:#18323a}} .title{{font-size:22px;font-weight:700}}
 .subtitle{{font-size:13px;fill:#5c7078}} .axis{{stroke:#18323a;stroke-width:1.4}}
 .grid{{stroke:#dbe5e7;stroke-width:1;stroke-dasharray:4 5}} .tick{{font-size:12px;fill:#526970}}
-.curve{{fill:none;stroke:#e5674f;stroke-width:3;stroke-linejoin:round;stroke-linecap:round}}
-.band{{fill:#e5674f;fill-opacity:.18;stroke:none}} .label{{font-size:14px;font-weight:600}}
+.error-bar{{stroke:#287fba;stroke-width:1.6}} .point{{fill:#287fba;stroke:#fff;stroke-width:1.2}}
+.label{{font-size:14px;font-weight:600}}
 </style>
 <rect width="100%" height="100%" fill="#ffffff"/>
 <text x="{left}" y="30" class="title">{title}</text>
-<text x="{left}" y="49" class="subtitle">Bin width {bin_width:g} {age_unit} - unweighted mean - shaded area +/-2 SEM</text>
+<text x="{left}" y="49" class="subtitle">Bin width {bin_width:g} {age_unit} - independent means +/-2 SEM - no fitted curve</text>
 {''.join(grid_lines)}
 <line x1="{left}" y1="{top}" x2="{left}" y2="{height-bottom}" class="axis"/>
 <line x1="{left}" y1="{height-bottom}" x2="{width-right}" y2="{height-bottom}" class="axis"/>
-<polygon points="{band_points}" class="band"/>
-<polyline points="{line_points}" class="curve"/>
+{''.join(observations)}
 <text x="{left}" y="{height-bottom+26}" text-anchor="middle" class="tick">{maximum_age:g}</text>
 <text x="{width-right}" y="{height-bottom+26}" text-anchor="middle" class="tick">{minimum_age:g}</text>
 <text x="{left + plot_width/2:.2f}" y="{height-22}" text-anchor="middle" class="label">Age ({age_unit})</text>
@@ -3247,33 +4784,23 @@ text{{font-family:Arial,Helvetica,sans-serif;fill:#18323a}} .title{{font-size:22
             clipped = min(100.0, max(0.0, value))
             return top + (100.0 - clipped) / 100.0 * plot_height
 
-        line_points = " ".join(
-            f"{x_position(item.age):.2f},{y_position(item.mean_proportion or 0):.2f}"
-            for item in valid
-        )
-        upper = [
-            (
-                x_position(item.age),
-                y_position(
-                    (item.mean_proportion or 0)
-                    + (item.uncertainty_2sigma or 0)
-                ),
+        observations = []
+        for item in valid:
+            mean = item.mean_proportion or 0
+            uncertainty = item.uncertainty_2sigma or 0
+            x = x_position(item.age)
+            mean_y = y_position(mean)
+            upper_y = y_position(mean + uncertainty)
+            lower_y = y_position(mean - uncertainty)
+            observations.append(
+                f'<g class="observation"><line x1="{x:.2f}" y1="{upper_y:.2f}" '
+                f'x2="{x:.2f}" y2="{lower_y:.2f}" class="error-bar"/>'
+                f'<line x1="{x-6:.2f}" y1="{upper_y:.2f}" x2="{x+6:.2f}" '
+                f'y2="{upper_y:.2f}" class="error-bar"/>'
+                f'<line x1="{x-6:.2f}" y1="{lower_y:.2f}" x2="{x+6:.2f}" '
+                f'y2="{lower_y:.2f}" class="error-bar"/>'
+                f'<circle cx="{x:.2f}" cy="{mean_y:.2f}" r="4.5" class="point"/></g>'
             )
-            for item in valid
-        ]
-        lower = [
-            (
-                x_position(item.age),
-                y_position(
-                    (item.mean_proportion or 0)
-                    - (item.uncertainty_2sigma or 0)
-                ),
-            )
-            for item in reversed(valid)
-        ]
-        band_points = " ".join(
-            f"{x:.2f},{y:.2f}" for x, y in [*upper, *lower]
-        )
         grid_lines = []
         for value in range(0, 101, 20):
             y = y_position(float(value))
@@ -3302,17 +4829,16 @@ text{{font-family:Arial,Helvetica,sans-serif;fill:#18323a}} .title{{font-size:22
 text{{font-family:Arial,Helvetica,sans-serif;fill:#18323a}} .title{{font-size:22px;font-weight:700}}
 .subtitle{{font-size:13px;fill:#5c7078}} .axis{{stroke:#18323a;stroke-width:1.4}}
 .grid{{stroke:#dbe5e7;stroke-width:1;stroke-dasharray:4 5}} .tick{{font-size:12px;fill:#526970}}
-.curve{{fill:none;stroke:#e5674f;stroke-width:3;stroke-linejoin:round;stroke-linecap:round}}
-.band{{fill:#e5674f;fill-opacity:.18;stroke:none}} .label{{font-size:14px;font-weight:600}}
+.error-bar{{stroke:#287fba;stroke-width:1.6}} .point{{fill:#287fba;stroke:#fff;stroke-width:1.2}}
+.label{{font-size:14px;font-weight:600}}
 </style>
 <rect width="100%" height="100%" fill="#ffffff"/>
 <text x="{left}" y="30" class="title">Estimated proportion of subaerial basalts</text>
-<text x="{left}" y="49" class="subtitle">Bin width {bin_width:g} {age_unit} · {bootstrap_iterations} bootstrap iterations · shaded area ±2σ</text>
+<text x="{left}" y="49" class="subtitle">Bin width {bin_width:g} {age_unit} - {bootstrap_iterations} bootstrap iterations - independent means +/-2 sigma - no fitted curve</text>
 {''.join(grid_lines)}{''.join(x_ticks)}
 <line x1="{left}" y1="{top}" x2="{left}" y2="{height-bottom}" class="axis"/>
 <line x1="{left}" y1="{height-bottom}" x2="{width-right}" y2="{height-bottom}" class="axis"/>
-<polygon points="{band_points}" class="band"/>
-<polyline points="{line_points}" class="curve"/>
+{''.join(observations)}
 <text x="{left + plot_width/2:.2f}" y="{height-22}" text-anchor="middle" class="label">Age ({age_unit})</text>
 <text x="24" y="{top + plot_height/2:.2f}" text-anchor="middle" class="label" transform="rotate(-90 24 {top + plot_height/2:.2f})">Estimated proportion (%)</text>
 </svg>'''

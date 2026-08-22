@@ -357,6 +357,11 @@ export interface AnomalyScoreSummary {
   mean: number
 }
 
+export type AnomalyContamination = 'auto' | number
+
+export type AnomalyReproductionProfile =
+  'general' | 'sharapatov_2025_figure_3a' | 'zhu_2024_figure_8a'
+
 export interface AnomalyDetectionResponse {
   job_id: string
   status: string
@@ -365,6 +370,8 @@ export interface AnomalyDetectionResponse {
   model: string
   model_display_name: string
   feature_columns: string[]
+  contamination: AnomalyContamination
+  reproduction_profile: AnomalyReproductionProfile
   random_state: number | null
   summary: AnomalyDetectionSummary
   score_summary: AnomalyScoreSummary
@@ -458,7 +465,10 @@ export async function getDataMiningCatalog(): Promise<DataMiningCatalogResponse>
   return parseResponse<DataMiningCatalogResponse>(response)
 }
 
-export async function profileDataset(dataset: File, taskId?: string): Promise<DatasetProfileResponse> {
+export async function profileDataset(
+  dataset: File,
+  taskId?: string
+): Promise<DatasetProfileResponse> {
   const form = new FormData()
   form.append('dataset', dataset)
   const response = await fetch(`${API_BASE_URL}/api/data-mining/profile`, {
@@ -625,12 +635,16 @@ export async function runAnomalyDetection(
   dataset: File,
   featureColumns: string[],
   model: string = 'isolation_forest',
+  contamination: AnomalyContamination = 'auto',
+  reproductionProfile: AnomalyReproductionProfile = 'general',
   taskId?: string
 ): Promise<AnomalyDetectionResponse> {
   const form = new FormData()
   form.append('dataset', dataset)
   form.append('feature_columns', JSON.stringify(featureColumns))
   form.append('model', model)
+  form.append('contamination', String(contamination))
+  form.append('reproduction_profile', reproductionProfile)
   const response = await fetch(`${API_BASE_URL}/api/data-mining/anomaly-detection`, {
     method: 'POST',
     headers: taskHeaders(taskId),

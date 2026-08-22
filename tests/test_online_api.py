@@ -6,12 +6,15 @@ import json
 from io import BytesIO
 import threading
 import time
+from xml.etree import ElementTree as ET
 
+import numpy as np
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
 from geochemistrypi.online.app import create_app
+from geochemistrypi.online.data_mining_service import DataMiningService
 from geochemistrypi.online.limits import (
     MAX_CONCURRENT_TASKS,
     MAX_UPLOAD_BYTES,
@@ -513,6 +516,62 @@ def make_unsupervised_csv() -> bytes:
     return ("\n".join(rows) + "\n").encode("utf-8")
 
 
+def make_zhu_figure8a_workbook(*, include_audit_sheets: bool = True) -> bytes:
+    """Build a source-contract fixture without embedding the published data."""
+    row_index = np.arange(302, dtype=float)
+    dates = pd.date_range("2020-01-24", periods=302, freq="3D")
+    series = pd.DataFrame(
+        {
+            "Date": dates,
+            "Na_Cl_ratio": 6.5 + np.sin(row_index / 11.0) + row_index / 1000.0,
+            "Na_F_ratio": 5.8 + np.cos(row_index / 13.0) + row_index / 1200.0,
+            "Na_SO4_ratio": 1.4 + np.sin(row_index / 17.0) / 5.0,
+            "F_Cl_ratio": 1.1 + np.cos(row_index / 19.0) / 8.0,
+            "SO4_Cl_ratio": 4.7 + np.sin(row_index / 23.0) / 2.0,
+        }
+    )
+    published_flags = np.zeros(302, dtype=int)
+    published_flags[np.arange(0, 302, 12)[:25]] = 1
+    figure_series = series.assign(
+        Published_LOF_Outlier_P0_08=published_flags,
+    )
+    event_index = np.arange(60)
+    retained_events = event_index < 56
+    earthquakes = pd.DataFrame(
+        {
+            "Event_ID": event_index + 1,
+            "Event_DateTime": [
+                dates[min(int(index * 5), len(dates) - 1)].isoformat()
+                for index in event_index
+            ],
+            "Longitude_deg_E": 120.0 + event_index / 100.0,
+            "Latitude_deg_N": 23.0 + event_index / 200.0,
+            "Epicentral_Depth_km": 5.0 + event_index % 20,
+            "Magnitude": 4.5 + (event_index % 8) / 10.0,
+            "GA_Epicentral_Distance_km": np.where(
+                retained_events,
+                200.0 + event_index,
+                700.0 + event_index,
+            ),
+            "Use_in_Figure8a": retained_events,
+            "Marker_Criterion": np.where(
+                retained_events,
+                "Included: audited Figure 8a marker",
+                "Excluded: beyond audited distance threshold",
+            ),
+            "Table_S1_Source_Row": event_index + 3,
+        }
+    )
+
+    buffer = BytesIO()
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        series.to_excel(writer, sheet_name="Online_Input", index=False)
+        if include_audit_sheets:
+            figure_series.to_excel(writer, sheet_name="Figure8a_Series", index=False)
+            earthquakes.to_excel(writer, sheet_name="Earthquakes", index=False)
+    return buffer.getvalue()
+
+
 def make_time_series_csv() -> bytes:
     rows = ["Age,AgeMax,Probability,Latitude,Longitude"]
     for index in range(30):
@@ -704,11 +763,12 @@ def test_data_mining_catalog_starts_with_verified_dataset_profile(tmp_path):
     assert features[6]["outputs"] == [
         "正常/异常样品统计",
         "异常分数与标签",
+        "异常检测诊断图 SVG/PNG",
         "异常检测结果 CSV",
         "JSON 模型报告",
     ]
     assert features[7]["outputs"] == [
-        "陆上玄武岩比例曲线",
+        "陆上玄武岩比例散点误差图",
         "年龄分箱结果表",
         "时间序列结果 CSV",
         "SVG 矢量图",
@@ -2169,6 +2229,8 @@ def test_v080_anomaly_detection_registry_runs_verified_models(
     payload = response.json()
     assert payload["model"] == model_name
     assert payload["model_display_name"] == display_name
+    assert payload["contamination"] == "auto"
+    assert payload["reproduction_profile"] == "general"
     assert payload["random_state"] == (
         42 if model_name == "isolation_forest" else None
     )
@@ -2194,6 +2256,7 @@ def test_v080_anomaly_detection_registry_runs_verified_models(
     assert preview_scores == sorted(preview_scores, reverse=True)
     assert [artifact["name"] for artifact in payload["artifacts"]] == [
         "anomaly_detection_results.csv",
+        "anomaly_detection_figure.svg",
         "anomaly_detection_report.json",
     ]
 
@@ -2205,18 +2268,407 @@ def test_v080_anomaly_detection_registry_runs_verified_models(
         "X1",
         "X2",
         "X3",
+        "visualization_x",
+        "visualization_y",
+        "visualization_observation",
         "anomaly_label",
         "is_anomaly",
         "anomaly_score",
     ]
     assert len(results) == 42
+    assert np.isfinite(
+        results[["visualization_x", "visualization_y"]].to_numpy(dtype=float)
+    ).all()
 
-    report_download = client.get(payload["artifacts"][1]["download_url"])
+    figure_download = client.get(payload["artifacts"][1]["download_url"])
+    assert figure_download.status_code == 200
+    assert figure_download.headers["content-type"].startswith("image/svg+xml")
+    assert (
+        len(figure_download.content)
+        == payload["artifacts"][1]["size_bytes"]
+    )
+    figure_text = figure_download.content.decode("utf-8")
+    assert "nan" not in figure_text.lower()
+    assert "infinity" not in figure_text.lower()
+    figure_root = ET.fromstring(figure_text)
+    assert figure_root.attrib["viewBox"] == "0 0 1200 660"
+    figure_labels = " ".join(figure_root.itertext())
+    assert "Anomaly detection diagnostics" in figure_labels
+    assert "(a) PCA projection of standardized features" in figure_labels
+    assert "(b) Anomaly scores by source row" in figure_labels
+    assert "Projection is visualization only" in figure_labels
+    assert "Normal" in figure_labels
+    assert "Anomaly" in figure_labels
+    plotted_normal_points = [
+        element
+        for element in figure_root.iter()
+        if element.attrib.get("class") == "normal-point"
+        and "data-source-row" in element.attrib
+    ]
+    plotted_anomaly_points = [
+        element
+        for element in figure_root.iter()
+        if element.attrib.get("class") == "anomaly-point"
+        and "data-source-row" in element.attrib
+    ]
+    assert len(plotted_normal_points) == payload["summary"]["normal_rows"] * 2
+    assert len(plotted_anomaly_points) == payload["summary"]["anomaly_rows"] * 2
+    assert any(
+        element.attrib.get("class") == "decision-boundary"
+        for element in figure_root.iter()
+    )
+
+    report_download = client.get(payload["artifacts"][2]["download_url"])
     assert report_download.status_code == 200
     report = json.loads(report_download.content.decode("utf-8"))
-    assert report["report_version"] == "v080-anomaly-detection-v1"
+    assert report["report_version"] == "v080-anomaly-detection-v2"
     assert report["model"] == model_name
+    assert report["contamination"] == "auto"
+    assert report["reproduction_profile"] == "general"
+    assert report["paper_reproduction"] is None
     assert report["summary"]["anomaly_rows"] == payload["summary"]["anomaly_rows"]
+    visualization = report["visualization"]
+    assert visualization["kind"] == "two_panel_anomaly_diagnostics"
+    assert visualization["artifact"] == "anomaly_detection_figure.svg"
+    assert visualization["displayed_rows"] == 42
+    assert visualization["sampled_out_rows"] == 0
+    assert visualization["total_rows"] == 42
+    assert "visualization only" in visualization["scientific_scope"]
+    assert visualization["panel_a"]["kind"] == "pca"
+    assert visualization["panel_a"]["pca_solver"] == "randomized"
+    assert visualization["panel_a"]["projection_random_state"] == 42
+    variance_ratios = visualization["panel_a"]["explained_variance_ratio"]
+    assert len(variance_ratios) == 2
+    assert all(0 <= value <= 1 for value in variance_ratios)
+    assert sum(variance_ratios) <= 1 + 1e-12
+    assert visualization["panel_b"]["x_axis_kind"] == "source_row"
+    decision_threshold = visualization["panel_b"]["decision_threshold"]
+    assert np.isfinite(decision_threshold)
+    assert (
+        results.loc[results["is_anomaly"], "anomaly_score"]
+        >= decision_threshold - 1e-12
+    ).all()
+    assert (
+        results.loc[~results["is_anomaly"], "anomaly_score"]
+        <= decision_threshold + 1e-12
+    ).all()
+
+
+def test_v080_anomaly_detection_fixed_contamination_is_reported(tmp_path):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    response = client.post(
+        "/api/data-mining/anomaly-detection",
+        data={
+            "model": "isolation_forest",
+            "contamination": "0.1",
+            "reproduction_profile": "general",
+            "feature_columns": json.dumps(["X1", "X2", "X3"]),
+        },
+        files={"dataset": ("dataset.csv", make_unsupervised_csv(), "text/csv")},
+    )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["contamination"] == pytest.approx(0.1)
+    assert payload["reproduction_profile"] == "general"
+    assert [artifact["name"] for artifact in payload["artifacts"]] == [
+        "anomaly_detection_results.csv",
+        "anomaly_detection_figure.svg",
+        "anomaly_detection_report.json",
+    ]
+
+    report_artifact = next(
+        artifact
+        for artifact in payload["artifacts"]
+        if artifact["name"] == "anomaly_detection_report.json"
+    )
+    report = client.get(report_artifact["download_url"]).json()
+    assert report["model"] == "isolation_forest"
+    assert report["contamination"] == pytest.approx(0.1)
+    assert report["reproduction_profile"] == "general"
+    assert report["paper_reproduction"] is None
+
+
+@pytest.mark.parametrize(
+    "contamination",
+    ["0", "-0.1", "0.0009", "0.5001", "not-a-number"],
+)
+def test_v080_anomaly_detection_rejects_invalid_contamination(
+    tmp_path,
+    contamination,
+):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    response = client.post(
+        "/api/data-mining/anomaly-detection",
+        data={
+            "model": "isolation_forest",
+            "contamination": contamination,
+            "feature_columns": json.dumps(["X1", "X2", "X3"]),
+        },
+        files={"dataset": ("dataset.csv", make_unsupervised_csv(), "text/csv")},
+    )
+
+    assert response.status_code == 422
+    assert "contamination" in response.json()["detail"].lower()
+
+
+@pytest.mark.parametrize(
+    ("reproduction_profile", "model", "contamination", "detail_fragment"),
+    [
+        (
+            "sharapatov_2025_figure_3a",
+            "local_outlier_factor",
+            "0.05",
+            "isolation_forest",
+        ),
+        (
+            "sharapatov_2025_figure_3a",
+            "isolation_forest",
+            "0.08",
+            "contamination = 0.05",
+        ),
+        (
+            "zhu_2024_figure_8a",
+            "isolation_forest",
+            "0.08",
+            "local_outlier_factor",
+        ),
+        (
+            "zhu_2024_figure_8a",
+            "local_outlier_factor",
+            "0.05",
+            "contamination = 0.08",
+        ),
+    ],
+)
+def test_v080_anomaly_detection_reproduction_profile_rejects_mismatch(
+    tmp_path,
+    reproduction_profile,
+    model,
+    contamination,
+    detail_fragment,
+):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    response = client.post(
+        "/api/data-mining/anomaly-detection",
+        data={
+            "model": model,
+            "contamination": contamination,
+            "reproduction_profile": reproduction_profile,
+            "feature_columns": json.dumps(["X1", "X2", "X3"]),
+        },
+        files={"dataset": ("dataset.csv", make_unsupervised_csv(), "text/csv")},
+    )
+
+    assert response.status_code == 422
+    assert detail_fragment in response.json()["detail"]
+
+
+def test_v080_zhu_reproduction_requires_audit_sheets(tmp_path):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    response = client.post(
+        "/api/data-mining/anomaly-detection",
+        data={
+            "model": "local_outlier_factor",
+            "contamination": "0.08",
+            "reproduction_profile": "zhu_2024_figure_8a",
+            "feature_columns": json.dumps(
+                [
+                    "Na_Cl_ratio",
+                    "Na_F_ratio",
+                    "Na_SO4_ratio",
+                    "F_Cl_ratio",
+                    "SO4_Cl_ratio",
+                ]
+            ),
+        },
+        files={
+            "dataset": (
+                "zhu-without-audit-sheets.xlsx",
+                make_zhu_figure8a_workbook(include_audit_sheets=False),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert "Figure8a_Series" in detail
+    assert "Earthquakes" in detail
+
+
+def test_v080_zhu_reproduction_uses_archived_labels_and_earthquake_audit_sheets(
+    tmp_path,
+):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    response = client.post(
+        "/api/data-mining/anomaly-detection",
+        data={
+            "model": "local_outlier_factor",
+            "contamination": "0.08",
+            "reproduction_profile": "zhu_2024_figure_8a",
+            "feature_columns": json.dumps(
+                [
+                    "Na_Cl_ratio",
+                    "Na_F_ratio",
+                    "Na_SO4_ratio",
+                    "F_Cl_ratio",
+                    "SO4_Cl_ratio",
+                ]
+            ),
+        },
+        files={
+            "dataset": (
+                "zhu-audit-contract.xlsx",
+                make_zhu_figure8a_workbook(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["model"] == "local_outlier_factor"
+    assert payload["contamination"] == pytest.approx(0.08)
+    assert payload["reproduction_profile"] == "zhu_2024_figure_8a"
+    artifacts = {artifact["name"]: artifact for artifact in payload["artifacts"]}
+    assert list(artifacts) == [
+        "anomaly_detection_results.csv",
+        "anomaly_detection_figure.svg",
+        "paper_reproduction_figure.svg",
+        "anomaly_detection_report.json",
+    ]
+
+    paper_download = client.get(
+        artifacts["paper_reproduction_figure.svg"]["download_url"]
+    )
+    assert paper_download.status_code == 200
+    assert paper_download.headers["content-type"].startswith("image/svg+xml")
+    paper_root = ET.fromstring(paper_download.text)
+    paper_labels = " ".join(paper_root.itertext())
+    assert "Zhu et al. (2024)" in paper_labels
+    assert "Figure 8a" in paper_labels
+    assert "archived" in paper_labels.lower()
+    assert "earthquake" in paper_labels.lower()
+
+    report = client.get(
+        artifacts["anomaly_detection_report.json"]["download_url"]
+    ).json()
+    assert report["contamination"] == pytest.approx(0.08)
+    assert report["reproduction_profile"] == "zhu_2024_figure_8a"
+    reproduction = report["paper_reproduction"]
+    assert reproduction["published_reference_outliers"] == 25
+    assert reproduction["earthquake_catalog_rows"] == 60
+    assert reproduction["retained_earthquake_markers"] == 56
+    assert reproduction["figure_uses_archived_reference_labels"] is True
+    assert reproduction["figure_uses_fresh_online_labels"] is False
+    assert reproduction["label_agreement"]["fresh_online_anomalies"] == 25
+    assert reproduction["label_agreement"]["published_reference_anomalies"] == 25
+
+
+def test_v080_anomaly_detection_single_feature_uses_safe_fallback_and_date_axis(
+    tmp_path,
+):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    feature_name = "SiO2 & MgO <wt%>"
+    dataframe = pd.DataFrame(
+        {
+            "Sample Date": pd.date_range("2024-01-01", periods=20, freq="D"),
+            feature_name: [float(index) for index in range(18)] + [80.0, 100.0],
+        }
+    )
+    response = client.post(
+        "/api/data-mining/anomaly-detection",
+        data={
+            "model": "isolation_forest",
+            "feature_columns": json.dumps([feature_name]),
+        },
+        files={
+            "dataset": (
+                "escaped-feature.csv",
+                dataframe.to_csv(index=False).encode("utf-8"),
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    results = pd.read_csv(
+        BytesIO(client.get(payload["artifacts"][0]["download_url"]).content)
+    )
+    assert len(results) == 20
+    assert results["visualization_observation"].str.startswith("2024-").all()
+    assert np.isfinite(
+        results[["visualization_x", "visualization_y"]].to_numpy(dtype=float)
+    ).all()
+
+    figure_text = client.get(payload["artifacts"][1]["download_url"]).text
+    figure_root = ET.fromstring(figure_text)
+    figure_labels = " ".join(figure_root.itertext())
+    assert "(a) Standardized feature versus anomaly score" in figure_labels
+    assert "(b) Anomaly scores through Sample Date" in figure_labels
+    assert f"{feature_name} (standardized)" in figure_labels
+    assert "PCA is used only" not in figure_labels
+    assert "2024-01" in figure_labels
+    assert "1970" not in figure_labels
+
+    report = client.get(payload["artifacts"][2]["download_url"]).json()
+    panel_a = report["visualization"]["panel_a"]
+    assert panel_a["kind"] == "single_feature"
+    assert panel_a["explained_variance_ratio"] == []
+    assert panel_a["pca_solver"] is None
+    assert panel_a["projection_random_state"] is None
+    assert report["visualization"]["panel_b"]["x_axis"] == "Sample Date"
+    assert report["visualization"]["panel_b"]["x_axis_kind"] == "datetime"
+
+
+def test_v080_anomaly_visualization_sampling_is_deterministic_and_balanced(
+    tmp_path,
+):
+    service = DataMiningService(tmp_path / "runtime")
+    anomaly_mask = np.asarray([True] * 7_000 + [False] * 7_000)
+
+    first = service._select_anomaly_visualization_indices(
+        anomaly_mask,
+        maximum_points=10_000,
+    )
+    second = service._select_anomaly_visualization_indices(
+        anomaly_mask,
+        maximum_points=10_000,
+    )
+
+    assert np.array_equal(first, second)
+    assert first.size == 10_000
+    assert int(anomaly_mask[first].sum()) == 5_000
+    assert int((~anomaly_mask[first]).sum()) == 5_000
+
+
+def test_v080_anomaly_detection_rejects_reserved_output_feature_names(tmp_path):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    dataframe = pd.DataFrame(
+        {
+            "source_row": [float(index) for index in range(12)],
+            "X1": [float(index * 2) for index in range(12)],
+        }
+    )
+    response = client.post(
+        "/api/data-mining/anomaly-detection",
+        data={
+            "model": "isolation_forest",
+            "feature_columns": json.dumps(["source_row", "X1"]),
+        },
+        files={
+            "dataset": (
+                "reserved.csv",
+                dataframe.to_csv(index=False).encode("utf-8"),
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 422
+    assert "reserved output columns: source_row" in response.json()["detail"]
 
 
 def test_v080_time_series_returns_bins_figure_and_downloads(tmp_path):
@@ -2288,6 +2740,10 @@ def test_v080_time_series_returns_bins_figure_and_downloads(tmp_path):
     assert svg_download.status_code == 200
     assert b"<svg" in svg_download.content
     assert b"Estimated proportion of subaerial basalts" in svg_download.content
+    assert b'class="point"' in svg_download.content
+    assert b'class="error-bar"' in svg_download.content
+    assert b"<polyline" not in svg_download.content
+    assert b"<polygon" not in svg_download.content
 
     report_download = client.get(payload["artifacts"][2]["download_url"])
     assert report_download.status_code == 200
@@ -2362,6 +2818,10 @@ def test_element_mean_time_series_returns_100_ma_bins_and_2sem(tmp_path):
     assert len(results) == 4
     svg = client.get(payload["artifacts"][1]["download_url"])
     assert b"MGO mean through time" in svg.content
+    assert b'class="point"' in svg.content
+    assert b'class="error-bar"' in svg.content
+    assert b"<polyline" not in svg.content
+    assert b"<polygon" not in svg.content
     report = client.get(payload["artifacts"][2]["download_url"]).json()
     assert report["report_version"] == "element-mean-time-series-v1"
     assert report["filter"] == {

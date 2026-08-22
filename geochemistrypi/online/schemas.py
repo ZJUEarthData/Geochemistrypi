@@ -459,6 +459,8 @@ class AnomalyDetectionResponse(BaseModel):
     model: str
     model_display_name: str
     feature_columns: list[str]
+    contamination: str | float = "auto"
+    reproduction_profile: str = "general"
     random_state: int | None = None
     summary: AnomalyDetectionSummary
     score_summary: AnomalyScoreSummary

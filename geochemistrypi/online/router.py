@@ -547,6 +547,8 @@ def create_router(
     )
     async def run_anomaly_detection(
         model: str = Form("isolation_forest"),
+        contamination: str = Form("auto"),
+        reproduction_profile: str = Form("general"),
         feature_columns: str = Form(...),
         dataset: UploadFile = File(...),
         x_task_id: str | None = Header(None, alias="X-Task-ID"),
@@ -569,6 +571,8 @@ def create_router(
                 content=content,
                 feature_columns=parsed_features,
                 model_name=model,
+                contamination=contamination,
+                reproduction_profile=reproduction_profile,
             )
         except UploadTooLargeError as exc:
             raise HTTPException(

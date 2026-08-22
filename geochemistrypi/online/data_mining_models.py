@@ -170,7 +170,7 @@ class AnomalyDetectionModelDefinition:
     name: str
     display_name: str
     description: str
-    factory: Callable[[int], Any]
+    factory: Callable[[int, str | float], Any]
 
 
 REGRESSION_MODELS: dict[str, RegressionModelDefinition] = {
@@ -757,13 +757,13 @@ ANOMALY_DETECTION_MODELS: dict[str, AnomalyDetectionModelDefinition] = {
             name="isolation_forest",
             display_name="Isolation Forest",
             description=(
-                "Tree-based global anomaly detection using the v0.8 default "
-                "automatic contamination threshold."
+                "Tree-based global anomaly detection with an automatic or "
+                "user-specified contamination threshold."
             ),
-            factory=lambda _sample_count: IsolationForest(
+            factory=lambda _sample_count, contamination: IsolationForest(
                 n_estimators=100,
                 max_samples="auto",
-                contamination="auto",
+                contamination=contamination,
                 n_jobs=-1,
                 random_state=42,
             ),
@@ -774,9 +774,9 @@ ANOMALY_DETECTION_MODELS: dict[str, AnomalyDetectionModelDefinition] = {
             description=(
                 "Local-density anomaly detection using up to 20 nearest neighbors."
             ),
-            factory=lambda sample_count: LocalOutlierFactor(
+            factory=lambda sample_count, contamination: LocalOutlierFactor(
                 n_neighbors=min(20, sample_count - 1),
-                contamination="auto",
+                contamination=contamination,
                 novelty=False,
                 n_jobs=-1,
             ),

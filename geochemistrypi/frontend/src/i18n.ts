@@ -177,8 +177,10 @@ const exactEnglish: Record<string, string> = {
   正常异常样品统计: 'Normal/anomalous sample counts',
   '正常/异常样品统计': 'Normal/anomalous sample counts',
   异常分数与标签: 'Anomaly scores and labels',
+  '异常检测诊断图 SVG/PNG': 'Anomaly-detection diagnostic figure (SVG/PNG)',
   '异常检测结果 CSV': 'Anomaly-detection CSV',
   陆上玄武岩比例曲线: 'Subaerial-basalt proportion curve',
+  陆上玄武岩比例散点误差图: 'Subaerial-basalt proportion scatter plot with error bars',
   年龄分箱结果表: 'Age-bin result table',
   '时间序列结果 CSV': 'Time-series result CSV',
   'SVG 矢量图': 'SVG vector figure',
@@ -197,8 +199,12 @@ const exactEnglish: Record<string, string> = {
     'Verified v0.8 PCA, T-SNE, and MDS with numeric-feature standardization, two- or three-dimensional coordinates, PCA explained variance, T-SNE KL divergence, MDS stress, and result downloads.',
   '已接入 v0.8 Isolation Forest 和 Local Outlier Factor，完成数值特征标准化、逐行异常标签、统一方向异常分数、异常样品预览和结果下载验证。':
     'Verified v0.8 Isolation Forest and Local Outlier Factor with numeric-feature standardization, row-level labels, consistently oriented anomaly scores, anomaly preview, and result downloads.',
+  '已接入 v0.8 Isolation Forest 和 Local Outlier Factor，完成数值特征标准化、逐行异常标签、统一方向异常分数、PCA/异常分数诊断图、异常样品预览和结果下载验证。':
+    'Verified v0.8 Isolation Forest and Local Outlier Factor with numeric-feature standardization, row-level labels, consistently oriented anomaly scores, PCA/score diagnostics, anomaly preview, and result downloads.',
   '已接入 v0.8 陆上玄武岩比例时间序列工作流，完成字段映射、年龄分箱、固定随机种子 Bootstrap、2σ 不确定度、曲线图和结果下载验证。':
     'Verified the v0.8 subaerial-basalt proportion time-series workflow, including column mapping, age binning, fixed-seed bootstrap analysis, 2σ uncertainty, a curve figure, and result downloads.',
+  '已接入 v0.8 陆上玄武岩比例时间序列工作流，完成字段映射、年龄分箱、固定随机种子 Bootstrap、2σ 不确定度、散点误差图和结果下载验证。':
+    'Verified the v0.8 subaerial-basalt proportion time-series workflow, including column mapping, age binning, fixed-seed bootstrap analysis, 2σ uncertainty, a scatter plot with error bars, and result downloads.',
   总质量或总浓度: 'Total mass or concentration',
   '需要与同一行所有物种浓度之和进行比较的总量。':
     'Total to compare with the sum of all species concentrations in the same row.',

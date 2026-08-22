@@ -21,7 +21,9 @@ import {
   runPredictedTimeSeries,
   runRegression,
   runTimeSeries,
+  type AnomalyContamination,
   type AnomalyDetectionResponse,
+  type AnomalyReproductionProfile,
   type ClassificationResponse,
   type ClusteringResponse,
   type DataPreprocessingResponse,
@@ -35,7 +37,12 @@ import {
   type RegressionResponse,
   type TimeSeriesResponse
 } from '@/api/data-mining'
-import { DEFAULT_MAX_UPLOAD_BYTES, artifactUrl, getHealth } from '@/api/online'
+import {
+  DEFAULT_MAX_UPLOAD_BYTES,
+  artifactUrl,
+  getHealth,
+  type ArtifactResponse
+} from '@/api/online'
 import { apiText, dataMiningFeatureDescription, t, warningIsSuccess } from '@/i18n'
 
 type ServiceState = 'checking' | 'online' | 'offline'
@@ -73,6 +80,7 @@ const runningInference = ref(false)
 const clusteringResult = ref<ClusteringResponse | null>(null)
 const dimensionalityReductionResult = ref<DimensionalityReductionResponse | null>(null)
 const anomalyDetectionResult = ref<AnomalyDetectionResponse | null>(null)
+const exportingAnomalyPng = ref('')
 const timeSeriesResult = ref<TimeSeriesResponse | null>(null)
 const selectedColumns = ref<string[]>([])
 const missingStrategy = ref<MissingValueStrategy>('keep')
@@ -81,11 +89,7 @@ const regressionFeatures = ref<string[]>([])
 const regressionTestSize = ref(0.2)
 const regressionModel = ref('linear_regression')
 const regressionRunMode = ref<SupervisedRunMode>('single')
-const regressionComparisonModels = ref<string[]>([
-  'linear_regression',
-  'random_forest',
-  'xgboost'
-])
+const regressionComparisonModels = ref<string[]>(['linear_regression', 'random_forest', 'xgboost'])
 const regressionHyperparameters = ref<Record<string, Record<string, HyperparameterValue>>>({})
 const regressionCrossValidationEnabled = ref(false)
 const regressionCrossValidationFolds = ref(5)
@@ -99,9 +103,7 @@ const classificationComparisonModels = ref<string[]>([
   'random_forest',
   'xgboost'
 ])
-const classificationHyperparameters = ref<
-  Record<string, Record<string, HyperparameterValue>>
->({})
+const classificationHyperparameters = ref<Record<string, Record<string, HyperparameterValue>>>({})
 const classificationCrossValidationEnabled = ref(false)
 const classificationCrossValidationFolds = ref(5)
 const clusteringFeatures = ref<string[]>([])
@@ -112,6 +114,9 @@ const dimensionalityReductionModel = ref('pca')
 const componentCount = ref(2)
 const anomalyDetectionFeatures = ref<string[]>([])
 const anomalyDetectionModel = ref('isolation_forest')
+const anomalyContaminationAutomatic = ref(true)
+const anomalyContamination = ref(0.05)
+const anomalyReproductionProfile = ref<AnomalyReproductionProfile>('general')
 const timeSeriesMode = ref<TimeSeriesMode>('direct')
 const timeSeriesAgeColumn = ref('')
 const timeSeriesAgeMaxColumn = ref('')
@@ -215,12 +220,8 @@ const regressionPreviewColumns = computed(() =>
 const classificationPreviewColumns = computed(() =>
   Object.keys(classificationResult.value?.preview[0] || {})
 )
-const trainedSupervisedResult = computed(() =>
-  regressionResult.value || classificationResult.value
-)
-const inferencePreviewColumns = computed(() =>
-  Object.keys(inferenceResult.value?.preview[0] || {})
-)
+const trainedSupervisedResult = computed(() => regressionResult.value || classificationResult.value)
+const inferencePreviewColumns = computed(() => Object.keys(inferenceResult.value?.preview[0] || {}))
 const clusteringPreviewColumns = computed(() =>
   Object.keys(clusteringResult.value?.preview[0] || {})
 )
@@ -229,6 +230,81 @@ const dimensionalityReductionPreviewColumns = computed(() =>
 )
 const anomalyDetectionPreviewColumns = computed(() =>
   Object.keys(anomalyDetectionResult.value?.preview[0] || {})
+)
+const effectiveAnomalyContamination = computed<AnomalyContamination>(() =>
+  anomalyContaminationAutomatic.value ? 'auto' : anomalyContamination.value
+)
+const anomalyProfileIsLocked = computed(() => anomalyReproductionProfile.value !== 'general')
+const anomalyFigureArtifact = computed(() =>
+  anomalyDetectionResult.value?.artifacts.find(
+    (artifact) => artifact.name === 'anomaly_detection_figure.svg'
+  )
+)
+const paperReproductionFigureArtifact = computed(() =>
+  anomalyDetectionResult.value?.artifacts.find(
+    (artifact) => artifact.name === 'paper_reproduction_figure.svg'
+  )
+)
+const completedAnomalyReproductionProfile = computed<AnomalyReproductionProfile>(
+  () => anomalyDetectionResult.value?.reproduction_profile || anomalyReproductionProfile.value
+)
+const anomalyFigureCards = computed<
+  Array<{
+    artifact: ArtifactResponse
+    kicker: string
+    title: string
+    note: string
+    methodNote: string
+    alt: string
+    reference: boolean
+  }>
+>(() => {
+  const cards = []
+  if (anomalyFigureArtifact.value) {
+    cards.push({
+      artifact: anomalyFigureArtifact.value,
+      kicker: t('ANOMALY VISUALIZATION', '异常检测可视化'),
+      title: t('Projected distribution and anomaly scores', '投影分布与异常分数'),
+      note: t(
+        'The projection is used only for visualization; detection labels and scores were computed in the complete standardized feature space.',
+        '投影仅用于可视化；异常标签与分数由完整的标准化特征空间计算。'
+      ),
+      methodNote: '',
+      alt: t('Anomaly detection diagnostic figure', '异常检测诊断图'),
+      reference: false
+    })
+  }
+  if (paperReproductionFigureArtifact.value) {
+    const profile = completedAnomalyReproductionProfile.value
+    cards.push({
+      artifact: paperReproductionFigureArtifact.value,
+      kicker: t('PAPER REPRODUCTION', '论文图件复现'),
+      title: anomalyReproductionProfileTitle(profile),
+      note: t(
+        'This reference reconstruction follows the selected paper figure contract and uses archived paper coordinates or labels when the uploaded audit workbook supplies them. The summary cards and Online diagnostic above report the freshly computed Online model; agreement between the two evidence layers is not implied.',
+        '该参考复现图遵循所选论文的图件规范，并在上传的审计工作簿提供时使用论文存档坐标或标签。上方统计卡和 Online 诊断图报告的是本次 Online 模型重新计算的结果；两类证据并不默认一致。'
+      ),
+      methodNote:
+        profile === 'zhu_2024_figure_8a'
+          ? t(
+              'For Zhu et al. (2024), P = 0.08 is the published target outlier proportion; M = 30 d is the earthquake-linkage window, not an LOF fitting parameter.',
+              '对于 Zhu et al. (2024)，P = 0.08 是论文设定的目标异常比例；M = 30 d 是地震关联时间窗，并非 LOF 拟合参数。'
+            )
+          : t(
+              'For Sharapatov et al. (2025), the PC1-PC2 plane is a visualization layer; paper-reference markers must remain distinct from labels produced by this Online run.',
+              '对于 Sharapatov et al. (2025)，PC1-PC2 平面属于可视化层；论文参考标记必须与本次 Online 运行生成的标签明确区分。'
+            ),
+      alt: t('Published-reference paper reproduction figure', '基于论文参考结果的复现图'),
+      reference: true
+    })
+  }
+  return cards
+})
+const anomalyDownloadArtifacts = computed(() =>
+  (anomalyDetectionResult.value?.artifacts || []).filter(
+    (artifact) =>
+      !['anomaly_detection_figure.svg', 'paper_reproduction_figure.svg'].includes(artifact.name)
+  )
 )
 const timeSeriesMappedColumns = computed(() => {
   if (timeSeriesMode.value === 'element_mean') {
@@ -282,34 +358,34 @@ const timeSeriesChart = computed(() => {
   const upperValues = valid.map(
     (item) => (item.mean_proportion || 0) + (item.uncertainty_2sigma || 0)
   )
-  const rawMinimum = timeSeriesResult.value?.analysis_type === 'element_mean' ? Math.min(...lowerValues) : 0
+  const rawMinimum =
+    timeSeriesResult.value?.analysis_type === 'element_mean' ? Math.min(...lowerValues) : 0
   const rawMaximum =
     timeSeriesResult.value?.analysis_type === 'element_mean' ? Math.max(...upperValues) : 100
   const rawSpan = rawMaximum - rawMinimum || Math.max(Math.abs(rawMaximum), 1)
   const yMinimum =
-    timeSeriesResult.value?.analysis_type === 'element_mean'
-      ? rawMinimum - rawSpan * 0.08
-      : 0
+    timeSeriesResult.value?.analysis_type === 'element_mean' ? rawMinimum - rawSpan * 0.08 : 0
   const yMaximum =
-    timeSeriesResult.value?.analysis_type === 'element_mean'
-      ? rawMaximum + rawSpan * 0.08
-      : 100
+    timeSeriesResult.value?.analysis_type === 'element_mean' ? rawMaximum + rawSpan * 0.08 : 100
   const y = (value: number) =>
     top + ((yMaximum - value) / (yMaximum - yMinimum)) * (height - top - bottom)
-  const yTicks = Array.from({ length: 6 }, (_, index) => yMinimum + ((yMaximum - yMinimum) * index) / 5)
-  const line = valid
-    .map((item) => `${x(item.age).toFixed(2)},${y(item.mean_proportion || 0).toFixed(2)}`)
-    .join(' ')
-  const upper = valid.map(
-    (item) =>
-      `${x(item.age).toFixed(2)},${y((item.mean_proportion || 0) + (item.uncertainty_2sigma || 0)).toFixed(2)}`
+  const yTicks = Array.from(
+    { length: 6 },
+    (_, index) => yMinimum + ((yMaximum - yMinimum) * index) / 5
   )
-  const lower = [...valid]
-    .reverse()
-    .map(
-      (item) =>
-        `${x(item.age).toFixed(2)},${y((item.mean_proportion || 0) - (item.uncertainty_2sigma || 0)).toFixed(2)}`
-    )
+  const points = valid.map((item) => {
+    const mean = item.mean_proportion as number
+    const uncertainty = item.uncertainty_2sigma as number
+    return {
+      age: item.age,
+      mean,
+      uncertainty,
+      x: x(item.age),
+      y: y(mean),
+      upperY: y(mean + uncertainty),
+      lowerY: y(mean - uncertainty)
+    }
+  })
   return {
     width,
     height,
@@ -320,8 +396,7 @@ const timeSeriesChart = computed(() => {
     minimumAge,
     maximumAge,
     yTicks,
-    line,
-    band: [...upper, ...lower].join(' '),
+    points,
     y
   }
 })
@@ -433,6 +508,9 @@ const anomalyDetectionMethodOptions = computed(() => currentFeature.value?.metho
 const selectedAnomalyDetectionMethod = computed(() =>
   anomalyDetectionMethodOptions.value.find((method) => method.name === anomalyDetectionModel.value)
 )
+const selectedAnomalyReproductionDescription = computed(() =>
+  anomalyReproductionProfileDescription(anomalyReproductionProfile.value)
+)
 const selectedStrategy = computed(() =>
   missingStrategyOptions.value.find((option) => option.value === missingStrategy.value)
 )
@@ -501,8 +579,8 @@ const runButtonLabel = computed(() => {
       return timeSeriesMode.value === 'element_mean'
         ? t('Calculating element means…', '正在计算元素均值…')
         : timeSeriesMode.value === 'direct'
-        ? t('Calculating time series…', '正在计算时间序列…')
-        : t('Predicting probability and calculating…', '正在预测概率并计算…')
+          ? t('Calculating time series…', '正在计算时间序列…')
+          : t('Predicting probability and calculating…', '正在预测概率并计算…')
     return t('Analyzing…', '正在分析…')
   }
   if (!currentFeatureIsVerified.value)
@@ -628,7 +706,9 @@ const runSummaryParameters = computed(() => {
   if (isAnomalyDetection.value) {
     return [
       `${t('Model', '模型')}: ${selectedAnomalyDetectionMethod.value?.display_name || anomalyDetectionModel.value}`,
-      `${t('Features', '特征')}: ${anomalyDetectionFeatures.value.length}`
+      `${t('Features', '特征')}: ${anomalyDetectionFeatures.value.length}`,
+      `${t('Template', '模板')}: ${anomalyReproductionProfileTitle(anomalyReproductionProfile.value)}`,
+      `${t('Contamination', '异常比例')}: ${formatAnomalyContamination(effectiveAnomalyContamination.value)}`
     ]
   }
   if (isTimeSeries.value) {
@@ -776,6 +856,23 @@ watch(
   { deep: true }
 )
 watch(anomalyDetectionModel, () => {
+  anomalyDetectionResult.value = null
+})
+watch(anomalyReproductionProfile, (profile) => {
+  if (profile === 'sharapatov_2025_figure_3a') {
+    anomalyDetectionModel.value = 'isolation_forest'
+    anomalyContaminationAutomatic.value = false
+    anomalyContamination.value = 0.05
+  } else if (profile === 'zhu_2024_figure_8a') {
+    anomalyDetectionModel.value = 'local_outlier_factor'
+    anomalyContaminationAutomatic.value = false
+    anomalyContamination.value = 0.08
+  } else {
+    anomalyContaminationAutomatic.value = true
+  }
+  anomalyDetectionResult.value = null
+})
+watch([anomalyContaminationAutomatic, anomalyContamination], () => {
   anomalyDetectionResult.value = null
 })
 watch(timeSeriesMode, (mode) => {
@@ -1072,9 +1169,7 @@ async function submitJob() {
           classificationCrossValidationFolds.value,
           trackingId
         )
-        ElMessage.success(
-          t('Classification model comparison completed', '分类模型比较已完成')
-        )
+        ElMessage.success(t('Classification model comparison completed', '分类模型比较已完成'))
       } else {
         classificationResult.value = await runClassification(
           datasetFile.value,
@@ -1083,9 +1178,7 @@ async function submitJob() {
           classificationTestSize.value,
           classificationModel.value,
           classificationHyperparameters.value[classificationModel.value] || {},
-          classificationCrossValidationEnabled.value
-            ? classificationCrossValidationFolds.value
-            : 0,
+          classificationCrossValidationEnabled.value ? classificationCrossValidationFolds.value : 0,
           trackingId
         )
         ElMessage.success(
@@ -1117,6 +1210,8 @@ async function submitJob() {
         datasetFile.value,
         anomalyDetectionFeatures.value,
         anomalyDetectionModel.value,
+        effectiveAnomalyContamination.value,
+        anomalyReproductionProfile.value,
         trackingId
       )
       ElMessage.success(
@@ -1150,22 +1245,22 @@ async function submitJob() {
               trackingId
             )
           : timeSeriesMode.value === 'direct'
-          ? await runTimeSeries(
-              datasetFile.value,
-              { ...sharedColumns, probability: timeSeriesProbabilityColumn.value },
-              timeSeriesAgeUnit.value,
-              timeSeriesBinWidth.value,
-              timeSeriesBootstrapIterations.value,
-              trackingId
-            )
-          : await runPredictedTimeSeries(
-              datasetFile.value,
-              sharedColumns,
-              timeSeriesAgeUnit.value,
-              timeSeriesBinWidth.value,
-              timeSeriesBootstrapIterations.value,
-              trackingId
-            )
+            ? await runTimeSeries(
+                datasetFile.value,
+                { ...sharedColumns, probability: timeSeriesProbabilityColumn.value },
+                timeSeriesAgeUnit.value,
+                timeSeriesBinWidth.value,
+                timeSeriesBootstrapIterations.value,
+                trackingId
+              )
+            : await runPredictedTimeSeries(
+                datasetFile.value,
+                sharedColumns,
+                timeSeriesAgeUnit.value,
+                timeSeriesBinWidth.value,
+                timeSeriesBootstrapIterations.value,
+                trackingId
+              )
       ElMessage.success(t('Time series analysis completed', '时间序列分析完成'))
     } else {
       result.value = await profileDataset(datasetFile.value, trackingId)
@@ -1287,6 +1382,37 @@ function clearSelectedColumns() {
   selectedColumns.value = []
 }
 
+function anomalyReproductionProfileTitle(profile: AnomalyReproductionProfile) {
+  if (profile === 'sharapatov_2025_figure_3a') {
+    return 'Sharapatov et al. (2025), Figure 3a'
+  }
+  if (profile === 'zhu_2024_figure_8a') return 'Zhu et al. (2024), Figure 8a'
+  return t('General diagnostics', '通用诊断')
+}
+
+function anomalyReproductionProfileDescription(profile: AnomalyReproductionProfile) {
+  if (profile === 'sharapatov_2025_figure_3a') {
+    return t(
+      'Paper template: Isolation Forest with a fixed 5% contamination target and a PC1-PC2 reproduction panel.',
+      '论文模板：固定使用 5% 目标异常比例的 Isolation Forest，并生成 PC1-PC2 复现面板。'
+    )
+  }
+  if (profile === 'zhu_2024_figure_8a') {
+    return t(
+      'Paper template: Local Outlier Factor with P = 0.08 and the archived GA ratio/event timeline when the audit sheets are present.',
+      '论文模板：使用 P = 0.08 的 Local Outlier Factor；当审计工作表存在时生成 GA 离子比值与事件时间线。'
+    )
+  }
+  return t(
+    'Generate the standard Online diagnostic figure with the selected detector and an automatic or user-defined contamination threshold.',
+    '使用所选检测算法和自动或自定义异常比例阈值生成标准 Online 诊断图。'
+  )
+}
+
+function formatAnomalyContamination(value: AnomalyContamination) {
+  return value === 'auto' ? t('Automatic', '自动') : formatPercent(value)
+}
+
 function formatLabel(value: string) {
   return value.replace(/_/g, ' ')
 }
@@ -1318,6 +1444,56 @@ function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
+
+async function downloadAnomalyFigurePng(artifact: ArtifactResponse) {
+  if (exportingAnomalyPng.value) return
+  exportingAnomalyPng.value = artifact.name
+  let sourceUrl = ''
+  let downloadUrl = ''
+  try {
+    const response = await fetch(artifactUrl(artifact.download_url))
+    if (!response.ok) throw new Error(`Figure download failed with status ${response.status}`)
+    const svgText = await response.text()
+    sourceUrl = URL.createObjectURL(new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' }))
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const candidate = new Image()
+      candidate.onload = () => resolve(candidate)
+      candidate.onerror = () => reject(new Error('The SVG figure could not be rendered.'))
+      candidate.src = sourceUrl
+    })
+    const scale = 2
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, image.naturalWidth) * scale
+    canvas.height = Math.max(1, image.naturalHeight) * scale
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('Canvas rendering is unavailable.')
+    context.fillStyle = '#ffffff'
+    context.fillRect(0, 0, canvas.width, canvas.height)
+    context.drawImage(image, 0, 0, canvas.width, canvas.height)
+    const pngBlob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error('PNG encoding failed.'))),
+        'image/png'
+      )
+    })
+    downloadUrl = URL.createObjectURL(pngBlob)
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = artifact.name.replace(/\.svg$/i, '.png')
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+  } catch (error) {
+    console.error(error)
+    ElMessage.error(
+      t('Could not export the anomaly figure as PNG.', '无法将异常检测图导出为 PNG。')
+    )
+  } finally {
+    if (sourceUrl) URL.revokeObjectURL(sourceUrl)
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl)
+    exportingAnomalyPng.value = ''
+  }
 }
 
 function formatCell(value: unknown) {
@@ -1595,8 +1771,12 @@ function formatCell(value: unknown) {
                   </span>
                 </div>
                 <el-radio-group v-model="regressionRunMode" :disabled="running">
-                  <el-radio-button value="single">{{ t('Single model', '单模型') }}</el-radio-button>
-                  <el-radio-button value="compare">{{ t('Compare models', '多模型比较') }}</el-radio-button>
+                  <el-radio-button value="single">{{
+                    t('Single model', '单模型')
+                  }}</el-radio-button>
+                  <el-radio-button value="compare">{{
+                    t('Compare models', '多模型比较')
+                  }}</el-radio-button>
                 </el-radio-group>
               </div>
 
@@ -1670,7 +1850,9 @@ function formatCell(value: unknown) {
                 <div class="model-settings-heading">
                   <div>
                     <strong>{{ t('Hyperparameters', '超参数') }}</strong>
-                    <span>{{ t('Validated safe settings for this model.', '当前模型经过校验的安全设置。') }}</span>
+                    <span>{{
+                      t('Validated safe settings for this model.', '当前模型经过校验的安全设置。')
+                    }}</span>
                   </div>
                   <el-tag effect="plain">{{ selectedRegressionMethod.display_name }}</el-tag>
                 </div>
@@ -1683,15 +1865,21 @@ function formatCell(value: unknown) {
                     <span>{{ parameter.display_name }}</span>
                     <el-switch
                       v-if="parameter.value_type === 'boolean'"
-                      :model-value="Boolean(getParameterValue('regression', regressionModel, parameter))"
+                      :model-value="
+                        Boolean(getParameterValue('regression', regressionModel, parameter))
+                      "
                       :disabled="running"
-                      @update:model-value="setParameterValue('regression', regressionModel, parameter, $event)"
+                      @update:model-value="
+                        setParameterValue('regression', regressionModel, parameter, $event)
+                      "
                     />
                     <el-select
                       v-else-if="parameter.value_type === 'select'"
                       :model-value="getParameterValue('regression', regressionModel, parameter)"
                       :disabled="running"
-                      @update:model-value="setParameterValue('regression', regressionModel, parameter, $event)"
+                      @update:model-value="
+                        setParameterValue('regression', regressionModel, parameter, $event)
+                      "
                     >
                       <el-option
                         v-for="option in parameter.options"
@@ -1702,14 +1890,18 @@ function formatCell(value: unknown) {
                     </el-select>
                     <el-input-number
                       v-else
-                      :model-value="Number(getParameterValue('regression', regressionModel, parameter))"
+                      :model-value="
+                        Number(getParameterValue('regression', regressionModel, parameter))
+                      "
                       :min="parameter.minimum ?? undefined"
                       :max="parameter.maximum ?? undefined"
                       :step="parameter.step ?? 1"
                       :precision="parameter.value_type === 'integer' ? 0 : undefined"
                       :disabled="running"
                       controls-position="right"
-                      @update:model-value="setParameterValue('regression', regressionModel, parameter, Number($event))"
+                      @update:model-value="
+                        setParameterValue('regression', regressionModel, parameter, Number($event))
+                      "
                     />
                     <small>{{ parameter.description }}</small>
                   </label>
@@ -1723,7 +1915,10 @@ function formatCell(value: unknown) {
                     {{
                       regressionRunMode === 'compare'
                         ? t('Required for a fair model comparison.', '多模型公平比较必须启用。')
-                        : t('Optional validation beyond the held-out test set.', '在独立测试集之外进行可选验证。')
+                        : t(
+                            'Optional validation beyond the held-out test set.',
+                            '在独立测试集之外进行可选验证。'
+                          )
                     }}
                   </span>
                 </div>
@@ -1756,22 +1951,29 @@ function formatCell(value: unknown) {
                   >
                     <div class="hyperparameter-grid compact">
                       <label
-                        v-for="parameter in regressionMethodByName(modelName)?.hyperparameters || []"
+                        v-for="parameter in regressionMethodByName(modelName)?.hyperparameters ||
+                        []"
                         :key="parameter.name"
                         class="hyperparameter-field"
                       >
                         <span>{{ parameter.display_name }}</span>
                         <el-switch
                           v-if="parameter.value_type === 'boolean'"
-                          :model-value="Boolean(getParameterValue('regression', modelName, parameter))"
+                          :model-value="
+                            Boolean(getParameterValue('regression', modelName, parameter))
+                          "
                           :disabled="running"
-                          @update:model-value="setParameterValue('regression', modelName, parameter, $event)"
+                          @update:model-value="
+                            setParameterValue('regression', modelName, parameter, $event)
+                          "
                         />
                         <el-select
                           v-else-if="parameter.value_type === 'select'"
                           :model-value="getParameterValue('regression', modelName, parameter)"
                           :disabled="running"
-                          @update:model-value="setParameterValue('regression', modelName, parameter, $event)"
+                          @update:model-value="
+                            setParameterValue('regression', modelName, parameter, $event)
+                          "
                         >
                           <el-option
                             v-for="option in parameter.options"
@@ -1782,14 +1984,18 @@ function formatCell(value: unknown) {
                         </el-select>
                         <el-input-number
                           v-else
-                          :model-value="Number(getParameterValue('regression', modelName, parameter))"
+                          :model-value="
+                            Number(getParameterValue('regression', modelName, parameter))
+                          "
                           :min="parameter.minimum ?? undefined"
                           :max="parameter.maximum ?? undefined"
                           :step="parameter.step ?? 1"
                           :precision="parameter.value_type === 'integer' ? 0 : undefined"
                           :disabled="running"
                           controls-position="right"
-                          @update:model-value="setParameterValue('regression', modelName, parameter, Number($event))"
+                          @update:model-value="
+                            setParameterValue('regression', modelName, parameter, Number($event))
+                          "
                         />
                         <small>{{ parameter.description }}</small>
                       </label>
@@ -1912,16 +2118,17 @@ function formatCell(value: unknown) {
                   </span>
                 </div>
                 <el-radio-group v-model="classificationRunMode" :disabled="running">
-                  <el-radio-button value="single">{{ t('Single model', '单模型') }}</el-radio-button>
-                  <el-radio-button value="compare">{{ t('Compare models', '多模型比较') }}</el-radio-button>
+                  <el-radio-button value="single">{{
+                    t('Single model', '单模型')
+                  }}</el-radio-button>
+                  <el-radio-button value="compare">{{
+                    t('Compare models', '多模型比较')
+                  }}</el-radio-button>
                 </el-radio-group>
               </div>
 
               <div class="form-grid">
-                <el-form-item
-                  v-if="classificationRunMode === 'single'"
-                  :label="t('Model', '模型')"
-                >
+                <el-form-item v-if="classificationRunMode === 'single'" :label="t('Model', '模型')">
                   <el-select v-model="classificationModel" :disabled="running">
                     <el-option
                       v-for="method in classificationMethodOptions"
@@ -1991,7 +2198,9 @@ function formatCell(value: unknown) {
                 <div class="model-settings-heading">
                   <div>
                     <strong>{{ t('Hyperparameters', '超参数') }}</strong>
-                    <span>{{ t('Validated safe settings for this model.', '当前模型经过校验的安全设置。') }}</span>
+                    <span>{{
+                      t('Validated safe settings for this model.', '当前模型经过校验的安全设置。')
+                    }}</span>
                   </div>
                   <el-tag effect="plain">{{ selectedClassificationMethod.display_name }}</el-tag>
                 </div>
@@ -2004,15 +2213,23 @@ function formatCell(value: unknown) {
                     <span>{{ parameter.display_name }}</span>
                     <el-switch
                       v-if="parameter.value_type === 'boolean'"
-                      :model-value="Boolean(getParameterValue('classification', classificationModel, parameter))"
+                      :model-value="
+                        Boolean(getParameterValue('classification', classificationModel, parameter))
+                      "
                       :disabled="running"
-                      @update:model-value="setParameterValue('classification', classificationModel, parameter, $event)"
+                      @update:model-value="
+                        setParameterValue('classification', classificationModel, parameter, $event)
+                      "
                     />
                     <el-select
                       v-else-if="parameter.value_type === 'select'"
-                      :model-value="getParameterValue('classification', classificationModel, parameter)"
+                      :model-value="
+                        getParameterValue('classification', classificationModel, parameter)
+                      "
                       :disabled="running"
-                      @update:model-value="setParameterValue('classification', classificationModel, parameter, $event)"
+                      @update:model-value="
+                        setParameterValue('classification', classificationModel, parameter, $event)
+                      "
                     >
                       <el-option
                         v-for="option in parameter.options"
@@ -2023,14 +2240,23 @@ function formatCell(value: unknown) {
                     </el-select>
                     <el-input-number
                       v-else
-                      :model-value="Number(getParameterValue('classification', classificationModel, parameter))"
+                      :model-value="
+                        Number(getParameterValue('classification', classificationModel, parameter))
+                      "
                       :min="parameter.minimum ?? undefined"
                       :max="parameter.maximum ?? undefined"
                       :step="parameter.step ?? 1"
                       :precision="parameter.value_type === 'integer' ? 0 : undefined"
                       :disabled="running"
                       controls-position="right"
-                      @update:model-value="setParameterValue('classification', classificationModel, parameter, Number($event))"
+                      @update:model-value="
+                        setParameterValue(
+                          'classification',
+                          classificationModel,
+                          parameter,
+                          Number($event)
+                        )
+                      "
                     />
                     <small>{{ parameter.description }}</small>
                   </label>
@@ -2044,7 +2270,10 @@ function formatCell(value: unknown) {
                     {{
                       classificationRunMode === 'compare'
                         ? t('Required for a fair model comparison.', '多模型公平比较必须启用。')
-                        : t('Optional validation that preserves class proportions.', '保持类别比例的可选验证。')
+                        : t(
+                            'Optional validation that preserves class proportions.',
+                            '保持类别比例的可选验证。'
+                          )
                     }}
                   </span>
                 </div>
@@ -2079,22 +2308,29 @@ function formatCell(value: unknown) {
                   >
                     <div class="hyperparameter-grid compact">
                       <label
-                        v-for="parameter in classificationMethodByName(modelName)?.hyperparameters || []"
+                        v-for="parameter in classificationMethodByName(modelName)
+                          ?.hyperparameters || []"
                         :key="parameter.name"
                         class="hyperparameter-field"
                       >
                         <span>{{ parameter.display_name }}</span>
                         <el-switch
                           v-if="parameter.value_type === 'boolean'"
-                          :model-value="Boolean(getParameterValue('classification', modelName, parameter))"
+                          :model-value="
+                            Boolean(getParameterValue('classification', modelName, parameter))
+                          "
                           :disabled="running"
-                          @update:model-value="setParameterValue('classification', modelName, parameter, $event)"
+                          @update:model-value="
+                            setParameterValue('classification', modelName, parameter, $event)
+                          "
                         />
                         <el-select
                           v-else-if="parameter.value_type === 'select'"
                           :model-value="getParameterValue('classification', modelName, parameter)"
                           :disabled="running"
-                          @update:model-value="setParameterValue('classification', modelName, parameter, $event)"
+                          @update:model-value="
+                            setParameterValue('classification', modelName, parameter, $event)
+                          "
                         >
                           <el-option
                             v-for="option in parameter.options"
@@ -2105,14 +2341,23 @@ function formatCell(value: unknown) {
                         </el-select>
                         <el-input-number
                           v-else
-                          :model-value="Number(getParameterValue('classification', modelName, parameter))"
+                          :model-value="
+                            Number(getParameterValue('classification', modelName, parameter))
+                          "
                           :min="parameter.minimum ?? undefined"
                           :max="parameter.maximum ?? undefined"
                           :step="parameter.step ?? 1"
                           :precision="parameter.value_type === 'integer' ? 0 : undefined"
                           :disabled="running"
                           controls-position="right"
-                          @update:model-value="setParameterValue('classification', modelName, parameter, Number($event))"
+                          @update:model-value="
+                            setParameterValue(
+                              'classification',
+                              modelName,
+                              parameter,
+                              Number($event)
+                            )
+                          "
                         />
                         <small>{{ parameter.description }}</small>
                       </label>
@@ -2428,8 +2673,25 @@ function formatCell(value: unknown) {
             </div>
 
             <template v-if="columnInspection">
+              <el-form-item
+                :label="t('Visualization / reproduction template', '可视化 / 复现模板')"
+              >
+                <el-select v-model="anomalyReproductionProfile" :disabled="running">
+                  <el-option :label="t('General diagnostics', '通用诊断')" value="general" />
+                  <el-option
+                    label="Sharapatov et al. (2025), Figure 3a"
+                    value="sharapatov_2025_figure_3a"
+                  />
+                  <el-option label="Zhu et al. (2024), Figure 8a" value="zhu_2024_figure_8a" />
+                </el-select>
+                <p class="field-help">{{ selectedAnomalyReproductionDescription }}</p>
+              </el-form-item>
+
               <el-form-item :label="t('Model', '模型')">
-                <el-select v-model="anomalyDetectionModel" :disabled="running">
+                <el-select
+                  v-model="anomalyDetectionModel"
+                  :disabled="running || anomalyProfileIsLocked"
+                >
                   <el-option
                     v-for="method in anomalyDetectionMethodOptions"
                     :key="method.name"
@@ -2438,6 +2700,47 @@ function formatCell(value: unknown) {
                   />
                 </el-select>
                 <p class="field-help">{{ selectedAnomalyDetectionMethod?.description }}</p>
+              </el-form-item>
+
+              <el-form-item :label="t('Contamination threshold', '异常比例阈值')">
+                <div class="anomaly-contamination-control">
+                  <el-switch
+                    v-model="anomalyContaminationAutomatic"
+                    :disabled="running || anomalyProfileIsLocked"
+                    :aria-label="t('Use automatic contamination', '使用自动异常比例')"
+                  />
+                  <strong>
+                    {{
+                      anomalyContaminationAutomatic
+                        ? t('Automatic', '自动')
+                        : t('Fixed proportion', '固定比例')
+                    }}
+                  </strong>
+                  <el-input-number
+                    v-if="!anomalyContaminationAutomatic"
+                    v-model="anomalyContamination"
+                    class="anomaly-contamination-input"
+                    :min="0.001"
+                    :max="0.5"
+                    :step="0.01"
+                    :precision="3"
+                    :disabled="running || anomalyProfileIsLocked"
+                    controls-position="right"
+                  />
+                </div>
+                <p class="field-help">
+                  {{
+                    anomalyProfileIsLocked
+                      ? t(
+                          'The selected paper template fixes the detector and target anomaly proportion.',
+                          '所选论文模板固定了检测算法和目标异常比例。'
+                        )
+                      : t(
+                          'Automatic uses the algorithm default; a fixed proportion must be between 0.001 and 0.5.',
+                          '自动模式采用算法默认值；固定比例必须介于 0.001 和 0.5 之间。'
+                        )
+                  }}
+                </p>
               </el-form-item>
 
               <el-form-item :label="t('Numeric feature columns', '数值特征列')">
@@ -2484,8 +2787,8 @@ function formatCell(value: unknown) {
             <el-alert
               :title="
                 t(
-                  'At least 10 complete rows are required. The automatic contamination threshold follows each v0.8 algorithm default.',
-                  '至少需要 10 行完整数据；自动异常比例阈值遵循各 v0.8 算法默认设置。'
+                  'At least 10 complete rows are required. Paper templates add a separate reference-reproduction artifact when the uploaded workbook contains the required audit data.',
+                  '至少需要 10 行完整数据；当上传的工作簿包含所需审计数据时，论文模板会额外生成独立的参考复现图件。'
                 )
               "
               type="info"
@@ -3171,7 +3474,7 @@ function formatCell(value: unknown) {
               {{
                 t(
                   'This estimator does not expose one global equation in the original feature units.',
-                  '该模型不提供一个以原始特征单位表示的全局方程。',
+                  '该模型不提供一个以原始特征单位表示的全局方程。'
                 )
               }}
             </code>
@@ -3199,8 +3502,8 @@ function formatCell(value: unknown) {
                 </h3>
               </div>
               <el-tag type="info" effect="plain">
-                {{ regressionResult.cross_validation.strategy }} ·
-                {{ t('seed', '种子') }} {{ regressionResult.cross_validation.random_state }}
+                {{ regressionResult.cross_validation.strategy }} · {{ t('seed', '种子') }}
+                {{ regressionResult.cross_validation.random_state }}
               </el-tag>
             </div>
             <div class="validation-metric-grid">
@@ -3399,8 +3702,8 @@ function formatCell(value: unknown) {
                 </h3>
               </div>
               <el-tag type="info" effect="plain">
-                {{ classificationResult.cross_validation.strategy }} ·
-                {{ t('seed', '种子') }} {{ classificationResult.cross_validation.random_state }}
+                {{ classificationResult.cross_validation.strategy }} · {{ t('seed', '种子') }}
+                {{ classificationResult.cross_validation.random_state }}
               </el-tag>
             </div>
             <div class="validation-metric-grid">
@@ -3520,7 +3823,10 @@ function formatCell(value: unknown) {
           <article class="summary-card">
             <span>{{ t('Target column', '目标列') }}</span>
             <strong>{{ modelComparisonResult.target_column }}</strong>
-            <small>{{ modelComparisonResult.feature_columns.length }} {{ t('features', '个特征') }}</small>
+            <small
+              >{{ modelComparisonResult.feature_columns.length }}
+              {{ t('features', '个特征') }}</small
+            >
           </article>
         </section>
 
@@ -3554,10 +3860,17 @@ function formatCell(value: unknown) {
             <div class="table-wrap desktop-data-table">
               <el-table :data="modelComparisonResult.results" border size="small">
                 <el-table-column prop="rank" :label="t('Rank', '排名')" width="78" />
-                <el-table-column prop="model_display_name" :label="t('Model', '模型')" min-width="210" />
+                <el-table-column
+                  prop="model_display_name"
+                  :label="t('Model', '模型')"
+                  min-width="210"
+                />
                 <el-table-column :label="t('Status', '状态')" width="110">
                   <template #default="scope">
-                    <el-tag :type="scope.row.status === 'success' ? 'success' : 'danger'" effect="plain">
+                    <el-tag
+                      :type="scope.row.status === 'success' ? 'success' : 'danger'"
+                      effect="plain"
+                    >
                       {{ scope.row.status }}
                     </el-tag>
                   </template>
@@ -3570,24 +3883,36 @@ function formatCell(value: unknown) {
                     </template>
                   </el-table-column>
                   <el-table-column label="MAE" min-width="120">
-                    <template #default="scope">{{ formatNumber(comparisonMetric(scope.row, 'mean_absolute_error'), 5) }}</template>
+                    <template #default="scope">{{
+                      formatNumber(comparisonMetric(scope.row, 'mean_absolute_error'), 5)
+                    }}</template>
                   </el-table-column>
                   <el-table-column label="RMSE" min-width="120">
-                    <template #default="scope">{{ formatNumber(comparisonMetric(scope.row, 'root_mean_squared_error'), 5) }}</template>
+                    <template #default="scope">{{
+                      formatNumber(comparisonMetric(scope.row, 'root_mean_squared_error'), 5)
+                    }}</template>
                   </el-table-column>
                 </template>
                 <template v-else>
                   <el-table-column label="Macro F1 mean" min-width="150">
-                    <template #default="scope">{{ formatPercent(comparisonMetric(scope.row, 'f1_macro')) }}</template>
+                    <template #default="scope">{{
+                      formatPercent(comparisonMetric(scope.row, 'f1_macro'))
+                    }}</template>
                   </el-table-column>
                   <el-table-column :label="t('Accuracy', '准确率')" min-width="130">
-                    <template #default="scope">{{ formatPercent(comparisonMetric(scope.row, 'accuracy')) }}</template>
+                    <template #default="scope">{{
+                      formatPercent(comparisonMetric(scope.row, 'accuracy'))
+                    }}</template>
                   </el-table-column>
                   <el-table-column :label="t('Precision', '精确率')" min-width="130">
-                    <template #default="scope">{{ formatPercent(comparisonMetric(scope.row, 'precision_macro')) }}</template>
+                    <template #default="scope">{{
+                      formatPercent(comparisonMetric(scope.row, 'precision_macro'))
+                    }}</template>
                   </el-table-column>
                   <el-table-column :label="t('Recall', '召回率')" min-width="130">
-                    <template #default="scope">{{ formatPercent(comparisonMetric(scope.row, 'recall_macro')) }}</template>
+                    <template #default="scope">{{
+                      formatPercent(comparisonMetric(scope.row, 'recall_macro'))
+                    }}</template>
                   </el-table-column>
                 </template>
               </el-table>
@@ -3611,7 +3936,11 @@ function formatCell(value: unknown) {
               :href="artifactUrl(artifact.download_url)"
               download
             >
-              {{ artifact.name.endsWith('.csv') ? t('Download ranking CSV', '下载排名 CSV') : t('Download comparison report', '下载比较报告') }}
+              {{
+                artifact.name.endsWith('.csv')
+                  ? t('Download ranking CSV', '下载排名 CSV')
+                  : t('Download comparison report', '下载比较报告')
+              }}
             </el-button>
           </div>
         </el-card>
@@ -3668,7 +3997,9 @@ function formatCell(value: unknown) {
           <div class="inference-actions">
             <label class="file-picker">
               <input type="file" accept=".xlsx,.csv" @change="onApplicationDataChange" />
-              <span class="file-button">{{ t('Choose Application Data', '选择 Application Data') }}</span>
+              <span class="file-button">{{
+                t('Choose Application Data', '选择 Application Data')
+              }}</span>
               <span class="file-name">
                 {{ applicationDataFile?.name || t('No file selected', '未选择文件') }}
               </span>
@@ -4225,6 +4556,14 @@ function formatCell(value: unknown) {
               </strong>
             </div>
             <div>
+              <span>{{ t('Run configuration', '运行配置') }}</span>
+              <strong>
+                {{ anomalyReproductionProfileTitle(completedAnomalyReproductionProfile) }} ·
+                {{ t('contamination', '异常比例') }}
+                {{ formatAnomalyContamination(anomalyDetectionResult.contamination) }}
+              </strong>
+            </div>
+            <div>
               <span>{{ t('Reproducibility', '可复现性') }}</span>
               <strong>
                 {{ t('Standardized input', '标准化输入') }} ·
@@ -4246,6 +4585,60 @@ function formatCell(value: unknown) {
               show-icon
             />
           </div>
+
+          <section
+            v-for="figure in anomalyFigureCards"
+            :key="figure.artifact.download_url"
+            class="result-section anomaly-chart-section"
+          >
+            <div class="section-heading anomaly-chart-heading">
+              <div>
+                <p class="guide-kicker">{{ figure.kicker }}</p>
+                <h3>{{ figure.title }}</h3>
+              </div>
+              <div class="anomaly-chart-actions">
+                <el-button
+                  type="success"
+                  plain
+                  tag="a"
+                  :href="artifactUrl(figure.artifact.download_url)"
+                  :download="figure.artifact.name"
+                >
+                  {{ t('Download SVG', '下载 SVG') }}
+                </el-button>
+                <el-button
+                  type="success"
+                  plain
+                  :loading="exportingAnomalyPng === figure.artifact.name"
+                  :disabled="
+                    Boolean(exportingAnomalyPng) && exportingAnomalyPng !== figure.artifact.name
+                  "
+                  @click="downloadAnomalyFigurePng(figure.artifact)"
+                >
+                  {{ t('Download PNG', '下载 PNG') }}
+                </el-button>
+              </div>
+            </div>
+            <el-alert
+              v-if="figure.reference"
+              class="paper-reproduction-alert"
+              :title="figure.note"
+              type="info"
+              :closable="false"
+              show-icon
+            />
+            <p v-else class="chart-note">{{ figure.note }}</p>
+            <p v-if="figure.methodNote" class="chart-note paper-method-note">
+              {{ figure.methodNote }}
+            </p>
+            <div class="anomaly-chart-wrap">
+              <img
+                class="anomaly-chart"
+                :src="artifactUrl(figure.artifact.download_url)"
+                :alt="figure.alt"
+              />
+            </div>
+          </section>
 
           <section v-if="anomalyDetectionResult.preview.length" class="result-section">
             <div class="section-heading">
@@ -4279,7 +4672,7 @@ function formatCell(value: unknown) {
           </section>
 
           <div
-            v-for="artifact in anomalyDetectionResult.artifacts"
+            v-for="artifact in anomalyDownloadArtifacts"
             :key="artifact.download_url"
             class="artifact-row"
           >
@@ -4365,7 +4758,10 @@ function formatCell(value: unknown) {
                   {{
                     timeSeriesResult.analysis_type === 'element_mean'
                       ? t('Element mean time series completed', '元素均值时间序列已完成')
-                      : t('Subaerial proportion time series completed', '陆上玄武岩比例时间序列已完成')
+                      : t(
+                          'Subaerial proportion time series completed',
+                          '陆上玄武岩比例时间序列已完成'
+                        )
                   }}
                 </h2>
                 <p>
@@ -4389,10 +4785,14 @@ function formatCell(value: unknown) {
             </div>
             <div v-if="timeSeriesResult.analysis_type === 'element_mean'">
               <span>{{ t('Target element', '目标元素') }}</span>
-              <strong>{{ timeSeriesResult.value_column }} ({{ timeSeriesResult.value_unit }})</strong>
+              <strong
+                >{{ timeSeriesResult.value_column }} ({{ timeSeriesResult.value_unit }})</strong
+              >
               <small v-if="timeSeriesResult.filter_column">
                 {{ timeSeriesResult.filter_column }}:
-                {{ formatNumber(timeSeriesResult.filter_min) }}–{{ formatNumber(timeSeriesResult.filter_max) }}
+                {{ formatNumber(timeSeriesResult.filter_min) }}–{{
+                  formatNumber(timeSeriesResult.filter_max)
+                }}
               </small>
             </div>
             <div v-else>
@@ -4434,7 +4834,7 @@ function formatCell(value: unknown) {
           <section v-if="timeSeriesChart" class="result-section">
             <div class="section-heading">
               <div>
-                <p class="guide-kicker">{{ t('TIME SERIES CURVE', '时间序列曲线') }}</p>
+                <p class="guide-kicker">{{ t('TIME SERIES OBSERVATIONS', '时间序列观测值') }}</p>
                 <h3>
                   {{
                     timeSeriesResult.analysis_type === 'element_mean'
@@ -4444,10 +4844,29 @@ function formatCell(value: unknown) {
                 </h3>
               </div>
               <div class="chart-legend">
-                <span><i class="legend-line"></i>{{ t('Mean', '均值') }}</span>
-                <span><i class="legend-band"></i>{{ timeSeriesResult.analysis_type === 'element_mean' ? '±2 SEM' : '±2σ' }}</span>
+                <span>
+                  <svg class="legend-error-bar" viewBox="0 0 24 16" aria-hidden="true">
+                    <line x1="12" x2="12" y1="2" y2="14" />
+                    <line x1="7" x2="17" y1="2" y2="2" />
+                    <line x1="7" x2="17" y1="14" y2="14" />
+                    <circle cx="12" cy="8" r="3" />
+                  </svg>
+                  {{
+                    timeSeriesResult.analysis_type === 'element_mean'
+                      ? t('Mean ±2 SEM', '均值 ±2 SEM')
+                      : t('Mean ±2σ', '均值 ±2σ')
+                  }}
+                </span>
               </div>
             </div>
+            <p class="chart-note">
+              {{
+                t(
+                  'Independent age-bin estimates; points are not connected or fitted.',
+                  '各年龄分箱独立显示；散点之间不连线，也不进行曲线拟合。'
+                )
+              }}
+            </p>
             <div class="time-series-chart-wrap">
               <svg
                 class="time-series-chart"
@@ -4490,8 +4909,39 @@ function formatCell(value: unknown) {
                   :y2="timeSeriesChart.height - timeSeriesChart.bottom"
                   class="chart-axis"
                 />
-                <polygon :points="timeSeriesChart.band" class="chart-band" />
-                <polyline :points="timeSeriesChart.line" class="chart-curve" />
+                <g
+                  v-for="point in timeSeriesChart.points"
+                  :key="point.age"
+                  class="chart-observation"
+                >
+                  <title>
+                    {{
+                      `${t('Age', '年龄')}: ${formatNumber(point.age)} ${timeSeriesResult.age_unit}; ${t('Mean', '均值')}: ${formatNumber(point.mean, 4)}; ${timeSeriesResult.analysis_type === 'element_mean' ? '±2 SEM' : '±2σ'}: ${formatNumber(point.uncertainty, 4)}`
+                    }}
+                  </title>
+                  <line
+                    :x1="point.x"
+                    :x2="point.x"
+                    :y1="point.upperY"
+                    :y2="point.lowerY"
+                    class="chart-error-bar"
+                  />
+                  <line
+                    :x1="point.x - 5"
+                    :x2="point.x + 5"
+                    :y1="point.upperY"
+                    :y2="point.upperY"
+                    class="chart-error-cap"
+                  />
+                  <line
+                    :x1="point.x - 5"
+                    :x2="point.x + 5"
+                    :y1="point.lowerY"
+                    :y2="point.lowerY"
+                    class="chart-error-cap"
+                  />
+                  <circle :cx="point.x" :cy="point.y" r="4.5" class="chart-point" />
+                </g>
                 <text
                   :x="timeSeriesChart.left"
                   :y="timeSeriesChart.height - 20"
@@ -5316,23 +5766,29 @@ function formatCell(value: unknown) {
   }
 }
 
-.legend-line,
-.legend-band {
-  display: inline-block;
+.legend-error-bar {
   width: 24px;
+  height: 16px;
+  overflow: visible;
+
+  line {
+    stroke: #287fba;
+    stroke-width: 1.6;
+  }
+
+  circle {
+    fill: #287fba;
+  }
 }
 
-.legend-line {
-  border-top: 3px solid #d86149;
+.chart-note {
+  margin: -2px 0 12px;
+  color: #607c80;
+  font-size: 13px;
 }
 
-.legend-band {
-  height: 10px;
-  border-radius: 2px;
-  background: rgb(216 97 73 / 20%);
-}
-
-.time-series-chart-wrap {
+.time-series-chart-wrap,
+.anomaly-chart-wrap {
   width: 100%;
   overflow-x: auto;
   border: 1px solid #d6e6e3;
@@ -5340,12 +5796,53 @@ function formatCell(value: unknown) {
   background: #fff;
 }
 
-.time-series-chart {
+.time-series-chart,
+.anomaly-chart {
   display: block;
   width: 100%;
   min-width: 620px;
   height: auto;
   font-family: 'IBM Plex Sans', Arial, sans-serif;
+}
+
+.anomaly-chart-section {
+  margin-top: 26px;
+}
+
+.anomaly-chart-heading {
+  align-items: flex-end;
+}
+
+.anomaly-chart-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.anomaly-contamination-control {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 10px;
+
+  strong {
+    color: #294f56;
+    font-size: 13px;
+    font-weight: 650;
+  }
+}
+
+.anomaly-contamination-input {
+  width: 150px;
+}
+
+.paper-reproduction-alert {
+  margin: -2px 0 12px;
+}
+
+.paper-method-note {
+  margin-top: 0;
 }
 
 .chart-grid-line {
@@ -5359,17 +5856,16 @@ function formatCell(value: unknown) {
   stroke-width: 1.4;
 }
 
-.chart-band {
-  fill: #d86149;
-  fill-opacity: 0.18;
+.chart-error-bar,
+.chart-error-cap {
+  stroke: #287fba;
+  stroke-width: 1.6;
 }
 
-.chart-curve {
-  fill: none;
-  stroke: #d86149;
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.chart-point {
+  fill: #287fba;
+  stroke: #fff;
+  stroke-width: 1.2;
 }
 
 .chart-tick {
