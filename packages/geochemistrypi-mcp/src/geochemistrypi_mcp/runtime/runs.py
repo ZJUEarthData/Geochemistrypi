@@ -51,9 +51,9 @@ from ..data.headers import source_allows_pandas_duplicate_mangling
 from ..data.inspector import DatasetSnapshot
 from ..data.inspector import inspect_dataset as inspect_local_dataset
 from ..data.inspector import sha256_file, snapshot_dataset
-from ..data.preparation import PreparedDataset, prepare_dataset_view
+from ..data.preparation import DatasetPreparationError, PreparedDataset, prepare_dataset_view
 from ..data.row_pairing import verify_original_row_pairing
-from ..planning.interaction_plan import AnalysisPlanCompiler, DatasetCompilationContext, InteractionPlan
+from ..planning.interaction_plan import AnalysisPlanCompiler, DatasetCompilationContext, InteractionPlan, PlanCompilationError
 from ..planning.scientific_contract import assess_scientific_compatibility, canonical_scientific_contract, canonical_sha256, planned_artifact_requirements, resolved_environment_profile
 from ..tracking.experiments import ExperimentManager
 from .artifacts import discover_artifacts, read_time_series_preprocessing_summary
@@ -427,18 +427,91 @@ class RunManager:
         source_snapshot: DatasetSnapshot,
     ) -> PreparedDataset:
         reference = getattr(request, f"{role}_dataset", None)
+        if role == "application" and reference is None:
+            reference, _, _ = self._secondary_dataset(request)
         contract = reference.preparation if reference is not None else DatasetPreparationContract()
+        requested_sheet = getattr(request, "sheet", "0")
+        if request.task == "time_series" and role == "training" and source_snapshot.resolved_path.suffix.lower() == ".xlsx" and (requested_sheet != "0" or contract.worksheet is None):
+            try:
+                from openpyxl import load_workbook
+
+                with source_snapshot.resolved_path.open("rb") as stream:
+                    workbook = load_workbook(stream, read_only=True, data_only=True)
+                    try:
+                        if str(requested_sheet).isdigit():
+                            sheet_index = int(requested_sheet)
+                            if sheet_index >= len(workbook.sheetnames):
+                                raise RunStateError(f"Excel sheet index {sheet_index} is out of range.")
+                            resolved_sheet = workbook.sheetnames[sheet_index]
+                        else:
+                            resolved_sheet = str(requested_sheet)
+                            if resolved_sheet not in workbook.sheetnames:
+                                raise RunStateError(f"Excel sheet {resolved_sheet!r} does not exist.")
+                    finally:
+                        workbook.close()
+            except OSError as exc:
+                raise RunStateError(f"Unable to resolve Time Series worksheet {requested_sheet!r}.") from exc
+            if contract.worksheet is not None and contract.worksheet != resolved_sheet:
+                raise RunStateError("Time Series sheet conflicts with training_dataset.preparation.worksheet.")
+            contract = contract.model_copy(update={"worksheet": resolved_sheet})
         state_root = self.settings.service_state_root
         if state_root is None:
             raise RunStateError("The MCP service-state root is not configured.")
-        return prepare_dataset_view(
-            source_snapshot,
-            contract,
-            state_root,
-            self.settings.maximum_dataset_bytes,
-            self.settings.maximum_columns,
-            allow_pandas_duplicate_mangling=source_allows_pandas_duplicate_mangling(resolved.source),
-        )
+        try:
+            return prepare_dataset_view(
+                source_snapshot,
+                contract,
+                state_root,
+                self.settings.maximum_dataset_bytes,
+                self.settings.maximum_columns,
+                allow_pandas_duplicate_mangling=source_allows_pandas_duplicate_mangling(resolved.source),
+            )
+        except DatasetPreparationError as exc:
+            raise PlanCompilationError(str(exc)) from exc
+
+    @staticmethod
+    def _secondary_dataset(request: Any) -> tuple[Any | None, Path | None, bool]:
+        """Resolve ordinary application or nested external-evaluation input."""
+
+        application_reference = getattr(request, "application_dataset", None)
+        application_path = getattr(request, "application_dataset_path", None)
+        if application_reference is not None or application_path is not None:
+            return application_reference, application_path, False
+        evaluation = getattr(request, "evaluation", None)
+        if evaluation is not None and evaluation.mode == "external_labeled":
+            return (
+                evaluation.evaluation_dataset,
+                evaluation.evaluation_dataset_path,
+                True,
+            )
+        return None, None, False
+
+    @staticmethod
+    def _execution_dataset_updates(
+        request: Any,
+        training_path: Path,
+        secondary_path: Path | None,
+        secondary_is_evaluation: bool,
+    ) -> dict[str, Any]:
+        updates: dict[str, Any] = {
+            "training_dataset_path": training_path,
+            "training_dataset": None,
+        }
+        if secondary_is_evaluation:
+            updates["evaluation"] = request.evaluation.model_copy(
+                update={
+                    "evaluation_dataset_path": secondary_path,
+                    "evaluation_dataset": None,
+                }
+            )
+        elif hasattr(request, "application_dataset_path"):
+            updates.update(
+                {
+                    "application_dataset_path": secondary_path,
+                    "application_dataset": None,
+                }
+            )
+        return updates
 
     @staticmethod
     def _prepared_identity(prepared: PreparedDataset, resolved: ResolvedDataset) -> dict[str, Any]:
@@ -695,11 +768,10 @@ class RunManager:
             raise InputIntegrityError("The training dataset changed between source resolution and validation.")
         prepared_training = self._prepare_dataset(request, "training", resolved_training, source_snapshot)
         snapshot = prepared_training.snapshot
-        application_reference = getattr(request, "application_dataset", None)
+        application_reference, application_path, secondary_is_evaluation = self._secondary_dataset(request)
         if application_reference is not None:
             resolved_application = self.dataset_catalog.resolve(application_reference, task=request.task, role="application")
         else:
-            application_path = getattr(request, "application_dataset_path", None)
             resolved_application = ResolvedDataset(path=application_path, expected_sha256=None, dataset_id=None, source="path") if application_path is not None else None
         application_source_snapshot = snapshot_dataset(resolved_application.path, self.settings.maximum_dataset_bytes) if resolved_application is not None else None
         expected_application_sha256 = resolved_application.expected_sha256 if resolved_application is not None else None
@@ -711,18 +783,12 @@ class RunManager:
         )
         application_snapshot = prepared_application.snapshot if prepared_application is not None else None
         execution_request = request.model_copy(
-            update={
-                "training_dataset_path": snapshot.resolved_path,
-                "training_dataset": None,
-                **(
-                    {
-                        "application_dataset_path": application_snapshot.resolved_path if application_snapshot else None,
-                        "application_dataset": None,
-                    }
-                    if hasattr(request, "application_dataset_path")
-                    else {}
-                ),
-            }
+            update=self._execution_dataset_updates(
+                request,
+                snapshot.resolved_path,
+                application_snapshot.resolved_path if application_snapshot else None,
+                secondary_is_evaluation,
+            )
         )
         dataset_context = DatasetCompilationContext(
             training_source=(resolved_training.source if snapshot.resolved_path == source_snapshot.resolved_path else "path"),
@@ -760,7 +826,7 @@ class RunManager:
             warnings.append(f"This aggregate workload will execute {len(models)} child models in CLI order.")
         if tuning == "automl":
             warnings.append("AutoML can take substantially longer than a manual model run.")
-        if getattr(request, "application_dataset_path", None) is None and getattr(request, "application_dataset", None) is None and request.task in {"classification", "regression"}:
+        if application_reference is None and application_path is None and request.task in {"classification", "regression"}:
             warnings.append("No application dataset was selected, so model inference will be skipped.")
         if getattr(request, "world_map", None) is not None and request.world_map.enabled:
             warnings.append("World-map rendering is enabled and may add platform-dependent image artifacts.")
@@ -928,7 +994,7 @@ class RunManager:
             raise InputIntegrityError("The training dataset changed between source resolution and validation.")
         prepared_training = self._prepare_dataset(request, "training", resolved_training, source_snapshot)
         snapshot = prepared_training.snapshot
-        application_reference = getattr(request, "application_dataset", None)
+        application_reference, application_dataset_path, secondary_is_evaluation = self._secondary_dataset(request)
         if application_reference is not None:
             resolved_application = self.dataset_catalog.resolve(
                 application_reference,
@@ -937,7 +1003,6 @@ class RunManager:
             )
             application_dataset_path = resolved_application.path
         else:
-            application_dataset_path = getattr(request, "application_dataset_path", None)
             resolved_application = (
                 ResolvedDataset(
                     path=application_dataset_path,
@@ -965,18 +1030,12 @@ class RunManager:
         )
         application_snapshot = prepared_application.snapshot if prepared_application is not None else None
         execution_request = request.model_copy(
-            update={
-                "training_dataset_path": snapshot.resolved_path,
-                "training_dataset": None,
-                **(
-                    {
-                        "application_dataset_path": (application_snapshot.resolved_path if application_snapshot is not None else None),
-                        "application_dataset": None,
-                    }
-                    if hasattr(request, "application_dataset_path")
-                    else {}
-                ),
-            }
+            update=self._execution_dataset_updates(
+                request,
+                snapshot.resolved_path,
+                application_snapshot.resolved_path if application_snapshot else None,
+                secondary_is_evaluation,
+            )
         )
         dataset_context = DatasetCompilationContext(
             training_source=(resolved_training.source if snapshot.resolved_path == source_snapshot.resolved_path else "path"),

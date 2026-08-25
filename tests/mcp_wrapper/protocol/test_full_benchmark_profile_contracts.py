@@ -133,6 +133,40 @@ def test_compound_headers_flatten_without_losing_source_row_lineage(
     assert "compose_header_rows" in prepared.record["executed_view_operations"]
 
 
+def test_single_worksheet_can_materialize_a_source_row_identifier(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "unidentified.xlsx"
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Data"
+    sheet.append(["Feature", "Target"])
+    sheet.append([1.5, 10.0])
+    sheet.append([2.5, 20.0])
+    workbook.save(source)
+    contract = DatasetPreparationContract(
+        worksheet="Data",
+        source_row_column="SampleID",
+        selected_columns=("SampleID", "Feature", "Target"),
+    )
+
+    prepared = prepare_dataset_view(
+        snapshot_dataset(source, 10 * 1024 * 1024),
+        contract,
+        tmp_path / "state",
+        10 * 1024 * 1024,
+        256,
+    )
+
+    assert prepared.snapshot.resolved_path.read_text(encoding="utf-8").splitlines() == [
+        "SampleID,Feature,Target",
+        "2,1.5,10",
+        "3,2.5,20",
+    ]
+    assert prepared.record["table"]["source_row_column"] == "SampleID"
+    assert "generate_source_row_column" in prepared.record["executed_view_operations"]
+
+
 def test_explicit_duplicate_header_policy_preserves_selected_column_identity(
     tmp_path: Path,
 ) -> None:

@@ -159,6 +159,26 @@ def test_original_result_pairing_respects_xlsx_numeric_storage_precision(tmp_pat
     assert pairing["numeric_comparison_policy"] == "xlsx_relative_1e-14"
 
 
+def test_original_result_pairing_preserves_numeric_looking_text_from_csv(tmp_path: Path) -> None:
+    source = tmp_path / "source.csv"
+    source.write_text("SampleID,F1\n110062,1.0386431945040793\n", encoding="utf-8")
+    snapshot = snapshot_dataset(source, 1024 * 1024)
+    output = tmp_path / "output"
+    data_directory = output / "artifacts" / "data"
+    data_directory.mkdir(parents=True)
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.append(["SampleID", "F1"])
+    worksheet.append(["110062", 1.038643194504079])
+    workbook.save(data_directory / "Data Original.xlsx")
+    workbook.close()
+
+    pairing = verify_original_row_pairing(source, output, "SampleID", snapshot.row_lineage)
+
+    assert pairing["verified"] is True
+    assert pairing["scientific_identifier_values_preserved"] is True
+
+
 def test_original_result_pairing_still_rejects_numeric_change_above_xlsx_precision(tmp_path: Path) -> None:
     source = tmp_path / "source.csv"
     source.write_text("SampleID,F1\nA,0.04966603906761905\n", encoding="utf-8")

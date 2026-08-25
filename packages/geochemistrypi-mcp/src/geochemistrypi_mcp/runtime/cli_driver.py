@@ -355,7 +355,13 @@ class CliInteractionDriver:
         trace_path = capture_path / "interaction-trace.json"
         automation_plan_path = capture_path / "automation-plan.json"
         automation_events_path = capture_path / "automation-events.json"
+        scientific_config_path = capture_path / "scientific-execution.json"
         executed_command = list(plan.public_command)
+        if plan.scientific_execution_contract_json is not None and not self.automation_mode:
+            raise CliProcessError(
+                "Scientific execution controls require the versioned CLI automation transport.",
+                workspace_path,
+            )
         if self.automation_mode:
             _write_json_atomically(
                 automation_plan_path,
@@ -373,6 +379,15 @@ class CliInteractionDriver:
                     str(automation_events_path),
                 )
             )
+            if plan.scientific_execution_contract_json is not None:
+                scientific_execution = json.loads(plan.scientific_execution_contract_json)
+                _write_json_atomically(scientific_config_path, scientific_execution)
+                executed_command.extend(
+                    (
+                        "--scientific-config",
+                        str(scientific_config_path),
+                    )
+                )
         process_environment = os.environ.copy()
         if environment:
             process_environment.update({str(key): str(value) for key, value in environment.items()})

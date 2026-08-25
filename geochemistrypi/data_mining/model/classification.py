@@ -18,13 +18,24 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 
+from ...scientific_execution import active_scientific_execution
 from ..constants import CUSTOMIZE_LABEL_STRATEGY, MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, OPTION, RAY_FLAML, SAMPLE_BALANCE_STRATEGY, SECTION
 from ..data.data_readiness import limit_num_input, num2option, num_input
 from ..plot.statistic_plot import basic_statistic
 from ..utils.base import clear_output, save_data, save_data_without_data_identifier, save_fig, save_text
 from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
 from .func.algo_classification._adaboost import adaboost_manual_hyper_parameters
-from .func.algo_classification._common import cross_validation, plot_2d_decision_boundary, plot_confusion_matrix, plot_precision_recall, plot_precision_recall_threshold, plot_ROC, resampler, score
+from .func.algo_classification._common import (
+    cross_validation,
+    plot_2d_decision_boundary,
+    plot_confusion_matrix,
+    plot_normalized_confusion_matrix,
+    plot_precision_recall,
+    plot_precision_recall_threshold,
+    plot_ROC,
+    resampler,
+    score,
+)
 from .func.algo_classification._decision_tree import decision_tree_manual_hyper_parameters
 from .func.algo_classification._enum import (
     AdaBoostSpecialFunction,
@@ -48,6 +59,11 @@ from .func.algo_classification._sgd_classification import sgd_classificaiton_man
 from .func.algo_classification._svc import svc_manual_hyper_parameters
 from .func.algo_classification._traceability import save_metric_configuration, save_skipped_binary_plot_notice
 from .func.algo_classification._xgboost import xgboost_manual_hyper_parameters
+
+
+def _configured_cross_validation_folds() -> int:
+    contract = active_scientific_execution()
+    return contract.cross_validation_folds if contract is not None else 10
 
 
 class ClassificationWorkflowBase(WorkflowBase):
@@ -199,6 +215,50 @@ class ClassificationWorkflowBase(WorkflowBase):
         columns = [f"pred_{label}" for label in labels]
         data = pd.DataFrame(data, columns=columns, index=index)
         save_data(data, name_column, f"{graph_name} - {algorithm_name}", local_path, mlflow_path, True)
+
+    @staticmethod
+    def _plot_normalized_confusion_matrix(
+        y_test: pd.DataFrame,
+        y_test_predict: pd.DataFrame,
+        name_column: str,
+        trained_model: object,
+        algorithm_name: str,
+        local_path: str,
+        mlflow_path: str,
+        normalization: str,
+    ) -> None:
+        graph_name = f"Normalized Confusion Matrix ({normalization})"
+        print(f"-----* {graph_name} *-----")
+        data = plot_normalized_confusion_matrix(
+            y_test,
+            y_test_predict,
+            trained_model,
+            normalization,
+        )
+        save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+        labels = getattr(trained_model, "classes_", None)
+        if labels is None or len(labels) != data.shape[0]:
+            labels = pd.unique(
+                pd.concat(
+                    [pd.Series(np.ravel(y_test)), pd.Series(np.ravel(y_test_predict))],
+                    ignore_index=True,
+                )
+            )
+        if len(labels) != data.shape[0]:
+            labels = range(data.shape[0])
+        normalized = pd.DataFrame(
+            data,
+            columns=[f"pred_{label}" for label in labels],
+            index=[f"true_{label}" for label in labels],
+        )
+        save_data(
+            normalized,
+            name_column,
+            f"{graph_name} - {algorithm_name}",
+            local_path,
+            mlflow_path,
+            True,
+        )
 
     @staticmethod
     def _count_unique_labels(y_values: Optional[pd.DataFrame]) -> Optional[int]:
@@ -551,7 +611,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             y_train=ClassificationWorkflowBase.y_train,
             graph_name=ClassificationCommonFunction.CROSS_VALIDATION.value,
             average=average,
-            cv_num=10,
+            cv_num=_configured_cross_validation_folds(),
             algorithm_name=self.naming,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
@@ -565,6 +625,18 @@ class ClassificationWorkflowBase(WorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
+        scientific_execution = active_scientific_execution()
+        if scientific_execution is not None and scientific_execution.confusion_matrix_normalization is not None:
+            self._plot_normalized_confusion_matrix(
+                y_test=ClassificationWorkflowBase.y_test,
+                y_test_predict=ClassificationWorkflowBase.y_test_predict,
+                name_column=ClassificationWorkflowBase.name_test,
+                trained_model=self.model,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+                normalization=scientific_execution.confusion_matrix_normalization,
+            )
         class_count = self._get_total_class_count(getattr(self, "label_config", None))
         if class_count == 2:
             self._plot_precision_recall(
@@ -652,7 +724,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             y_train=ClassificationWorkflowBase.y_train,
             graph_name=ClassificationCommonFunction.CROSS_VALIDATION.value,
             average=average,
-            cv_num=10,
+            cv_num=_configured_cross_validation_folds(),
             algorithm_name=self.naming,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
@@ -1823,7 +1895,7 @@ class XGBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         if kwargs:
             self.kwargs = kwargs
 
-        if random_state:
+        if random_state is not None:
             self.random_state = random_state
 
         # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'

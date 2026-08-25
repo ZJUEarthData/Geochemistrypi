@@ -42,6 +42,85 @@ def _dataset(tmp_path: Path) -> Path:
     return path
 
 
+def test_validate_prepares_nested_external_evaluation_dataset_independently(
+    tmp_path: Path,
+) -> None:
+    training = tmp_path / "training.xlsx"
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Training"
+    sheet.append(["TrainID", "F1", "F2", "Target"])
+    for index in range(12):
+        sheet.append([f"T-{index}", index + 1, index + 2, index + 3])
+    workbook.save(training)
+    workbook.close()
+
+    evaluation = tmp_path / "evaluation.xlsx"
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Evaluation"
+    sheet.append(["EvalID", "F1", "F2", "Target"])
+    for index in range(3):
+        sheet.append([f"E-{index}", index + 10, index + 20, index + 30])
+    workbook.save(evaluation)
+    workbook.close()
+
+    request = RegressionRequest(
+        training_dataset={
+            "source": "path",
+            "path": training,
+            "preparation": {
+                "worksheet": "Training",
+                "selected_columns": ("TrainID", "F1", "F2", "Target"),
+            },
+        },
+        experiment_name="External",
+        run_name="Prepared",
+        identifier_column="TrainID",
+        feature_columns=("F1", "F2"),
+        target_column="Target",
+        scaling="standardization",
+        model={
+            "type": "extra_trees",
+            "number_of_estimators": 10,
+            "maximum_depth": None,
+            "maximum_features": 2,
+        },
+        evaluation={
+            "mode": "external_labeled",
+            "evaluation_dataset": {
+                "source": "path",
+                "path": evaluation,
+                "preparation": {
+                    "worksheet": "Evaluation",
+                    "selected_columns": ("EvalID", "F1", "F2", "Target"),
+                },
+            },
+            "external_identifier_column": "EvalID",
+        },
+        reproducibility={"model_seed": 280},
+    )
+    manager = RunManager(
+        McpSettings(
+            runs_root=tmp_path / "runs",
+            cli_executable=Path(sys.executable),
+            maximum_dataset_bytes=1024 * 1024,
+        ),
+        cli_resolver=lambda: (Path(sys.executable), CLI_VERSION),
+    )
+    try:
+        preview = manager.validate(request)
+    finally:
+        manager.close()
+
+    assert preview.execution_ready is True
+    assert preview.source_row_count == 12
+    assert preview.application_source_row_count == 3
+    assert preview.application_preparation is not None
+    assert preview.application_preparation["contract"]["worksheet"] == "Evaluation"
+    assert preview.effective_seeds == {"model": 280}
+
+
 class ScriptPlanCompiler:
     def __init__(self, script: Path):
         self.script = script

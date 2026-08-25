@@ -68,6 +68,11 @@ def _semantic_override(relative_path: str) -> tuple[str, str] | None:
         return "evaluation_labels", "evaluation.true_labels"
     if name == "roc curve - probabilities.xlsx":
         return "score_table", "evaluation.scores"
+    if "normalized confusion matrix" in name:
+        return (
+            "normalized_confusion_matrix_table" if suffix in {".csv", ".xlsx"} else "normalized_confusion_matrix_figure",
+            "evaluation.confusion_matrix.normalized",
+        )
     if "feature importance diagram" in name:
         return (
             "feature_importance_table" if suffix in {".csv", ".xlsx"} else "feature_importance_figure",
@@ -78,10 +83,30 @@ def _semantic_override(relative_path: str) -> tuple[str, str] | None:
             "confusion_matrix_table" if suffix in {".csv", ".xlsx"} else "confusion_matrix_figure",
             "evaluation.confusion_matrix",
         )
+    if "y train predict" in name:
+        return "prediction_table", "evaluation.training_predictions"
     if "y test predict" in name or "application data predicted" in name:
         return "prediction_table", "evaluation.predictions"
+    if "training model score" in name:
+        return "training_metrics", "evaluation.training_metrics"
+    if "external evaluation model score" in name:
+        return "external_regression_metrics", "evaluation.external"
+    if "external evaluation predictions" in name:
+        return "external_evaluation_table", "evaluation.predictions"
+    if "external evaluation residuals" in name:
+        return "residual_table", "evaluation.residuals"
+    if "external predicted vs. actual" in name:
+        return "observed_predicted_figure", "evaluation.figure"
+    if "cross validation" in name:
+        return "cross_validation_metrics", "evaluation.cross_validation"
     if "model score" in name:
         return "holdout_metrics", "evaluation.holdout"
+    if "split membership" in name:
+        return "split_membership", "provenance.split_membership"
+    if "scientific execution attestation" in name:
+        return "parameter_attestation", "provenance.parameters.attested"
+    if "predicted vs. actual density" in name:
+        return "prediction_figure", "evaluation.predicted_actual_density"
     if "classification report" in name:
         return "classification_report", "evaluation.classification_report"
     if "residuals diagram" in name:
@@ -93,6 +118,21 @@ def _semantic_override(relative_path: str) -> tuple[str, str] | None:
         return (
             "prediction_table" if suffix in {".csv", ".xlsx"} else "prediction_figure",
             "evaluation.predictions",
+        )
+    if "reference anomaly event associations" in name:
+        return "event_association_table", "reference_anomaly.event_associations"
+    if "reference anomaly artifact index" in name:
+        return "artifact_index", "provenance.artifact_index"
+    if "reference anomaly time series manifest" in name:
+        return "scientific_manifest", "provenance.scientific_manifest"
+    if "reference anomaly time series metrics" in name:
+        return "reference_anomaly_metrics", "reference_anomaly.metrics"
+    if "reference anomaly time series parameters" in name:
+        return "parameter_record", "provenance.parameters"
+    if "reference anomaly time series" in name:
+        return (
+            "reference_anomaly_joined_table" if suffix == ".csv" else "reference_anomaly_figure",
+            "reference_anomaly.joined_observations" if suffix == ".csv" else "reference_anomaly.figure",
         )
     if "subaerial proportion" in name:
         return (
@@ -164,7 +204,8 @@ def build_adapter_artifact_mappings(
             mappings.append(_available(relative_path, "cluster_assignments", "clustering.labels"))
         if override == ("anomaly_assignments", "anomaly_detection.assignments"):
             mappings.append(_available(relative_path, "anomaly_labels", "anomaly_detection.labels"))
-    if workflow_family == "supervised_learning" and workflow_mode == "classification":
+    normalized_confusion_available = any(mapping.output_role == "evaluation.confusion_matrix.normalized" and mapping.availability == "available" for mapping in mappings)
+    if workflow_family == "supervised_learning" and workflow_mode == "classification" and not normalized_confusion_available:
         reason = "The public CLI emits the raw confusion matrix only; MCP does not recalculate scientific artifacts."
         mappings.extend(
             (

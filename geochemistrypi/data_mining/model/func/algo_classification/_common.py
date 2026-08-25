@@ -108,6 +108,34 @@ def plot_confusion_matrix(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, tr
     return cm
 
 
+def plot_normalized_confusion_matrix(
+    y_test: pd.DataFrame,
+    y_test_predict: pd.DataFrame,
+    trained_model: object,
+    normalization: str,
+) -> np.ndarray:
+    """Plot a confusion matrix with one explicit sklearn normalization rule."""
+
+    sklearn_normalization = "pred" if normalization == "predicted" else normalization
+    y_test_series = pd.Series(np.ravel(y_test))
+    y_test_predict_series = pd.Series(np.ravel(y_test_predict))
+    labels = getattr(trained_model, "classes_", None)
+    if labels is None:
+        labels = pd.unique(pd.concat([y_test_series, y_test_predict_series], ignore_index=True))
+    labels = list(labels)
+    matrix = confusion_matrix(
+        y_test_series,
+        y_test_predict_series,
+        labels=labels,
+        normalize=sklearn_normalization,
+    )
+    print(matrix)
+    plt.figure()
+    display = ConfusionMatrixDisplay(confusion_matrix=matrix, display_labels=labels)
+    display.plot(values_format=".3f")
+    return matrix
+
+
 def display_cross_validation_scores(scores: np.ndarray, score_name: str) -> Dict:
     """Display the scores of cross-validation.
 

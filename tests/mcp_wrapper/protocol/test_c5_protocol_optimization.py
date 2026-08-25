@@ -187,10 +187,11 @@ async def test_advertised_time_series_schemas_remove_only_non_validation_annotat
         listing = await client.list_tools()
         schemas = {tool.name: tool.input_schema for tool in listing.tools}
         assert all(not _annotation_paths(schema) for schema in schemas.values())
-        # The named environment-profile and deterministic filter contracts add
-        # validation-bearing fields; keep the scoped schema under a tight revised budget.
-        assert sum(_compact_bytes(schema) for schema in schemas.values()) < 12_300
-        assert _compact_bytes(listing.model_dump(mode="json", by_alias=True, exclude_none=True)) < 13_700
+        # The named environment-profile, deterministic filter, and reference-labelled
+        # event-series contracts add validation-bearing fields. Keep the same 13-tool
+        # surface under a tight revised payload budget.
+        assert sum(_compact_bytes(schema) for schema in schemas.values()) < 13_300
+        assert _compact_bytes(listing.model_dump(mode="json", by_alias=True, exclude_none=True)) < 14_700
 
         time_series = schemas["validate_analysis"]
         assert time_series["additionalProperties"] is False

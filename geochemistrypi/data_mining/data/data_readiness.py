@@ -326,7 +326,14 @@ def create_sub_data_set(data: pd.DataFrame, allow_empty_columns: bool = False, r
     return sub_data_set
 
 
-def data_split(X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], names: pd.DataFrame, test_size: float = 0.2, stratify: Optional[Union[pd.DataFrame, pd.Series]] = None) -> Dict:
+def data_split(
+    X: pd.DataFrame,
+    y: Union[pd.DataFrame, pd.Series],
+    names: pd.DataFrame,
+    test_size: float = 0.2,
+    stratify: Optional[Union[pd.DataFrame, pd.Series]] = None,
+    random_state: int = 42,
+) -> Dict:
     """Split arrays or matrices into random train and test subsets.
 
     Parameters
@@ -363,7 +370,7 @@ def data_split(X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], names: pd.Dat
         y,
         names,
         test_size=test_size,
-        random_state=42,
+        random_state=random_state,
         stratify=stratify_values,
     )
     return {"X Train": X_train, "X Test": X_test, "Y Train": y_train, "Y Test": y_test, "Name Train": name_train, "Name Test": name_test}

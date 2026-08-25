@@ -46,6 +46,7 @@ from ..contracts.regression import MODEL_DISPLAY_NAMES as REGRESSION_MODEL_DISPL
 from ..contracts.regression import MODEL_NUMBERS as REGRESSION_MODEL_NUMBERS
 from ..contracts.regression import MODEL_ORDER as REGRESSION_MODEL_ORDER
 from ..contracts.regression import MODELS_SUPPORTING_MISSING_VALUES as REGRESSION_MODELS_SUPPORTING_MISSING_VALUES
+from ..contracts.regression import MODELS_WITH_FEATURE_IMPORTANCE as REGRESSION_MODELS_WITH_FEATURE_IMPORTANCE
 from ..contracts.regression import MODELS_WITH_INTERACTIVE_PLOT_SELECTION as REGRESSION_MODELS_WITH_INTERACTIVE_PLOT_SELECTION
 from ..contracts.regression import MODELS_WITHOUT_AUTOML as REGRESSION_MODELS_WITHOUT_AUTOML
 from ..data.headers import HeaderValidationError, normalize_dataset_header, source_allows_pandas_duplicate_mangling
@@ -74,6 +75,14 @@ def _parameter_entries(value: dict[str, Any]) -> Tuple[Tuple[str, str], ...]:
 
 def _request_model_parameters(request: Any) -> dict[str, Any]:
     if request.task == "time_series":
+        if request.mode == "reference_anomaly_series":
+            return {
+                "mode": request.mode,
+                "reference_label_provenance": request.reference_label_provenance,
+                "comparison_label_provenance": (request.comparison_label_provenance if request.comparison_label_column is not None else None),
+                "association_window_days": request.association_window_days,
+                "association_direction": request.association_direction,
+            }
         return {
             "mode": request.mode,
             "bin_width": request.bin_width,
@@ -101,6 +110,117 @@ def _request_model_parameters(request: Any) -> dict[str, Any]:
     return request.model.model_dump(mode="json")
 
 
+def _resolved_model_parameters(request: Any) -> dict[str, Any]:
+    if request.task == "time_series":
+        return _request_model_parameters(request)
+    all_models = request.model_selection.mode == "all"
+    tuning = request.model_selection.tuning if all_models else getattr(request, "tuning", "manual")
+    if all_models or tuning == "automl":
+        return {}
+    return request.model.model_dump(mode="json")
+
+
+def _native_scientific_model_parameters(request: Any) -> dict[str, Any] | None:
+    model_type = request.model.type
+    supported = {
+        ("classification", "xgboost"),
+        ("regression", "xgboost"),
+        ("regression", "extra_trees"),
+        ("anomaly_detection", "local_outlier_factor"),
+    }
+    if (request.task, model_type) not in supported:
+        return None
+    parameters = _resolved_model_parameters(request)
+    mappings = {
+        "xgboost": {
+            "number_of_estimators": "n_estimators",
+            "maximum_depth": "max_depth",
+            "column_subsample": "colsample_bytree",
+            "column_subsample_by_level": "colsample_bylevel",
+            "column_subsample_by_node": "colsample_bynode",
+            "l1_regularization": "reg_alpha",
+            "l2_regularization": "reg_lambda",
+            "minimum_child_weight": "min_child_weight",
+            "maximum_delta_step": "max_delta_step",
+            "number_of_jobs": "n_jobs",
+        },
+        "extra_trees": {
+            "number_of_estimators": "n_estimators",
+            "maximum_depth": "max_depth",
+            "minimum_samples_split": "min_samples_split",
+            "minimum_samples_leaf": "min_samples_leaf",
+            "maximum_features": "max_features",
+            "maximum_samples": "max_samples",
+            "out_of_bag_score": "oob_score",
+        },
+        "local_outlier_factor": {
+            "number_of_neighbors": "n_neighbors",
+            "number_of_jobs": "n_jobs",
+            "power": "p",
+        },
+    }[model_type]
+    ignored = {"type", "detection_mode"}
+    return {mappings.get(name, name): value for name, value in parameters.items() if name not in ignored}
+
+
+def _effective_scientific_model_parameters(
+    request: Any,
+    effective_seeds: Tuple[Tuple[str, int], ...],
+) -> dict[str, Any]:
+    """Expose public controls plus constructor values injected by the adapter."""
+    parameters = _resolved_model_parameters(request)
+    model_seed = dict(effective_seeds).get("model")
+    if model_seed is not None:
+        parameters["random_state"] = model_seed
+    if request.model.type == "local_outlier_factor":
+        parameters["novelty"] = request.model.detection_mode == "novelty_detection"
+    return parameters
+
+
+def _scientific_execution_contract_json(
+    request: Any,
+    workflow_family: str,
+    workflow_mode: str,
+) -> tuple[str, Tuple[Tuple[str, int], ...]] | None:
+    if request.model_selection.mode == "all" or getattr(request, "tuning", "manual") != "manual":
+        return None
+    native_parameters = _native_scientific_model_parameters(request)
+    if native_parameters is None:
+        return None
+    model_type = request.model.type
+    supervised = request.task in {"classification", "regression"}
+    external_labeled_training = request.task == "regression" and request.evaluation.mode == "external_labeled"
+    split_seed = (request.reproducibility.split_seed if request.reproducibility.split_seed is not None else _CLI_FIXED_RANDOM_SEED) if supervised and not external_labeled_training else None
+    seeded_model = model_type in {"xgboost", "extra_trees"}
+    model_seed = (request.reproducibility.model_seed if request.reproducibility.model_seed is not None else _CLI_FIXED_RANDOM_SEED) if seeded_model else None
+    folds = request.evaluation.folds if request.evaluation.folds is not None else 10
+    evaluation_mode = request.model.detection_mode if model_type == "local_outlier_factor" else "external_labeled" if request.evaluation.mode == "external_labeled" else "internal_holdout"
+    payload = {
+        "schema_version": 2,
+        "workflow_family": workflow_family,
+        "workflow_mode": workflow_mode,
+        "method": model_type,
+        "split_seed": split_seed,
+        "model_seed": model_seed,
+        "cross_validation_folds": folds,
+        "evaluation_mode": evaluation_mode,
+        "confusion_matrix_normalization": (None if request.evaluation.confusion_matrix_normalization in {None, "none"} else request.evaluation.confusion_matrix_normalization),
+        "external_evaluation_identifier_column": (request.evaluation.external_identifier_column if evaluation_mode == "external_labeled" else None),
+        "external_evaluation_target_columns": (list(request.resolved_target_columns) if evaluation_mode == "external_labeled" else []),
+        "target_transformations": {
+            column: transformation.model_dump(mode="json")
+            for column, transformation in getattr(
+                request,
+                "target_transformations",
+                {},
+            ).items()
+        },
+        "model_parameters": native_parameters,
+    }
+    effective_seeds = tuple((role, value) for role, value in (("split", split_seed), ("model", model_seed)) if value is not None)
+    return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")), effective_seeds
+
+
 def _request_preprocessing_parameters(request: Any) -> dict[str, Any]:
     parameters = {
         "missing_values": request.missing_values.model_dump(mode="json"),
@@ -112,6 +232,8 @@ def _request_preprocessing_parameters(request: Any) -> dict[str, Any]:
         parameters["feature_selection"] = request.feature_selection.model_dump(mode="json")
     if hasattr(request, "label_customization"):
         parameters["label_customization"] = request.label_customization.model_dump(mode="json")
+    if hasattr(request, "target_transformations"):
+        parameters["target_transformations"] = {column: transformation.model_dump(mode="json") for column, transformation in request.target_transformations.items()}
     if request.task == "time_series":
         parameters["feature_engineering"] = request.feature_engineering
     return parameters
@@ -137,6 +259,7 @@ def _scientific_binding_fields(
     method: str,
     paths: Tuple[str, ...],
     effective_seeds: Tuple[Tuple[str, int], ...],
+    effective_model_parameters_override: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     environment_pointer, environment_profile_id, environment_identity = _environment_profile_binding(request)
     if request.task == "time_series":
@@ -153,12 +276,7 @@ def _scientific_binding_fields(
             if value is not None
         )
     model_parameters = _request_model_parameters(request)
-    effective_model_parameters = dict(model_parameters)
-    if model_parameters.get("type") == "xgboost":
-        # The public CLI does not prompt for these estimator controls.  Keep
-        # them requested, but do not attest them as effective at the adapter.
-        effective_model_parameters.pop("gamma", None)
-        effective_model_parameters.pop("tree_method", None)
+    effective_model_parameters = dict(effective_model_parameters_override) if effective_model_parameters_override is not None else dict(model_parameters)
     preprocessing_parameters = _request_preprocessing_parameters(request)
     return {
         "environment_profile": environment_pointer,
@@ -251,6 +369,7 @@ class InteractionPlan:
     effective_preprocessing_parameters: Tuple[Tuple[str, str], ...] = ()
     model_parameter_binding: Literal["interaction_plan", "runtime_selected", "not_applicable"] = "not_applicable"
     preprocessing_parameter_binding: Literal["interaction_plan", "not_applicable"] = "not_applicable"
+    scientific_execution_contract_json: str | None = None
 
     def __post_init__(self) -> None:
         if self.schema_version < 1:
@@ -267,6 +386,13 @@ class InteractionPlan:
         mapping_ids = [mapping.mapping_id for mapping in self.artifact_mappings]
         if len(mapping_ids) != len(set(mapping_ids)):
             raise ValueError("Interaction plan artifact mapping ids must be unique.")
+        if self.scientific_execution_contract_json is not None:
+            try:
+                scientific_execution = json.loads(self.scientific_execution_contract_json)
+            except json.JSONDecodeError as exc:
+                raise ValueError("Scientific execution contract must be valid canonical JSON.") from exc
+            if not isinstance(scientific_execution, dict):
+                raise ValueError("Scientific execution contract must be a JSON object.")
 
 
 @dataclass(frozen=True)
@@ -325,6 +451,7 @@ def _read_dataset_columns(
     path: Path,
     *,
     source: DatasetSource = "path",
+    sheet: str = "0",
 ) -> Tuple[str, ...]:
     suffix = path.suffix.lower()
     if suffix == ".csv":
@@ -340,7 +467,16 @@ def _read_dataset_columns(
             with path.open("rb") as stream:
                 workbook = load_workbook(stream, read_only=True, data_only=True)
                 try:
-                    row = list(next(workbook.active.iter_rows(max_row=1, values_only=True)))
+                    if str(sheet).isdigit():
+                        index = int(sheet)
+                        if index >= len(workbook.worksheets):
+                            raise ValueError(f"Excel sheet index {index} is out of range.")
+                        worksheet = workbook.worksheets[index]
+                    else:
+                        if sheet not in workbook.sheetnames:
+                            raise ValueError(f"Excel sheet {sheet!r} does not exist.")
+                        worksheet = workbook[sheet]
+                    row = [value.lstrip("\ufeff") if isinstance(value, str) else value for value in next(worksheet.iter_rows(max_row=1, values_only=True))]
                 finally:
                     workbook.close()
         except (OSError, StopIteration, ValueError) as exc:
@@ -432,7 +568,12 @@ def _experiment_steps(request: Any, enter_prompt: str) -> List[InteractionStep]:
     return steps
 
 
-def _iter_selected_rows(path: Path, positions: Sequence[int]) -> Iterable[tuple[Any, ...]]:
+def _iter_selected_rows(
+    path: Path,
+    positions: Sequence[int],
+    *,
+    sheet: str = "0",
+) -> Iterable[tuple[Any, ...]]:
     if path.suffix.lower() == ".csv":
         try:
             with path.open(encoding="utf-8-sig", newline="") as stream:
@@ -454,7 +595,16 @@ def _iter_selected_rows(path: Path, positions: Sequence[int]) -> Iterable[tuple[
         with path.open("rb") as stream:
             workbook = load_workbook(stream, read_only=True, data_only=True)
             try:
-                rows = workbook.active.iter_rows(values_only=True)
+                if str(sheet).isdigit():
+                    index = int(sheet)
+                    if index >= len(workbook.worksheets):
+                        raise ValueError(f"Excel sheet index {index} is out of range.")
+                    worksheet = workbook.worksheets[index]
+                else:
+                    if sheet not in workbook.sheetnames:
+                        raise ValueError(f"Excel sheet {sheet!r} does not exist.")
+                    worksheet = workbook[sheet]
+                rows = worksheet.iter_rows(values_only=True)
                 next(rows)
                 for row_number, row in enumerate(iter_cli_excel_rows(rows), start=2):
                     if len(row) <= max(positions):
@@ -694,14 +844,21 @@ def _scan_regression_training_dataset(
     if method == "impute":
         unresolved_missing.clear()
 
-    test_size = math.ceil(kept_rows * request.test_ratio)
-    train_size = kept_rows - test_size
-    if min(test_size, train_size) < 1:
-        raise PlanCompilationError(f"test_ratio={request.test_ratio} produces {train_size} training and {test_size} test rows; regression requires both splits to be non-empty.")
-    if train_size < 10:
-        raise PlanCompilationError(
-            f"test_ratio={request.test_ratio} produces only {train_size} training rows; the existing regression workflow performs fixed 10-fold cross-validation and requires at least 10."
+    if request.evaluation.mode == "external_labeled":
+        train_size = kept_rows
+        validation_folds = 10
+    else:
+        test_size = math.ceil(kept_rows * request.test_ratio)
+        train_size = kept_rows - test_size
+        if min(test_size, train_size) < 1:
+            raise PlanCompilationError(f"test_ratio={request.test_ratio} produces {train_size} training and {test_size} test rows; regression requires both splits to be non-empty.")
+        validation_folds = request.evaluation.folds if request.evaluation.mode == "cross_validation" else 10
+    if train_size < validation_folds:
+        scope = "the complete external-evaluation training cohort" if request.evaluation.mode == "external_labeled" else f"the split produced by test_ratio={request.test_ratio}"
+        validation_description = (
+            "the existing regression workflow performs fixed 10-fold cross-validation" if validation_folds == 10 else f"the requested workflow performs {validation_folds}-fold cross-validation"
         )
+        raise PlanCompilationError(f"{scope} contains only {train_size} training rows; " f"{validation_description} and requires at least {validation_folds}.")
     if unresolved_missing and request.model.type not in REGRESSION_MODELS_SUPPORTING_MISSING_VALUES:
         raise PlanCompilationError(f"Unprocessed missing values remain in {sorted(unresolved_missing)}; the public CLI only offers XGBoost for this regression branch.")
     if request.model.type == "k_nearest_neighbors" and request.model.number_of_neighbors > train_size:
@@ -1592,18 +1749,29 @@ class ClassificationPlanCompiler:
         if missing:
             raise PlanCompilationError(f"Requested columns are absent from the training dataset: {missing}")
         application_path = None
-        if request.application_dataset_path is not None:
-            application_path = request.application_dataset_path.expanduser().resolve()
+        external_evaluation_path = request.evaluation.evaluation_dataset_path if request.evaluation.mode == "external_labeled" else None
+        if request.evaluation.mode == "external_labeled" and request.evaluation.evaluation_dataset is not None:
+            raise PlanCompilationError("External evaluation dataset references must be resolved to a local path before CLI compilation.")
+        if request.application_dataset_path is not None and external_evaluation_path is not None:
+            raise PlanCompilationError("A distinct external evaluation dataset cannot also be used as ordinary application data.")
+        selected_application_path = request.application_dataset_path or external_evaluation_path
+        if selected_application_path is not None:
+            application_path = selected_application_path.expanduser().resolve()
             if not application_path.is_file():
-                raise PlanCompilationError(f"Application data file does not exist: {application_path}")
+                raise PlanCompilationError(f"Application or external evaluation data file does not exist: {application_path}")
             application_columns = _read_dataset_columns(
                 application_path,
                 source=dataset_context.source_for("application"),
             )
-            required_application = {request.identifier_column, *request.feature_columns}
+            application_identifier = request.evaluation.external_identifier_column or request.identifier_column if external_evaluation_path is not None else request.identifier_column
+            required_application = {application_identifier, *request.feature_columns}
             application_missing = sorted(required_application - set(application_columns))
             if application_missing:
                 raise PlanCompilationError(f"Application dataset is missing required identifier or feature columns: {application_missing}")
+            if external_evaluation_path is not None:
+                evaluation_missing = sorted({request.target_column} - set(application_columns))
+                if evaluation_missing:
+                    raise PlanCompilationError("External evaluation dataset is missing target columns: " f"{evaluation_missing}")
             _validate_application_dataset(application_path, application_columns, request)
 
         selected_names = tuple(column for column in columns if column == request.target_column or column in request.feature_columns)
@@ -2117,7 +2285,16 @@ class ClassificationPlanCompiler:
                     ),
                 ]
             )
-        scaling_anchor = "X With Scaling.xlsx" if request.scaling != "none" else "Feature Selection on X set"
+        scientific_execution_active = (
+            getattr(request.model_selection, "mode", "single") != "all" and getattr(request, "tuning", "manual") == "manual" and _native_scientific_model_parameters(request) is not None
+        )
+        scaling_anchor = (
+            "Scientific execution: scaler fitting is deferred until the model-fitting cohort is defined."
+            if request.scaling != "none" and scientific_execution_active
+            else "X With Scaling.xlsx"
+            if request.scaling != "none"
+            else "Feature Selection on X set"
+        )
         steps.append(
             InteractionStep(
                 "continue_after_scaling",
@@ -2157,27 +2334,42 @@ class ClassificationPlanCompiler:
                     ),
                 ]
             )
-        steps.extend(
-            [
-                InteractionStep(
-                    "continue_after_feature_selection",
-                    (enter_prompt,),
-                    "",
-                    timeout_seconds=180,
-                ),
-                InteractionStep(
-                    "default_test_ratio",
-                    ("Data Split - Train Set and Test Set", "(Data) ➜ @Test Ratio:"),
-                    _float_response(request.test_ratio, 0.2),
-                ),
-                InteractionStep(
-                    "continue_after_split",
-                    ("Y Test.xlsx", enter_prompt),
-                    "",
-                    timeout_seconds=180,
-                ),
-            ]
+        steps.append(
+            InteractionStep(
+                "continue_after_feature_selection",
+                (enter_prompt,),
+                "",
+                timeout_seconds=180,
+            )
         )
+        if getattr(request, "task", None) == "regression" and request.evaluation.mode == "external_labeled":
+            steps.append(
+                InteractionStep(
+                    "continue_after_external_training_scope",
+                    (
+                        "External labeled evaluation uses every prepared training row for model fitting.",
+                        enter_prompt,
+                    ),
+                    "",
+                    timeout_seconds=180,
+                )
+            )
+        else:
+            steps.extend(
+                [
+                    InteractionStep(
+                        "default_test_ratio",
+                        ("Data Split - Train Set and Test Set", "(Data) ➜ @Test Ratio:"),
+                        _float_response(request.test_ratio, 0.2),
+                    ),
+                    InteractionStep(
+                        "continue_after_split",
+                        ("Y Test.xlsx", enter_prompt),
+                        "",
+                        timeout_seconds=180,
+                    ),
+                ]
+            )
         return steps
 
 
@@ -2209,18 +2401,29 @@ class RegressionPlanCompiler:
             raise PlanCompilationError(f"Requested columns are absent from the training dataset: {missing}")
 
         application_path = None
-        if request.application_dataset_path is not None:
-            application_path = request.application_dataset_path.expanduser().resolve()
+        external_evaluation_path = request.evaluation.evaluation_dataset_path if request.evaluation.mode == "external_labeled" else None
+        if request.evaluation.mode == "external_labeled" and request.evaluation.evaluation_dataset is not None:
+            raise PlanCompilationError("External evaluation dataset references must be resolved to a local path before CLI compilation.")
+        if request.application_dataset_path is not None and external_evaluation_path is not None:
+            raise PlanCompilationError("A distinct external evaluation dataset cannot also be used as ordinary application data.")
+        selected_application_path = request.application_dataset_path or external_evaluation_path
+        if selected_application_path is not None:
+            application_path = selected_application_path.expanduser().resolve()
             if not application_path.is_file():
-                raise PlanCompilationError(f"Application data file does not exist: {application_path}")
+                raise PlanCompilationError(f"Application or external evaluation data file does not exist: {application_path}")
             application_columns = _read_dataset_columns(
                 application_path,
                 source=dataset_context.source_for("application"),
             )
-            required_application = {request.identifier_column, *request.feature_columns}
+            application_identifier = request.evaluation.external_identifier_column or request.identifier_column if external_evaluation_path is not None else request.identifier_column
+            required_application = {application_identifier, *request.feature_columns}
             application_missing = sorted(required_application - set(application_columns))
             if application_missing:
                 raise PlanCompilationError(f"Application dataset is missing required identifier or feature columns: {application_missing}")
+            if external_evaluation_path is not None:
+                evaluation_missing = sorted(target_set - set(application_columns))
+                if evaluation_missing:
+                    raise PlanCompilationError("External evaluation dataset is missing target columns: " f"{evaluation_missing}")
             _validate_application_dataset(application_path, application_columns, request)
 
         selected_names = tuple(column for column in columns if column in target_set or column in request.feature_columns)
@@ -2436,22 +2639,45 @@ class RegressionPlanCompiler:
                 str(application_path),
             )
         command = _command_with_analysis_options(command, request.world_map, request.existing_experiment_id)
+        output_root = Path("geopi_output") / request.experiment_name / request.run_name
+        external_labeled_evaluation = request.evaluation.mode == "external_labeled"
+        expected_outputs = [
+            str(output_root / "artifacts" / "model" / f"{model_display}.joblib"),
+            str(output_root / "artifacts" / "model" / "Transform Pipeline.joblib"),
+        ]
+        if external_labeled_evaluation:
+            expected_outputs.extend(
+                (
+                    str(output_root / "parameters" / f"Hyper Parameters - {model_display}.txt"),
+                    str(output_root / "artifacts" / "data" / "Application Data Predicted.xlsx"),
+                )
+            )
+        else:
+            expected_outputs.extend(
+                (
+                    str(output_root / "artifacts" / "image" / "model_output" / f"Predicted vs. Actual Diagram - {model_display}.png"),
+                    str(output_root / "metrics" / f"Model Score - {model_display}.txt"),
+                    str(output_root / "artifacts" / "data" / "Y Test Predict.xlsx"),
+                    str(output_root / "artifacts" / "image" / "model_output" / f"Residuals Diagram - {model_display}.png"),
+                    str(output_root / "artifacts" / "image" / "model_output" / f"Residuals Diagram - {model_display}.xlsx"),
+                    str(output_root / "parameters" / f"Hyper Parameters - {model_display}.txt"),
+                )
+            )
+            if application_path is not None:
+                expected_outputs.append(str(output_root / "artifacts" / "data" / "Application Data Predicted.xlsx"))
+        if request.model.type in REGRESSION_MODELS_WITH_FEATURE_IMPORTANCE:
+            expected_outputs.extend(
+                (
+                    str(output_root / "artifacts" / "image" / "model_output" / f"Feature Importance Diagram - {model_display}.png"),
+                    str(output_root / "artifacts" / "image" / "model_output" / f"Feature Importance Diagram - {model_display}.xlsx"),
+                )
+            )
         return InteractionPlan(
             schema_version=INTERACTION_PLAN_VERSION,
             name=(f"regression-{request.model.type}-multi-output-v1" if len(target_columns) > 1 else f"regression-{request.model.type}-v1"),
             public_command=command,
             steps=tuple(steps),
-            expected_output_relative_paths=(
-                str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "model" / f"{model_display}.joblib"),
-                str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "model" / "Transform Pipeline.joblib"),
-                str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "image" / "model_output" / f"Predicted vs. Actual Diagram - {model_display}.png"),
-                str(Path("geopi_output") / request.experiment_name / request.run_name / "metrics" / f"Model Score - {model_display}.txt"),
-                str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "data" / "Y Test Predict.xlsx"),
-                str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "image" / "model_output" / f"Residuals Diagram - {model_display}.png"),
-                str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "image" / "model_output" / f"Residuals Diagram - {model_display}.xlsx"),
-                str(Path("geopi_output") / request.experiment_name / request.run_name / "parameters" / f"Hyper Parameters - {model_display}.txt"),
-                *((str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "data" / "Application Data Predicted.xlsx"),) if application_path is not None else ()),
-            ),
+            expected_output_relative_paths=tuple(expected_outputs),
             requires_source_row_pairing=True,
         )
 
@@ -3263,7 +3489,145 @@ class TimeSeriesPlanCompiler:
         columns = _read_dataset_columns(
             data_path,
             source=dataset_context.training_source,
+            sheet=request.sheet,
         )
+        if request.mode == "reference_anomaly_series":
+            observation_roles = (
+                request.time_column,
+                *request.signal_columns,
+                request.reference_label_column,
+                *((request.comparison_label_column,) if request.comparison_label_column is not None else ()),
+            )
+            required_columns = set(request.resolved_selected_columns)
+            missing = sorted(required_columns - set(columns))
+            if missing:
+                raise PlanCompilationError("Reference anomaly Time Series columns are absent from the observation dataset: " f"{missing}")
+            scan_columns = tuple(dict.fromkeys(observation_roles))
+            positions = [columns.index(column) for column in scan_columns]
+            row_count = 0
+            time_values = set()
+            for row_number, raw_values in enumerate(
+                _iter_selected_rows(data_path, positions, sheet=request.sheet),
+                start=2,
+            ):
+                row = dict(zip(scan_columns, raw_values))
+                missing_values = [column for column in scan_columns if _is_missing(row[column])]
+                if missing_values:
+                    raise PlanCompilationError("Reference anomaly Time Series columns contain missing values at " f"data row {row_number}: {missing_values}.")
+                time_identity = str(row[request.time_column]).strip()
+                if time_identity in time_values:
+                    raise PlanCompilationError("Reference anomaly observation time identifiers must be unique; " f"duplicate value {time_identity!r} occurs at data row {row_number}.")
+                time_values.add(time_identity)
+                for column in request.signal_columns:
+                    try:
+                        number = float(row[column])
+                    except (TypeError, ValueError) as exc:
+                        raise PlanCompilationError(f"Signal column {column!r} contains a non-numeric value at data row {row_number}.") from exc
+                    if not math.isfinite(number):
+                        raise PlanCompilationError(f"Signal column {column!r} contains a non-finite value at data row {row_number}.")
+                row_count += 1
+            if row_count == 0:
+                raise PlanCompilationError("Reference anomaly Time Series input must contain at least one observation row.")
+
+            event_path = request.event_dataset_path.expanduser().resolve() if request.event_dataset_path is not None else None
+            if event_path is not None:
+                if not event_path.is_file():
+                    raise PlanCompilationError(f"Event data file does not exist: {event_path}")
+                event_columns = _read_dataset_columns(
+                    event_path,
+                    source="path",
+                    sheet=request.event_sheet,
+                )
+                event_roles = (
+                    request.event_time_column,
+                    *((request.event_identifier_column,) if request.event_identifier_column is not None else ()),
+                    *((request.event_filter_column,) if request.event_filter_column is not None else ()),
+                )
+                missing_event_columns = sorted(set(event_roles) - set(event_columns))
+                if missing_event_columns:
+                    raise PlanCompilationError("Reference anomaly event columns are absent from the event dataset: " f"{missing_event_columns}")
+
+            executable = Path(cli_executable).expanduser().resolve() if cli_executable is not None else resolve_public_cli_executable()
+            command = [
+                str(executable),
+                "reference-anomaly-time-series",
+                "--input",
+                str(data_path),
+                "--sheet",
+                request.sheet,
+                "--time-column",
+                request.time_column,
+                "--reference-label-column",
+                request.reference_label_column,
+                "--reference-label-provenance",
+                request.reference_label_provenance,
+                "--experiment-name",
+                request.experiment_name,
+                "--run-name",
+                request.run_name,
+            ]
+            for column in request.signal_columns:
+                command.extend(("--signal-column", column))
+            for value in request.reference_positive_values:
+                command.extend(("--reference-positive-value", value))
+            if request.comparison_label_column is not None:
+                command.extend(
+                    (
+                        "--comparison-label-column",
+                        request.comparison_label_column,
+                        "--comparison-label-provenance",
+                        request.comparison_label_provenance,
+                    )
+                )
+                for value in request.comparison_positive_values:
+                    command.extend(("--comparison-positive-value", value))
+            if event_path is not None:
+                command.extend(
+                    (
+                        "--event-input",
+                        str(event_path),
+                        "--event-sheet",
+                        request.event_sheet,
+                        "--event-time-column",
+                        request.event_time_column,
+                    )
+                )
+                if request.event_identifier_column is not None:
+                    command.extend(("--event-identifier-column", request.event_identifier_column))
+                if request.event_filter_column is not None:
+                    command.extend(("--event-filter-column", request.event_filter_column))
+                    for value in request.event_filter_values:
+                        command.extend(("--event-filter-value", value))
+                if request.association_window_days is not None:
+                    command.extend(
+                        (
+                            "--association-window-days",
+                            format(request.association_window_days, ".15g"),
+                        )
+                    )
+                command.extend(("--association-direction", request.association_direction))
+            base = Path(request.experiment_name) / request.run_name
+            return InteractionPlan(
+                schema_version=INTERACTION_PLAN_VERSION,
+                name="time-series-reference-anomaly-v1",
+                public_command=tuple(command),
+                steps=(),
+                expected_output_relative_paths=(
+                    (base / "artifacts" / "data" / "Reference Anomaly Time Series.csv").as_posix(),
+                    (base / "artifacts" / "data" / "Reference Anomaly Event Associations.csv").as_posix(),
+                    (base / "artifacts" / "image" / "model_output" / "Reference Anomaly Time Series.png").as_posix(),
+                    (base / "artifacts" / "image" / "model_output" / "Reference Anomaly Time Series.pdf").as_posix(),
+                    (base / "metrics" / "Reference Anomaly Time Series Metrics.json").as_posix(),
+                    (base / "parameters" / "Reference Anomaly Time Series Parameters.json").as_posix(),
+                    (base / "summary" / "Reference Anomaly Artifact Index.json").as_posix(),
+                    (base / "summary" / "Reference Anomaly Time Series Manifest.json").as_posix(),
+                ),
+                workflow_family="time_series",
+                workflow_mode="reference_anomaly_series",
+                method="reference_label_event_overlay",
+                adapter_id="geochemistrypi-cli.time-series.reference-anomaly-series",
+                adapter_version="1",
+            )
         if request.mode == "element_mean":
             selected_columns = request.resolved_selected_columns
             required_columns = set(selected_columns)
@@ -3287,7 +3651,10 @@ class TimeSeriesPlanCompiler:
                 drop_columns = numeric_columns
             retained_rows = 0
             maximum_observed_age = 0.0
-            for row_number, raw_values in enumerate(_iter_selected_rows(data_path, positions), start=2):
+            for row_number, raw_values in enumerate(
+                _iter_selected_rows(data_path, positions, sheet=request.sheet),
+                start=2,
+            ):
                 row = dict(zip(numeric_columns, raw_values))
                 if request.missing_values.method == "drop_rows" and any(_is_missing(row[column]) for column in drop_columns):
                     continue
@@ -3353,7 +3720,10 @@ class TimeSeriesPlanCompiler:
             drop_columns = selected_columns
         row_count = 0
         maximum_observed_age = 0.0
-        for row_number, raw_values in enumerate(_iter_selected_rows(data_path, positions), start=2):
+        for row_number, raw_values in enumerate(
+            _iter_selected_rows(data_path, positions, sheet=request.sheet),
+            start=2,
+        ):
             row = dict(zip(scan_columns, raw_values))
             if request.missing_values.method == "drop_rows" and any(_is_missing(row[column]) for column in drop_columns):
                 continue
@@ -3398,6 +3768,8 @@ class TimeSeriesPlanCompiler:
             "time-series",
             "--input",
             str(data_path),
+            "--sheet",
+            request.sheet,
             "--bin-width",
             format(request.bin_width, ".15g"),
             "--iterations",
@@ -3501,7 +3873,11 @@ class AnalysisPlanCompiler:
     ) -> InteractionPlan:
         """Attach a paper-agnostic scientific identity to an existing CLI plan."""
         if request.task == "time_series":
-            method = "subaerial_proportion_bootstrap" if request.mode == "subaerial_proportion" else "binned_arithmetic_mean"
+            method = {
+                "subaerial_proportion": "subaerial_proportion_bootstrap",
+                "element_mean": "binned_arithmetic_mean",
+                "reference_anomaly_series": "reference_label_event_overlay",
+            }[request.mode]
             effective_seeds = (("model", request.seed),) if request.mode == "subaerial_proportion" else ()
             binding_fields = _scientific_binding_fields(
                 request,
@@ -3556,30 +3932,100 @@ class AnalysisPlanCompiler:
                 "local_outlier_factor": "LOF",
             }.get(model_type, model_type)
         selected_tuning = request.model_selection.tuning if all_models else getattr(request, "tuning", "manual")
-        effective_seeds = (
-            (("split", _CLI_FIXED_RANDOM_SEED), ("model", _CLI_FIXED_RANDOM_SEED), ("tuning", _CLI_FIXED_RANDOM_SEED))
-            if request.task in {"classification", "regression"} and selected_tuning == "automl"
-            else (("split", _CLI_FIXED_RANDOM_SEED), ("model", _CLI_FIXED_RANDOM_SEED))
-            if request.task in {"classification", "regression"}
-            else (("model", _CLI_FIXED_RANDOM_SEED),)
-        )
+        scientific_execution = _scientific_execution_contract_json(request, family, mode)
+        if scientific_execution is not None:
+            scientific_execution_json, effective_seeds = scientific_execution
+            requested_seed_roles = {
+                role
+                for role, value in (
+                    ("split", request.reproducibility.split_seed),
+                    ("model", request.reproducibility.model_seed),
+                    ("tuning", request.reproducibility.tuning_seed),
+                )
+                if value is not None
+            }
+            effective_seed_roles = {role for role, _ in effective_seeds}
+            if not effective_seed_roles:
+                seed_binding = "not_applicable"
+            elif not requested_seed_roles:
+                seed_binding = "cli_fixed"
+            elif requested_seed_roles == effective_seed_roles:
+                seed_binding = "request_parameter"
+            else:
+                seed_binding = "mixed"
+        else:
+            scientific_execution_json = None
+            effective_seeds = (
+                (("split", _CLI_FIXED_RANDOM_SEED), ("model", _CLI_FIXED_RANDOM_SEED), ("tuning", _CLI_FIXED_RANDOM_SEED))
+                if request.task in {"classification", "regression"} and selected_tuning == "automl"
+                else (("split", _CLI_FIXED_RANDOM_SEED), ("model", _CLI_FIXED_RANDOM_SEED))
+                if request.task in {"classification", "regression"}
+                else (("model", _CLI_FIXED_RANDOM_SEED),)
+            )
+            seed_binding = "cli_fixed"
+        expected_output_relative_paths = plan.expected_output_relative_paths
+        if scientific_execution is not None:
+            output_root = Path("geopi_output") / request.experiment_name / request.run_name
+            additional_paths = [
+                str(output_root / "parameters" / "Scientific Execution Attestation.json"),
+            ]
+            if request.task in {"classification", "regression"}:
+                additional_paths.append(str(output_root / "artifacts" / "data" / "Split Membership.xlsx"))
+            if request.task == "regression":
+                display_name = REGRESSION_MODEL_DISPLAY_NAMES[model_type]
+                additional_paths.extend(
+                    (
+                        str(output_root / "artifacts" / "data" / "Y Train Predict.xlsx"),
+                        str(output_root / "metrics" / f"Training Model Score - {display_name}.txt"),
+                        str(output_root / "metrics" / f"Cross Validation - {display_name}.txt"),
+                    )
+                )
+                if request.evaluation.mode != "external_labeled":
+                    additional_paths.append(str(output_root / "artifacts" / "image" / "model_output" / f"Predicted vs. Actual Density - {display_name}.png"))
+                if request.target_transformations:
+                    additional_paths.append(str(output_root / "artifacts" / "data" / "Y Original Target.xlsx"))
+                if request.evaluation.mode == "external_labeled":
+                    additional_paths.extend(
+                        (
+                            str(output_root / "metrics" / f"External Evaluation Model Score - {display_name}.txt"),
+                            str(output_root / "artifacts" / "data" / f"External Evaluation Predictions - {display_name}.xlsx"),
+                            str(output_root / "artifacts" / "data" / f"External Evaluation Residuals - {display_name}.xlsx"),
+                            str(output_root / "artifacts" / "image" / "model_output" / f"External Predicted vs. Actual - {display_name}.png"),
+                        )
+                    )
+            elif request.task == "classification":
+                display_name = MODEL_DISPLAY_NAMES[model_type]
+                additional_paths.append(str(output_root / "metrics" / f"Cross Validation - {display_name}.txt"))
+                normalization = request.evaluation.confusion_matrix_normalization
+                if normalization is not None:
+                    normalized_name = f"Normalized Confusion Matrix ({normalization}) - {display_name}"
+                    additional_paths.extend(
+                        (
+                            str(output_root / "artifacts" / "image" / "model_output" / f"{normalized_name}.png"),
+                            str(output_root / "artifacts" / "image" / "model_output" / f"{normalized_name}.xlsx"),
+                        )
+                    )
+            expected_output_relative_paths = tuple(dict.fromkeys((*expected_output_relative_paths, *additional_paths)))
         binding_fields = _scientific_binding_fields(
             request,
             family,
             mode,
             method,
-            plan.expected_output_relative_paths,
+            expected_output_relative_paths,
             effective_seeds,
+            (_effective_scientific_model_parameters(request, effective_seeds) if scientific_execution is not None else None),
         )
         return dataclass_replace(
             plan,
             workflow_family=family,
             workflow_mode=mode,
             method=method,
-            scientific_contract_id=f"scientific-contract-v2/{family}/{mode}/{method}",
+            scientific_contract_id=f"scientific-contract-v{'3' if scientific_execution is not None else '2'}/{family}/{mode}/{method}",
             adapter_id=f"geochemistrypi-cli.data-mining.{request.task}.{model_type}",
-            adapter_version="1",
-            seed_binding="cli_fixed",
+            adapter_version="2" if scientific_execution is not None else "1",
+            seed_binding=seed_binding,
+            scientific_execution_contract_json=scientific_execution_json,
+            expected_output_relative_paths=expected_output_relative_paths,
             **binding_fields,
         )
 

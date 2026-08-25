@@ -6,6 +6,7 @@ import mlflow
 import numpy as np
 import pandas as pd
 from rich import print
+from scipy.stats import gaussian_kde
 from sklearn.metrics import explained_variance_score, mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import cross_validate
 
@@ -168,6 +169,61 @@ def plot_predicted_vs_actual(y_test_predict: pd.DataFrame, y_test: pd.DataFrame,
     plt.ylabel("Actual Values")
     plt.legend()
     plt.title(f"Predicted vs. Actual Diagram - {algorithm_name}")
+
+
+def plot_predicted_actual_density(
+    y_train_predict: pd.DataFrame,
+    y_train: pd.DataFrame,
+    y_test_predict: pd.DataFrame,
+    y_test: pd.DataFrame,
+    algorithm_name: str,
+) -> None:
+    """Plot auditable train/test predicted-versus-actual density panels."""
+
+    if y_train.shape[1] != 1 or y_test.shape[1] != 1:
+        raise ValueError("Predicted-versus-actual density output requires one regression target.")
+    figure, axes = plt.subplots(1, 2, figsize=(12, 5), constrained_layout=True)
+    panels = (
+        (axes[0], y_train, y_train_predict, "Training", "Reds"),
+        (axes[1], y_test, y_test_predict, "Testing", "Blues"),
+    )
+    for axis, observed_frame, predicted_frame, label, color_map in panels:
+        observed = np.asarray(observed_frame).reshape(-1).astype(float)
+        predicted = np.asarray(predicted_frame).reshape(-1).astype(float)
+        finite = np.isfinite(observed) & np.isfinite(predicted)
+        observed = observed[finite]
+        predicted = predicted[finite]
+        if observed.size < 2:
+            raise ValueError(f"{label} density output requires at least two finite observations.")
+        coordinates = np.vstack((observed, predicted))
+        try:
+            density = gaussian_kde(coordinates)(coordinates)
+        except np.linalg.LinAlgError:
+            density = np.ones(observed.shape, dtype=float)
+        order = np.argsort(density)
+        observed = observed[order]
+        predicted = predicted[order]
+        density = density[order]
+        points = axis.scatter(observed, predicted, c=density, cmap=color_map, s=12, alpha=0.85)
+        lower = min(float(observed.min()), float(predicted.min()))
+        upper = max(float(observed.max()), float(predicted.max()))
+        axis.plot([lower, upper], [lower, upper], color="black", linestyle="--", linewidth=1)
+        rmse = float(np.sqrt(mean_squared_error(observed, predicted)))
+        r2 = float(r2_score(observed, predicted))
+        axis.text(
+            0.04,
+            0.96,
+            f"R² = {r2:.4f}\nRMSE = {rmse:.4f}",
+            transform=axis.transAxes,
+            ha="left",
+            va="top",
+            bbox={"boxstyle": "round", "facecolor": "white", "alpha": 0.8},
+        )
+        axis.set_title(label)
+        axis.set_xlabel("Actual Values")
+        axis.set_ylabel("Predicted Values")
+        figure.colorbar(points, ax=axis, label="Point density")
+    figure.suptitle(f"Predicted vs. Actual Density - {algorithm_name}")
 
 
 def plot_residuals(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, algorithm_name: str) -> pd.DataFrame:

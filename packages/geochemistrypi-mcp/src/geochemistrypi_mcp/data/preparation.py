@@ -201,11 +201,7 @@ def _selected_header(
         header = normalize_dataset_header(
             raw_header,
             maximum_columns,
-            allow_pandas_duplicate_mangling=(
-                allow_pandas_duplicate_mangling
-                or contract.duplicate_header_policy == "suffix"
-                or selected_projection
-            ),
+            allow_pandas_duplicate_mangling=(allow_pandas_duplicate_mangling or contract.duplicate_header_policy == "suffix" or selected_projection),
             strip_whitespace=strip_whitespace,
             strip_bom=strip_bom,
         )
@@ -224,16 +220,9 @@ def _selected_header(
             *contract.row_identity.columns,
             *(rule.column for rule in contract.filters),
         }
-        ambiguous = sorted(
-            column
-            for column in referenced_columns
-            if canonical_names.count(column) > 1
-        )
+        ambiguous = sorted(column for column in referenced_columns if canonical_names.count(column) > 1)
         if ambiguous:
-            raise DatasetPreparationError(
-                "Selected or otherwise referenced dataset columns are ambiguous after header normalization: "
-                f"{ambiguous}"
-            )
+            raise DatasetPreparationError("Selected or otherwise referenced dataset columns are ambiguous after header normalization: " f"{ambiguous}")
     requested_columns = contract.selected_columns
     if contract.excluded_columns:
         missing_exclusions = sorted(set(contract.excluded_columns) - set(header))
@@ -432,10 +421,7 @@ def _materialize_worksheet_union(
                         values = _row_values(row, len(raw_header))
                         if not _passes_filters(values, filters):
                             continue
-                        projected = {
-                            name: values[position]
-                            for name, position in zip(source_header, selected_positions)
-                        }
+                        projected = {name: values[position] for name, position in zip(source_header, selected_positions)}
                         projected[generated_columns[0]] = selected_worksheet
                         projected[generated_columns[1]] = source_row_number
                         selected_values = tuple(projected[column] for column in selected_columns)
@@ -447,16 +433,11 @@ def _materialize_worksheet_union(
                             selected_worksheet,
                         )
                         if identity in identities:
-                            raise DatasetPreparationError(
-                                "Prepared worksheet-union row identity is duplicated at "
-                                f"{selected_worksheet!r} row {source_row_number}."
-                            )
+                            raise DatasetPreparationError("Prepared worksheet-union row identity is duplicated at " f"{selected_worksheet!r} row {source_row_number}.")
                         identities.add(identity)
                         identity_digest.update(identity.encode("utf-8"))
                         identity_digest.update(b"\n")
-                        retained_source_rows_digest.update(
-                            f"{selected_worksheet}:{source_row_number}".encode("utf-8")
-                        )
+                        retained_source_rows_digest.update(f"{selected_worksheet}:{source_row_number}".encode("utf-8"))
                         retained_source_rows_digest.update(b"\n")
                         writer.writerow(tuple(_cell_value(value) for value in selected_values))
                         row_count += 1
@@ -477,9 +458,7 @@ def _materialize_worksheet_union(
         ordered_identity_sha256 = identity_digest.hexdigest()
         expected = contract.row_identity.expected_ordered_sha256
         if expected is not None and ordered_identity_sha256 != expected:
-            raise DatasetPreparationError(
-                "Prepared worksheet-union identity does not match expected_ordered_sha256."
-            )
+            raise DatasetPreparationError("Prepared worksheet-union identity does not match expected_ordered_sha256.")
         os.replace(temporary, destination)
     finally:
         if temporary.exists():
@@ -500,10 +479,7 @@ def _materialize_worksheet_union(
         "source_row_count": row_count,
         "filtered_row_count": input_row_count - row_count,
         "per_sheet": per_sheet,
-        "filters": [
-            rule.model_dump(mode="json", exclude_none=True, exclude_defaults=True)
-            for rule in contract.filters
-        ],
+        "filters": [rule.model_dump(mode="json", exclude_none=True, exclude_defaults=True) for rule in contract.filters],
         "filter_result_sha256": retained_source_rows_digest.hexdigest(),
         "row_identity": {
             "strategy": contract.row_identity.strategy,
@@ -529,12 +505,26 @@ def _materialize(
             allow_pandas_duplicate_mangling,
         )
     raw_header, rows, worksheet, first_data_row_number = _open_table(source, contract)
-    selected_header, selected_positions, normalized_header = _selected_header(
+    output_header = tuple(contract.selected_columns)
+    source_row_column = contract.source_row_column
+    source_contract = contract
+    if source_row_column is not None:
+        source_columns = tuple(column for column in output_header if column != source_row_column)
+        if not source_columns:
+            raise DatasetPreparationError("A generated source-row column must accompany at least one source column.")
+        source_contract = contract.model_copy(
+            update={
+                "selected_columns": source_columns,
+                "row_identity": contract.row_identity.model_copy(update={"columns": tuple(column for column in contract.row_identity.columns if column != source_row_column)}),
+            }
+        )
+    selected_source_header, selected_positions, normalized_header = _selected_header(
         raw_header,
-        contract,
+        source_contract,
         maximum_columns,
         allow_pandas_duplicate_mangling,
     )
+    selected_header = output_header if source_row_column is not None else selected_source_header
     filters = _filter_positions(normalized_header, contract)
     identity_positions = tuple(selected_header.index(column) for column in contract.row_identity.columns)
     identity_digest = hashlib.sha256()
@@ -554,7 +544,18 @@ def _materialize(
                 values = _row_values(row, len(raw_header))
                 if not _passes_filters(values, filters):
                     continue
-                selected_values = tuple(values[position] for position in selected_positions)
+                if source_row_column is None:
+                    selected_values = tuple(values[position] for position in selected_positions)
+                else:
+                    projected = {
+                        name: values[position]
+                        for name, position in zip(
+                            selected_source_header,
+                            selected_positions,
+                        )
+                    }
+                    projected[source_row_column] = source_row_number
+                    selected_values = tuple(projected[column] for column in selected_header)
                 identity = _identity_value(
                     contract.row_identity.strategy,
                     identity_positions,
@@ -585,6 +586,7 @@ def _materialize(
             temporary.unlink()
     return {
         "worksheet": worksheet,
+        "source_row_column": source_row_column,
         "header_row_index": contract.header_row_index,
         "header_row_indices": list(contract.header_row_indices),
         "header_join_separator": contract.header_join_separator,
@@ -754,6 +756,7 @@ def prepare_dataset_view(
                 (bool(contract.selected_columns), "select_columns"),
                 (bool(contract.excluded_columns), "exclude_columns"),
                 (bool(contract.filters), "filter_rows"),
+                (contract.source_row_column is not None, "generate_source_row_column"),
                 (contract.row_identity.strategy != "source_row", "verify_row_identity"),
             )
             if enabled

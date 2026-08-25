@@ -97,6 +97,7 @@ def _run_cli_pipeline(
     data_source_name: str,
     automation_plan: str = "",
     automation_events: str = "",
+    scientific_config: str = "",
     world_map_config: str = "",
     tracking_root: str = "",
     existing_experiment_id: str = "",
@@ -122,9 +123,15 @@ def _run_cli_pipeline(
 
     if automation_plan:
         from .automation import automation_input_adapter
+        from .scientific_execution import scientific_execution_context
 
-        with automation_input_adapter(Path(automation_plan), Path(automation_events)):
-            execute()
+        if scientific_config:
+            with scientific_execution_context(Path(scientific_config)):
+                with automation_input_adapter(Path(automation_plan), Path(automation_events)):
+                    execute()
+        else:
+            with automation_input_adapter(Path(automation_plan), Path(automation_events)):
+                execute()
     else:
         execute()
 
@@ -154,6 +161,11 @@ def data_mining(
     mlflow: bool = typer.Option(False, "--mlflow", help="Start the mlflow server.", is_flag=True),
     automation_plan: str = typer.Option("", help="Absolute path to a versioned machine-input plan."),
     automation_events: str = typer.Option("", help="Absolute path for versioned machine-input events."),
+    scientific_config: str = typer.Option(
+        "",
+        "--scientific-config",
+        help="Absolute path to versioned scientific execution controls for machine automation.",
+    ),
     world_map_config: str = typer.Option(
         "",
         "--world-map-config",
@@ -167,6 +179,8 @@ def data_mining(
 
     if bool(automation_plan) != bool(automation_events):
         raise typer.BadParameter("--automation-plan and --automation-events must be provided together.")
+    if scientific_config and not automation_plan:
+        raise typer.BadParameter("--scientific-config requires --automation-plan and --automation-events.")
     selected_sources = int(bool(data)) + int(bool(training)) + int(bool(desktop))
     if selected_sources > 1:
         raise typer.BadParameter("Use exactly one training source: --data, --training, or --desktop.")
@@ -240,6 +254,7 @@ def data_mining(
                 data_source_name="DESKTOP",
                 automation_plan=automation_plan,
                 automation_events=automation_events,
+                scientific_config=scientific_config,
                 world_map_config=world_map_config,
                 tracking_root=tracking_root,
                 existing_experiment_id=existing_experiment_id,
@@ -253,6 +268,7 @@ def data_mining(
                     data_source_name="ANY_PATH",
                     automation_plan=automation_plan,
                     automation_events=automation_events,
+                    scientific_config=scientific_config,
                     world_map_config=world_map_config,
                     tracking_root=tracking_root,
                     existing_experiment_id=existing_experiment_id,
@@ -265,6 +281,7 @@ def data_mining(
                     data_source_name="ANY_PATH",
                     automation_plan=automation_plan,
                     automation_events=automation_events,
+                    scientific_config=scientific_config,
                     world_map_config=world_map_config,
                     tracking_root=tracking_root,
                     existing_experiment_id=existing_experiment_id,
@@ -277,6 +294,7 @@ def data_mining(
                     data_source_name="ANY_PATH",
                     automation_plan=automation_plan,
                     automation_events=automation_events,
+                    scientific_config=scientific_config,
                     world_map_config=world_map_config,
                     tracking_root=tracking_root,
                     existing_experiment_id=existing_experiment_id,
@@ -289,6 +307,7 @@ def data_mining(
                     data_source_name="BUILT_IN",
                     automation_plan=automation_plan,
                     automation_events=automation_events,
+                    scientific_config=scientific_config,
                     world_map_config=world_map_config,
                     tracking_root=tracking_root,
                     existing_experiment_id=existing_experiment_id,
@@ -370,6 +389,80 @@ def time_series(
         except (OSError, ValueError) as exc:
             raise typer.BadParameter(str(exc)) from exc
         typer.echo(f"Saved Time Series outputs to {output_directory}")
+
+    if automation_plan:
+        from pathlib import Path
+
+        from .automation import automation_input_adapter
+
+        with automation_input_adapter(Path(automation_plan), Path(automation_events)):
+            execute()
+    else:
+        execute()
+
+
+@app.command("reference-anomaly-time-series")
+def reference_anomaly_time_series(
+    input_path: str = typer.Option(..., "--input", help="Path to an observation .csv or .xlsx file."),
+    time_column: str = typer.Option(..., "--time-column", help="Observation date/time column."),
+    signal_column: List[str] = typer.Option(..., "--signal-column", help="Repeat for each numeric signal column."),
+    reference_label_column: str = typer.Option(..., "--reference-label-column"),
+    reference_positive_value: List[str] = typer.Option(..., "--reference-positive-value", help="Repeat for every value denoting a reference anomaly."),
+    output_root: str = typer.Option("geopi_output", "--output-root"),
+    experiment_name: str = typer.Option("Time Series", "--experiment-name"),
+    run_name: str = typer.Option("Reference Anomaly Series", "--run-name"),
+    sheet: str = typer.Option("0", "--sheet", help="Observation Excel sheet index or name; ignored for CSV."),
+    reference_label_provenance: str = typer.Option("external_reference", "--reference-label-provenance"),
+    comparison_label_column: Optional[str] = typer.Option(None, "--comparison-label-column"),
+    comparison_positive_value: Optional[List[str]] = typer.Option(None, "--comparison-positive-value"),
+    comparison_label_provenance: str = typer.Option("calculated", "--comparison-label-provenance"),
+    event_path: Optional[str] = typer.Option(None, "--event-input", help="Optional event .csv or .xlsx file."),
+    event_sheet: str = typer.Option("0", "--event-sheet"),
+    event_time_column: Optional[str] = typer.Option(None, "--event-time-column"),
+    event_identifier_column: Optional[str] = typer.Option(None, "--event-identifier-column"),
+    event_filter_column: Optional[str] = typer.Option(None, "--event-filter-column"),
+    event_filter_value: Optional[List[str]] = typer.Option(None, "--event-filter-value"),
+    association_window_days: Optional[float] = typer.Option(None, "--association-window-days", min=0),
+    association_direction: str = typer.Option("before_event", "--association-direction"),
+    automation_plan: str = typer.Option("", help="Absolute path to a versioned machine-input plan."),
+    automation_events: str = typer.Option("", help="Absolute path for versioned machine-input events."),
+) -> None:
+    """Render externally supplied anomaly labels and optional events on numeric time series."""
+    if bool(automation_plan) != bool(automation_events):
+        raise typer.BadParameter("--automation-plan and --automation-events must be provided together.")
+
+    def execute() -> None:
+        from pathlib import Path
+
+        from .data_mining.run_reference_anomaly_series import run_reference_anomaly_series
+
+        try:
+            output_directory = run_reference_anomaly_series(
+                input_path=Path(input_path),
+                output_root=Path(output_root),
+                experiment_name=experiment_name,
+                run_name=run_name,
+                sheet=sheet,
+                time_column=time_column,
+                signal_columns=tuple(signal_column),
+                reference_label_column=reference_label_column,
+                reference_positive_values=tuple(reference_positive_value),
+                reference_label_provenance=reference_label_provenance,
+                comparison_label_column=comparison_label_column,
+                comparison_positive_values=tuple(comparison_positive_value or ()),
+                comparison_label_provenance=comparison_label_provenance,
+                event_path=Path(event_path) if event_path is not None else None,
+                event_sheet=event_sheet,
+                event_time_column=event_time_column,
+                event_identifier_column=event_identifier_column,
+                event_filter_column=event_filter_column,
+                event_filter_values=tuple(event_filter_value or ()),
+                association_window_days=association_window_days,
+                association_direction=association_direction,
+            )
+        except (OSError, ValueError) as exc:
+            raise typer.BadParameter(str(exc)) from exc
+        typer.echo(f"Saved reference anomaly Time Series outputs to {output_directory}")
 
     if automation_plan:
         from pathlib import Path

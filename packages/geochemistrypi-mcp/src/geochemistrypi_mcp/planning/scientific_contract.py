@@ -79,6 +79,16 @@ def _column_roles(request: Any) -> dict[str, Any]:
             "features": list(request.feature_columns),
             "metadata": list(getattr(request, "metadata_columns", ())),
         }
+    if request.mode == "reference_anomaly_series":
+        return {
+            "time": request.time_column,
+            "signals": list(request.signal_columns),
+            "reference_label": request.reference_label_column,
+            "comparison_label": request.comparison_label_column,
+            "event_time": request.event_time_column,
+            "event_identifier": request.event_identifier_column,
+            "event_filter": request.event_filter_column,
+        }
     if request.mode == "element_mean":
         return {
             "time": request.age_column,
@@ -112,6 +122,23 @@ def _preprocessing(request: Any) -> dict[str, Any]:
 
 def _parameters(request: Any) -> dict[str, Any]:
     if request.task == "time_series":
+        if request.mode == "reference_anomaly_series":
+            return {
+                "time_column": request.time_column,
+                "signal_columns": list(request.signal_columns),
+                "reference_label_column": request.reference_label_column,
+                "reference_positive_values": list(request.reference_positive_values),
+                "reference_label_provenance": request.reference_label_provenance,
+                "comparison_label_column": request.comparison_label_column,
+                "comparison_positive_values": list(request.comparison_positive_values),
+                "comparison_label_provenance": (request.comparison_label_provenance if request.comparison_label_column is not None else None),
+                "event_time_column": request.event_time_column,
+                "event_identifier_column": request.event_identifier_column,
+                "event_filter_column": request.event_filter_column,
+                "event_filter_values": list(request.event_filter_values),
+                "association_window_days": request.association_window_days,
+                "association_direction": request.association_direction,
+            }
         shared = {
             "bin_width": request.bin_width,
             "age_unit": request.age_unit,
@@ -175,7 +202,25 @@ def describe_scientific_output(relative_path: str, workflow_family: str | None =
         ".joblib": "fitted_model",
     }.get(suffix, "scientific_artifact")
     output_role = "scientific.output"
-    if category == "metrics":
+    if "reference anomaly event associations" in name:
+        scientific_type = "event_association_table"
+        output_role = "reference_anomaly.event_associations"
+    elif "reference anomaly artifact index" in name:
+        scientific_type = "artifact_index"
+        output_role = "provenance.artifact_index"
+    elif "reference anomaly time series manifest" in name:
+        scientific_type = "scientific_manifest"
+        output_role = "provenance.scientific_manifest"
+    elif "reference anomaly time series metrics" in name:
+        scientific_type = "reference_anomaly_metrics"
+        output_role = "reference_anomaly.metrics"
+    elif "reference anomaly time series parameters" in name:
+        scientific_type = "parameter_record"
+        output_role = "provenance.parameters"
+    elif "reference anomaly time series" in name:
+        scientific_type = "reference_anomaly_joined_table" if suffix == ".csv" else "reference_anomaly_figure"
+        output_role = "reference_anomaly.joined_observations" if suffix == ".csv" else "reference_anomaly.figure"
+    elif category == "metrics":
         scientific_type = "evaluation_metrics"
         output_role = "evaluation.metrics"
         if workflow_family == "clustering":
@@ -368,6 +413,9 @@ def canonical_scientific_contract(request: Any, plan: InteractionPlan) -> dict[s
         datasets["evaluation"] = evaluation_dataset.model_dump(mode="json")
     elif evaluation_dataset_path is not None:
         datasets["evaluation"] = {"source": "path", "path": str(evaluation_dataset_path)}
+    event_dataset_path = getattr(request, "event_dataset_path", None)
+    if event_dataset_path is not None:
+        datasets["events"] = {"source": "path", "path": str(event_dataset_path)}
     return {
         "contract_version": 2,
         "workflow": {
@@ -435,11 +483,22 @@ def assess_scientific_compatibility(
     environment_mismatch = False
     evaluation = request.evaluation
     if evaluation.mode == "external_labeled":
-        blockers.append(f"The current CLI adapter does not implement the requested {evaluation.mode} evaluation contract as a distinct auditable stage.")
-        scientific_unmet = True
-    if evaluation.mode == "cross_validation" and not (request.task == "regression" and getattr(evaluation, "folds", None) == 10):
-        blockers.append("The current CLI adapter can attest only the regression workflow's fixed 10-fold evaluation contract.")
-        scientific_unmet = True
+        configured_evaluation_mode = None
+        if plan.scientific_execution_contract_json is not None:
+            configured_evaluation_mode = json.loads(plan.scientific_execution_contract_json).get("evaluation_mode")
+        if request.task != "regression" or configured_evaluation_mode != "external_labeled":
+            blockers.append(f"The current CLI adapter does not implement the requested {evaluation.mode} " "evaluation contract as a distinct auditable stage.")
+            scientific_unmet = True
+    requested_folds = getattr(evaluation, "folds", None)
+    if requested_folds is not None:
+        configured_folds = None
+        if plan.scientific_execution_contract_json is not None:
+            configured_folds = json.loads(plan.scientific_execution_contract_json).get("cross_validation_folds")
+        elif request.task == "regression":
+            configured_folds = 10
+        if configured_folds != requested_folds:
+            blockers.append("The requested cross-validation folds are not bound into the selected CLI adapter.")
+            scientific_unmet = True
     if evaluation.mode == "holdout" and request.task not in {"classification", "regression"}:
         blockers.append("Holdout evaluation is available only for supervised-learning adapters.")
         scientific_unmet = True
@@ -490,9 +549,11 @@ def assess_scientific_compatibility(
 
     requested_model = _decoded_parameter_entries(plan.requested_model_parameters)
     effective_model = _decoded_parameter_entries(plan.effective_model_parameters)
-    if plan.model_parameter_binding == "interaction_plan" and requested_model != effective_model:
-        blockers.append("Requested model parameters do not match the values bound into the CLI interaction plan.")
-        scientific_unmet = True
+    if plan.model_parameter_binding == "interaction_plan":
+        mismatched_requested_model = {parameter: value for parameter, value in requested_model.items() if parameter not in effective_model or effective_model[parameter] != value}
+        if mismatched_requested_model:
+            blockers.append("Requested model parameters do not match the values bound into the CLI interaction plan.")
+            scientific_unmet = True
     for parameter, expected in getattr(reproducibility, "model_parameter_assertions", {}).items():
         if parameter not in effective_model:
             blockers.append(f"Required model parameter {parameter!r} is not exposed by the selected CLI adapter.")

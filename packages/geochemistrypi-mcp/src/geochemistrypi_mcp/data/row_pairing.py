@@ -67,6 +67,8 @@ def _values_equivalent(
     parse_output_numeric_text: bool,
     output_is_xlsx: bool,
 ) -> bool:
+    if isinstance(source_value, str) and isinstance(output_value, str) and source_value == output_value:
+        return True
     source_number = _numeric_value(source_value, parse_numeric_text=parse_source_numeric_text)
     output_number = _numeric_value(output_value, parse_numeric_text=parse_output_numeric_text)
     if source_number is not None or output_number is not None:

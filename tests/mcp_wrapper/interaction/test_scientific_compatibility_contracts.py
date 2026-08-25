@@ -1,3 +1,4 @@
+import json
 import sys
 from pathlib import Path
 
@@ -269,11 +270,7 @@ def test_reference_comparison_is_post_run_and_does_not_block_native_execution(
 def test_reference_comparison_metrics_do_not_require_native_cli_metric_bindings(
     tmp_path: Path,
 ) -> None:
-    request = _unsupervised_request(
-        "anomaly_detection",
-        _learning_dataset(tmp_path),
-        LocalOutlierFactorAnomalyDetectionSettings(number_of_neighbors=5),
-    ).model_copy(
+    request = _unsupervised_request("anomaly_detection", _learning_dataset(tmp_path), LocalOutlierFactorAnomalyDetectionSettings(number_of_neighbors=5),).model_copy(
         update={
             "evaluation": EvaluationContract(
                 mode="reference_comparison",
@@ -299,7 +296,7 @@ def test_reference_comparison_metrics_do_not_require_native_cli_metric_bindings(
     assert "not bound" not in " ".join(assessment.blocking_issues)
 
 
-def test_unexposed_xgboost_controls_are_requested_but_not_falsely_attested(
+def test_structured_xgboost_controls_are_bound_and_attested(
     tmp_path: Path,
 ) -> None:
     request = ClassificationRequest(
@@ -309,15 +306,22 @@ def test_unexposed_xgboost_controls_are_requested_but_not_falsely_attested(
         identifier_column="SampleID",
         feature_columns=("F1", "F2"),
         target_column="Label",
+        evaluation={
+            "mode": "holdout",
+            "split_strategy": "stratified_holdout",
+            "folds": 5,
+        },
         model=XGBoostSettings(
             gamma=0.3,
             tree_method="hist",
         ),
         reproducibility={
+            "model_seed": 0,
             "model_parameter_assertions": {
                 "gamma": 0.3,
+                "random_state": 0,
                 "tree_method": "hist",
-            }
+            },
         },
     )
 
@@ -332,9 +336,14 @@ def test_unexposed_xgboost_controls_are_requested_but_not_falsely_attested(
     )
 
     assert dict(plan.requested_model_parameters)["gamma"] == "0.3"
-    assert "gamma" not in dict(plan.effective_model_parameters)
-    assert assessment.execution_ready is False
-    assert "gamma" in " ".join(assessment.blocking_issues)
+    assert dict(plan.effective_model_parameters)["gamma"] == "0.3"
+    assert dict(plan.effective_model_parameters)["random_state"] == "0"
+    assert json.loads(plan.scientific_execution_contract_json)["model_parameters"]["gamma"] == 0.3
+    assert json.loads(plan.scientific_execution_contract_json)["model_seed"] == 0
+    assert json.loads(plan.scientific_execution_contract_json)["cross_validation_folds"] == 5
+    assert plan.adapter_version == "2"
+    assert assessment.execution_ready is True
+    assert "gamma" not in " ".join(assessment.blocking_issues)
 
 
 def test_validation_returns_blocked_readiness_and_start_refuses_element_mean(

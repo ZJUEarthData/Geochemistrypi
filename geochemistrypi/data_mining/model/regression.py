@@ -18,11 +18,12 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.svm import SVR
 from sklearn.tree import DecisionTreeRegressor
 
+from ...scientific_execution import active_scientific_execution
 from ..constants import MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, RAY_FLAML
 from ..utils.base import clear_output, save_data, save_data_without_data_identifier, save_fig, save_text
 from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
 from .func.algo_regression._bayesianridge_regression import bayesian_ridge_manual_hyper_parameters
-from .func.algo_regression._common import cross_validation, plot_predicted_vs_actual, plot_residuals, score
+from .func.algo_regression._common import cross_validation, plot_predicted_actual_density, plot_predicted_vs_actual, plot_residuals, score
 from .func.algo_regression._decision_tree import decision_tree_manual_hyper_parameters
 from .func.algo_regression._elastic_net import elastic_net_manual_hyper_parameters
 from .func.algo_regression._enum import (
@@ -52,6 +53,11 @@ from .func.algo_regression._ridge_regression import ridge_regression_manual_hype
 from .func.algo_regression._sgd_regression import sgd_regression_manual_hyper_parameters
 from .func.algo_regression._svr import svr_manual_hyper_parameters
 from .func.algo_regression._xgboost import xgboost_manual_hyper_parameters
+
+
+def _configured_cross_validation_folds() -> int:
+    contract = active_scientific_execution()
+    return contract.cross_validation_folds if contract is not None else 10
 
 
 class RegressionWorkflowBase(WorkflowBase):
@@ -209,6 +215,27 @@ class RegressionWorkflowBase(WorkflowBase):
         save_data(data, name_column, f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
 
     @staticmethod
+    def _plot_predicted_actual_density(
+        y_train_predict: pd.DataFrame,
+        y_train: pd.DataFrame,
+        y_test_predict: pd.DataFrame,
+        y_test: pd.DataFrame,
+        algorithm_name: str,
+        local_path: str,
+        mlflow_path: str,
+        graph_name: str,
+    ) -> None:
+        print(f"-----* {graph_name} *-----")
+        plot_predicted_actual_density(
+            y_train_predict,
+            y_train,
+            y_test_predict,
+            y_test,
+            algorithm_name,
+        )
+        save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+
+    @staticmethod
     def _score(y_true: pd.DataFrame, y_predict: pd.DataFrame, algorithm_name: str, store_path: str, graph_name: str) -> None:
         """Calculate the score of the model."""
         print(f"-----* {graph_name} *-----")
@@ -238,11 +265,19 @@ class RegressionWorkflowBase(WorkflowBase):
             store_path=GEOPI_OUTPUT_METRICS_PATH,
             graph_name=RegressionCommonFunction.MODEL_SCORE.value,
         )
+        if active_scientific_execution() is not None:
+            self._score(
+                y_true=RegressionWorkflowBase.y_train,
+                y_predict=RegressionWorkflowBase.y_train_predict,
+                algorithm_name=self.naming,
+                store_path=GEOPI_OUTPUT_METRICS_PATH,
+                graph_name="Training Model Score",
+            )
         self._cross_validation(
             trained_model=self.model,
             X_train=RegressionWorkflowBase.X_train,
             y_train=RegressionWorkflowBase.y_train,
-            cv_num=10,
+            cv_num=_configured_cross_validation_folds(),
             algorithm_name=self.naming,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
             graph_name=RegressionCommonFunction.CROSS_VALIDATION.value,
@@ -256,6 +291,17 @@ class RegressionWorkflowBase(WorkflowBase):
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             graph_name=RegressionCommonFunction.PREDICTED_VS_ACTUAL_DIAGRAM.value,
         )
+        if active_scientific_execution() is not None and RegressionWorkflowBase.y_test.shape[1] == 1:
+            self._plot_predicted_actual_density(
+                y_train_predict=RegressionWorkflowBase.y_train_predict,
+                y_train=RegressionWorkflowBase.y_train,
+                y_test_predict=RegressionWorkflowBase.y_test_predict,
+                y_test=RegressionWorkflowBase.y_test,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+                graph_name="Predicted vs. Actual Density",
+            )
         self._plot_residuals(
             y_test_predict=RegressionWorkflowBase.y_test_predict,
             y_test=RegressionWorkflowBase.y_test,
@@ -277,6 +323,27 @@ class RegressionWorkflowBase(WorkflowBase):
             graph_name=RegressionCommonFunction.PERMUTATION_IMPORTANC_DIAGRAM.value,
         )
 
+    def training_components(self) -> None:
+        """Report training and cross-validation evidence without a fake holdout."""
+
+        metrics_path = os.getenv("GEOPI_OUTPUT_METRICS_PATH")
+        self._score(
+            y_true=RegressionWorkflowBase.y_train,
+            y_predict=RegressionWorkflowBase.y_train_predict,
+            algorithm_name=self.naming,
+            store_path=metrics_path,
+            graph_name="Training Model Score",
+        )
+        self._cross_validation(
+            trained_model=self.model,
+            X_train=RegressionWorkflowBase.X_train,
+            y_train=RegressionWorkflowBase.y_train,
+            cv_num=_configured_cross_validation_folds(),
+            algorithm_name=self.naming,
+            store_path=metrics_path,
+            graph_name=RegressionCommonFunction.CROSS_VALIDATION.value,
+        )
+
     @dispatch(bool)
     def common_components(self, is_automl: bool = False) -> None:
         """Invoke all common application functions for regression algorithms by FLAML framework."""
@@ -293,7 +360,7 @@ class RegressionWorkflowBase(WorkflowBase):
             trained_model=self.auto_model,
             X_train=RegressionWorkflowBase.X_train,
             y_train=RegressionWorkflowBase.y_train,
-            cv_num=10,
+            cv_num=_configured_cross_validation_folds(),
             algorithm_name=self.naming,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
             graph_name=RegressionCommonFunction.CROSS_VALIDATION.value,
@@ -651,7 +718,7 @@ class XGBoostRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         if kwargs:
             self.kwargs = kwargs
 
-        if random_state:
+        if random_state is not None:
             self.random_state = random_state
 
         # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
@@ -923,7 +990,7 @@ class DecisionTreeRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         self.min_impurity_decrease = (min_impurity_decrease,)
         self.ccp_alpha = (ccp_alpha,)
 
-        if random_state:
+        if random_state is not None:
             self.random_state = (random_state,)
         else:
             self.random_state = (self.random_state,)
@@ -1253,7 +1320,7 @@ class ExtraTreesRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         self.ccp_alpha = ccp_alpha
         self.max_samples = max_samples
 
-        if random_state:
+        if random_state is not None:
             self.random_state = random_state
 
         # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'

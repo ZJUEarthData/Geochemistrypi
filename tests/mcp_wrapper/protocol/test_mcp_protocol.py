@@ -364,7 +364,7 @@ async def test_tool_discovery_strict_validation_and_structured_results(
         )
         assert invalid_time_series.is_error is True
         validation_text = invalid_time_series.content[0].text
-        assert "time_series.bin_width" in validation_text
+        assert "place supported fields such as 'bin_width'" in validation_text
         assert "time_series.dataset" in validation_text
         assert "training_dataset" in validation_text
         assert "time_series.model" in validation_text

@@ -220,8 +220,8 @@ class DatasetPreparationContract(StrictModel):
             raise ValueError("worksheets and union_mode='rows' must be declared together")
         if self.worksheets and (self.source_sheet_column is None or self.source_row_column is None):
             raise ValueError("a worksheet row union requires source_sheet_column and source_row_column")
-        if not self.worksheets and (self.source_sheet_column is not None or self.source_row_column is not None):
-            raise ValueError("source sheet/row columns are used only by a worksheet row union")
+        if not self.worksheets and self.source_sheet_column is not None:
+            raise ValueError("source_sheet_column is used only by a worksheet row union")
         if self.header_row_indices and "header_row_index" in self.model_fields_set:
             raise ValueError("provide either header_row_index or header_row_indices, not both")
         if self.selected_columns and self.excluded_columns:
@@ -238,8 +238,8 @@ class DatasetPreparationContract(StrictModel):
         if excluded_identity_columns:
             raise ValueError(f"excluded_columns must retain row-identity columns: {excluded_identity_columns}")
         generated = {value for value in (self.source_sheet_column, self.source_row_column) if value is not None}
-        if self.worksheets and not generated <= set(self.selected_columns):
-            raise ValueError("selected_columns must retain the generated source sheet and row columns")
+        if generated and not generated <= set(self.selected_columns):
+            raise ValueError("selected_columns must retain every generated source sheet or row column")
         return self
 
 
@@ -587,7 +587,7 @@ class DecisionTreeSettings(StrictModel):
 
 class ForestSettings(StrictModel):
     number_of_estimators: int = Field(100, ge=1, le=100_000)
-    maximum_depth: int = Field(4, ge=1, le=100_000)
+    maximum_depth: int | None = Field(4, ge=1, le=100_000)
     minimum_samples_split: int = Field(2, ge=2)
     minimum_samples_leaf: int = Field(1, ge=1)
     maximum_features: int = Field(1, ge=1)
@@ -753,6 +753,22 @@ class RegressionXGBoostSettings(StrictModel):
     tree_method: Literal["auto", "exact", "approx", "hist", "gpu_hist"] = "auto"
     l1_regularization: float = Field(0.0, ge=0)
     l2_regularization: float = Field(1.0, ge=0)
+    base_score: float | None = None
+    booster: Literal["gbtree", "gblinear", "dart"] = "gbtree"
+    column_subsample_by_level: float = Field(1.0, gt=0, le=1)
+    column_subsample_by_node: float = Field(1.0, gt=0, le=1)
+    importance_type: Literal["gain", "weight", "cover", "total_gain", "total_cover"] = "gain"
+    maximum_delta_step: float = Field(0.0, ge=0)
+    minimum_child_weight: float = Field(1.0, ge=0)
+    number_of_jobs: int = 1
+    verbosity: int = Field(1, ge=0, le=3)
+
+    @field_validator("number_of_jobs")
+    @classmethod
+    def validate_number_of_jobs(cls, value: int) -> int:
+        if value == 0 or value < -1:
+            raise ValueError("must be -1 or a positive integer")
+        return value
 
 
 class LassoRegressionSettings(StrictModel):
@@ -810,6 +826,19 @@ class RidgeRegressionSettings(StrictModel):
     fit_intercept: bool = True
     maximum_iterations: int = Field(1000, ge=1, le=100_000)
     tolerance: float = Field(0.0001, gt=0)
+
+
+class AffineTargetTransformation(StrictModel):
+    """Paper-agnostic unit or reference transformation for one numeric target."""
+
+    scale: float = Field(1.0, allow_inf_nan=False)
+    offset: float = Field(0.0, allow_inf_nan=False)
+
+    @model_validator(mode="after")
+    def validate_non_degenerate_scale(self) -> "AffineTargetTransformation":
+        if self.scale == 0:
+            raise ValueError("target transformation scale must be non-zero")
+        return self
 
 
 RegressionModelSettings = Annotated[
@@ -1010,10 +1039,13 @@ class IsolationForestAnomalyDetectionSettings(StrictModel):
 class LocalOutlierFactorAnomalyDetectionSettings(StrictModel):
     type: Literal["local_outlier_factor"] = "local_outlier_factor"
     number_of_neighbors: int = Field(20, ge=1)
+    algorithm: Literal["auto", "ball_tree", "kd_tree", "brute"] = "auto"
     leaf_size: int = Field(30, ge=1)
+    metric: Literal["euclidean", "manhattan", "minkowski"] = "minkowski"
     power: float = Field(2.0, gt=0)
     contamination: float = Field(0.3, gt=0, le=0.5)
     number_of_jobs: int = 1
+    detection_mode: Literal["training_outlier", "novelty_detection"] = "novelty_detection"
 
     @field_validator("number_of_jobs")
     @classmethod
@@ -1124,6 +1156,7 @@ class EvaluationContract(StrictModel):
     split_strategy: Literal["cli_default", "random_holdout", "stratified_holdout"] = "cli_default"
     evaluation_dataset_path: Path | None = None
     evaluation_dataset: DatasetReference | None = None
+    external_identifier_column: str | None = Field(None, min_length=1, max_length=128)
     folds: int | None = Field(None, ge=2, le=100)
     required_artifact_ids: tuple[str, ...] = Field(default=(), max_length=64)
     class_order: tuple[str, ...] = Field(default=(), max_length=256)
@@ -1152,10 +1185,12 @@ class EvaluationContract(StrictModel):
             raise ValueError("external_labeled evaluation requires an evaluation dataset")
         if self.mode != "external_labeled" and has_dataset:
             raise ValueError("an evaluation dataset is used only by external_labeled evaluation")
+        if self.mode != "external_labeled" and self.external_identifier_column is not None:
+            raise ValueError("external_identifier_column is used only by external_labeled evaluation")
         if self.mode == "cross_validation" and self.folds is None:
             raise ValueError("cross_validation evaluation requires folds")
-        if self.mode != "cross_validation" and self.folds is not None:
-            raise ValueError("folds is used only by cross_validation evaluation")
+        if self.mode not in {"cross_validation", "holdout", "external_labeled"} and self.folds is not None:
+            raise ValueError("folds is used only when a supervised adapter produces cross-validation evidence")
         if self.mode != "holdout" and self.split_strategy != "cli_default":
             raise ValueError("an explicit split_strategy is used only by holdout evaluation")
         unknown_metrics = sorted(set(self.metric_artifact_bindings) - set(self.metrics))
@@ -1465,6 +1500,10 @@ class RegressionRequest(ScientificRequest):
         max_length=256,
         description="One or more numeric regression targets. Do not combine this field with target_column.",
     )
+    target_transformations: dict[ColumnName, AffineTargetTransformation] = Field(
+        default_factory=dict,
+        max_length=256,
+    )
     application_dataset_path: Path | None = None
     application_dataset: DatasetReference | None = None
     world_map: WorldMapConfiguration = Field(default_factory=DisabledWorldMap)
@@ -1546,6 +1585,9 @@ class RegressionRequest(ScientificRequest):
         if (self.target_column is None) == (not self.target_columns):
             raise ValueError("provide exactly one of target_column or target_columns")
         targets = self.resolved_target_columns
+        unknown_target_transformations = sorted(set(self.target_transformations) - set(targets))
+        if unknown_target_transformations:
+            raise ValueError("target transformations reference non-target columns: " f"{unknown_target_transformations}")
         if self.identifier_column in targets:
             raise ValueError("identifier_column and regression targets must be different")
         if self.identifier_column in self.feature_columns:
@@ -1787,7 +1829,11 @@ class TimeSeriesRequest(ScientificRequest):
         "time_series",
         description="Select the generic Time Series workflow family.",
     )
-    mode: Literal["subaerial_proportion", "element_mean"] = "subaerial_proportion"
+    mode: Literal[
+        "subaerial_proportion",
+        "element_mean",
+        "reference_anomaly_series",
+    ] = "subaerial_proportion"
     training_dataset_path: Path | None = Field(
         None,
         description="Top-level local-path alternative to training_dataset; provide exactly one of the two.",
@@ -1798,9 +1844,10 @@ class TimeSeriesRequest(ScientificRequest):
     )
     experiment_name: str = Field("Time Series", min_length=1, max_length=40)
     run_name: str = Field("Subaerial Proportion", min_length=1, max_length=40)
-    bin_width: float = Field(
+    bin_width: float | None = Field(
+        None,
         gt=0,
-        description="Required top-level bin width in age_unit; use bin_width, not bin_width_ma or model_parameters.",
+        description="Required for binned modes and unused by reference_anomaly_series.",
     )
     iterations: int = Field(
         100,
@@ -1835,6 +1882,46 @@ class TimeSeriesRequest(ScientificRequest):
     minimum_samples_per_bin: int = Field(1, ge=1)
     age_unit: Literal["Ma", "Ga"] = "Ma"
     fit_curve: bool = True
+    sheet: str = Field(
+        "0",
+        min_length=1,
+        max_length=128,
+        description="Observation Excel sheet index or name; ignored for CSV.",
+    )
+    time_column: ColumnName | None = Field(
+        None,
+        description="Observation date/time role for reference_anomaly_series mode.",
+    )
+    signal_columns: tuple[ColumnName, ...] = Field(
+        default=(),
+        max_length=128,
+        description="Numeric signals for reference_anomaly_series mode.",
+    )
+    reference_label_column: ColumnName | None = None
+    reference_positive_values: tuple[str, ...] = Field(default=(), max_length=64)
+    reference_label_provenance: str = Field(
+        "external_reference",
+        min_length=1,
+        max_length=128,
+    )
+    comparison_label_column: ColumnName | None = None
+    comparison_positive_values: tuple[str, ...] = Field(default=(), max_length=64)
+    comparison_label_provenance: Literal["calculated", "external", "reference"] = "calculated"
+    event_dataset_path: Path | None = Field(
+        None,
+        description="Optional event dataset for reference_anomaly_series evaluation and display.",
+    )
+    event_sheet: str = Field("0", min_length=1, max_length=128)
+    event_time_column: ColumnName | None = None
+    event_identifier_column: ColumnName | None = None
+    event_filter_column: ColumnName | None = None
+    event_filter_values: tuple[str, ...] = Field(default=(), max_length=64)
+    association_window_days: float | None = Field(None, ge=0)
+    association_direction: Literal[
+        "before_event",
+        "after_event",
+        "symmetric",
+    ] = "before_event"
     identifier_column: ColumnName | None = Field(
         default=None,
         description="Optional sample-name column used by the interactive data-preparation workflow.",
@@ -1865,12 +1952,28 @@ class TimeSeriesRequest(ScientificRequest):
         "probability_column",
         "latitude_column",
         "longitude_column",
+        "time_column",
+        "reference_label_column",
+        "comparison_label_column",
+        "event_time_column",
+        "event_identifier_column",
+        "event_filter_column",
     )
     @classmethod
-    def validate_column_name(cls, value: str) -> str:
+    def validate_column_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         normalized = value.strip()
         if not normalized or "\n" in normalized or "\r" in normalized:
             raise ValueError("must be a non-blank single-line column name")
+        return normalized
+
+    @field_validator("sheet", "event_sheet", "reference_label_provenance")
+    @classmethod
+    def validate_single_line_value(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized or "\n" in normalized or "\r" in normalized:
+            raise ValueError("must be a non-blank single-line value")
         return normalized
 
     @field_validator("identifier_column")
@@ -1893,7 +1996,7 @@ class TimeSeriesRequest(ScientificRequest):
             raise ValueError("must be a non-blank single-line column name")
         return normalized
 
-    @field_validator("element_columns")
+    @field_validator("element_columns", "signal_columns")
     @classmethod
     def validate_element_columns(cls, value: tuple[str, ...]) -> tuple[str, ...]:
         normalized = tuple(column.strip() for column in value)
@@ -1901,6 +2004,20 @@ class TimeSeriesRequest(ScientificRequest):
             raise ValueError("must contain non-blank single-line column names")
         if len(normalized) != len(set(normalized)):
             raise ValueError("must not contain duplicate column names")
+        return normalized
+
+    @field_validator(
+        "reference_positive_values",
+        "comparison_positive_values",
+        "event_filter_values",
+    )
+    @classmethod
+    def validate_semantic_values(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        normalized = tuple(item.strip() for item in value)
+        if any(not item or "\n" in item or "\r" in item for item in normalized):
+            raise ValueError("must contain non-blank single-line values")
+        if len(normalized) != len(set(normalized)):
+            raise ValueError("must not contain duplicate values")
         return normalized
 
     @field_validator("selected_columns")
@@ -1918,6 +2035,17 @@ class TimeSeriesRequest(ScientificRequest):
         """Return the explicit selected-data range or the active mode's role columns."""
         if self.selected_columns:
             return self.selected_columns
+        if self.mode == "reference_anomaly_series":
+            return tuple(
+                dict.fromkeys(
+                    (
+                        *((self.time_column,) if self.time_column is not None else ()),
+                        *self.signal_columns,
+                        *((self.reference_label_column,) if self.reference_label_column is not None else ()),
+                        *((self.comparison_label_column,) if self.comparison_label_column is not None else ()),
+                    )
+                )
+            )
         if self.mode == "element_mean":
             return tuple(
                 dict.fromkeys(
@@ -1938,8 +2066,8 @@ class TimeSeriesRequest(ScientificRequest):
 
     @field_validator("bin_width")
     @classmethod
-    def validate_finite_bin_width(cls, value: float) -> float:
-        if not math.isfinite(value):
+    def validate_finite_bin_width(cls, value: float | None) -> float | None:
+        if value is not None and not math.isfinite(value):
             raise ValueError("must be finite")
         return value
 
@@ -1953,6 +2081,52 @@ class TimeSeriesRequest(ScientificRequest):
     @model_validator(mode="after")
     def validate_time_series_contract(self) -> "TimeSeriesRequest":
         _validate_dataset_choice(self.training_dataset_path, self.training_dataset, "training_dataset")
+        if self.mode == "reference_anomaly_series":
+            if self.bin_width is not None:
+                raise ValueError("reference_anomaly_series does not use bin_width")
+            if not self.signal_columns:
+                raise ValueError("reference_anomaly_series requires at least one signal column")
+            if self.time_column is None:
+                raise ValueError("reference_anomaly_series requires time_column")
+            if self.reference_label_column is None:
+                raise ValueError("reference_anomaly_series requires reference_label_column")
+            if not self.reference_positive_values:
+                raise ValueError("reference_anomaly_series requires reference_positive_values")
+            roles = {
+                self.time_column,
+                *self.signal_columns,
+                self.reference_label_column,
+                *((self.comparison_label_column,) if self.comparison_label_column is not None else ()),
+            }
+            expected_role_count = 2 + len(self.signal_columns) + (1 if self.comparison_label_column is not None else 0)
+            if len(roles) != expected_role_count:
+                raise ValueError("reference anomaly observation columns must have distinct scientific roles")
+            if bool(self.comparison_label_column) != bool(self.comparison_positive_values):
+                raise ValueError("comparison_label_column and comparison_positive_values must be supplied together")
+            has_event_semantics = any(
+                value is not None
+                for value in (
+                    self.event_time_column,
+                    self.event_identifier_column,
+                    self.event_filter_column,
+                    self.association_window_days,
+                )
+            ) or bool(self.event_filter_values)
+            if self.event_dataset_path is None and has_event_semantics:
+                raise ValueError("event semantics require event_dataset_path")
+            if self.event_dataset_path is not None and self.event_time_column is None:
+                raise ValueError("event_dataset_path requires event_time_column")
+            if bool(self.event_filter_column) != bool(self.event_filter_values):
+                raise ValueError("event_filter_column and event_filter_values must be supplied together")
+            if self.selected_columns:
+                missing_roles = sorted(set(self.resolved_selected_columns) - set(self.selected_columns))
+                if missing_roles:
+                    raise ValueError(f"selected_columns must include every reference anomaly role: {missing_roles}")
+            if self.missing_values.method != "error":
+                raise ValueError("reference_anomaly_series requires complete explicitly supplied rows")
+            return self
+        if self.bin_width is None:
+            raise ValueError(f"{self.mode} mode requires bin_width")
         if self.mode == "element_mean":
             if not self.element_columns:
                 raise ValueError("element_mean mode requires at least one element column")
