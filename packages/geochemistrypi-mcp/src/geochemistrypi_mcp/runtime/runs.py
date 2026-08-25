@@ -26,6 +26,7 @@ from ..api.schemas import (
     ClassificationRequest,
     ClusteringRequest,
     DatasetInspectionRequest,
+    DatasetPreparationContract,
     DecompositionRequest,
     RegressionRequest,
     RunResultResponse,
@@ -46,14 +47,18 @@ from ..contracts.decomposition import MODEL_ORDER as DECOMPOSITION_MODEL_ORDER
 from ..contracts.regression import MODEL_DISPLAY_NAMES as REGRESSION_MODEL_DISPLAY_NAMES
 from ..contracts.regression import MODEL_ORDER as REGRESSION_MODEL_ORDER
 from ..data.catalog import DatasetCatalog, ResolvedDataset
+from ..data.headers import source_allows_pandas_duplicate_mangling
 from ..data.inspector import DatasetSnapshot
 from ..data.inspector import inspect_dataset as inspect_local_dataset
 from ..data.inspector import sha256_file, snapshot_dataset
+from ..data.preparation import PreparedDataset, prepare_dataset_view
 from ..data.row_pairing import verify_original_row_pairing
 from ..planning.interaction_plan import AnalysisPlanCompiler, DatasetCompilationContext, InteractionPlan
+from ..planning.scientific_contract import assess_scientific_compatibility, canonical_scientific_contract, canonical_sha256, planned_artifact_requirements, resolved_environment_profile
 from ..tracking.experiments import ExperimentManager
 from .artifacts import discover_artifacts, read_time_series_preprocessing_summary
 from .cli_driver import CliInteractionDriver, CliRunCancelledError, validate_workspace_path
+from .environment import EnvironmentSnapshot, inspect_cli_environment
 
 _RUN_ID = re.compile(r"^run-[0-9a-f]{16}$")
 _VALIDATION_ID = re.compile(r"^val-[0-9a-f]{32}$")
@@ -64,6 +69,13 @@ _VALIDATION_RECEIPT_FIELDS = {
     "schema_version",
     "validation_id",
     "request_hash",
+    "canonical_contract",
+    "canonical_contract_hash",
+    "compiled_plan_hash",
+    "dataset_hash",
+    "adapter_identity",
+    "artifact_requirements",
+    "execution_readiness",
     "request",
     "task",
     "created_at_epoch",
@@ -72,13 +84,14 @@ _VALIDATION_RECEIPT_FIELDS = {
     "application",
     "cli",
     "interaction_plan",
+    "environment",
     "integrity_hmac_sha256",
 }
 
 
 def _selected_models(request: Any) -> tuple[str, ...]:
     if request.task == "time_series":
-        return ("subaerial_proportion_bootstrap",)
+        return ("subaerial_proportion_bootstrap" if request.mode == "subaerial_proportion" else "element_mean",)
     orders = {
         "classification": CLASSIFICATION_MODEL_ORDER,
         "regression": REGRESSION_MODEL_ORDER,
@@ -98,7 +111,28 @@ def _selected_tuning(request: Any) -> str:
 
 
 def _resolved_model_parameters(request: Any) -> dict[str, Any]:
-    if request.task == "time_series" or request.model_selection.mode == "all" or _selected_tuning(request) == "automl":
+    if request.task == "time_series":
+        return {
+            "mode": request.mode,
+            "bin_width": request.bin_width,
+            **(
+                {
+                    "iterations": request.iterations,
+                    "seed": request.seed,
+                    "age_unit": request.age_unit,
+                    "fit_curve": request.fit_curve,
+                }
+                if request.mode == "subaerial_proportion"
+                else {
+                    "aggregation": request.aggregation,
+                    "uncertainty": request.uncertainty,
+                    "minimum_samples_per_bin": request.minimum_samples_per_bin,
+                    "filter_minimum": request.filter_minimum,
+                    "filter_maximum": request.filter_maximum,
+                }
+            ),
+        }
+    if request.model_selection.mode == "all" or _selected_tuning(request) == "automl":
         return {}
     model = getattr(request, "model", None)
     if model is None:
@@ -139,6 +173,8 @@ def _plan_identity(plan: InteractionPlan) -> dict[str, Any]:
     return {
         "name": plan.name,
         "schema_version": plan.schema_version,
+        "environment_profile_id": plan.environment_profile_id,
+        "environment_profile_identity_sha256": plan.environment_profile_identity_sha256,
         "sha256": _json_sha256(value),
     }
 
@@ -286,6 +322,7 @@ class RunPaths:
     status: Path
     result: Path
     artifact_index: Path
+    provenance_manifest: Path
 
     @classmethod
     def create(cls, runs_root: Path, run_id: str) -> "RunPaths":
@@ -299,6 +336,7 @@ class RunPaths:
             status=wrapper / "status.json",
             result=wrapper / "result.json",
             artifact_index=wrapper / "artifact-index.json",
+            provenance_manifest=wrapper / "scientific-run-manifest.json",
         )
 
 
@@ -319,6 +357,7 @@ class RunManager:
         cli_resolver: Callable[[], tuple[Path, str]] | None = None,
         dataset_catalog: DatasetCatalog | None = None,
         experiment_manager: ExperimentManager | None = None,
+        environment_resolver: Callable[[Path], EnvironmentSnapshot] | None = None,
     ):
         self.settings = settings
         self.plan_compiler = plan_compiler or AnalysisPlanCompiler()
@@ -331,6 +370,7 @@ class RunManager:
         self.cli_resolver = cli_resolver or settings.require_supported_cli
         self.dataset_catalog = dataset_catalog or DatasetCatalog(settings)
         self.experiment_manager = experiment_manager or ExperimentManager(settings)
+        self.environment_resolver = environment_resolver or inspect_cli_environment
         self._executor = ThreadPoolExecutor(max_workers=settings.concurrency, thread_name_prefix="geochemistrypi-run")
         self._lock = threading.RLock()
         self._active: dict[str, _RunControl] = {}
@@ -379,6 +419,40 @@ class RunManager:
         public_status = {field: status.get(field) for field in RunStatusResponse.model_fields}
         return RunStatusResponse.model_validate(public_status)
 
+    def _prepare_dataset(
+        self,
+        request: Any,
+        role: str,
+        resolved: ResolvedDataset,
+        source_snapshot: DatasetSnapshot,
+    ) -> PreparedDataset:
+        reference = getattr(request, f"{role}_dataset", None)
+        contract = reference.preparation if reference is not None else DatasetPreparationContract()
+        state_root = self.settings.service_state_root
+        if state_root is None:
+            raise RunStateError("The MCP service-state root is not configured.")
+        return prepare_dataset_view(
+            source_snapshot,
+            contract,
+            state_root,
+            self.settings.maximum_dataset_bytes,
+            self.settings.maximum_columns,
+            allow_pandas_duplicate_mangling=source_allows_pandas_duplicate_mangling(resolved.source),
+        )
+
+    @staticmethod
+    def _prepared_identity(prepared: PreparedDataset, resolved: ResolvedDataset) -> dict[str, Any]:
+        snapshot = prepared.snapshot
+        return {
+            "resolved_path": str(snapshot.resolved_path),
+            "size_bytes": snapshot.size_bytes,
+            "sha256": snapshot.sha256,
+            "source": resolved.source,
+            "dataset_id": resolved.dataset_id,
+            "source_file": prepared.record["source_file"],
+            "preparation": prepared.record,
+        }
+
     def _validation_secret(self) -> bytes:
         state_root = self.settings.service_state_root
         if state_root is None:  # McpSettings normalizes this in __post_init__.
@@ -423,40 +497,38 @@ class RunManager:
     def _write_validation_receipt(
         self,
         request: Any,
-        snapshot: DatasetSnapshot,
+        prepared_training: PreparedDataset,
         resolved_training: ResolvedDataset,
-        application_snapshot: DatasetSnapshot | None,
+        prepared_application: PreparedDataset | None,
         resolved_application: ResolvedDataset | None,
         cli_executable: Path,
         cli_version: str,
         plan: InteractionPlan,
+        environment_snapshot: EnvironmentSnapshot,
     ) -> dict[str, Any]:
         request_value = request.model_dump(mode="json")
         request_hash = _json_sha256(request_value)
-        training = {
-            "resolved_path": str(snapshot.resolved_path),
-            "size_bytes": snapshot.size_bytes,
-            "sha256": snapshot.sha256,
-            "source": resolved_training.source,
-            "dataset_id": resolved_training.dataset_id,
-        }
-        application = (
-            {
-                "resolved_path": str(application_snapshot.resolved_path),
-                "size_bytes": application_snapshot.size_bytes,
-                "sha256": application_snapshot.sha256,
-                "source": resolved_application.source,
-                "dataset_id": resolved_application.dataset_id,
-            }
-            if application_snapshot is not None and resolved_application is not None
-            else None
-        )
+        training = self._prepared_identity(prepared_training, resolved_training)
+        application = self._prepared_identity(prepared_application, resolved_application) if prepared_application is not None and resolved_application is not None else None
         cli = {
             "executable": str(cli_executable.resolve()),
             "executable_sha256": sha256_file(cli_executable),
             "version": cli_version,
         }
         plan_identity = _plan_identity(plan)
+        artifact_requirements = planned_artifact_requirements(request, plan)
+        canonical_contract = canonical_scientific_contract(request, plan)
+        canonical_contract_hash = canonical_sha256(canonical_contract)
+        assessment = assess_scientific_compatibility(
+            request,
+            plan,
+            artifact_requirements,
+            environment_snapshot,
+        )
+        environment = {
+            "identity_sha256": environment_snapshot.identity_sha256,
+            "record": environment_snapshot.record,
+        }
         stable_identity = {
             "schema_version": 1,
             "request_hash": request_hash,
@@ -466,6 +538,8 @@ class RunManager:
             "application": application,
             "cli": cli,
             "interaction_plan": plan_identity,
+            "canonical_contract_hash": canonical_contract_hash,
+            "environment": environment,
         }
         validation_id = f"val-{_json_sha256(stable_identity)[:32]}"
         created_at_epoch = int(time.time())
@@ -473,6 +547,26 @@ class RunManager:
             "schema_version": 1,
             "validation_id": validation_id,
             "request_hash": request_hash,
+            "canonical_contract": canonical_contract,
+            "canonical_contract_hash": canonical_contract_hash,
+            "compiled_plan_hash": plan_identity["sha256"],
+            "dataset_hash": training["sha256"],
+            "adapter_identity": {
+                "id": plan.adapter_id,
+                "version": plan.adapter_version,
+                "status": assessment.adapter_status,
+            },
+            "artifact_requirements": [requirement.model_dump(mode="json") for requirement in artifact_requirements],
+            "execution_readiness": {
+                "execution_ready": assessment.execution_ready,
+                "comparison_ready": assessment.comparison_ready,
+                "claim_ready": assessment.claim_ready,
+                "scientific_status": assessment.scientific_status,
+                "adapter_status": assessment.adapter_status,
+                "artifact_status": assessment.artifact_status,
+                "environment_status": assessment.environment_status,
+                "blocking_issues": list(assessment.blocking_issues),
+            },
             "request": request_value,
             "task": request.task,
             "created_at_epoch": created_at_epoch,
@@ -481,6 +575,7 @@ class RunManager:
             "application": application,
             "cli": cli,
             "interaction_plan": plan_identity,
+            "environment": environment,
         }
         receipt = {
             **receipt_without_integrity,
@@ -530,6 +625,8 @@ class RunManager:
             raise RunStateError(f"Validation receipt task must be {expected_task!r} in this scoped session.")
         if _json_sha256(receipt["request"]) != request_hash:
             raise RunStateError("Validation request integrity check failed.")
+        if canonical_sha256(receipt["canonical_contract"]) != receipt["canonical_contract_hash"]:
+            raise RunStateError("Validation canonical scientific contract integrity check failed.")
         try:
             request = AnalysisRequest.model_validate(receipt["request"]).root
         except Exception as exc:
@@ -541,34 +638,19 @@ class RunManager:
     def _assert_validation_still_matches(
         self,
         receipt: dict[str, Any],
-        snapshot: DatasetSnapshot,
+        prepared_training: PreparedDataset,
         resolved_training: ResolvedDataset,
-        application_snapshot: DatasetSnapshot | None,
+        prepared_application: PreparedDataset | None,
         resolved_application: ResolvedDataset | None,
         cli_executable: Path,
         cli_version: str,
         plan: InteractionPlan,
+        environment_snapshot: EnvironmentSnapshot,
     ) -> None:
-        current_training = {
-            "resolved_path": str(snapshot.resolved_path),
-            "size_bytes": snapshot.size_bytes,
-            "sha256": snapshot.sha256,
-            "source": resolved_training.source,
-            "dataset_id": resolved_training.dataset_id,
-        }
+        current_training = self._prepared_identity(prepared_training, resolved_training)
         if receipt["training"] != current_training:
             raise RunStateError("The training dataset changed since validation; validate the request again.")
-        current_application = (
-            {
-                "resolved_path": str(application_snapshot.resolved_path),
-                "size_bytes": application_snapshot.size_bytes,
-                "sha256": application_snapshot.sha256,
-                "source": resolved_application.source,
-                "dataset_id": resolved_application.dataset_id,
-            }
-            if application_snapshot is not None and resolved_application is not None
-            else None
-        )
+        current_application = self._prepared_identity(prepared_application, resolved_application) if prepared_application is not None and resolved_application is not None else None
         if receipt["application"] != current_application:
             raise RunStateError("The application dataset changed since validation; validate the request again.")
         current_cli = {
@@ -580,6 +662,12 @@ class RunManager:
             raise RunStateError("The configured GeochemistryPi CLI changed since validation; validate the request again.")
         if receipt["interaction_plan"] != _plan_identity(plan):
             raise RunStateError("The compiled interaction plan changed since validation; validate the request again.")
+        current_environment = {
+            "identity_sha256": environment_snapshot.identity_sha256,
+            "record": environment_snapshot.record,
+        }
+        if receipt["environment"] != current_environment:
+            raise RunStateError("The isolated CLI environment changed since validation; validate the request again.")
 
     def validate(
         self,
@@ -587,6 +675,7 @@ class RunManager:
     ) -> AnalysisValidationResponse:
         """Resolve and compile an analysis without creating a run or CLI process."""
         cli_executable, cli_version = self.cli_resolver()
+        environment_snapshot = self.environment_resolver(cli_executable)
         existing_experiment_id = getattr(request, "existing_experiment_id", None)
         if existing_experiment_id:
             self.experiment_manager.require_matching_name(existing_experiment_id, request.experiment_name)
@@ -601,20 +690,26 @@ class RunManager:
                 source="path",
             )
         )
-        snapshot = snapshot_dataset(resolved_training.path, self.settings.maximum_dataset_bytes)
-        if resolved_training.expected_sha256 is not None and snapshot.sha256 != resolved_training.expected_sha256:
+        source_snapshot = snapshot_dataset(resolved_training.path, self.settings.maximum_dataset_bytes)
+        if resolved_training.expected_sha256 is not None and source_snapshot.sha256 != resolved_training.expected_sha256:
             raise InputIntegrityError("The training dataset changed between source resolution and validation.")
+        prepared_training = self._prepare_dataset(request, "training", resolved_training, source_snapshot)
+        snapshot = prepared_training.snapshot
         application_reference = getattr(request, "application_dataset", None)
         if application_reference is not None:
             resolved_application = self.dataset_catalog.resolve(application_reference, task=request.task, role="application")
         else:
             application_path = getattr(request, "application_dataset_path", None)
             resolved_application = ResolvedDataset(path=application_path, expected_sha256=None, dataset_id=None, source="path") if application_path is not None else None
-        application_snapshot = snapshot_dataset(resolved_application.path, self.settings.maximum_dataset_bytes) if resolved_application is not None else None
+        application_source_snapshot = snapshot_dataset(resolved_application.path, self.settings.maximum_dataset_bytes) if resolved_application is not None else None
         expected_application_sha256 = resolved_application.expected_sha256 if resolved_application is not None else None
-        if application_snapshot is not None and expected_application_sha256 is not None:
-            if application_snapshot.sha256 != expected_application_sha256:
+        if application_source_snapshot is not None and expected_application_sha256 is not None:
+            if application_source_snapshot.sha256 != expected_application_sha256:
                 raise InputIntegrityError("The application dataset changed between source resolution and validation.")
+        prepared_application = (
+            self._prepare_dataset(request, "application", resolved_application, application_source_snapshot) if resolved_application is not None and application_source_snapshot is not None else None
+        )
+        application_snapshot = prepared_application.snapshot if prepared_application is not None else None
         execution_request = request.model_copy(
             update={
                 "training_dataset_path": snapshot.resolved_path,
@@ -630,16 +725,29 @@ class RunManager:
             }
         )
         dataset_context = DatasetCompilationContext(
-            training_source=resolved_training.source,
-            application_source=resolved_application.source if resolved_application is not None else None,
+            training_source=(resolved_training.source if snapshot.resolved_path == source_snapshot.resolved_path else "path"),
+            application_source=(
+                resolved_application.source
+                if resolved_application is not None
+                and application_source_snapshot is not None
+                and application_snapshot is not None
+                and application_snapshot.resolved_path == application_source_snapshot.resolved_path
+                else "path"
+                if resolved_application is not None
+                else None
+            ),
         )
         plan = self.plan_compiler.compile(
             execution_request,
             cli_executable=cli_executable,
             dataset_context=dataset_context,
         )
-        validation_paths = RunPaths.create(self.settings.runs_root, "run-0000000000000000")
-        validate_workspace_path(plan, validation_paths.workspace)
+        plan = AnalysisPlanCompiler.bind_scientific_adapter(plan, execution_request)
+        artifact_requirements = planned_artifact_requirements(request, plan)
+        assessment = assess_scientific_compatibility(request, plan, artifact_requirements, environment_snapshot)
+        if plan.execution_ready:
+            validation_paths = RunPaths.create(self.settings.runs_root, "run-0000000000000000")
+            validate_workspace_path(plan, validation_paths.workspace)
         inspection = inspect_local_dataset(
             DatasetInspectionRequest(dataset_path=snapshot.resolved_path, sample_rows=0),
             self.settings,
@@ -658,23 +766,44 @@ class RunManager:
             warnings.append("World-map rendering is enabled and may add platform-dependent image artifacts.")
         if existing_experiment_id:
             warnings.append("The new run will be attached to the verified existing MLflow experiment ID.")
+        if not assessment.execution_ready:
+            warnings.append("The request is scientifically representable but the exact validated contract is not execution-ready.")
         receipt = self._write_validation_receipt(
             request,
-            snapshot,
+            prepared_training,
             resolved_training,
-            application_snapshot,
+            prepared_application,
             resolved_application,
             cli_executable,
             cli_version,
             plan,
+            environment_snapshot,
         )
         return AnalysisValidationResponse(
             validation_id=receipt["validation_id"],
             request_hash=receipt["request_hash"],
+            canonical_contract_hash=receipt["canonical_contract_hash"],
+            compiled_plan_hash=receipt["compiled_plan_hash"],
             validation_expires_at=datetime.fromtimestamp(
                 receipt["expires_at_epoch"],
                 timezone.utc,
             ).isoformat(),
+            execution_ready=assessment.execution_ready,
+            comparison_ready=assessment.comparison_ready,
+            claim_ready=assessment.claim_ready,
+            scientific_status=assessment.scientific_status,
+            adapter_status=assessment.adapter_status,
+            artifact_status=assessment.artifact_status,
+            environment_status=assessment.environment_status,
+            workflow_family=plan.workflow_family,
+            workflow_mode=plan.workflow_mode,
+            method=plan.method,
+            scientific_contract_id=plan.scientific_contract_id,
+            adapter_id=plan.adapter_id,
+            adapter_version=plan.adapter_version,
+            adapter_identity=(f"{plan.adapter_id}@{plan.adapter_version}" if plan.adapter_id and plan.adapter_version else plan.adapter_id),
+            artifact_requirements=artifact_requirements,
+            blocking_issues=assessment.blocking_issues,
             task=request.task,
             models=models,
             estimated_model_count=len(models),
@@ -683,6 +812,37 @@ class RunManager:
             training_dataset_path=str(snapshot.resolved_path),
             training_sha256=snapshot.sha256,
             training_size_bytes=snapshot.size_bytes,
+            source_dataset_path=str(source_snapshot.resolved_path),
+            source_dataset_sha256=source_snapshot.sha256,
+            dataset_preparation=prepared_training.record,
+            dataset_preparation_sha256=prepared_training.record["contract_hash"],
+            environment_identity_sha256=environment_snapshot.identity_sha256,
+            environment_profile={
+                "requested": resolved_environment_profile(request),
+                "observed": environment_snapshot.record,
+            },
+            environment_profile_identity_sha256=plan.environment_profile_identity_sha256,
+            requested_seeds=dict(plan.requested_seeds),
+            effective_seeds=dict(plan.effective_seeds),
+            parameter_binding={
+                "requested_model": {name: json.loads(value) for name, value in plan.requested_model_parameters},
+                "effective_model": {name: json.loads(value) for name, value in plan.effective_model_parameters},
+                "model_binding": plan.model_parameter_binding,
+                "requested_preprocessing": {name: json.loads(value) for name, value in plan.requested_preprocessing_parameters},
+                "effective_preprocessing": {name: json.loads(value) for name, value in plan.effective_preprocessing_parameters},
+                "preprocessing_binding": plan.preprocessing_parameter_binding,
+            },
+            adapter_artifact_mappings=tuple(
+                {
+                    "mapping_id": mapping.mapping_id,
+                    "scientific_type": mapping.scientific_type,
+                    "output_role": mapping.output_role,
+                    "relative_path": mapping.relative_path,
+                    "availability": mapping.availability,
+                    "reason": mapping.reason,
+                }
+                for mapping in plan.artifact_mappings
+            ),
             source_row_count=snapshot.row_lineage.source_row_count,
             row_identity_scheme=snapshot.row_lineage.scheme,
             row_identity_sha256=snapshot.row_lineage.ordered_identity_sha256,
@@ -700,6 +860,8 @@ class RunManager:
             application_source=resolved_application.source if resolved_application else None,
             application_dataset_path=str(application_snapshot.resolved_path) if application_snapshot else None,
             application_sha256=application_snapshot.sha256 if application_snapshot else None,
+            application_source_sha256=(application_source_snapshot.sha256 if application_source_snapshot else None),
+            application_preparation=(prepared_application.record if prepared_application else None),
             application_source_row_count=(application_snapshot.row_lineage.source_row_count if application_snapshot else None),
             application_row_identity_sha256=(application_snapshot.row_lineage.ordered_identity_sha256 if application_snapshot else None),
             experiment_mode=("not_applicable" if request.task == "time_series" else "existing" if existing_experiment_id else "new"),
@@ -743,6 +905,7 @@ class RunManager:
             if self._closed:
                 raise RunStateError("The GeochemistryPi run manager is shutting down.")
         cli_executable, cli_version = self.cli_resolver()
+        environment_snapshot = self.environment_resolver(cli_executable)
         existing_experiment_id = getattr(request, "existing_experiment_id", None)
         if existing_experiment_id:
             self.experiment_manager.require_matching_name(existing_experiment_id, request.experiment_name)
@@ -760,9 +923,11 @@ class RunManager:
                 dataset_id=None,
                 source="path",
             )
-        snapshot = snapshot_dataset(resolved_training.path, self.settings.maximum_dataset_bytes)
-        if resolved_training.expected_sha256 is not None and snapshot.sha256 != resolved_training.expected_sha256:
+        source_snapshot = snapshot_dataset(resolved_training.path, self.settings.maximum_dataset_bytes)
+        if resolved_training.expected_sha256 is not None and source_snapshot.sha256 != resolved_training.expected_sha256:
             raise InputIntegrityError("The training dataset changed between source resolution and validation.")
+        prepared_training = self._prepare_dataset(request, "training", resolved_training, source_snapshot)
+        snapshot = prepared_training.snapshot
         application_reference = getattr(request, "application_dataset", None)
         if application_reference is not None:
             resolved_application = self.dataset_catalog.resolve(
@@ -783,7 +948,7 @@ class RunManager:
                 if application_dataset_path is not None
                 else None
             )
-        application_snapshot = (
+        application_source_snapshot = (
             snapshot_dataset(
                 application_dataset_path,
                 self.settings.maximum_dataset_bytes,
@@ -792,9 +957,13 @@ class RunManager:
             else None
         )
         expected_application_sha256 = resolved_application.expected_sha256 if resolved_application is not None else None
-        if application_snapshot is not None and expected_application_sha256 is not None:
-            if application_snapshot.sha256 != expected_application_sha256:
+        if application_source_snapshot is not None and expected_application_sha256 is not None:
+            if application_source_snapshot.sha256 != expected_application_sha256:
                 raise InputIntegrityError("The application dataset changed between source resolution and validation.")
+        prepared_application = (
+            self._prepare_dataset(request, "application", resolved_application, application_source_snapshot) if resolved_application is not None and application_source_snapshot is not None else None
+        )
+        application_snapshot = prepared_application.snapshot if prepared_application is not None else None
         execution_request = request.model_copy(
             update={
                 "training_dataset_path": snapshot.resolved_path,
@@ -810,25 +979,41 @@ class RunManager:
             }
         )
         dataset_context = DatasetCompilationContext(
-            training_source=resolved_training.source,
-            application_source=resolved_application.source if resolved_application is not None else None,
+            training_source=(resolved_training.source if snapshot.resolved_path == source_snapshot.resolved_path else "path"),
+            application_source=(
+                resolved_application.source
+                if resolved_application is not None
+                and application_source_snapshot is not None
+                and application_snapshot is not None
+                and application_snapshot.resolved_path == application_source_snapshot.resolved_path
+                else "path"
+                if resolved_application is not None
+                else None
+            ),
         )
         plan = self.plan_compiler.compile(
             execution_request,
             cli_executable=cli_executable,
             dataset_context=dataset_context,
         )
+        plan = AnalysisPlanCompiler.bind_scientific_adapter(plan, execution_request)
         if validation is not None:
             self._assert_validation_still_matches(
                 validation,
-                snapshot,
+                prepared_training,
                 resolved_training,
-                application_snapshot,
+                prepared_application,
                 resolved_application,
                 cli_executable,
                 cli_version,
                 plan,
+                environment_snapshot,
             )
+        artifact_requirements = planned_artifact_requirements(request, plan)
+        assessment = assess_scientific_compatibility(request, plan, artifact_requirements, environment_snapshot)
+        if not assessment.execution_ready:
+            explanation = "; ".join(assessment.blocking_issues) or "The exact scientific contract has no executable CLI adapter."
+            raise RunStateError(f"Validated scientific contract is not execution-ready: {explanation}")
         if "data-mining" in plan.public_command:
             if self.settings.tracking_root is None:
                 raise RunStateError("The installer-owned MLflow tracking root is not configured.")
@@ -848,6 +1033,8 @@ class RunManager:
         request_record = {
             "schema_version": 1,
             "run_id": run_id,
+            "request_hash": _json_sha256(request.model_dump(mode="json")),
+            "canonical_contract_hash": canonical_sha256(canonical_scientific_contract(request, plan)),
             "request": request.model_dump(mode="json"),
             "validation": (
                 {
@@ -866,6 +1053,8 @@ class RunManager:
                 "source": resolved_training.source,
                 "dataset_id": resolved_training.dataset_id,
                 "row_identity": snapshot.row_lineage.as_record(),
+                "source_file": prepared_training.record["source_file"],
+                "preparation": prepared_training.record,
             },
             "application_input": (
                 {
@@ -877,6 +1066,8 @@ class RunManager:
                     "source": resolved_application.source,
                     "dataset_id": resolved_application.dataset_id,
                     "row_identity": application_snapshot.row_lineage.as_record(),
+                    "source_file": prepared_application.record["source_file"],
+                    "preparation": prepared_application.record,
                 }
                 if application_snapshot is not None
                 else None
@@ -884,10 +1075,38 @@ class RunManager:
             "interaction_plan": {
                 "name": plan.name,
                 "schema_version": plan.schema_version,
+                "sha256": _plan_identity(plan)["sha256"],
+                "adapter_id": plan.adapter_id,
+                "adapter_version": plan.adapter_version,
+                "workflow_family": plan.workflow_family,
+                "workflow_mode": plan.workflow_mode,
+                "method": plan.method,
+                "environment_profile_id": plan.environment_profile_id,
+                "environment_profile_identity_sha256": plan.environment_profile_identity_sha256,
+                "requested_seeds": dict(plan.requested_seeds),
+                "effective_seeds": dict(plan.effective_seeds),
+                "seed_binding": plan.seed_binding,
+                "requested_model_parameters": {name: json.loads(value) for name, value in plan.requested_model_parameters},
+                "effective_model_parameters": {name: json.loads(value) for name, value in plan.effective_model_parameters},
+                "requested_preprocessing_parameters": {name: json.loads(value) for name, value in plan.requested_preprocessing_parameters},
+                "effective_preprocessing_parameters": {name: json.loads(value) for name, value in plan.effective_preprocessing_parameters},
+                "artifact_mappings": [
+                    {
+                        "mapping_id": mapping.mapping_id,
+                        "scientific_type": mapping.scientific_type,
+                        "output_role": mapping.output_role,
+                        "relative_path": mapping.relative_path,
+                        "availability": mapping.availability,
+                        "reason": mapping.reason,
+                    }
+                    for mapping in plan.artifact_mappings
+                ],
             },
             "versions": {
                 "geochemistrypi_mcp": SERVER_VERSION,
                 "geochemistrypi_cli": cli_version,
+                "environment_identity_sha256": environment_snapshot.identity_sha256,
+                "environment": environment_snapshot.record,
             },
         }
         status = {
@@ -1034,7 +1253,14 @@ class RunManager:
                 if plan.requires_source_row_pairing
                 else None
             )
-            discovered = discover_artifacts(output_directory, self.settings.maximum_artifact_references)
+            artifact_requirements = planned_artifact_requirements(request, plan)
+            discovered = discover_artifacts(
+                output_directory,
+                self.settings.maximum_artifact_references,
+                artifact_requirements,
+                workflow_family=plan.workflow_family,
+                artifact_mappings=plan.artifact_mappings,
+            )
             preprocessing_summary = (
                 read_time_series_preprocessing_summary(
                     output_directory,
@@ -1047,20 +1273,84 @@ class RunManager:
             is_aggregate = request.task != "time_series" and request.model_selection.mode == "all"
             aggregate_state, children = _aggregate_children(output_directory, request.task) if is_aggregate else (None, ())
             result_state = "partial_failure" if aggregate_state == "partial_failure" else "succeeded"
+            request_record = _read_json(paths.request)
+            validation_identity = request_record["validation"] or {
+                "mode": "legacy_full_request",
+                "validation_id": None,
+                "request_hash": request_record["request_hash"],
+            }
+            missing_artifact_requirement_ids = discovered.missing_requirement_ids
             artifact_index = {
                 "schema_version": ARTIFACT_INDEX_SCHEMA_VERSION,
                 "run_id": run_id,
+                "request_identity": {
+                    "request_hash": request_record["request_hash"],
+                    "canonical_contract_hash": request_record["canonical_contract_hash"],
+                },
+                "validation_identity": validation_identity,
+                "plan_identity": request_record["interaction_plan"],
                 "output_directory": str(output_directory),
                 "source_row_lineage": snapshot.row_lineage.as_record(),
                 "source_row_pairing": source_row_pairing,
+                "artifact_contract": {
+                    "required": [item.model_dump(mode="json") for item in artifact_requirements],
+                    "missing_required_ids": list(missing_artifact_requirement_ids),
+                    "matches": {key: list(value) for key, value in discovered.requirement_matches.items()},
+                    "failures": discovered.requirement_failures,
+                },
                 "artifacts": discovered.all_index_entries,
             }
             _atomic_write_json(paths.artifact_index, artifact_index)
+            provenance_manifest = {
+                "schema_version": 1,
+                "request_identity": {
+                    "request_hash": request_record["request_hash"],
+                    "canonical_contract_hash": request_record["canonical_contract_hash"],
+                },
+                "validation_identity": validation_identity,
+                "run_identity": {"run_id": run_id},
+                "plan_identity": request_record["interaction_plan"],
+                "runtime": request_record["versions"],
+                "input": request_record["input"],
+                "application_input": request_record["application_input"],
+                "artifact_index": {
+                    "path": str(paths.artifact_index),
+                    "sha256": sha256_file(paths.artifact_index),
+                },
+                "artifacts": list(discovered.all_index_entries),
+                "artifact_contract": artifact_index["artifact_contract"],
+                "metadata": {
+                    "task": request.task,
+                    "workflow_family": plan.workflow_family,
+                    "workflow_mode": plan.workflow_mode,
+                    "method": plan.method,
+                    "adapter_id": plan.adapter_id,
+                    "adapter_version": plan.adapter_version,
+                },
+            }
+            _atomic_write_json(paths.provenance_manifest, provenance_manifest)
+            provenance_manifest_sha256 = sha256_file(paths.provenance_manifest)
             result = RunResultResponse(
                 run_id=run_id,
+                request_hash=request_record["request_hash"],
+                validation_id=(request_record["validation"] or {}).get("validation_id"),
+                canonical_contract_hash=request_record["canonical_contract_hash"],
+                compiled_plan_hash=request_record["interaction_plan"]["sha256"],
+                provenance_manifest_path=str(paths.provenance_manifest),
+                provenance_manifest_sha256=provenance_manifest_sha256,
+                contract_status=("incomplete" if missing_artifact_requirement_ids else "complete"),
+                missing_artifact_requirement_ids=missing_artifact_requirement_ids,
                 state=result_state,
                 task=request.task,
-                model=("subaerial_proportion_bootstrap" if request.task == "time_series" else "all_models" if is_aggregate else request.model.type),
+                model=(
+                    "subaerial_proportion_bootstrap"
+                    if request.task == "time_series" and request.mode == "subaerial_proportion"
+                    else "element_mean"
+                    if request.task == "time_series"
+                    else "all_models"
+                    if is_aggregate
+                    else request.model.type
+                ),
                 tuning=(request.model_selection.tuning if is_aggregate else getattr(request, "tuning", "not_applicable")),
                 output_directory=str(output_directory),
                 interaction_trace=str(cli_result.trace_path),
@@ -1070,6 +1360,10 @@ class RunManager:
                 cli_version=cli_version,
                 input_sha256=snapshot.sha256,
                 input_hash_verified=True,
+                source_input_sha256=request_record["input"]["source_file"]["sha256"],
+                dataset_preparation=request_record["input"]["preparation"],
+                environment_identity_sha256=request_record["versions"]["environment_identity_sha256"],
+                effective_seeds=request_record["interaction_plan"]["effective_seeds"],
                 source_row_count=snapshot.row_lineage.source_row_count,
                 row_identity_scheme=snapshot.row_lineage.scheme,
                 row_identity_sha256=snapshot.row_lineage.ordered_identity_sha256,

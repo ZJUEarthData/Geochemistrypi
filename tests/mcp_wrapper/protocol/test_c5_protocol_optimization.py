@@ -32,7 +32,18 @@ class ProtocolRunManager:
         return AnalysisValidationResponse(
             validation_id=VALIDATION_ID,
             request_hash=REQUEST_HASH,
+            canonical_contract_hash="2" * 64,
+            compiled_plan_hash="3" * 64,
             validation_expires_at="2026-08-22T06:00:00+00:00",
+            execution_ready=True,
+            scientific_status="valid",
+            adapter_status="available",
+            artifact_status="planned",
+            workflow_family=("time_series" if request.task == "time_series" else "supervised_learning"),
+            workflow_mode=(request.mode if request.task == "time_series" else request.task),
+            method=model,
+            adapter_id="test-adapter",
+            adapter_version="1",
             task=request.task,
             models=(model,),
             estimated_model_count=1,
@@ -176,24 +187,16 @@ async def test_advertised_time_series_schemas_remove_only_non_validation_annotat
         listing = await client.list_tools()
         schemas = {tool.name: tool.input_schema for tool in listing.tools}
         assert all(not _annotation_paths(schema) for schema in schemas.values())
-        assert sum(_compact_bytes(schema) for schema in schemas.values()) < 7000
-        assert (
-            _compact_bytes(
-                listing.model_dump(mode="json", by_alias=True, exclude_none=True)
-            )
-            < 8500
-        )
+        # The named environment-profile and deterministic filter contracts add
+        # validation-bearing fields; keep the scoped schema under a tight revised budget.
+        assert sum(_compact_bytes(schema) for schema in schemas.values()) < 12_300
+        assert _compact_bytes(listing.model_dump(mode="json", by_alias=True, exclude_none=True)) < 13_700
 
         time_series = schemas["validate_analysis"]
         assert time_series["additionalProperties"] is False
         assert time_series["properties"]["task"]["const"] == "time_series"
         assert time_series["properties"]["bin_width"]["exclusiveMinimum"] == 0
-        assert (
-            time_series["properties"]["training_dataset"]["anyOf"][0]["discriminator"][
-                "propertyName"
-            ]
-            == "source"
-        )
+        assert time_series["properties"]["training_dataset"]["anyOf"][0]["discriminator"]["propertyName"] == "source"
         assert schemas["start_analysis"]["additionalProperties"] is False
         assert set(schemas["start_analysis"]["required"]) == {
             "validation_id",

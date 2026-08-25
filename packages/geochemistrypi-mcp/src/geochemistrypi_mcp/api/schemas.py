@@ -44,12 +44,212 @@ class StrictModel(BaseModel):
         return self
 
 
+class SourceRowIdentityContract(StrictModel):
+    """Stable source-row identity used to audit a prepared dataset view."""
+
+    strategy: Literal["source_row", "column_values"] = "source_row"
+    columns: tuple[ColumnName, ...] = Field(default=(), max_length=16)
+    expected_ordered_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+    source_mapping_path: Path | None = None
+    source_mapping_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+
+    @field_validator("columns")
+    @classmethod
+    def validate_columns(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        normalized = tuple(column.strip() for column in value)
+        if any(not column for column in normalized) or len(normalized) != len(set(normalized)):
+            raise ValueError("row-identity columns must contain unique, non-blank names")
+        return normalized
+
+    @model_validator(mode="after")
+    def validate_strategy(self) -> "SourceRowIdentityContract":
+        if self.strategy == "column_values" and not self.columns:
+            raise ValueError("column_values row identity requires at least one column")
+        if self.strategy == "source_row" and self.columns:
+            raise ValueError("source_row identity does not accept columns")
+        if (self.source_mapping_path is None) != (self.source_mapping_sha256 is None):
+            raise ValueError("source row mapping path and SHA256 must be provided together")
+        return self
+
+
+class DatasetFilterRule(StrictModel):
+    """One deterministic row predicate applied before column projection."""
+
+    column: ColumnName
+    operator: Literal[
+        "not_null",
+        "equal",
+        "not_equal",
+        "greater_than",
+        "greater_than_or_equal",
+        "less_than",
+        "less_than_or_equal",
+        "between",
+        "in",
+    ]
+    value: str | int | float | bool | None = None
+    values: tuple[str | int | float | bool, ...] = Field(default=(), max_length=256)
+    minimum: int | float | None = None
+    maximum: int | float | None = None
+    inclusive: bool = True
+
+    @field_validator("column")
+    @classmethod
+    def validate_column(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized or "\n" in normalized or "\r" in normalized:
+            raise ValueError("filter column must be a non-blank single-line name")
+        return normalized
+
+    @model_validator(mode="after")
+    def validate_operands(self) -> "DatasetFilterRule":
+        comparison_operators = {
+            "equal",
+            "not_equal",
+            "greater_than",
+            "greater_than_or_equal",
+            "less_than",
+            "less_than_or_equal",
+        }
+        if self.operator == "not_null":
+            if self.value is not None or self.values or self.minimum is not None or self.maximum is not None:
+                raise ValueError("not_null does not accept filter operands")
+        elif self.operator in comparison_operators:
+            if self.value is None:
+                raise ValueError(f"{self.operator} requires value")
+            if self.values or self.minimum is not None or self.maximum is not None:
+                raise ValueError(f"{self.operator} accepts only value")
+        elif self.operator == "between":
+            if self.minimum is None or self.maximum is None:
+                raise ValueError("between requires minimum and maximum")
+            if self.minimum > self.maximum:
+                raise ValueError("between minimum must not exceed maximum")
+            if self.value is not None or self.values:
+                raise ValueError("between accepts only minimum, maximum, and inclusive")
+        else:
+            if not self.values:
+                raise ValueError("in requires at least one value")
+            if len(self.values) != len(set(self.values)):
+                raise ValueError("in values must not contain duplicates")
+            if self.value is not None or self.minimum is not None or self.maximum is not None:
+                raise ValueError("in accepts only values")
+        numeric_values = (
+            *(item for item in (self.value, self.minimum, self.maximum) if isinstance(item, (int, float)) and not isinstance(item, bool)),
+            *(item for item in self.values if isinstance(item, (int, float)) and not isinstance(item, bool)),
+        )
+        if any(not math.isfinite(float(item)) for item in numeric_values):
+            raise ValueError("numeric filter operands must be finite")
+        return self
+
+
+class DatasetPreparationContract(StrictModel):
+    """Paper-agnostic table selection and source-row lineage controls."""
+
+    worksheet: str | None = Field(None, min_length=1, max_length=255)
+    worksheets: tuple[str, ...] = Field(default=(), min_length=0, max_length=16)
+    union_mode: Literal["rows"] | None = None
+    source_sheet_column: ColumnName | None = None
+    source_row_column: ColumnName | None = None
+    header_row_index: int = Field(0, ge=0, le=1_000_000)
+    header_row_indices: tuple[int, ...] = Field(default=(), max_length=16)
+    header_join_separator: str = Field(" | ", min_length=1, max_length=16)
+    empty_header_policy: Literal["forward_fill", "skip", "error"] = "forward_fill"
+    header_whitespace_policy: Literal["reject", "strip"] = "reject"
+    header_bom_policy: Literal["preserve", "strip"] = "preserve"
+    duplicate_header_policy: Literal["reject", "suffix"] = "reject"
+    selected_columns: tuple[ColumnName, ...] = Field(default=(), max_length=256)
+    excluded_columns: tuple[ColumnName, ...] = Field(default=(), max_length=256)
+    filters: tuple[DatasetFilterRule, ...] = Field(default=(), max_length=64)
+    row_identity: SourceRowIdentityContract = Field(default_factory=SourceRowIdentityContract)
+    operations: tuple[
+        Literal["missing_value_handling", "filtering", "transformation", "feature_selection"],
+        ...,
+    ] = Field(default=(), max_length=4)
+
+    @field_validator("worksheet", "source_sheet_column", "source_row_column")
+    @classmethod
+    def validate_worksheet(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized or "\n" in normalized or "\r" in normalized:
+            raise ValueError("worksheet must be a non-blank single-line name")
+        return normalized
+
+    @field_validator("worksheets")
+    @classmethod
+    def validate_worksheets(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        normalized = tuple(item.strip() for item in value)
+        if any(not item or "\n" in item or "\r" in item for item in normalized):
+            raise ValueError("worksheets must contain non-blank single-line names")
+        if len(normalized) != len(set(normalized)):
+            raise ValueError("worksheets must not contain duplicates")
+        return normalized
+
+    @field_validator("header_row_indices")
+    @classmethod
+    def validate_header_row_indices(cls, value: tuple[int, ...]) -> tuple[int, ...]:
+        if any(index < 0 or index > 1_000_000 for index in value):
+            raise ValueError("header_row_indices must contain zero-based bounded indices")
+        if tuple(sorted(value)) != value or len(value) != len(set(value)):
+            raise ValueError("header_row_indices must be unique and strictly increasing")
+        return value
+
+    @field_validator("header_join_separator")
+    @classmethod
+    def validate_header_join_separator(cls, value: str) -> str:
+        if not value or "\n" in value or "\r" in value:
+            raise ValueError("header_join_separator must be a non-blank single-line value")
+        return value
+
+    @field_validator("selected_columns", "excluded_columns")
+    @classmethod
+    def validate_selected_columns(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        normalized = tuple(column.strip() for column in value)
+        if any(not column for column in normalized) or len(normalized) != len(set(normalized)):
+            raise ValueError("dataset column selections must contain unique, non-blank names")
+        return normalized
+
+    @model_validator(mode="after")
+    def validate_preparation_steps(self) -> "DatasetPreparationContract":
+        if self.worksheet is not None and self.worksheets:
+            raise ValueError("worksheet and worksheets are mutually exclusive")
+        if self.worksheets and len(self.worksheets) < 2:
+            raise ValueError("a row union requires at least two worksheets")
+        if bool(self.worksheets) != (self.union_mode == "rows"):
+            raise ValueError("worksheets and union_mode='rows' must be declared together")
+        if self.worksheets and (self.source_sheet_column is None or self.source_row_column is None):
+            raise ValueError("a worksheet row union requires source_sheet_column and source_row_column")
+        if not self.worksheets and (self.source_sheet_column is not None or self.source_row_column is not None):
+            raise ValueError("source sheet/row columns are used only by a worksheet row union")
+        if self.header_row_indices and "header_row_index" in self.model_fields_set:
+            raise ValueError("provide either header_row_index or header_row_indices, not both")
+        if self.selected_columns and self.excluded_columns:
+            raise ValueError("selected_columns and excluded_columns are mutually exclusive")
+        if len(self.operations) != len(set(self.operations)):
+            raise ValueError("dataset preparation operations must not contain duplicates")
+        filter_identities = tuple((rule.column, rule.operator) for rule in self.filters)
+        if len(filter_identities) != len(set(filter_identities)):
+            raise ValueError("dataset preparation filters must not contain duplicates")
+        missing_identity_columns = sorted(set(self.row_identity.columns) - set(self.selected_columns))
+        if self.selected_columns and missing_identity_columns:
+            raise ValueError(f"selected_columns must retain row-identity columns: {missing_identity_columns}")
+        excluded_identity_columns = sorted(set(self.row_identity.columns) & set(self.excluded_columns))
+        if excluded_identity_columns:
+            raise ValueError(f"excluded_columns must retain row-identity columns: {excluded_identity_columns}")
+        generated = {value for value in (self.source_sheet_column, self.source_row_column) if value is not None}
+        if self.worksheets and not generated <= set(self.selected_columns):
+            raise ValueError("selected_columns must retain the generated source sheet and row columns")
+        return self
+
+
 class ExplicitDatasetReference(StrictModel):
     """One explicit local path, preserved for users who already know it."""
 
     source: Literal["path"] = "path"
     path: Path
     expected_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+    preparation: DatasetPreparationContract = Field(default_factory=DatasetPreparationContract)
 
 
 class BuiltInDatasetReference(StrictModel):
@@ -62,6 +262,7 @@ class BuiltInDatasetReference(StrictModel):
         description="Exact stable ID returned by list_datasets; retain the required 'builtin:' prefix.",
     )
     expected_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+    preparation: DatasetPreparationContract = Field(default_factory=DatasetPreparationContract)
 
 
 class DesktopDatasetReference(StrictModel):
@@ -70,6 +271,7 @@ class DesktopDatasetReference(StrictModel):
     source: Literal["desktop"] = "desktop"
     file_name: str = Field(min_length=1, max_length=255)
     expected_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+    preparation: DatasetPreparationContract = Field(default_factory=DatasetPreparationContract)
 
     @field_validator("file_name")
     @classmethod
@@ -307,6 +509,10 @@ MissingValueHandling = Annotated[
     Union[RejectMissingValues, KeepMissingValues, DropMissingRows, ImputeMissingValues],
     Field(discriminator="method"),
 ]
+TimeSeriesMissingValueHandling = Annotated[
+    Union[RejectMissingValues, DropMissingRows],
+    Field(discriminator="method"),
+]
 
 
 class NoFeatureSelection(StrictModel):
@@ -417,6 +623,8 @@ class XGBoostSettings(StrictModel):
     column_subsample: float = Field(1.0, gt=0, le=1)
     l1_regularization: float = Field(0.0, ge=0)
     l2_regularization: float = Field(1.0, ge=0)
+    gamma: float = Field(0.0, ge=0)
+    tree_method: Literal["auto", "exact", "approx", "hist", "gpu_hist"] = "auto"
 
 
 class MultiLayerPerceptronSettings(StrictModel):
@@ -541,6 +749,8 @@ class RegressionXGBoostSettings(StrictModel):
     maximum_depth: int = Field(4, ge=1, le=100_000)
     subsample: float = Field(1.0, gt=0, le=1)
     column_subsample: float = Field(1.0, gt=0, le=1)
+    gamma: float = Field(0.0, ge=0)
+    tree_method: Literal["auto", "exact", "approx", "hist", "gpu_hist"] = "auto"
     l1_regularization: float = Field(0.0, ge=0)
     l2_regularization: float = Field(1.0, ge=0)
 
@@ -822,7 +1032,326 @@ AnomalyDetectionModelSettings = Annotated[
 ]
 
 
-class ClassificationRequest(StrictModel):
+class ArtifactRequirement(StrictModel):
+    """One caller-declared scientific output that must be present after execution."""
+
+    requirement_id: str = Field(pattern=r"^[a-z][a-z0-9_.-]+$", max_length=120)
+    scientific_type: str = Field(min_length=1, max_length=120)
+    output_role: str | None = Field(None, min_length=1, max_length=120)
+    required: bool = True
+    category: Literal["artifacts", "metrics", "parameters", "summary"] | None = None
+    media_types: tuple[str, ...] = Field(default=(), max_length=16)
+    expected_relative_path: str | None = Field(None, min_length=1, max_length=512)
+    path_pattern: str | None = Field(None, min_length=1, max_length=512)
+    minimum_count: int = Field(1, ge=0, le=10_000)
+    maximum_count: int | None = Field(None, ge=1, le=10_000)
+    required_json_keys: tuple[str, ...] = Field(default=(), max_length=64)
+
+    @field_validator("expected_relative_path", "path_pattern")
+    @classmethod
+    def validate_relative_path(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.replace("\\", "/").strip()
+        candidate = Path(normalized)
+        if not normalized or candidate.is_absolute() or ".." in candidate.parts:
+            raise ValueError("must be a safe relative output path")
+        return candidate.as_posix()
+
+    @field_validator("media_types", "required_json_keys")
+    @classmethod
+    def validate_unique_artifact_names(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        normalized = tuple(item.strip() for item in value)
+        if any(not item or "\n" in item or "\r" in item for item in normalized):
+            raise ValueError("must contain non-blank single-line values")
+        if len(normalized) != len(set(normalized)):
+            raise ValueError("must not contain duplicates")
+        return normalized
+
+    @model_validator(mode="after")
+    def validate_counts(self) -> "ArtifactRequirement":
+        if self.required and self.minimum_count < 1:
+            raise ValueError("required artifact requirements need minimum_count >= 1")
+        if self.maximum_count is not None and self.maximum_count < self.minimum_count:
+            raise ValueError("maximum_count must not be smaller than minimum_count")
+        return self
+
+
+class TimeSeriesArtifactRequirement(StrictModel):
+    """Compact evidence requirement for Time Series outputs."""
+
+    requirement_id: str = Field(pattern=r"^[a-z][a-z0-9_.-]+$", max_length=120)
+    scientific_type: str = Field(min_length=1, max_length=120)
+    path_pattern: str | None = Field(None, min_length=1, max_length=512)
+    count: int = Field(1, ge=1, le=10_000)
+    required_json_keys: tuple[str, ...] = Field(default=(), max_length=64)
+
+    @field_validator("path_pattern")
+    @classmethod
+    def validate_relative_path(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.replace("\\", "/").strip()
+        candidate = Path(normalized)
+        if not normalized or candidate.is_absolute() or ".." in candidate.parts:
+            raise ValueError("must be a safe relative output path")
+        return candidate.as_posix()
+
+    @field_validator("required_json_keys")
+    @classmethod
+    def validate_json_keys(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        normalized = tuple(item.strip() for item in value)
+        if any(not item or "\n" in item or "\r" in item for item in normalized):
+            raise ValueError("must contain non-blank single-line values")
+        if len(normalized) != len(set(normalized)):
+            raise ValueError("must not contain duplicates")
+        return normalized
+
+
+class EvaluationContract(StrictModel):
+    """Scientific evaluation intent, distinct from application/inference data."""
+
+    mode: Literal[
+        "cli_default",
+        "holdout",
+        "external_labeled",
+        "cross_validation",
+        "quality_report",
+        "reference_comparison",
+    ] = "cli_default"
+    metrics: tuple[str, ...] = Field(default=(), max_length=64)
+    metric_artifact_bindings: dict[str, str] = Field(default_factory=dict, max_length=64)
+    split_strategy: Literal["cli_default", "random_holdout", "stratified_holdout"] = "cli_default"
+    evaluation_dataset_path: Path | None = None
+    evaluation_dataset: DatasetReference | None = None
+    folds: int | None = Field(None, ge=2, le=100)
+    required_artifact_ids: tuple[str, ...] = Field(default=(), max_length=64)
+    class_order: tuple[str, ...] = Field(default=(), max_length=256)
+    confusion_matrix_normalization: Literal["none", "true", "predicted", "all"] | None = None
+
+    @field_validator("metrics", "required_artifact_ids", "class_order")
+    @classmethod
+    def validate_unique_names(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        normalized = tuple(item.strip() for item in value)
+        if any(not item or "\n" in item or "\r" in item for item in normalized):
+            raise ValueError("must contain non-blank single-line names")
+        if len(normalized) != len(set(normalized)):
+            raise ValueError("must not contain duplicates")
+        return normalized
+
+    @model_validator(mode="after")
+    def validate_evaluation_design(self) -> "EvaluationContract":
+        _validate_dataset_choice(
+            self.evaluation_dataset_path,
+            self.evaluation_dataset,
+            "evaluation_dataset",
+            required=False,
+        )
+        has_dataset = self.evaluation_dataset_path is not None or self.evaluation_dataset is not None
+        if self.mode == "external_labeled" and not has_dataset:
+            raise ValueError("external_labeled evaluation requires an evaluation dataset")
+        if self.mode != "external_labeled" and has_dataset:
+            raise ValueError("an evaluation dataset is used only by external_labeled evaluation")
+        if self.mode == "cross_validation" and self.folds is None:
+            raise ValueError("cross_validation evaluation requires folds")
+        if self.mode != "cross_validation" and self.folds is not None:
+            raise ValueError("folds is used only by cross_validation evaluation")
+        if self.mode != "holdout" and self.split_strategy != "cli_default":
+            raise ValueError("an explicit split_strategy is used only by holdout evaluation")
+        unknown_metrics = sorted(set(self.metric_artifact_bindings) - set(self.metrics))
+        if unknown_metrics:
+            raise ValueError(f"metric artifact bindings reference undeclared metrics: {unknown_metrics}")
+        invalid_ids = sorted(artifact_id for artifact_id in self.metric_artifact_bindings.values() if not re.fullmatch(r"[a-z][a-z0-9_.-]+", artifact_id) or len(artifact_id) > 120)
+        if invalid_ids:
+            raise ValueError(f"metric artifact bindings contain invalid requirement ids: {invalid_ids}")
+        return self
+
+
+class EnvironmentContract(StrictModel):
+    """Exact desired CLI runtime identity, separate from observed provenance."""
+
+    expected_identity_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+    python: str | None = Field(None, min_length=1, max_length=80)
+    geochemistrypi: str | None = Field(None, min_length=1, max_length=80)
+    mcp: str | None = Field(None, min_length=1, max_length=80)
+    platform: str | None = Field(None, min_length=1, max_length=255)
+    runtime: str | None = Field(None, min_length=1, max_length=80)
+    dependency_versions: dict[str, str] = Field(default_factory=dict, max_length=2_000)
+
+    @field_validator("python", "geochemistrypi", "mcp", "platform", "runtime")
+    @classmethod
+    def validate_environment_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized or "\n" in normalized or "\r" in normalized:
+            raise ValueError("environment values must be non-blank single-line exact values")
+        return normalized
+
+    @field_validator("dependency_versions")
+    @classmethod
+    def validate_dependency_versions(cls, value: dict[str, str]) -> dict[str, str]:
+        normalized: dict[str, str] = {}
+        for package, version in value.items():
+            package_name = package.strip().lower().replace("_", "-")
+            exact_version = version.strip()
+            if not package_name or not exact_version or "\n" in package_name or "\n" in exact_version:
+                raise ValueError("dependency versions must use non-blank single-line names and exact values")
+            normalized[package_name] = exact_version
+        return normalized
+
+
+class EnvironmentProfileContract(StrictModel):
+    """Named exact runtime requirements selected before a CLI process can start."""
+
+    profile_id: str = Field(min_length=1, max_length=120, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
+    expected_identity_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+    python: str | None = Field(None, min_length=1, max_length=80)
+    geochemistrypi: str | None = Field(None, min_length=1, max_length=80)
+    mcp: str | None = Field(None, min_length=1, max_length=80)
+    package_versions: dict[str, str] = Field(default_factory=dict, max_length=2_000)
+    runtime_constraints: dict[str, str] = Field(default_factory=dict, max_length=8)
+
+    @field_validator("python", "geochemistrypi", "mcp")
+    @classmethod
+    def validate_exact_version(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized or "\n" in normalized or "\r" in normalized:
+            raise ValueError("environment profile versions must be non-blank exact values")
+        return normalized
+
+    @field_validator("package_versions")
+    @classmethod
+    def validate_package_versions(cls, value: dict[str, str]) -> dict[str, str]:
+        normalized: dict[str, str] = {}
+        for package, version in value.items():
+            package_name = package.strip().lower().replace("_", "-")
+            exact_version = version.strip()
+            if not package_name or not exact_version or any(token in exact_version for token in "<>=!~,*\n\r"):
+                raise ValueError("environment profile packages require normalized names and exact versions")
+            normalized[package_name] = exact_version
+        return normalized
+
+    @field_validator("runtime_constraints")
+    @classmethod
+    def validate_runtime_constraints(cls, value: dict[str, str]) -> dict[str, str]:
+        supported = {"kind", "python_implementation", "platform", "cli_executable_sha256"}
+        unknown = sorted(set(value) - supported)
+        if unknown:
+            raise ValueError(f"unsupported runtime constraint keys: {unknown}")
+        normalized: dict[str, str] = {}
+        for name, expected in value.items():
+            exact = expected.strip()
+            if not exact or "\n" in exact or "\r" in exact:
+                raise ValueError("runtime constraints require non-blank exact values")
+            if name == "cli_executable_sha256" and not re.fullmatch(r"[0-9a-f]{64}", exact):
+                raise ValueError("cli_executable_sha256 must be a lowercase SHA256 value")
+            normalized[name] = exact
+        return normalized
+
+
+class ReproducibilityContract(StrictModel):
+    """Desired seeds and dependency constraints; observed values belong in the manifest."""
+
+    split_seed: int | None = Field(None, ge=0, le=2**32 - 1)
+    model_seed: int | None = Field(None, ge=0, le=2**32 - 1)
+    tuning_seed: int | None = Field(None, ge=0, le=2**32 - 1)
+    dependency_profile: str | None = Field(None, min_length=1, max_length=120)
+    dependency_constraints: dict[str, str] = Field(default_factory=dict, max_length=32)
+    environment: EnvironmentContract = Field(default_factory=EnvironmentContract)
+    model_parameter_assertions: dict[str, ModelParameterValue] = Field(default_factory=dict, max_length=128)
+    deterministic_policy: Literal[
+        "adapter_default",
+        "fixed_seed_required",
+        "fixed_seed_and_dependency_required",
+        "nondeterministic_allowed",
+    ] = "adapter_default"
+
+    @field_validator("dependency_constraints")
+    @classmethod
+    def validate_dependency_constraints(cls, value: dict[str, str]) -> dict[str, str]:
+        normalized: dict[str, str] = {}
+        for package, constraint in value.items():
+            package_name = package.strip()
+            version_constraint = constraint.strip()
+            if not package_name or not version_constraint or "\n" in package_name or "\n" in version_constraint:
+                raise ValueError("dependency constraints must use non-blank single-line names and values")
+            normalized[package_name] = version_constraint
+        return normalized
+
+    @field_validator("model_parameter_assertions")
+    @classmethod
+    def validate_model_parameter_assertions(cls, value: dict[str, ModelParameterValue]) -> dict[str, ModelParameterValue]:
+        normalized: dict[str, ModelParameterValue] = {}
+        for parameter, expected in value.items():
+            name = parameter.strip()
+            if not name or "\n" in name or "\r" in name:
+                raise ValueError("model parameter assertions require non-blank single-line names")
+            normalized[name] = expected
+        return normalized
+
+
+class TimeSeriesEvaluationContract(StrictModel):
+    """Evaluation intent that is meaningful for the binned Time Series adapter."""
+
+    mode: Literal["cli_default", "reference_comparison"] = "cli_default"
+    required_artifact_ids: tuple[str, ...] = Field(default=(), max_length=64)
+
+    @field_validator("required_artifact_ids")
+    @classmethod
+    def validate_unique_names(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        normalized = tuple(item.strip() for item in value)
+        if any(not item or "\n" in item or "\r" in item for item in normalized):
+            raise ValueError("must contain non-blank single-line names")
+        if len(normalized) != len(set(normalized)):
+            raise ValueError("must not contain duplicates")
+        return normalized
+
+
+class TimeSeriesEnvironmentContract(StrictModel):
+    """Compact exact environment identity for Time Series requests."""
+
+    expected_identity_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+    dependency_versions: dict[str, str] = Field(default_factory=dict, max_length=2_000)
+
+
+class TimeSeriesReproducibilityContract(StrictModel):
+    """Time Series reproducibility controls; its effective seed is the request seed."""
+
+    environment: TimeSeriesEnvironmentContract = Field(default_factory=TimeSeriesEnvironmentContract)
+
+
+class ScientificRequest(StrictModel):
+    """Additive scientific requirements normalized before an existing CLI adapter is selected."""
+
+    scientific_contract_version: Literal[2] = 2
+    evaluation: EvaluationContract = Field(default_factory=EvaluationContract)
+    reproducibility: ReproducibilityContract = Field(default_factory=ReproducibilityContract)
+    environment_profile: EnvironmentProfileContract | None = None
+    artifact_requirements: tuple[ArtifactRequirement, ...] = Field(default=(), max_length=128)
+
+    @model_validator(mode="after")
+    def validate_requirement_references(self) -> "ScientificRequest":
+        legacy_environment = self.reproducibility.environment.model_dump(mode="json")
+        legacy_environment_specified = any(value not in (None, {}, (), []) for value in legacy_environment.values())
+        if self.environment_profile is not None and legacy_environment_specified:
+            raise ValueError("environment_profile replaces reproducibility.environment; provide only one environment contract")
+        identifiers = tuple(item.requirement_id for item in self.artifact_requirements)
+        if len(identifiers) != len(set(identifiers)):
+            raise ValueError("artifact requirement ids must be unique")
+        unknown = sorted(set(self.evaluation.required_artifact_ids) - set(identifiers))
+        if unknown:
+            raise ValueError(f"evaluation references unknown artifact requirement ids: {unknown}")
+        metric_artifact_ids = set(getattr(self.evaluation, "metric_artifact_bindings", {}).values())
+        unknown_metric_artifacts = sorted(metric_artifact_ids - set(identifiers))
+        if unknown_metric_artifacts:
+            raise ValueError(f"metric requirements reference unknown artifact requirement ids: {unknown_metric_artifacts}")
+        return self
+
+
+class ClassificationRequest(ScientificRequest):
     """Scientific inputs for the validated classification reference workflow."""
 
     task: Literal["classification"] = "classification"
@@ -916,7 +1445,7 @@ class ClassificationRequest(StrictModel):
         return self
 
 
-class RegressionRequest(StrictModel):
+class RegressionRequest(ScientificRequest):
     """Scientific inputs for one validated numeric-target regression run."""
 
     task: Literal["regression"] = "regression"
@@ -1046,7 +1575,7 @@ class RegressionRequest(StrictModel):
         return self
 
 
-class ClusteringRequest(StrictModel):
+class ClusteringRequest(ScientificRequest):
     """Scientific inputs for one validated unsupervised clustering run."""
 
     task: Literal["clustering"] = "clustering"
@@ -1111,7 +1640,7 @@ class ClusteringRequest(StrictModel):
         return self
 
 
-class DecompositionRequest(StrictModel):
+class DecompositionRequest(ScientificRequest):
     """Scientific inputs for one validated unsupervised decomposition run."""
 
     task: Literal["decomposition"] = "decomposition"
@@ -1122,6 +1651,7 @@ class DecompositionRequest(StrictModel):
     run_name: str = Field(min_length=1, max_length=40)
     identifier_column: ColumnName
     feature_columns: tuple[ColumnName, ...] = Field(min_length=1, max_length=256)
+    metadata_columns: tuple[ColumnName, ...] = Field(default=(), max_length=256)
     world_map: WorldMapConfiguration = Field(default_factory=DisabledWorldMap)
     model_selection: ModelSelection = Field(default_factory=SingleModelSelection)
     missing_values: MissingValueHandling = Field(default_factory=RejectMissingValues)
@@ -1149,7 +1679,7 @@ class DecompositionRequest(StrictModel):
             raise ValueError("must not be blank")
         return normalized
 
-    @field_validator("feature_columns")
+    @field_validator("feature_columns", "metadata_columns")
     @classmethod
     def validate_feature_columns(cls, value: tuple[str, ...]) -> tuple[str, ...]:
         normalized = tuple(column.strip() for column in value)
@@ -1164,10 +1694,15 @@ class DecompositionRequest(StrictModel):
         _validate_dataset_choice(self.training_dataset_path, self.training_dataset, "training_dataset")
         if self.identifier_column in self.feature_columns:
             raise ValueError("identifier_column must not also be a feature")
+        overlap = sorted(set(self.metadata_columns) & set(self.feature_columns))
+        if overlap:
+            raise ValueError(f"metadata_columns must not overlap feature_columns: {overlap}")
+        if self.identifier_column in self.metadata_columns:
+            raise ValueError("identifier_column must not also be metadata")
         engineered_names = [feature.name for feature in self.engineered_features]
         if len(engineered_names) != len(set(engineered_names)):
             raise ValueError("engineered feature names must be unique")
-        source_names = {self.identifier_column, *self.feature_columns}
+        source_names = {self.identifier_column, *self.feature_columns, *self.metadata_columns}
         conflicts = sorted(set(engineered_names) & source_names)
         if conflicts:
             raise ValueError(f"engineered feature names conflict with source columns: {conflicts}")
@@ -1176,7 +1711,7 @@ class DecompositionRequest(StrictModel):
         return self
 
 
-class AnomalyDetectionRequest(StrictModel):
+class AnomalyDetectionRequest(ScientificRequest):
     """Scientific inputs for one validated unsupervised anomaly-detection run."""
 
     task: Literal["anomaly_detection"] = "anomaly_detection"
@@ -1241,13 +1776,18 @@ class AnomalyDetectionRequest(StrictModel):
         return self
 
 
-class TimeSeriesRequest(StrictModel):
-    """Time Series uses top-level training_dataset, bin_width, iterations, seed, and role fields; do not send dataset, model, model_parameters, bin_width_ma, bootstrap_iterations, or random_seed."""
+class TimeSeriesRequest(ScientificRequest):
+    """Generic binned Time Series request with mode-specific scientific roles."""
+
+    evaluation: TimeSeriesEvaluationContract = Field(default_factory=TimeSeriesEvaluationContract)
+    reproducibility: TimeSeriesReproducibilityContract = Field(default_factory=TimeSeriesReproducibilityContract)
+    artifact_requirements: tuple[TimeSeriesArtifactRequirement, ...] = Field(default=(), max_length=128)
 
     task: Literal["time_series"] = Field(
         "time_series",
-        description="Select the fixed, validated subaerial-proportion Time Series workflow.",
+        description="Select the generic Time Series workflow family.",
     )
+    mode: Literal["subaerial_proportion", "element_mean"] = "subaerial_proportion"
     training_dataset_path: Path | None = Field(
         None,
         description="Top-level local-path alternative to training_dataset; provide exactly one of the two.",
@@ -1279,6 +1819,20 @@ class TimeSeriesRequest(StrictModel):
     probability_column: ColumnName = Field("SBAP", description="Top-level subaerial-proportion probability column role.")
     latitude_column: ColumnName = Field("LATITUDE", description="Top-level latitude column role.")
     longitude_column: ColumnName = Field("LONGITUDE", description="Top-level longitude column role.")
+    element_columns: tuple[ColumnName, ...] = Field(
+        default=(),
+        max_length=128,
+        description="One or more numeric value columns for element_mean mode.",
+    )
+    filter_column: ColumnName | None = Field(
+        default=None,
+        description="Optional numeric filter role for element_mean mode.",
+    )
+    filter_minimum: float | None = None
+    filter_maximum: float | None = None
+    aggregation: Literal["mean"] = "mean"
+    uncertainty: Literal["standard_error"] = "standard_error"
+    minimum_samples_per_bin: int = Field(1, ge=1)
     age_unit: Literal["Ma", "Ga"] = "Ma"
     fit_curve: bool = True
     identifier_column: ColumnName | None = Field(
@@ -1290,7 +1844,7 @@ class TimeSeriesRequest(StrictModel):
         max_length=256,
         description="Columns selected before missing-value handling; an empty value selects the five analysis-role columns.",
     )
-    missing_values: MissingValueHandling = Field(default_factory=RejectMissingValues)
+    missing_values: TimeSeriesMissingValueHandling = Field(default_factory=RejectMissingValues)
     feature_engineering: Literal["none"] = "none"
 
     @field_validator("experiment_name", "run_name")
@@ -1329,6 +1883,26 @@ class TimeSeriesRequest(StrictModel):
             raise ValueError("must be a non-blank single-line column name")
         return normalized
 
+    @field_validator("filter_column")
+    @classmethod
+    def validate_filter_column(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized or "\n" in normalized or "\r" in normalized:
+            raise ValueError("must be a non-blank single-line column name")
+        return normalized
+
+    @field_validator("element_columns")
+    @classmethod
+    def validate_element_columns(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        normalized = tuple(column.strip() for column in value)
+        if any(not column or "\n" in column or "\r" in column for column in normalized):
+            raise ValueError("must contain non-blank single-line column names")
+        if len(normalized) != len(set(normalized)):
+            raise ValueError("must not contain duplicate column names")
+        return normalized
+
     @field_validator("selected_columns")
     @classmethod
     def validate_selected_columns(cls, value: tuple[str, ...]) -> tuple[str, ...]:
@@ -1341,9 +1915,19 @@ class TimeSeriesRequest(StrictModel):
 
     @property
     def resolved_selected_columns(self) -> tuple[str, ...]:
-        """Return the explicit selected-data range or the five legacy role columns."""
+        """Return the explicit selected-data range or the active mode's role columns."""
         if self.selected_columns:
             return self.selected_columns
+        if self.mode == "element_mean":
+            return tuple(
+                dict.fromkeys(
+                    (
+                        self.age_column,
+                        *self.element_columns,
+                        *((self.filter_column,) if self.filter_column is not None else ()),
+                    )
+                )
+            )
         return (
             self.age_column,
             self.maximum_age_column,
@@ -1359,9 +1943,46 @@ class TimeSeriesRequest(StrictModel):
             raise ValueError("must be finite")
         return value
 
+    @field_validator("filter_minimum", "filter_maximum")
+    @classmethod
+    def validate_finite_filter_bound(cls, value: float | None) -> float | None:
+        if value is not None and not math.isfinite(value):
+            raise ValueError("must be finite")
+        return value
+
     @model_validator(mode="after")
     def validate_time_series_contract(self) -> "TimeSeriesRequest":
         _validate_dataset_choice(self.training_dataset_path, self.training_dataset, "training_dataset")
+        if self.mode == "element_mean":
+            if not self.element_columns:
+                raise ValueError("element_mean mode requires at least one element column")
+            if self.age_column in self.element_columns:
+                raise ValueError("age_column must not also be an element column")
+            if self.filter_column is not None and self.filter_column in {
+                self.age_column,
+                *self.element_columns,
+            }:
+                raise ValueError("filter_column must have a distinct scientific role")
+            has_filter_bounds = self.filter_minimum is not None or self.filter_maximum is not None
+            if has_filter_bounds and self.filter_column is None:
+                raise ValueError("filter bounds require filter_column")
+            if self.filter_minimum is not None and self.filter_maximum is not None and self.filter_minimum > self.filter_maximum:
+                raise ValueError("filter_minimum must not exceed filter_maximum")
+            required_element_roles = {
+                self.age_column,
+                *self.element_columns,
+                *((self.filter_column,) if self.filter_column is not None else ()),
+            }
+            missing_roles = sorted(required_element_roles - set(self.selected_columns)) if self.selected_columns else []
+            if missing_roles:
+                raise ValueError(f"selected_columns must include every element_mean role: {missing_roles}")
+            if self.missing_values.method not in {"error", "drop_rows"}:
+                raise ValueError("Time Series missing_values supports only 'error' or 'drop_rows'")
+            drop_columns = tuple(getattr(self.missing_values, "columns", ()))
+            unknown_drop_columns = sorted(set(drop_columns) - set(self.resolved_selected_columns))
+            if unknown_drop_columns:
+                raise ValueError(f"missing_values.columns were not selected: {unknown_drop_columns}")
+            return self
         columns = (
             self.age_column,
             self.maximum_age_column,
@@ -1572,6 +2193,9 @@ class DatasetInspectionResponse(StrictModel):
 
     source_path: str
     resolved_path: str
+    original_source_path: str | None = None
+    original_source_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+    dataset_preparation: dict[str, Any] | None = None
     format: Literal["csv", "xlsx"]
     size_bytes: int = Field(ge=0)
     sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
@@ -1685,8 +2309,33 @@ class AnalysisValidationResponse(StrictModel):
 
     validation_id: str = Field(pattern=r"^val-[0-9a-f]{32}$")
     request_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    canonical_contract_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    compiled_plan_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     validation_expires_at: str
     valid: Literal[True] = True
+    execution_ready: bool
+    comparison_ready: bool = False
+    claim_ready: Literal[False] = False
+    schema_status: Literal["valid"] = "valid"
+    scientific_status: Literal["valid", "requirements_unmet"]
+    adapter_status: Literal["available", "unavailable", "requirements_unmet"]
+    artifact_status: Literal["planned", "requirements_unmet"]
+    environment_status: Literal["READY", "MISMATCH", "UNSPECIFIED"] = "UNSPECIFIED"
+    workflow_family: Literal[
+        "time_series",
+        "supervised_learning",
+        "dimension_reduction",
+        "clustering",
+        "anomaly_detection",
+    ]
+    workflow_mode: str = Field(min_length=1, max_length=80)
+    method: str = Field(min_length=1, max_length=120)
+    scientific_contract_id: str = Field("scientific-contract-v1/legacy", min_length=1, max_length=255)
+    adapter_id: str | None = Field(None, max_length=160)
+    adapter_version: str | None = Field(None, max_length=40)
+    adapter_identity: str | None = Field(None, max_length=220)
+    artifact_requirements: tuple[ArtifactRequirement | TimeSeriesArtifactRequirement, ...] = ()
+    blocking_issues: tuple[str, ...] = ()
     task: Literal[
         "classification",
         "regression",
@@ -1702,6 +2351,17 @@ class AnalysisValidationResponse(StrictModel):
     training_dataset_path: str
     training_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     training_size_bytes: int = Field(ge=0)
+    source_dataset_path: str | None = None
+    source_dataset_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+    dataset_preparation: dict[str, Any] = Field(default_factory=dict)
+    dataset_preparation_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+    environment_identity_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+    environment_profile: dict[str, Any] = Field(default_factory=dict)
+    environment_profile_identity_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+    requested_seeds: dict[str, int] = Field(default_factory=dict, max_length=8)
+    effective_seeds: dict[str, int] = Field(default_factory=dict, max_length=8)
+    parameter_binding: dict[str, Any] = Field(default_factory=dict)
+    adapter_artifact_mappings: tuple[dict[str, Any], ...] = ()
     source_row_count: int | None = Field(None, ge=0)
     row_identity_scheme: str | None = None
     row_identity_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
@@ -1715,6 +2375,8 @@ class AnalysisValidationResponse(StrictModel):
     application_source: Literal["path", "builtin", "desktop"] | None = None
     application_dataset_path: str | None = None
     application_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+    application_source_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+    application_preparation: dict[str, Any] | None = None
     application_source_row_count: int | None = Field(None, ge=0)
     application_row_identity_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
     experiment_mode: Literal["new", "existing", "not_applicable"]
@@ -1755,6 +2417,11 @@ class ArtifactReference(StrictModel):
     local_path: str
     size_bytes: int = Field(ge=0)
     media_type: str
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    requirement_id: str | None = Field(None, max_length=120)
+    requirement_ids: tuple[str, ...] = ()
+    scientific_type: str | None = Field(None, max_length=120)
+    metadata: dict[str, Any] = Field(default_factory=dict, max_length=32)
 
 
 class ChildModelResult(StrictModel):
@@ -1803,6 +2470,14 @@ class RunResultResponse(StrictModel):
     """Bounded result composed only from wrapper metadata and original CLI outputs."""
 
     run_id: str
+    request_hash: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+    validation_id: str | None = Field(None, pattern=r"^val-[0-9a-f]{32}$")
+    canonical_contract_hash: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+    compiled_plan_hash: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+    provenance_manifest_path: str | None = None
+    provenance_manifest_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+    contract_status: Literal["complete", "incomplete"] = "complete"
+    missing_artifact_requirement_ids: tuple[str, ...] = ()
     state: Literal["succeeded", "partial_failure"]
     task: Literal[
         "classification",
@@ -1812,7 +2487,9 @@ class RunResultResponse(StrictModel):
         "anomaly_detection",
         "time_series",
     ]
-    model: ClassificationModelName | RegressionModelName | ClusteringModelName | DecompositionModelName | AnomalyDetectionModelName | Literal["subaerial_proportion_bootstrap", "all_models"]
+    model: ClassificationModelName | RegressionModelName | ClusteringModelName | DecompositionModelName | AnomalyDetectionModelName | Literal[
+        "subaerial_proportion_bootstrap", "element_mean", "all_models"
+    ]
     tuning: Literal["manual", "automl", "not_applicable"] = "manual"
     output_directory: str
     interaction_trace: str
@@ -1822,6 +2499,10 @@ class RunResultResponse(StrictModel):
     cli_version: str
     input_sha256: str
     input_hash_verified: bool
+    source_input_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+    dataset_preparation: dict[str, Any] = Field(default_factory=dict)
+    environment_identity_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+    effective_seeds: dict[str, int] = Field(default_factory=dict, max_length=8)
     source_row_count: int | None = Field(None, ge=0)
     row_identity_scheme: str | None = None
     row_identity_sha256: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")

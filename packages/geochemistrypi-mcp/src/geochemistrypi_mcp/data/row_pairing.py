@@ -15,16 +15,24 @@ from .row_identity import SourceRowIdentityError, SourceRowLineage
 from .source_rows import iter_cli_csv_rows, iter_cli_excel_rows
 
 
-def _canonical_value(value: Any, *, parse_numeric_text: bool = False) -> str:
+def _canonical_number(number: Decimal) -> str:
+    if not number.is_finite():
+        return f"non-finite:{number}"
+    return f"number:{number.normalize()}"
+
+
+def _canonical_value(
+    value: Any,
+    *,
+    parse_numeric_text: bool = False,
+) -> str:
     if value is None or value == "" or isinstance(value, float) and math.isnan(value):
         return "missing"
     if isinstance(value, bool):
         return f"boolean:{str(value).lower()}"
     if isinstance(value, (int, float, Decimal)) and not isinstance(value, bool):
         number = Decimal(str(value))
-        if not number.is_finite():
-            return f"non-finite:{number}"
-        return f"number:{number.normalize()}"
+        return _canonical_number(number)
     if isinstance(value, (datetime, date)):
         return f"date:{value.isoformat()}"
     if parse_numeric_text and isinstance(value, str):
@@ -34,8 +42,42 @@ def _canonical_value(value: Any, *, parse_numeric_text: bool = False) -> str:
             pass
         else:
             if number.is_finite():
-                return f"number:{number.normalize()}"
+                return _canonical_number(number)
     return f"string:{value}"
+
+
+def _numeric_value(value: Any, *, parse_numeric_text: bool) -> Decimal | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float, Decimal)):
+        return Decimal(str(value))
+    if parse_numeric_text and isinstance(value, str):
+        try:
+            return Decimal(value)
+        except (InvalidOperation, ValueError):
+            return None
+    return None
+
+
+def _values_equivalent(
+    source_value: Any,
+    output_value: Any,
+    *,
+    parse_source_numeric_text: bool,
+    parse_output_numeric_text: bool,
+    output_is_xlsx: bool,
+) -> bool:
+    source_number = _numeric_value(source_value, parse_numeric_text=parse_source_numeric_text)
+    output_number = _numeric_value(output_value, parse_numeric_text=parse_output_numeric_text)
+    if source_number is not None or output_number is not None:
+        if source_number is None or output_number is None:
+            return False
+        if source_number.is_finite() and output_number.is_finite() and output_is_xlsx:
+            magnitude = max(abs(source_number), abs(output_number))
+            tolerance = magnitude * Decimal("1e-14")
+            return abs(source_number - output_number) <= tolerance
+        return source_number == output_number
+    return _canonical_value(source_value) == _canonical_value(output_value)
 
 
 def _column_position(header: Iterable[str], identifier_column: str, path: Path) -> int:
@@ -103,15 +145,24 @@ def verify_original_row_pairing(
         raise SourceRowIdentityError(f"CLI Data Original row count {len(output_rows)} does not match source row count {lineage.source_row_count}.")
     parse_source_numeric_text = source_path.suffix.lower() == ".csv"
     parse_output_numeric_text = candidates[0].suffix.lower() == ".csv"
+    output_is_xlsx = candidates[0].suffix.lower() == ".xlsx"
     pairing_digest = hashlib.sha256()
     for row_number, (internal_identity, source_row, output_row) in enumerate(
         zip(lineage.identities, source_rows, output_rows),
         start=1,
     ):
-        canonical_source = tuple(_canonical_value(value, parse_numeric_text=parse_source_numeric_text) for value in source_row)
-        canonical_output = tuple(_canonical_value(value, parse_numeric_text=parse_output_numeric_text) for value in output_row)
-        if canonical_source != canonical_output:
+        if any(
+            not _values_equivalent(
+                source_value,
+                output_value,
+                parse_source_numeric_text=parse_source_numeric_text,
+                parse_output_numeric_text=parse_output_numeric_text,
+                output_is_xlsx=output_is_xlsx,
+            )
+            for source_value, output_value in zip(source_row, output_row)
+        ):
             raise SourceRowIdentityError(f"CLI Data Original changed or reordered source row {row_number}; row pairing is unsafe.")
+        canonical_source = tuple(_canonical_value(value, parse_numeric_text=parse_source_numeric_text) for value in source_row)
         pairing_digest.update(internal_identity.encode("ascii"))
         for value in canonical_source:
             encoded = value.encode("utf-8")
@@ -124,6 +175,7 @@ def verify_original_row_pairing(
         "scientific_identifier_column": identifier_column,
         "scientific_identifier_values_preserved": True,
         "source_rows_and_order_preserved": True,
+        "numeric_comparison_policy": "xlsx_relative_1e-14" if output_is_xlsx else "exact",
         "source_row_count": lineage.source_row_count,
         "ordered_pairing_sha256": pairing_digest.hexdigest(),
     }

@@ -3,6 +3,7 @@
 import ast
 import bisect
 import csv
+import hashlib
 import json
 import math
 import os
@@ -11,6 +12,7 @@ import shutil
 import sysconfig
 from collections import Counter
 from dataclasses import dataclass
+from dataclasses import replace as dataclass_replace
 from pathlib import Path
 from typing import Any, Iterable, List, Literal, Optional, Sequence, Tuple
 
@@ -48,6 +50,9 @@ from ..contracts.regression import MODELS_WITH_INTERACTIVE_PLOT_SELECTION as REG
 from ..contracts.regression import MODELS_WITHOUT_AUTOML as REGRESSION_MODELS_WITHOUT_AUTOML
 from ..data.headers import HeaderValidationError, normalize_dataset_header, source_allows_pandas_duplicate_mangling
 from ..data.source_rows import iter_cli_csv_rows, iter_cli_excel_rows
+from .artifact_mapping import AdapterArtifactMapping, build_adapter_artifact_mappings
+
+_CLI_FIXED_RANDOM_SEED = 42
 
 
 class PlanCompilationError(ValueError):
@@ -56,6 +61,125 @@ class PlanCompilationError(ValueError):
 
 DatasetSource = Literal["path", "builtin", "desktop"]
 DatasetRole = Literal["training", "application"]
+
+
+def _canonical_sha256(value: Any) -> str:
+    serialized = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def _parameter_entries(value: dict[str, Any]) -> Tuple[Tuple[str, str], ...]:
+    return tuple((name, json.dumps(parameter, ensure_ascii=False, sort_keys=True, separators=(",", ":"))) for name, parameter in sorted(value.items()))
+
+
+def _request_model_parameters(request: Any) -> dict[str, Any]:
+    if request.task == "time_series":
+        return {
+            "mode": request.mode,
+            "bin_width": request.bin_width,
+            **(
+                {
+                    "iterations": request.iterations,
+                    "seed": request.seed,
+                    "age_unit": request.age_unit,
+                    "fit_curve": request.fit_curve,
+                }
+                if request.mode == "subaerial_proportion"
+                else {
+                    "aggregation": request.aggregation,
+                    "uncertainty": request.uncertainty,
+                    "minimum_samples_per_bin": request.minimum_samples_per_bin,
+                    "filter_minimum": request.filter_minimum,
+                    "filter_maximum": request.filter_maximum,
+                }
+            ),
+        }
+    all_models = request.model_selection.mode == "all"
+    tuning = request.model_selection.tuning if all_models else getattr(request, "tuning", "manual")
+    if all_models or tuning == "automl":
+        return {}
+    return request.model.model_dump(mode="json")
+
+
+def _request_preprocessing_parameters(request: Any) -> dict[str, Any]:
+    parameters = {
+        "missing_values": request.missing_values.model_dump(mode="json"),
+        "engineered_features": [item.model_dump(mode="json") for item in getattr(request, "engineered_features", ())],
+        "selected_columns": list(getattr(request, "resolved_selected_columns", ())),
+        "scaling": getattr(request, "scaling", "none"),
+    }
+    if hasattr(request, "feature_selection"):
+        parameters["feature_selection"] = request.feature_selection.model_dump(mode="json")
+    if hasattr(request, "label_customization"):
+        parameters["label_customization"] = request.label_customization.model_dump(mode="json")
+    if request.task == "time_series":
+        parameters["feature_engineering"] = request.feature_engineering
+    return parameters
+
+
+def _environment_profile_binding(request: Any) -> tuple[str, str | None, str | None]:
+    profile = getattr(request, "environment_profile", None)
+    if profile is not None:
+        value = profile.model_dump(mode="json")
+        return "request.environment_profile", profile.profile_id, _canonical_sha256(value)
+    environment = request.reproducibility.environment.model_dump(mode="json")
+    specified = any(value not in (None, {}, (), []) for value in environment.values())
+    if not specified:
+        return "request.reproducibility.environment", None, None
+    profile_id = getattr(request.reproducibility, "dependency_profile", None) or "legacy-inline-environment"
+    return "request.reproducibility.environment", profile_id, _canonical_sha256(environment)
+
+
+def _scientific_binding_fields(
+    request: Any,
+    workflow_family: str,
+    workflow_mode: str,
+    method: str,
+    paths: Tuple[str, ...],
+    effective_seeds: Tuple[Tuple[str, int], ...],
+) -> dict[str, Any]:
+    environment_pointer, environment_profile_id, environment_identity = _environment_profile_binding(request)
+    if request.task == "time_series":
+        requested_seeds = (("model", request.seed),) if request.mode == "subaerial_proportion" else ()
+    else:
+        reproducibility = request.reproducibility
+        requested_seeds = tuple(
+            (role, value)
+            for role, value in (
+                ("split", reproducibility.split_seed),
+                ("model", reproducibility.model_seed),
+                ("tuning", reproducibility.tuning_seed),
+            )
+            if value is not None
+        )
+    model_parameters = _request_model_parameters(request)
+    effective_model_parameters = dict(model_parameters)
+    if model_parameters.get("type") == "xgboost":
+        # The public CLI does not prompt for these estimator controls.  Keep
+        # them requested, but do not attest them as effective at the adapter.
+        effective_model_parameters.pop("gamma", None)
+        effective_model_parameters.pop("tree_method", None)
+    preprocessing_parameters = _request_preprocessing_parameters(request)
+    return {
+        "environment_profile": environment_pointer,
+        "environment_profile_id": environment_profile_id,
+        "environment_profile_identity_sha256": environment_identity,
+        "artifact_contract": paths,
+        "artifact_mappings": build_adapter_artifact_mappings(
+            workflow_family,
+            workflow_mode,
+            paths,
+            method,
+        ),
+        "effective_seeds": effective_seeds,
+        "requested_seeds": requested_seeds,
+        "requested_model_parameters": _parameter_entries(model_parameters),
+        "effective_model_parameters": _parameter_entries(effective_model_parameters),
+        "requested_preprocessing_parameters": _parameter_entries(preprocessing_parameters),
+        "effective_preprocessing_parameters": _parameter_entries(preprocessing_parameters),
+        "model_parameter_binding": "interaction_plan" if model_parameters else "runtime_selected",
+        "preprocessing_parameter_binding": "interaction_plan",
+    }
 
 
 @dataclass(frozen=True)
@@ -104,15 +228,45 @@ class InteractionPlan:
     steps: Tuple[InteractionStep, ...]
     expected_output_relative_paths: Tuple[str, ...] = ()
     requires_source_row_pairing: bool = False
+    workflow_family: str = "legacy"
+    workflow_mode: str = "legacy"
+    method: str = "legacy"
+    scientific_contract_id: str = "scientific-contract-v1/legacy"
+    adapter_id: str | None = "geochemistrypi-cli.public"
+    adapter_version: str | None = "1"
+    environment_profile: str = "request.reproducibility.environment"
+    environment_profile_id: str | None = None
+    environment_profile_identity_sha256: str | None = None
+    artifact_contract: Tuple[str, ...] = ()
+    artifact_mappings: Tuple[AdapterArtifactMapping, ...] = ()
+    adapter_status: Literal["available", "unavailable", "requirements_unmet"] = "available"
+    execution_ready: bool = True
+    blocking_issues: Tuple[str, ...] = ()
+    effective_seeds: Tuple[Tuple[str, int], ...] = ()
+    requested_seeds: Tuple[Tuple[str, int], ...] = ()
+    seed_binding: Literal["cli_fixed", "request_parameter", "mixed", "not_applicable"] = "not_applicable"
+    requested_model_parameters: Tuple[Tuple[str, str], ...] = ()
+    effective_model_parameters: Tuple[Tuple[str, str], ...] = ()
+    requested_preprocessing_parameters: Tuple[Tuple[str, str], ...] = ()
+    effective_preprocessing_parameters: Tuple[Tuple[str, str], ...] = ()
+    model_parameter_binding: Literal["interaction_plan", "runtime_selected", "not_applicable"] = "not_applicable"
+    preprocessing_parameter_binding: Literal["interaction_plan", "not_applicable"] = "not_applicable"
 
     def __post_init__(self) -> None:
         if self.schema_version < 1:
             raise ValueError("Interaction plan schema_version must be positive.")
-        if not self.name or not self.public_command:
-            raise ValueError("Interaction plan name and command are required.")
+        if not self.name:
+            raise ValueError("Interaction plan name is required.")
+        if self.execution_ready and (not self.public_command or self.adapter_status != "available" or self.adapter_id is None):
+            raise ValueError("An execution-ready interaction plan requires an available adapter and command.")
+        if not self.execution_ready and not self.blocking_issues:
+            raise ValueError("A blocked interaction plan must explain why it cannot execute.")
         step_ids = [step.id for step in self.steps]
         if len(step_ids) != len(set(step_ids)):
             raise ValueError("Interaction plan step ids must be unique.")
+        mapping_ids = [mapping.mapping_id for mapping in self.artifact_mappings]
+        if len(mapping_ids) != len(set(mapping_ids)):
+            raise ValueError("Interaction plan artifact mapping ids must be unique.")
 
 
 @dataclass(frozen=True)
@@ -1635,6 +1789,23 @@ class ClassificationPlanCompiler:
                 str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "model" / f"{model_display}.joblib"),
                 str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "model" / "Transform Pipeline.joblib"),
                 str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "image" / "model_output" / f"Precision-Recall vs. Threshold Diagram - {model_display}.png"),
+                str(Path("geopi_output") / request.experiment_name / request.run_name / "metrics" / f"Model Score - {model_display}.txt"),
+                str(Path("geopi_output") / request.experiment_name / request.run_name / "metrics" / f"Classification Report - {model_display}.txt"),
+                str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "image" / "model_output" / f"Confusion Matrix - {model_display}.png"),
+                str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "image" / "model_output" / f"Confusion Matrix - {model_display}.xlsx"),
+                str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "data" / "Y Test.xlsx"),
+                str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "data" / "Y Test Predict Decoded.xlsx"),
+                str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "image" / "model_output" / "ROC Curve - Probabilities.xlsx"),
+                *(
+                    (
+                        str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "image" / "model_output" / f"Feature Importance Diagram - {model_display}.png"),
+                        str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "image" / "model_output" / f"Feature Importance Diagram - {model_display}.xlsx"),
+                    )
+                    if request.model.type == "xgboost"
+                    else ()
+                ),
+                str(Path("geopi_output") / request.experiment_name / request.run_name / "parameters" / f"Hyper Parameters - {model_display}.txt"),
+                *((str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "data" / "Application Data Predicted.xlsx"),) if application_path is not None else ()),
             ),
             requires_source_row_pairing=True,
         )
@@ -2274,6 +2445,12 @@ class RegressionPlanCompiler:
                 str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "model" / f"{model_display}.joblib"),
                 str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "model" / "Transform Pipeline.joblib"),
                 str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "image" / "model_output" / f"Predicted vs. Actual Diagram - {model_display}.png"),
+                str(Path("geopi_output") / request.experiment_name / request.run_name / "metrics" / f"Model Score - {model_display}.txt"),
+                str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "data" / "Y Test Predict.xlsx"),
+                str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "image" / "model_output" / f"Residuals Diagram - {model_display}.png"),
+                str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "image" / "model_output" / f"Residuals Diagram - {model_display}.xlsx"),
+                str(Path("geopi_output") / request.experiment_name / request.run_name / "parameters" / f"Hyper Parameters - {model_display}.txt"),
+                *((str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "data" / "Application Data Predicted.xlsx"),) if application_path is not None else ()),
             ),
             requires_source_row_pairing=True,
         )
@@ -3087,6 +3264,74 @@ class TimeSeriesPlanCompiler:
             data_path,
             source=dataset_context.training_source,
         )
+        if request.mode == "element_mean":
+            selected_columns = request.resolved_selected_columns
+            required_columns = set(selected_columns)
+            if request.identifier_column is not None:
+                required_columns.add(request.identifier_column)
+            missing = sorted(required_columns - set(columns))
+            if missing:
+                raise PlanCompilationError(f"Time Series configured columns are absent from the training dataset: {missing}")
+            numeric_columns = tuple(
+                dict.fromkeys(
+                    (
+                        request.age_column,
+                        *request.element_columns,
+                        *((request.filter_column,) if request.filter_column is not None else ()),
+                    )
+                )
+            )
+            positions = [columns.index(column) for column in numeric_columns]
+            drop_columns = tuple(getattr(request.missing_values, "columns", ()))
+            if request.missing_values.method == "drop_rows" and not drop_columns:
+                drop_columns = numeric_columns
+            retained_rows = 0
+            maximum_observed_age = 0.0
+            for row_number, raw_values in enumerate(_iter_selected_rows(data_path, positions), start=2):
+                row = dict(zip(numeric_columns, raw_values))
+                if request.missing_values.method == "drop_rows" and any(_is_missing(row[column]) for column in drop_columns):
+                    continue
+                missing_selected = [column for column in numeric_columns if _is_missing(row[column])]
+                if missing_selected:
+                    raise PlanCompilationError(f"Time Series selected columns contain missing values at data row {row_number}: {missing_selected}.")
+                values: dict[str, float] = {}
+                for column in numeric_columns:
+                    try:
+                        number = float(row[column])
+                    except (TypeError, ValueError) as exc:
+                        raise PlanCompilationError(f"Time Series column {column!r} contains a non-numeric value at data row {row_number}.") from exc
+                    if not math.isfinite(number):
+                        raise PlanCompilationError(f"Time Series column {column!r} contains a non-finite value at data row {row_number}.")
+                    values[column] = number
+                if values[request.age_column] < 0:
+                    raise PlanCompilationError(f"Time Series ages must be non-negative; data row {row_number} contains {values[request.age_column]}.")
+                retained_rows += 1
+                maximum_observed_age = max(maximum_observed_age, values[request.age_column])
+            if retained_rows == 0:
+                raise PlanCompilationError("Time Series input must contain at least one retained data row.")
+            if maximum_observed_age <= 0:
+                raise PlanCompilationError("Time Series input must contain at least one positive age.")
+            bin_count = math.ceil(maximum_observed_age / request.bin_width)
+            if bin_count > 10_000:
+                raise PlanCompilationError(f"bin_width creates {bin_count} bins; the safety limit is 10000.")
+            return InteractionPlan(
+                schema_version=INTERACTION_PLAN_VERSION,
+                name="time-series-element-mean-unbound-v1",
+                public_command=(),
+                steps=(),
+                workflow_family="time_series",
+                workflow_mode="element_mean",
+                method="binned_arithmetic_mean",
+                adapter_id=None,
+                adapter_version=None,
+                adapter_status="unavailable",
+                execution_ready=False,
+                blocking_issues=(
+                    "The public GeochemistryPi CLI has no element_mean Time Series command; "
+                    "the scientific request is valid but cannot be executed without changing "
+                    "the prohibited scientific/CLI layer.",
+                ),
+            )
         roles = (
             request.age_column,
             request.maximum_age_column,
@@ -3202,6 +3447,11 @@ class TimeSeriesPlanCompiler:
                 (base / "metrics" / "Time Series Metrics.json").as_posix(),
                 (base / "parameters" / "Time Series Parameters.json").as_posix(),
             ),
+            workflow_family="time_series",
+            workflow_mode="subaerial_proportion",
+            method="subaerial_proportion_bootstrap",
+            adapter_id="geochemistrypi-cli.time-series.subaerial-proportion",
+            adapter_version="1",
         )
 
 
@@ -3243,6 +3493,95 @@ class AnalysisPlanCompiler:
             )
             for step in steps
         ]
+
+    @staticmethod
+    def bind_scientific_adapter(
+        plan: InteractionPlan,
+        request: ClassificationRequest | RegressionRequest | ClusteringRequest | DecompositionRequest | AnomalyDetectionRequest | TimeSeriesRequest,
+    ) -> InteractionPlan:
+        """Attach a paper-agnostic scientific identity to an existing CLI plan."""
+        if request.task == "time_series":
+            method = "subaerial_proportion_bootstrap" if request.mode == "subaerial_proportion" else "binned_arithmetic_mean"
+            effective_seeds = (("model", request.seed),) if request.mode == "subaerial_proportion" else ()
+            binding_fields = _scientific_binding_fields(
+                request,
+                "time_series",
+                request.mode,
+                method,
+                plan.expected_output_relative_paths,
+                effective_seeds,
+            )
+            if plan.workflow_family != "legacy":
+                return dataclass_replace(
+                    plan,
+                    scientific_contract_id=f"scientific-contract-v2/time_series/{request.mode}/{method}",
+                    seed_binding="request_parameter" if request.mode == "subaerial_proportion" else "not_applicable",
+                    **binding_fields,
+                )
+            return dataclass_replace(
+                plan,
+                workflow_family="time_series",
+                workflow_mode=request.mode,
+                method=method,
+                scientific_contract_id=f"scientific-contract-v2/time_series/{request.mode}/{method}",
+                adapter_id=f"geochemistrypi-cli.time-series.{request.mode.replace('_', '-')}",
+                adapter_version="1",
+                seed_binding="request_parameter" if request.mode == "subaerial_proportion" else "not_applicable",
+                **binding_fields,
+            )
+        all_models = request.model_selection.mode == "all"
+        model_type = "all_public_methods" if all_models else request.model.type
+        if request.task in {"classification", "regression"}:
+            family = "supervised_learning"
+            mode = request.task
+            method = model_type
+        elif request.task == "decomposition":
+            family = "dimension_reduction"
+            mode = "embedding"
+            method = {
+                "pca": "PCA",
+                "tsne": "tSNE",
+            }.get(model_type, model_type)
+        elif request.task == "clustering":
+            family = "clustering"
+            mode = "clustering"
+            method = {
+                "agglomerative": "hierarchical",
+                "dbscan": "DBSCAN",
+            }.get(model_type, model_type)
+        else:
+            family = "anomaly_detection"
+            mode = "outlier_detection"
+            method = {
+                "local_outlier_factor": "LOF",
+            }.get(model_type, model_type)
+        selected_tuning = request.model_selection.tuning if all_models else getattr(request, "tuning", "manual")
+        effective_seeds = (
+            (("split", _CLI_FIXED_RANDOM_SEED), ("model", _CLI_FIXED_RANDOM_SEED), ("tuning", _CLI_FIXED_RANDOM_SEED))
+            if request.task in {"classification", "regression"} and selected_tuning == "automl"
+            else (("split", _CLI_FIXED_RANDOM_SEED), ("model", _CLI_FIXED_RANDOM_SEED))
+            if request.task in {"classification", "regression"}
+            else (("model", _CLI_FIXED_RANDOM_SEED),)
+        )
+        binding_fields = _scientific_binding_fields(
+            request,
+            family,
+            mode,
+            method,
+            plan.expected_output_relative_paths,
+            effective_seeds,
+        )
+        return dataclass_replace(
+            plan,
+            workflow_family=family,
+            workflow_mode=mode,
+            method=method,
+            scientific_contract_id=f"scientific-contract-v2/{family}/{mode}/{method}",
+            adapter_id=f"geochemistrypi-cli.data-mining.{request.task}.{model_type}",
+            adapter_version="1",
+            seed_binding="cli_fixed",
+            **binding_fields,
+        )
 
     def _compile_all_models(
         self,
@@ -3397,19 +3736,26 @@ class AnalysisPlanCompiler:
     ) -> InteractionPlan:
         dataset_context = dataset_context or DatasetCompilationContext()
         if request.task != "time_series" and request.model_selection.mode == "all":
-            return self._compile_all_models(request, cli_executable, dataset_context)
+            plan = self._compile_all_models(request, cli_executable, dataset_context)
+            return self.bind_scientific_adapter(plan, request)
         if request.task == "classification":
-            return self.classification.compile(request, cli_executable=cli_executable, dataset_context=dataset_context)
+            plan = self.classification.compile(request, cli_executable=cli_executable, dataset_context=dataset_context)
+            return self.bind_scientific_adapter(plan, request)
         if request.task == "regression":
-            return self.regression.compile(request, cli_executable=cli_executable, dataset_context=dataset_context)
+            plan = self.regression.compile(request, cli_executable=cli_executable, dataset_context=dataset_context)
+            return self.bind_scientific_adapter(plan, request)
         if request.task == "clustering":
-            return self.clustering.compile(request, cli_executable=cli_executable, dataset_context=dataset_context)
+            plan = self.clustering.compile(request, cli_executable=cli_executable, dataset_context=dataset_context)
+            return self.bind_scientific_adapter(plan, request)
         if request.task == "decomposition":
-            return self.decomposition.compile(request, cli_executable=cli_executable, dataset_context=dataset_context)
+            plan = self.decomposition.compile(request, cli_executable=cli_executable, dataset_context=dataset_context)
+            return self.bind_scientific_adapter(plan, request)
         if request.task == "time_series":
-            return self.time_series.compile(
+            plan = self.time_series.compile(
                 request,
                 cli_executable=cli_executable,
                 dataset_context=dataset_context,
             )
-        return self.anomaly_detection.compile(request, cli_executable=cli_executable, dataset_context=dataset_context)
+            return self.bind_scientific_adapter(plan, request)
+        plan = self.anomaly_detection.compile(request, cli_executable=cli_executable, dataset_context=dataset_context)
+        return self.bind_scientific_adapter(plan, request)

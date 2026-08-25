@@ -55,6 +55,8 @@ from ..data.catalog import DatasetCatalogError
 from ..data.headers import source_allows_pandas_duplicate_mangling
 from ..data.inspector import DatasetInspectionError
 from ..data.inspector import inspect_dataset as inspect_local_dataset
+from ..data.inspector import snapshot_dataset
+from ..data.preparation import DatasetPreparationError, prepare_dataset_view
 from ..planning.interaction_plan import PlanCompilationError
 from ..runtime.cli_driver import CliDriverError
 from ..runtime.runs import RunManager, RunNotFoundError, RunStateError
@@ -123,6 +125,7 @@ _PUBLIC_ERRORS = (
     CliDriverError,
     DatasetCatalogError,
     DatasetInspectionError,
+    DatasetPreparationError,
     PlanCompilationError,
     RunNotFoundError,
     RunStateError,
@@ -142,11 +145,162 @@ def _advertised_input_schema(value: Any) -> Any:
     return value
 
 
+def _compact_definition_names(schema: dict[str, Any]) -> dict[str, Any]:
+    """Shorten scoped JSON Schema reference labels without changing validation."""
+    definitions = schema.get("$defs")
+    if not isinstance(definitions, dict):
+        return schema
+    mapping = {name: f"d{index}" for index, name in enumerate(sorted(definitions))}
+
+    def rewrite(value: Any) -> Any:
+        if isinstance(value, dict):
+            rewritten: dict[str, Any] = {}
+            for key, child in value.items():
+                if key == "$defs" and isinstance(child, dict):
+                    rewritten[key] = {mapping.get(name, name): rewrite(definition) for name, definition in child.items()}
+                else:
+                    rewritten[key] = rewrite(child)
+            return rewritten
+        if isinstance(value, list):
+            return [rewrite(child) for child in value]
+        if isinstance(value, str) and value.startswith("#/$defs/"):
+            name = value.removeprefix("#/$defs/")
+            return f"#/$defs/{mapping.get(name, name)}"
+        return value
+
+    return rewrite(schema)
+
+
+def _compact_validation_schema(value: Any) -> Any:
+    """Use smaller JSON Schema forms without changing accepted values."""
+    if isinstance(value, list):
+        return [_compact_validation_schema(child) for child in value]
+    if not isinstance(value, dict):
+        return value
+    compacted = {key: _compact_validation_schema(child) for key, child in value.items()}
+    discriminator = compacted.get("discriminator")
+    if isinstance(discriminator, dict):
+        # ``mapping`` only guides OpenAPI dispatch. The adjacent oneOf branches
+        # and their const fields retain the complete validation semantics.
+        discriminator.pop("mapping", None)
+    variants = compacted.get("anyOf")
+    if isinstance(variants, list) and variants and all(isinstance(item, dict) and set(item) == {"type"} and isinstance(item["type"], str) for item in variants):
+        types = [item["type"] for item in variants]
+        normalized_types = []
+        for item in types:
+            normalized = "number" if item == "integer" and "number" in types else item
+            if normalized not in normalized_types:
+                normalized_types.append(normalized)
+        compacted.pop("anyOf")
+        compacted["type"] = normalized_types[0] if len(normalized_types) == 1 else normalized_types
+    elif isinstance(variants, list) and len(variants) == 2 and {"type": "null"} in variants:
+        typed = next(item for item in variants if item != {"type": "null"})
+        if isinstance(typed, dict) and isinstance(typed.get("type"), str):
+            compacted.pop("anyOf")
+            compacted.update(typed)
+            compacted["type"] = [typed["type"], "null"]
+    enum = compacted.get("enum")
+    if compacted.get("type") == "string" and isinstance(enum, list) and len(enum) > 1 and all(isinstance(item, str) for item in enum):
+        pattern = "^(?:" + "|".join(re.escape(item) for item in enum) + ")(?![\\s\\S])"
+        enum_size = len(json.dumps({"enum": enum}, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+        pattern_size = len(json.dumps({"pattern": pattern}, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+        if pattern_size < enum_size:
+            compacted.pop("enum")
+            compacted["pattern"] = pattern
+    return compacted
+
+
+_SCALAR_SCHEMA_KEYS = frozenset(
+    {
+        "type",
+        "const",
+        "enum",
+        "pattern",
+        "format",
+        "minimum",
+        "maximum",
+        "exclusiveMinimum",
+        "exclusiveMaximum",
+        "multipleOf",
+        "minLength",
+        "maxLength",
+    }
+)
+_ARRAY_SCHEMA_KEYS = _SCALAR_SCHEMA_KEYS | {"items", "minItems", "maxItems", "uniqueItems"}
+
+
+def _deduplicate_validation_fragments(schema: dict[str, Any]) -> dict[str, Any]:
+    """Factor repeated scalar/array constraints into ordinary local references."""
+
+    def canonical(value: dict[str, Any]) -> str:
+        return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+    def eligible(value: dict[str, Any]) -> bool:
+        keys = set(value)
+        if not keys or "$ref" in keys or "type" not in keys:
+            return False
+        if keys <= _SCALAR_SCHEMA_KEYS:
+            return True
+        return keys <= _ARRAY_SCHEMA_KEYS and value.get("type") == "array" and isinstance(value.get("items"), dict)
+
+    def candidates(value: Any, found: dict[str, tuple[int, dict[str, Any]]]) -> None:
+        if isinstance(value, dict):
+            if eligible(value):
+                key = canonical(value)
+                count, _ = found.get(key, (0, value))
+                found[key] = (count + 1, value)
+            for child in value.values():
+                candidates(child, found)
+        elif isinstance(value, list):
+            for child in value:
+                candidates(child, found)
+
+    def replace(value: Any, target: str, reference: dict[str, str]) -> Any:
+        if isinstance(value, dict):
+            if eligible(value) and canonical(value) == target:
+                return reference
+            return {key: replace(child, target, reference) for key, child in value.items()}
+        if isinstance(value, list):
+            return [replace(child, target, reference) for child in value]
+        return value
+
+    compacted = schema
+    for index in range(16):
+        found: dict[str, tuple[int, dict[str, Any]]] = {}
+        candidates(compacted, found)
+        name = f"x{index}"
+        while name in compacted.get("$defs", {}):
+            index += 1
+            name = f"x{index}"
+        reference = {"$ref": f"#/$defs/{name}"}
+        reference_size = len(canonical(reference).encode("utf-8"))
+        best: tuple[int, str, dict[str, Any]] | None = None
+        for key, (count, example) in found.items():
+            if count < 2:
+                continue
+            fragment_size = len(key.encode("utf-8"))
+            definition_overhead = len(json.dumps(name).encode("utf-8")) + 2
+            savings = count * fragment_size - count * reference_size - fragment_size - definition_overhead
+            if savings > 16 and (best is None or savings > best[0]):
+                best = savings, key, example
+        if best is None:
+            break
+        _, target, definition = best
+        compacted = replace(compacted, target, reference)
+        compacted.setdefault("$defs", {})[name] = definition
+    return compacted
+
+
 def _tool(name: str, description: str, request: type[BaseModel], response: type[BaseModel]) -> Tool:
+    input_schema = _advertised_input_schema(request.model_json_schema())
+    if os.environ.get(ANALYSIS_SCHEMA_TASK_ENV):
+        input_schema = _compact_validation_schema(input_schema)
+        input_schema = _compact_definition_names(input_schema)
+        input_schema = _deduplicate_validation_fragments(input_schema)
     return Tool(
         name=name,
         description=description,
-        input_schema=_advertised_input_schema(request.model_json_schema()),
+        input_schema=input_schema,
         # MCP clients replay advertised schemas into every model turn. Runtime
         # responses remain strictly validated below; omitting duplicated output
         # schemas removes context overhead without weakening response validation.
@@ -363,7 +517,7 @@ def build_tool_handlers(
         ),
         _tool(
             "inspect_dataset",
-            "Inspect bounded dataset metadata, types, and rows.",
+            "Inspect bounded dataset metadata.",
             DatasetInspectionRequest,
             DatasetInspectionResponse,
         ),
@@ -399,13 +553,13 @@ def build_tool_handlers(
         ),
         _tool(
             "validate_analysis",
-            "Validate only; Time Series uses top-level fields.",
+            "Validate a scientific request.",
             analysis_request_model,
             AnalysisValidationResponse,
         ),
         _tool(
             "start_analysis",
-            "Start by validation reference; legacy full requests remain strict.",
+            "Start a validated request.",
             StartAnalysisByValidationRequest,
             StartAnalysisResponse,
         ),
@@ -529,6 +683,7 @@ def build_tool_handlers(
                 "target_columns": ("not_applicable",),
                 "tuning": ("not_applicable",),
                 "model_selection": ("single", "all"),
+                "scientific_methods": ("hierarchical", "DBSCAN"),
             },
             decomposition_options={
                 "missing_values": DECOMPOSITION_MISSING_VALUE_METHODS,
@@ -538,6 +693,7 @@ def build_tool_handlers(
                 "tuning": ("not_applicable",),
                 "transformed_data": ("enabled",),
                 "model_selection": ("single", "all"),
+                "scientific_methods": ("PCA", "tSNE"),
             },
             anomaly_detection_options={
                 "missing_values": ANOMALY_DETECTION_MISSING_VALUE_METHODS,
@@ -547,9 +703,13 @@ def build_tool_handlers(
                 "tuning": ("not_applicable",),
                 "detection_labels": ("1_inlier", "-1_outlier"),
                 "model_selection": ("single", "all"),
+                "scientific_methods": ("isolation_forest", "LOF"),
             },
             time_series_options={
                 "model": ("subaerial_proportion_bootstrap",),
+                "scientific_modes": ("subaerial_proportion", "element_mean"),
+                "cli_executable_modes": ("subaerial_proportion",),
+                "schema_only_modes": ("element_mean",),
                 "age_units": ("Ma", "Ga"),
                 "fit_curve": ("disabled", "enabled"),
                 "randomness": ("explicit_seed",),
@@ -584,14 +744,31 @@ def build_tool_handlers(
         if request.dataset is None:
             return inspect_local_dataset(request, settings)
         resolved = runs.dataset_catalog.resolve(request.dataset)
-        response = inspect_local_dataset(
-            request.model_copy(update={"dataset_path": resolved.path, "dataset": None}),
-            settings,
+        source_snapshot = snapshot_dataset(resolved.path, settings.maximum_dataset_bytes)
+        if resolved.expected_sha256 is not None and source_snapshot.sha256 != resolved.expected_sha256:
+            raise DatasetCatalogError("The dataset changed between source resolution and inspection.")
+        if settings.service_state_root is None:
+            raise SettingsError("The MCP service-state root is not configured.")
+        prepared = prepare_dataset_view(
+            source_snapshot,
+            request.dataset.preparation,
+            settings.service_state_root,
+            settings.maximum_dataset_bytes,
+            settings.maximum_columns,
             allow_pandas_duplicate_mangling=source_allows_pandas_duplicate_mangling(resolved.source),
         )
-        if resolved.expected_sha256 is not None and response.sha256 != resolved.expected_sha256:
-            raise DatasetCatalogError("The dataset changed between source resolution and inspection.")
-        return response
+        response = inspect_local_dataset(
+            request.model_copy(update={"dataset_path": prepared.snapshot.resolved_path, "dataset": None}),
+            settings,
+            allow_pandas_duplicate_mangling=(source_allows_pandas_duplicate_mangling(resolved.source) if prepared.snapshot.resolved_path == source_snapshot.resolved_path else False),
+        )
+        return response.model_copy(
+            update={
+                "original_source_path": str(source_snapshot.resolved_path),
+                "original_source_sha256": source_snapshot.sha256,
+                "dataset_preparation": prepared.record,
+            }
+        )
 
     def analysis_value(request: BaseModel) -> BaseModel:
         return request.root if isinstance(request, AnalysisRequest) else request

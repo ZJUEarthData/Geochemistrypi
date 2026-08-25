@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import subprocess
@@ -415,6 +416,12 @@ if sys.argv[2] == "Time Series Run":
         assert result.returned_artifact_count == 2
         assert result.next_artifact_offset == 2
         assert result.artifacts_truncated is True
+        assert result.request_hash and len(result.request_hash) == 64
+        assert result.canonical_contract_hash and len(result.canonical_contract_hash) == 64
+        assert result.compiled_plan_hash and len(result.compiled_plan_hash) == 64
+        assert result.provenance_manifest_path is not None
+        assert result.provenance_manifest_sha256 is not None
+        assert all(len(item.sha256) == 64 for item in result.artifacts)
         assert all(Path(item.local_path).is_relative_to(Path(result.output_directory)) for item in result.artifacts)
         second_page = manager.get_result(
             acknowledgement.run_id,
@@ -431,6 +438,14 @@ if sys.argv[2] == "Time Series Run":
             "summary",
         }
         wrapper = tmp_path / "runs" / acknowledgement.run_id / "wrapper"
+        manifest_path = Path(result.provenance_manifest_path)
+        assert manifest_path == wrapper / "scientific-run-manifest.json"
+        assert hashlib.sha256(manifest_path.read_bytes()).hexdigest() == result.provenance_manifest_sha256
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert manifest["request_identity"]["request_hash"] == result.request_hash
+        assert manifest["run_identity"] == {"run_id": acknowledgement.run_id}
+        assert manifest["artifacts"]
+        assert all(len(item["sha256"]) == 64 for item in manifest["artifacts"])
         assert json.loads((wrapper / "status.json").read_text(encoding="utf-8"))["state"] == "succeeded"
         assert json.loads((wrapper / "artifact-index.json").read_text(encoding="utf-8"))["artifacts"]
         assert not list(wrapper.glob("*.tmp"))

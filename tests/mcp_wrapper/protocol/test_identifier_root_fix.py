@@ -139,6 +139,44 @@ def test_original_result_rows_pair_deterministically_with_duplicate_and_missing_
     assert len(pairing["ordered_pairing_sha256"]) == 64
 
 
+def test_original_result_pairing_respects_xlsx_numeric_storage_precision(tmp_path: Path) -> None:
+    source = tmp_path / "source.csv"
+    source.write_text("SampleID,F1\nA,0.04966603906761905\n", encoding="utf-8")
+    snapshot = snapshot_dataset(source, 1024 * 1024)
+    output = tmp_path / "output"
+    data_directory = output / "artifacts" / "data"
+    data_directory.mkdir(parents=True)
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.append(["SampleID", "F1"])
+    worksheet.append(["A", 0.049666039067619])
+    workbook.save(data_directory / "Data Original.xlsx")
+    workbook.close()
+
+    pairing = verify_original_row_pairing(source, output, "SampleID", snapshot.row_lineage)
+
+    assert pairing["verified"] is True
+    assert pairing["numeric_comparison_policy"] == "xlsx_relative_1e-14"
+
+
+def test_original_result_pairing_still_rejects_numeric_change_above_xlsx_precision(tmp_path: Path) -> None:
+    source = tmp_path / "source.csv"
+    source.write_text("SampleID,F1\nA,0.04966603906761905\n", encoding="utf-8")
+    snapshot = snapshot_dataset(source, 1024 * 1024)
+    output = tmp_path / "output"
+    data_directory = output / "artifacts" / "data"
+    data_directory.mkdir(parents=True)
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.append(["SampleID", "F1"])
+    worksheet.append(["A", 0.0496660390677])
+    workbook.save(data_directory / "Data Original.xlsx")
+    workbook.close()
+
+    with pytest.raises(SourceRowIdentityError, match="changed or reordered source row"):
+        verify_original_row_pairing(source, output, "SampleID", snapshot.row_lineage)
+
+
 def test_original_result_row_count_mismatch_fails_closed(tmp_path: Path) -> None:
     source = tmp_path / "source.csv"
     source.write_text("SampleID,F1\nA,1\nB,2\n", encoding="utf-8")

@@ -269,7 +269,11 @@ waits for an MCP client. Standard output is reserved for MCP messages.
 ## Classification, regression, clustering, decomposition, anomaly-detection, and Time Series requests
 
 `validate_analysis` uses the `task` field to select a strict task-specific
-schema. It returns a stable `validation_id`, a `request_hash`, and an expiry.
+schema. Every request also accepts additive `evaluation`, `reproducibility`,
+and `artifact_requirements` contracts. Validation normalizes the request to a
+paper-agnostic scientific family/mode/method and returns a stable
+`validation_id`, `request_hash`, `canonical_contract_hash`,
+`compiled_plan_hash`, readiness dimensions, and an expiry.
 The preferred `start_analysis` request contains only that ID and hash. Before a
 run is created, the wrapper verifies the HMAC-protected validation receipt and
 checks that the exact request, input files, CLI executable/version, and compiled
@@ -290,6 +294,97 @@ Advertised input schemas omit annotation-only JSON Schema fields (`title`,
 turn. Required fields, types, enums, numeric and string constraints,
 discriminators, and closed-object rules remain advertised, and the original
 Pydantic models still perform every runtime validation.
+
+### Scientific reproduction contract
+
+Dataset references can pin the original file and describe a deterministic CLI
+input view. Excel files with more than one worksheet require an explicit
+`worksheet`; MCP never selects the active sheet silently. `header_row_index` is
+zero-based, while `header_row_indices` can compose a multi-row scientific
+header using explicit separator, empty-cell, and duplicate-name policies.
+`header_whitespace_policy: strip` and `header_bom_policy: strip` are explicit,
+hash-bound normalization choices for source workbooks whose published headers
+contain padding or a leading Unicode byte-order mark. They are never applied by
+default. When `selected_columns` is explicit, duplicate names in unrelated raw
+columns do not block the prepared view; every selected, filtered, excluded, or
+row-identity column must still resolve to exactly one normalized source column.
+`selected_columns` and `excluded_columns` are mutually exclusive, and
+column-value row identity can bind a separate source-mapping file by path and
+SHA-256. Preparation `operations` record whether missing-value handling,
+filtering, transformation, or feature selection occurred; they are provenance,
+not new scientific calculations performed by MCP. The executable preparation
+DSL supports `not_null`, equality/inequality, ordered comparisons, inclusive or
+exclusive `between`, and membership predicates with typed operands. Rules are
+applied before column projection, and the retained source-row sequence,
+input/retained/dropped counts, prepared file, and contract are all hashed.
+
+```json
+{
+  "source": "path",
+  "path": "D:\\data\\paper-source.xlsx",
+  "expected_sha256": "<original-file-sha256>",
+  "preparation": {
+    "worksheet": "Analysis Data",
+    "header_row_index": 2,
+    "excluded_columns": ["Comment"],
+    "filters": [{"column": "PublishedClass", "operator": "not_null"}],
+    "row_identity": {
+      "strategy": "column_values",
+      "columns": ["SampleID"],
+      "source_mapping_path": "D:\\data\\source-row-map.json",
+      "source_mapping_sha256": "<mapping-sha256>"
+    },
+    "operations": ["filtering", "transformation"]
+  }
+}
+```
+
+Validation distinguishes `source_file` from `prepared_input` and returns the
+complete preparation record plus its hash. The cached prepared CSV is derived
+only for table selection; the original source is never modified. Both hashes,
+the ordered row-identity hash, and the source/prepared mapping are repeated in
+the validation receipt and scientific run manifest.
+
+The backward-compatible `reproducibility.environment` field can require the complete observed environment
+identity, exact Python/GeochemistryPi/MCP/platform/runtime values, and exact
+dependency versions. New reproduction requests can instead provide one named
+`environment_profile` with an exact Python version, exact package versions,
+and supported runtime constraints. Its content hash and profile ID are bound
+into the interaction-plan identity. MCP validates the selected isolated CLI
+runtime; it does not silently install or switch environments. Validation reports `environment_status` as `READY`,
+`MISMATCH`, or `UNSPECIFIED`; a mismatch makes `execution_ready=false` and no
+run is created. The plan records requested and effective model,
+preprocessing, and split/model/tuning seed values. Validation compares the two
+before execution. The adapter reports
+the CLI's actual fixed seed instead of pretending it was propagated; an
+incompatible requested seed blocks execution. Time Series uses its public
+top-level seed and can freeze the full runtime with
+`expected_identity_sha256`.
+
+Evaluation metrics can be bound to artifact requirement IDs. Artifact
+requirements match workflow-aware scientific types and roles, safe paths or
+patterns, media types, cardinality, and required JSON keys. Produced artifact
+records include SHA-256, producer, scientific role, and every satisfied
+requirement ID. Adapter mappings bind each scientific role to an original CLI
+relative path; unavailable roles are explicit capabilities with a reason. For
+example, the classification adapter maps metrics, raw confusion matrices,
+predictions, scores, and supported feature importance outputs, but declares a
+normalized confusion-matrix table unavailable because MCP does not recalculate
+it. Missing or malformed required evidence yields an incomplete
+contract rather than a successful reproduction claim.
+
+Configuration-only benchmark profiles are supported by
+`geochemistrypi_mcp.planning.profiles`. A bounded YAML profile contains
+`benchmark`, `profile_state`, `workflow`, `dataset`, `environment` or
+`environment_profile`, `reproducibility`, `parameters`, `expected_artifacts`,
+and `acceptance_rules`. A ready profile compiles into the same strict public
+analysis request and can attest the resulting plan family, mode, method, and
+readiness. An incomplete profile retains literal `UNKNOWN` values only as a
+non-executable template and compiles to a diagnostic plan with no public
+command. Workflow stages form a validated generic DAG and remain blocked until
+one adapter can execute the complete chain. Benchmark names are metadata only
+and never participate in execution dispatch. See
+`benchmark_profiles/README.md` for the format.
 
 A minimal regression request is:
 
@@ -390,15 +485,22 @@ AutoML, or application-data inference. The wrapper validates row and feature
 bounds before the CLI starts; the CLI remains responsible for the original
 normal/anomalous tables, diagrams, model files, and transform pipeline.
 
-A Time Series request can reproduce the complete selected-data and
-missing-value preparation performed by the interactive workflow. For example,
+A Time Series request selects `mode="subaerial_proportion"` (the backward-
+compatible default) or `mode="element_mean"`. Subaerial-proportion requests
+can reproduce the complete selected-data and missing-value preparation
+performed by the interactive workflow. For example,
 `selected_columns` may contain the nine consecutive scientific fields selected
 by CLI range `[6,14]`; `missing_values={"method":"drop_rows","columns":[]}`
 means drop rows missing any selected field. `identifier_column` records the
 sample-name field, and `feature_engineering` currently accepts only `none`.
-The public noninteractive CLI applies these operations before the seeded Liu
-et al. bootstrap and records input, retained, and dropped row counts in
-`Time Series Parameters.json`.
+The public noninteractive CLI applies these operations before the seeded
+bootstrap and records input, retained, and dropped row counts in `Time Series
+Parameters.json`. Element-mean requests express age/value/filter roles, bin
+width, arithmetic-mean aggregation, standard-error uncertainty, and minimum
+sample counts. The current public CLI has no matching element-mean command, so
+validation returns `valid=true`, `execution_ready=false`, and an unavailable
+adapter; starting that receipt fails before process creation. It is never
+substituted with the subaerial-proportion workflow.
 
 ## Development verification
 
@@ -541,7 +643,11 @@ After confirmation, the client starts the exact validated request and normally
 calls `get_run_result` once with `wait_seconds` up to 300. It returns a concise
 scientific summary with links or references to the original GeochemistryPi
 outputs. `artifact_offset` and `artifact_limit` retrieve a bounded page while
-the complete wrapper-owned artifact index remains available. Use
+the complete wrapper-owned artifact index remains available. Each artifact now
+includes SHA-256, requirement binding when planned, scientific type, and
+producer metadata. Every completed run writes a wrapper-owned
+`scientific-run-manifest.json` binding request, validation, run, plan, input,
+runtime, artifact hashes, and missing required artifacts. Use
 `get_run_status` only when progress detail is needed; it supports the same
 bounded wait and should not be polled in a tight loop. These tool calls are
 automatic and should not be turned into extra instructions for the user.
