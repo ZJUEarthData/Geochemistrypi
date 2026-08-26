@@ -18,7 +18,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterator, Mapping, Optional, Tuple
 
-
 SCIENTIFIC_EXECUTION_CONTRACT_VERSION = 2
 _MAX_CONTRACT_BYTES = 1024 * 1024
 _PARAMETER_NAME = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
@@ -135,9 +134,7 @@ def _validate_parameter_value(value: Any, field_name: str) -> Any:
         if len(value) > 64:
             raise ScientificExecutionContractError(f"model_parameters.{field_name} has too many entries.")
         return tuple(_validate_parameter_value(item, field_name) for item in value)
-    raise ScientificExecutionContractError(
-        f"model_parameters.{field_name} must be a JSON scalar, null, or bounded scalar array."
-    )
+    raise ScientificExecutionContractError(f"model_parameters.{field_name} must be a JSON scalar, null, or bounded scalar array.")
 
 
 def _canonical_json(value: Any) -> str:
@@ -218,9 +215,7 @@ class ScientificExecutionContract:
         try:
             resolved = source.resolve(strict=True)
             if resolved.stat().st_size > _MAX_CONTRACT_BYTES:
-                raise ScientificExecutionContractError(
-                    f"Scientific execution contract exceeds the {_MAX_CONTRACT_BYTES}-byte safety limit."
-                )
+                raise ScientificExecutionContractError(f"Scientific execution contract exceeds the {_MAX_CONTRACT_BYTES}-byte safety limit.")
             raw = resolved.read_bytes()
             value = json.loads(raw.decode("utf-8"))
         except ScientificExecutionContractError:
@@ -249,10 +244,7 @@ class ScientificExecutionContract:
             "scientific execution contract",
         )
         if value["schema_version"] != SCIENTIFIC_EXECUTION_CONTRACT_VERSION:
-            raise ScientificExecutionContractError(
-                "Unsupported scientific execution schema "
-                f"{value['schema_version']!r}; expected {SCIENTIFIC_EXECUTION_CONTRACT_VERSION}."
-            )
+            raise ScientificExecutionContractError("Unsupported scientific execution schema " f"{value['schema_version']!r}; expected {SCIENTIFIC_EXECUTION_CONTRACT_VERSION}.")
         method = _validate_token(value["method"], "method")
         if method not in _ALLOWED_MODEL_PARAMETERS:
             raise ScientificExecutionContractError(f"No generic CLI parameter binding is registered for method {method!r}.")
@@ -261,9 +253,7 @@ class ScientificExecutionContract:
             raise ScientificExecutionContractError("model_parameters must be a JSON object with at most 64 entries.")
         unknown_parameters = sorted(set(raw_parameters) - _ALLOWED_MODEL_PARAMETERS[method])
         if unknown_parameters:
-            raise ScientificExecutionContractError(
-                f"Unsupported model parameters for {method!r}: {unknown_parameters}"
-            )
+            raise ScientificExecutionContractError(f"Unsupported model parameters for {method!r}: {unknown_parameters}")
         parameters = []
         for name, parameter_value in sorted(raw_parameters.items()):
             if not isinstance(name, str) or _PARAMETER_NAME.fullmatch(name) is None:
@@ -274,108 +264,58 @@ class ScientificExecutionContract:
             raise ScientificExecutionContractError("cross_validation_folds must be an integer between 2 and 100.")
         evaluation_mode = value["evaluation_mode"]
         if evaluation_mode not in _EVALUATION_MODES:
-            raise ScientificExecutionContractError(
-                f"evaluation_mode must be one of {sorted(_EVALUATION_MODES)}."
-            )
+            raise ScientificExecutionContractError(f"evaluation_mode must be one of {sorted(_EVALUATION_MODES)}.")
         if method != "local_outlier_factor" and evaluation_mode not in {
             "internal_holdout",
             "external_labeled",
         }:
-            raise ScientificExecutionContractError(
-                f"evaluation_mode {evaluation_mode!r} is not registered for method {method!r}."
-            )
+            raise ScientificExecutionContractError(f"evaluation_mode {evaluation_mode!r} is not registered for method {method!r}.")
         if method == "local_outlier_factor" and evaluation_mode not in {
             "training_outlier",
             "novelty_detection",
         }:
-            raise ScientificExecutionContractError(
-                "Local Outlier Factor must declare training_outlier or novelty_detection evaluation semantics."
-            )
+            raise ScientificExecutionContractError("Local Outlier Factor must declare training_outlier or novelty_detection evaluation semantics.")
         confusion_matrix_normalization = value["confusion_matrix_normalization"]
-        if (
-            confusion_matrix_normalization is not None
-            and confusion_matrix_normalization not in _CONFUSION_MATRIX_NORMALIZATIONS
-        ):
-            raise ScientificExecutionContractError(
-                "confusion_matrix_normalization must be null, true, predicted, or all."
-            )
+        if confusion_matrix_normalization is not None and confusion_matrix_normalization not in _CONFUSION_MATRIX_NORMALIZATIONS:
+            raise ScientificExecutionContractError("confusion_matrix_normalization must be null, true, predicted, or all.")
         workflow_family = _validate_token(value["workflow_family"], "workflow_family")
         workflow_mode = _validate_token(value["workflow_mode"], "workflow_mode")
-        if evaluation_mode == "external_labeled" and (
-            workflow_family != "supervised_learning"
-            or workflow_mode != "regression"
-        ):
-            raise ScientificExecutionContractError(
-                "external_labeled evaluation is registered only for supervised regression."
-            )
+        if evaluation_mode == "external_labeled" and (workflow_family != "supervised_learning" or workflow_mode != "regression"):
+            raise ScientificExecutionContractError("external_labeled evaluation is registered only for supervised regression.")
         if workflow_family != "supervised_learning" and confusion_matrix_normalization is not None:
-            raise ScientificExecutionContractError(
-                "Confusion-matrix normalization is available only for supervised learning."
-            )
+            raise ScientificExecutionContractError("Confusion-matrix normalization is available only for supervised learning.")
         if confusion_matrix_normalization is not None and workflow_mode != "classification":
-            raise ScientificExecutionContractError(
-                "Confusion-matrix normalization is available only for classification."
-            )
+            raise ScientificExecutionContractError("Confusion-matrix normalization is available only for classification.")
         external_identifier = value["external_evaluation_identifier_column"]
         if external_identifier is not None and (
-            not isinstance(external_identifier, str)
-            or not external_identifier.strip()
-            or len(external_identifier) > 128
-            or "\n" in external_identifier
-            or "\r" in external_identifier
+            not isinstance(external_identifier, str) or not external_identifier.strip() or len(external_identifier) > 128 or "\n" in external_identifier or "\r" in external_identifier
         ):
-            raise ScientificExecutionContractError(
-                "External evaluation identifier must be null or a bounded single-line string."
-            )
+            raise ScientificExecutionContractError("External evaluation identifier must be null or a bounded single-line string.")
         if evaluation_mode != "external_labeled" and external_identifier is not None:
-            raise ScientificExecutionContractError(
-                "An external evaluation identifier is valid only for external_labeled evaluation."
-            )
+            raise ScientificExecutionContractError("An external evaluation identifier is valid only for external_labeled evaluation.")
         raw_external_targets = value["external_evaluation_target_columns"]
         if not isinstance(raw_external_targets, list) or len(raw_external_targets) > 256:
-            raise ScientificExecutionContractError(
-                "external_evaluation_target_columns must be a bounded string array."
-            )
+            raise ScientificExecutionContractError("external_evaluation_target_columns must be a bounded string array.")
         external_targets = []
         for column in raw_external_targets:
-            if (
-                not isinstance(column, str)
-                or not column.strip()
-                or len(column) > 128
-                or "\n" in column
-                or "\r" in column
-            ):
-                raise ScientificExecutionContractError(
-                    "External evaluation target names must be bounded single-line strings."
-                )
+            if not isinstance(column, str) or not column.strip() or len(column) > 128 or "\n" in column or "\r" in column:
+                raise ScientificExecutionContractError("External evaluation target names must be bounded single-line strings.")
             external_targets.append(column)
         if len(external_targets) != len(set(external_targets)):
-            raise ScientificExecutionContractError(
-                "External evaluation target names must be unique."
-            )
+            raise ScientificExecutionContractError("External evaluation target names must be unique.")
         if evaluation_mode == "external_labeled" and not external_targets:
-            raise ScientificExecutionContractError(
-                "external_labeled evaluation requires target columns."
-            )
+            raise ScientificExecutionContractError("external_labeled evaluation requires target columns.")
         if evaluation_mode != "external_labeled" and external_targets:
-            raise ScientificExecutionContractError(
-                "External evaluation targets are valid only for external_labeled evaluation."
-            )
+            raise ScientificExecutionContractError("External evaluation targets are valid only for external_labeled evaluation.")
         raw_transformations = value["target_transformations"]
         if not isinstance(raw_transformations, dict) or len(raw_transformations) > 256:
-            raise ScientificExecutionContractError(
-                "target_transformations must be a bounded JSON object."
-            )
+            raise ScientificExecutionContractError("target_transformations must be a bounded JSON object.")
         transformations = []
         for column, transformation in sorted(raw_transformations.items()):
             if not isinstance(column, str) or not column.strip() or len(column) > 128:
-                raise ScientificExecutionContractError(
-                    "Target transformation names must be bounded non-blank strings."
-                )
+                raise ScientificExecutionContractError("Target transformation names must be bounded non-blank strings.")
             if not isinstance(transformation, dict):
-                raise ScientificExecutionContractError(
-                    f"Target transformation for {column!r} must be an object."
-                )
+                raise ScientificExecutionContractError(f"Target transformation for {column!r} must be an object.")
             _require_exact_fields(
                 transformation,
                 {"scale", "offset"},
@@ -392,19 +332,13 @@ class ScientificExecutionContract:
                 or not isinstance(offset, (int, float))
                 or not math.isfinite(offset)
             ):
-                raise ScientificExecutionContractError(
-                    f"Target transformation for {column!r} requires finite scale/offset and non-zero scale."
-                )
+                raise ScientificExecutionContractError(f"Target transformation for {column!r} requires finite scale/offset and non-zero scale.")
             transformations.append((column, float(scale), float(offset)))
         if transformations and workflow_mode != "regression":
-            raise ScientificExecutionContractError(
-                "Target transformations are available only for regression."
-            )
+            raise ScientificExecutionContractError("Target transformations are available only for regression.")
         split_seed = _validate_seed(value["split_seed"], "split_seed")
         if evaluation_mode == "external_labeled" and split_seed is not None:
-            raise ScientificExecutionContractError(
-                "external_labeled evaluation fits the complete training cohort and must not declare a split_seed."
-            )
+            raise ScientificExecutionContractError("external_labeled evaluation fits the complete training cohort and must not declare a split_seed.")
         return cls(
             schema_version=SCIENTIFIC_EXECUTION_CONTRACT_VERSION,
             workflow_family=workflow_family,
@@ -424,9 +358,7 @@ class ScientificExecutionContract:
 
     def constructor_parameters(self, method: str, legacy: Mapping[str, Any]) -> Dict[str, Any]:
         if self.method != method:
-            raise ScientificExecutionContractError(
-                f"Scientific execution method {self.method!r} cannot configure selected CLI method {method!r}."
-            )
+            raise ScientificExecutionContractError(f"Scientific execution method {self.method!r} cannot configure selected CLI method {method!r}.")
         parameters = dict(legacy)
         parameters.update(self.model_parameters)
         if self.model_seed is not None and method in {"xgboost", "extra_trees"}:
@@ -441,9 +373,7 @@ class ScientificExecutionContract:
         transformed = values.copy()
         for column, scale, offset in self.target_transformation_entries:
             if column not in transformed.columns:
-                raise ScientificExecutionContractError(
-                    f"Target transformation column {column!r} is absent from the selected data."
-                )
+                raise ScientificExecutionContractError(f"Target transformation column {column!r} is absent from the selected data.")
             transformed[column] = transformed[column].astype(float) * scale + offset
         return transformed
 
@@ -459,13 +389,8 @@ class ScientificExecutionContract:
             "evaluation_mode": self.evaluation_mode,
             "confusion_matrix_normalization": self.confusion_matrix_normalization,
             "external_evaluation_identifier_column": self.external_evaluation_identifier_column,
-            "external_evaluation_target_columns": list(
-                self.external_evaluation_target_columns
-            ),
-            "target_transformations": {
-                column: {"scale": scale, "offset": offset}
-                for column, scale, offset in self.target_transformation_entries
-            },
+            "external_evaluation_target_columns": list(self.external_evaluation_target_columns),
+            "target_transformations": {column: {"scale": scale, "offset": offset} for column, scale, offset in self.target_transformation_entries},
             "model_parameters": _json_safe(self.model_parameters),
             "source_sha256": self.source_sha256,
         }
@@ -509,7 +434,10 @@ def save_scientific_execution_attestation(estimator: Any, output_directory: Opti
         raise ScientificExecutionContractError("The selected estimator cannot attest effective parameters.")
     observed = _json_safe(estimator.get_params(deep=False))
     expected = contract.model_parameters
-    if contract.model_seed is not None and contract.method in {"xgboost", "extra_trees"}:
+    if contract.model_seed is not None and contract.method in {
+        "xgboost",
+        "extra_trees",
+    }:
         expected = {**expected, "random_state": contract.model_seed}
     if contract.method == "local_outlier_factor":
         expected = {
@@ -525,10 +453,7 @@ def save_scientific_execution_attestation(estimator: Any, output_directory: Opti
                 "observed": observed_value,
             }
     if mismatches:
-        raise ScientificExecutionContractError(
-            "The fitted estimator does not match the scientific execution contract: "
-            + _canonical_json(mismatches)
-        )
+        raise ScientificExecutionContractError("The fitted estimator does not match the scientific execution contract: " + _canonical_json(mismatches))
     record = {
         "schema_version": 1,
         "contract": contract.as_record(),
@@ -536,9 +461,7 @@ def save_scientific_execution_attestation(estimator: Any, output_directory: Opti
         "verified_parameter_names": sorted(expected),
         "verification_status": "matched",
     }
-    record["attestation_sha256"] = hashlib.sha256(
-        _canonical_json(record).encode("utf-8")
-    ).hexdigest()
+    record["attestation_sha256"] = hashlib.sha256(_canonical_json(record).encode("utf-8")).hexdigest()
     _atomic_write_json(
         Path(output_directory) / "Scientific Execution Attestation.json",
         record,

@@ -4,12 +4,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from geochemistrypi.scientific_execution import (
-    ScientificExecutionContract,
-    ScientificExecutionContractError,
-    save_scientific_execution_attestation,
-    scientific_execution_context,
-)
+from geochemistrypi.scientific_execution import ScientificExecutionContract, ScientificExecutionContractError, save_scientific_execution_attestation, scientific_execution_context
 
 
 def _contract(**updates: object) -> dict:
@@ -46,19 +41,13 @@ def _write_contract(tmp_path: Path, value: dict) -> Path:
 def test_scientific_contract_preserves_zero_seed_and_target_transform(
     tmp_path: Path,
 ) -> None:
-    contract = ScientificExecutionContract.load(
-        _write_contract(tmp_path, _contract())
-    )
+    contract = ScientificExecutionContract.load(_write_contract(tmp_path, _contract()))
 
     assert contract.split_seed == 99
     assert contract.model_seed == 0
     assert contract.cross_validation_folds == 5
-    assert contract.constructor_parameters("xgboost", {"random_state": 42})[
-        "random_state"
-    ] == 0
-    transformed = contract.transform_targets(
-        pd.DataFrame({"pressure": [1.2, 2.3]})
-    )
+    assert contract.constructor_parameters("xgboost", {"random_state": 42})["random_state"] == 0
+    transformed = contract.transform_targets(pd.DataFrame({"pressure": [1.2, 2.3]}))
     assert transformed["pressure"].tolist() == pytest.approx([12.0, 23.0])
 
 
@@ -149,11 +138,7 @@ def test_attestation_verifies_actual_estimator_parameters(tmp_path: Path) -> Non
             ),
             str(output),
         )
-    record = json.loads(
-        (output / "Scientific Execution Attestation.json").read_text(
-            encoding="utf-8"
-        )
-    )
+    record = json.loads((output / "Scientific Execution Attestation.json").read_text(encoding="utf-8"))
     assert record["verification_status"] == "matched"
     assert record["contract"]["model_seed"] == 0
     assert record["attestation_sha256"]

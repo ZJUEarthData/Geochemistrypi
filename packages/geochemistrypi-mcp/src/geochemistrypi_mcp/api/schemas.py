@@ -1686,8 +1686,11 @@ class DecompositionRequest(ScientificRequest):
     """Scientific inputs for one validated unsupervised decomposition run."""
 
     task: Literal["decomposition"] = "decomposition"
+    mode: Literal["model", "embedding_label_overlay"] = "model"
     training_dataset_path: Path | None = None
     training_dataset: DatasetReference | None = None
+    application_dataset_path: Path | None = None
+    application_dataset: DatasetReference | None = None
     experiment_name: str = Field(min_length=1, max_length=40)
     existing_experiment_id: str | None = Field(None, pattern=r"^[A-Za-z0-9_-]+$", max_length=128)
     run_name: str = Field(min_length=1, max_length=40)
@@ -1700,6 +1703,11 @@ class DecompositionRequest(ScientificRequest):
     engineered_features: tuple[EngineeredFeature, ...] = Field(default=(), max_length=20)
     scaling: ScalingMethod = "standardization"
     model: DecompositionModelSettings = Field(default_factory=PCADecompositionSettings)
+    coordinate_sheet: str = Field("0", min_length=1, max_length=128)
+    label_sheet: str = Field("0", min_length=1, max_length=128)
+    label_identifier_column: ColumnName | None = None
+    label_column: ColumnName | None = None
+    positive_label_values: tuple[str, ...] = Field(default=(), max_length=64)
 
     @field_validator("experiment_name", "run_name")
     @classmethod
@@ -1713,9 +1721,11 @@ class DecompositionRequest(ScientificRequest):
             raise ValueError("uses a Windows-reserved output directory name")
         return normalized
 
-    @field_validator("identifier_column")
+    @field_validator("identifier_column", "label_identifier_column", "label_column")
     @classmethod
-    def validate_identifier(cls, value: str) -> str:
+    def validate_identifier(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         normalized = value.strip()
         if not normalized:
             raise ValueError("must not be blank")
@@ -1734,6 +1744,39 @@ class DecompositionRequest(ScientificRequest):
     @model_validator(mode="after")
     def validate_decomposition_contract(self) -> "DecompositionRequest":
         _validate_dataset_choice(self.training_dataset_path, self.training_dataset, "training_dataset")
+        if self.mode == "embedding_label_overlay":
+            _validate_dataset_choice(
+                self.application_dataset_path,
+                self.application_dataset,
+                "application_dataset",
+            )
+            if len(self.feature_columns) != 2:
+                raise ValueError("embedding_label_overlay requires exactly two coordinate feature columns")
+            if self.label_identifier_column is None or self.label_column is None:
+                raise ValueError("embedding_label_overlay requires label_identifier_column and label_column")
+            if not self.positive_label_values:
+                raise ValueError("embedding_label_overlay requires positive_label_values")
+            if self.label_column in self.feature_columns:
+                raise ValueError("label_column must be distinct from coordinate feature columns")
+            if self.label_column == self.identifier_column:
+                raise ValueError("label_column must be distinct from the coordinate identifier")
+            if self.label_identifier_column in self.feature_columns:
+                raise ValueError("label_identifier_column must be distinct from coordinate feature columns")
+            if self.metadata_columns:
+                raise ValueError("embedding_label_overlay does not use metadata_columns")
+            if self.engineered_features:
+                raise ValueError("embedding_label_overlay does not perform feature engineering")
+            if self.scaling != "none":
+                raise ValueError("embedding_label_overlay requires scaling='none' because coordinates are already calculated")
+            if self.missing_values.method != "error":
+                raise ValueError("embedding_label_overlay requires complete explicitly supplied rows")
+            if self.model_selection.mode != "single":
+                raise ValueError("embedding_label_overlay is one artifact-composition producer")
+            if self.world_map.enabled:
+                raise ValueError("embedding_label_overlay does not use world-map rendering")
+            return self
+        if self.application_dataset_path is not None or self.application_dataset is not None:
+            raise ValueError("decomposition model mode does not accept an application dataset")
         if self.identifier_column in self.feature_columns:
             raise ValueError("identifier_column must not also be a feature")
         overlap = sorted(set(self.metadata_columns) & set(self.feature_columns))

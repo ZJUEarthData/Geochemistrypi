@@ -475,6 +475,48 @@ def reference_anomaly_time_series(
         execute()
 
 
+@app.command("embedding-label-overlay")
+def embedding_label_overlay(
+    coordinate_path: str = typer.Option(..., "--coordinates", help="Path to an embedding-coordinate .csv or .xlsx file."),
+    label_path: str = typer.Option(..., "--labels", help="Path to an identifier-label .csv or .xlsx file."),
+    coordinate_identifier_column: str = typer.Option(..., "--coordinate-identifier-column"),
+    label_identifier_column: str = typer.Option(..., "--label-identifier-column"),
+    x_column: str = typer.Option(..., "--x-column"),
+    y_column: str = typer.Option(..., "--y-column"),
+    label_column: str = typer.Option(..., "--label-column"),
+    positive_label_value: List[str] = typer.Option(..., "--positive-label-value", help="Repeat for every value denoting an anomaly."),
+    output_root: str = typer.Option("geopi_output", "--output-root"),
+    experiment_name: str = typer.Option("Artifact Composition", "--experiment-name"),
+    run_name: str = typer.Option("Embedding Label Overlay", "--run-name"),
+    coordinate_sheet: str = typer.Option("0", "--coordinate-sheet"),
+    label_sheet: str = typer.Option("0", "--label-sheet"),
+) -> None:
+    """Join existing 2-D coordinates and labels by identifier and render an overlay."""
+    from pathlib import Path
+
+    from .data_mining.run_embedding_label_overlay import run_embedding_label_overlay
+
+    try:
+        output_directory = run_embedding_label_overlay(
+            coordinate_path=Path(coordinate_path),
+            label_path=Path(label_path),
+            output_root=Path(output_root),
+            experiment_name=experiment_name,
+            run_name=run_name,
+            coordinate_sheet=coordinate_sheet,
+            label_sheet=label_sheet,
+            coordinate_identifier_column=coordinate_identifier_column,
+            label_identifier_column=label_identifier_column,
+            x_column=x_column,
+            y_column=y_column,
+            label_column=label_column,
+            positive_label_values=tuple(positive_label_value),
+        )
+    except (OSError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(f"Saved embedding-label overlay outputs to {output_directory}")
+
+
 # TODO: Currently, the web application is not fully implemented. It is disabled by default.
 # @app.command()
 # def web_setup() -> None:

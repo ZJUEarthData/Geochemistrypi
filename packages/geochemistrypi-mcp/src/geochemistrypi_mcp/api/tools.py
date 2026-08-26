@@ -5,6 +5,7 @@ import logging
 import os
 import re
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 from typing import Any
 
 import anyio
@@ -58,6 +59,7 @@ from ..data.inspector import inspect_dataset as inspect_local_dataset
 from ..data.inspector import snapshot_dataset
 from ..data.preparation import DatasetPreparationError, prepare_dataset_view
 from ..planning.interaction_plan import PlanCompilationError
+from ..runtime.cli_capabilities import probe_cli_capabilities
 from ..runtime.cli_driver import CliDriverError
 from ..runtime.runs import RunManager, RunNotFoundError, RunStateError
 from ..tracking.experiments import ExperimentManager, ExperimentStoreError
@@ -600,6 +602,36 @@ def build_tool_handlers(
 
     def capabilities(_: BaseModel) -> CapabilitiesResponse:
         manifest = load_capability_manifest()
+        capability_requirements = (
+            "command:time-series",
+            "command:reference-anomaly-time-series",
+            "command:embedding-label-overlay",
+            "option:data-mining:--scientific-config",
+        )
+        cli_resolver = getattr(runs, "cli_resolver", None)
+        try:
+            cli_executable = cli_resolver()[0] if callable(cli_resolver) else None
+        except Exception:
+            cli_executable = None
+        cli_probe = probe_cli_capabilities(cli_executable, capability_requirements) if cli_executable is not None and cli_executable.is_file() else probe_cli_capabilities(Path("."), ())
+        available_cli_capabilities = set(cli_probe.available)
+        executable_time_series_modes = tuple(
+            mode
+            for mode, requirement in (
+                ("subaerial_proportion", "command:time-series"),
+                (
+                    "reference_anomaly_series",
+                    "command:reference-anomaly-time-series",
+                ),
+            )
+            if requirement in available_cli_capabilities
+        )
+        scientific_time_series_modes = (
+            "subaerial_proportion",
+            "element_mean",
+            "reference_anomaly_series",
+        )
+        schema_only_time_series_modes = tuple(mode for mode in scientific_time_series_modes if mode not in executable_time_series_modes)
         return CapabilitiesResponse(
             server_name=SERVER_NAME,
             server_version=SERVER_VERSION,
@@ -694,6 +726,7 @@ def build_tool_handlers(
                 "transformed_data": ("enabled",),
                 "model_selection": ("single", "all"),
                 "scientific_methods": ("PCA", "tSNE"),
+                "artifact_composition": (("embedding_label_overlay",) if "command:embedding-label-overlay" in available_cli_capabilities else ()),
             },
             anomaly_detection_options={
                 "missing_values": ANOMALY_DETECTION_MISSING_VALUE_METHODS,
@@ -706,10 +739,23 @@ def build_tool_handlers(
                 "scientific_methods": ("isolation_forest", "LOF"),
             },
             time_series_options={
-                "model": ("subaerial_proportion_bootstrap",),
-                "scientific_modes": ("subaerial_proportion", "element_mean"),
-                "cli_executable_modes": ("subaerial_proportion",),
-                "schema_only_modes": ("element_mean",),
+                "model": tuple(
+                    model
+                    for model, mode in (
+                        (
+                            "subaerial_proportion_bootstrap",
+                            "subaerial_proportion",
+                        ),
+                        (
+                            "reference_label_event_overlay",
+                            "reference_anomaly_series",
+                        ),
+                    )
+                    if mode in executable_time_series_modes
+                ),
+                "scientific_modes": scientific_time_series_modes,
+                "cli_executable_modes": executable_time_series_modes,
+                "schema_only_modes": schema_only_time_series_modes,
                 "age_units": ("Ma", "Ga"),
                 "fit_curve": ("disabled", "enabled"),
                 "randomness": ("explicit_seed",),
@@ -720,7 +766,20 @@ def build_tool_handlers(
                 "clustering": CLUSTERING_MODEL_ORDER,
                 "decomposition": DECOMPOSITION_MODEL_ORDER,
                 "anomaly_detection": ANOMALY_DETECTION_MODEL_ORDER,
-                "time_series": ("subaerial_proportion_bootstrap",),
+                "time_series": tuple(
+                    model
+                    for model, mode in (
+                        (
+                            "subaerial_proportion_bootstrap",
+                            "subaerial_proportion",
+                        ),
+                        (
+                            "reference_label_event_overlay",
+                            "reference_anomaly_series",
+                        ),
+                    )
+                    if mode in executable_time_series_modes
+                ),
             },
             unsupported_interactions=(
                 *CLASSIFICATION_UNSUPPORTED_INTERACTIONS,

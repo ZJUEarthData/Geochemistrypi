@@ -4,12 +4,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from geochemistrypi.data_mining.run_reference_anomaly_series import (
-    _associate_events,
-    _prepare_events,
-    _prepare_observations,
-    run_reference_anomaly_series,
-)
+from geochemistrypi.data_mining.run_reference_anomaly_series import _associate_events, _prepare_events, _prepare_observations, run_reference_anomaly_series
 
 
 def _observations() -> pd.DataFrame:

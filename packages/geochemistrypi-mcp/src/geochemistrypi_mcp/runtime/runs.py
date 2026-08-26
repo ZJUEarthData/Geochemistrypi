@@ -57,6 +57,7 @@ from ..planning.interaction_plan import AnalysisPlanCompiler, DatasetCompilation
 from ..planning.scientific_contract import assess_scientific_compatibility, canonical_scientific_contract, canonical_sha256, planned_artifact_requirements, resolved_environment_profile
 from ..tracking.experiments import ExperimentManager
 from .artifacts import discover_artifacts, read_time_series_preprocessing_summary
+from .cli_capabilities import probe_cli_capabilities
 from .cli_driver import CliInteractionDriver, CliRunCancelledError, validate_workspace_path
 from .environment import EnvironmentSnapshot, inspect_cli_environment
 
@@ -91,7 +92,15 @@ _VALIDATION_RECEIPT_FIELDS = {
 
 def _selected_models(request: Any) -> tuple[str, ...]:
     if request.task == "time_series":
-        return ("subaerial_proportion_bootstrap" if request.mode == "subaerial_proportion" else "element_mean",)
+        return (
+            {
+                "subaerial_proportion": "subaerial_proportion_bootstrap",
+                "element_mean": "element_mean",
+                "reference_anomaly_series": "reference_label_event_overlay",
+            }[request.mode],
+        )
+    if request.task == "decomposition" and request.mode == "embedding_label_overlay":
+        return ("embedding_label_overlay",)
     orders = {
         "classification": CLASSIFICATION_MODEL_ORDER,
         "regression": REGRESSION_MODEL_ORDER,
@@ -103,7 +112,7 @@ def _selected_models(request: Any) -> tuple[str, ...]:
 
 
 def _selected_tuning(request: Any) -> str:
-    if request.task == "time_series":
+    if request.task == "time_series" or (request.task == "decomposition" and request.mode == "embedding_label_overlay"):
         return "not_applicable"
     if request.model_selection.mode == "all":
         return request.model_selection.tuning
@@ -131,6 +140,12 @@ def _resolved_model_parameters(request: Any) -> dict[str, Any]:
                     "filter_maximum": request.filter_maximum,
                 }
             ),
+        }
+    if request.task == "decomposition" and request.mode == "embedding_label_overlay":
+        return {
+            "mode": request.mode,
+            "join_policy": "exact_identifier_set_one_to_one",
+            "positive_label_values": list(request.positive_label_values),
         }
     if request.model_selection.mode == "all" or _selected_tuning(request) == "automl":
         return {}
@@ -166,6 +181,25 @@ def _canonical_json_bytes(value: Any) -> bytes:
 
 def _json_sha256(value: Any) -> str:
     return hashlib.sha256(_canonical_json_bytes(value)).hexdigest()
+
+
+def _validation_request_value(request: Any) -> dict[str, Any]:
+    """Serialize a strict request without reintroducing mutually exclusive defaults."""
+
+    value = request.model_dump(mode="json")
+
+    def normalize(item: Any) -> None:
+        if isinstance(item, dict):
+            if item.get("header_row_indices"):
+                item.pop("header_row_index", None)
+            for child in item.values():
+                normalize(child)
+        elif isinstance(item, list):
+            for child in item:
+                normalize(child)
+
+    normalize(value)
+    return value
 
 
 def _plan_identity(plan: InteractionPlan) -> dict[str, Any]:
@@ -579,7 +613,7 @@ class RunManager:
         plan: InteractionPlan,
         environment_snapshot: EnvironmentSnapshot,
     ) -> dict[str, Any]:
-        request_value = request.model_dump(mode="json")
+        request_value = _validation_request_value(request)
         request_hash = _json_sha256(request_value)
         training = self._prepared_identity(prepared_training, resolved_training)
         application = self._prepared_identity(prepared_application, resolved_application) if prepared_application is not None and resolved_application is not None else None
@@ -809,6 +843,25 @@ class RunManager:
             dataset_context=dataset_context,
         )
         plan = AnalysisPlanCompiler.bind_scientific_adapter(plan, execution_request)
+        capability_probe = probe_cli_capabilities(
+            cli_executable,
+            plan.required_cli_capabilities,
+        )
+        if capability_probe.missing:
+            missing = ", ".join(capability_probe.missing)
+            plan = replace(
+                plan,
+                adapter_status="unavailable",
+                execution_ready=False,
+                blocking_issues=tuple(
+                    dict.fromkeys(
+                        (
+                            *plan.blocking_issues,
+                            f"The configured CLI is missing required public capabilities: {missing}.",
+                        )
+                    )
+                ),
+            )
         artifact_requirements = planned_artifact_requirements(request, plan)
         assessment = assess_scientific_compatibility(request, plan, artifact_requirements, environment_snapshot)
         if plan.execution_ready:
@@ -1056,6 +1109,25 @@ class RunManager:
             dataset_context=dataset_context,
         )
         plan = AnalysisPlanCompiler.bind_scientific_adapter(plan, execution_request)
+        capability_probe = probe_cli_capabilities(
+            cli_executable,
+            plan.required_cli_capabilities,
+        )
+        if capability_probe.missing:
+            missing = ", ".join(capability_probe.missing)
+            plan = replace(
+                plan,
+                adapter_status="unavailable",
+                execution_ready=False,
+                blocking_issues=tuple(
+                    dict.fromkeys(
+                        (
+                            *plan.blocking_issues,
+                            f"The configured CLI is missing required public capabilities: {missing}.",
+                        )
+                    )
+                ),
+            )
         if validation is not None:
             self._assert_validation_still_matches(
                 validation,

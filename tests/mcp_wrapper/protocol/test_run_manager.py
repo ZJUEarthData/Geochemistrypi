@@ -16,6 +16,7 @@ from geochemistrypi_mcp.contracts.classification import MODEL_DISPLAY_NAMES as C
 from geochemistrypi_mcp.contracts.classification import MODEL_ORDER as CLASSIFICATION_MODEL_ORDER
 from geochemistrypi_mcp.data.catalog import ResolvedDataset
 from geochemistrypi_mcp.planning.interaction_plan import AnalysisPlanCompiler, PlanCompilationError
+from geochemistrypi_mcp.runtime.environment import EnvironmentSnapshot
 from geochemistrypi_mcp.runtime.runs import RunManager, RunStateError
 from openpyxl import Workbook
 
@@ -113,7 +114,8 @@ def test_validate_prepares_nested_external_evaluation_dataset_independently(
     finally:
         manager.close()
 
-    assert preview.execution_ready is True
+    assert preview.execution_ready is False
+    assert "option:data-mining:--scientific-config" in " ".join(preview.blocking_issues)
     assert preview.source_row_count == 12
     assert preview.application_source_row_count == 3
     assert preview.application_preparation is not None
@@ -306,6 +308,121 @@ for name in ("artifacts", "metrics", "parameters", "summary"):
             )
     finally:
         manager.close()
+
+
+def test_multirow_header_validation_receipt_replays_without_mutually_exclusive_default(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "compound.xlsx"
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Training"
+    sheet.append(["SampleID", "Liquid", "Target"])
+    sheet.append([None, "SiO2", "Class"])
+    sheet.append(["A", 50.1, "basalt"])
+    sheet.append(["B", 61.0, "granite"])
+    workbook.save(source)
+    workbook.close()
+
+    script = tmp_path / "compound_cli.py"
+    script.write_text(
+        """from pathlib import Path
+import sys
+print('READY>', flush=True)
+input()
+root = Path('geopi_output') / sys.argv[1] / sys.argv[2]
+for name in ('artifacts', 'metrics', 'parameters', 'summary'):
+    (root / name).mkdir(parents=True)
+""",
+        encoding="utf-8",
+    )
+    request = ClassificationRequest(
+        training_dataset={
+            "source": "path",
+            "path": source,
+            "preparation": {
+                "worksheet": "Training",
+                "header_row_indices": (0, 1),
+                "header_join_separator": "__",
+                "selected_columns": (
+                    "SampleID",
+                    "Liquid__SiO2",
+                    "Target__Class",
+                ),
+            },
+        },
+        experiment_name="Compound",
+        run_name="Replay",
+        identifier_column="SampleID",
+        feature_columns=("Liquid__SiO2",),
+        target_column="Target__Class",
+    )
+    manager = _manager(tmp_path, script)
+    try:
+        preview = manager.validate(request)
+        receipt_path = manager.settings.service_state_root / "validations" / f"{preview.validation_id}.json"
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+        preparation = receipt["request"]["training_dataset"]["preparation"]
+        assert preparation["header_row_indices"] == [0, 1]
+        assert "header_row_index" not in preparation
+
+        acknowledgement = manager.start_validated(
+            preview.validation_id,
+            preview.request_hash,
+        )
+        assert _wait_for_state(manager, acknowledgement.run_id, {"succeeded"}) == "succeeded"
+    finally:
+        manager.close()
+
+
+def test_validation_fails_closed_when_configured_cli_lacks_required_command(
+    tmp_path: Path,
+) -> None:
+    observations = tmp_path / "reference.csv"
+    observations.write_text(
+        "when,signal,label\n2024-01-01,1.0,1\n2024-01-02,2.0,0\n",
+        encoding="utf-8",
+    )
+    request = TimeSeriesRequest(
+        training_dataset_path=observations,
+        mode="reference_anomaly_series",
+        experiment_name="Reference",
+        run_name="Capability Probe",
+        time_column="when",
+        signal_columns=("signal",),
+        reference_label_column="label",
+        reference_positive_values=("1",),
+        selected_columns=("when", "signal", "label"),
+    )
+    environment = EnvironmentSnapshot(
+        identity_sha256="a" * 64,
+        record={
+            "schema_version": 1,
+            "geochemistrypi": {"version": CLI_VERSION},
+            "mcp": {"version": "0.2.1"},
+            "python": {"version": "3.9.19"},
+            "platform": "test",
+            "runtime": {"kind": "test"},
+            "dependencies": {},
+        },
+    )
+    manager = RunManager(
+        McpSettings(
+            runs_root=tmp_path / "runs",
+            cli_executable=Path(sys.executable),
+            maximum_dataset_bytes=1024 * 1024,
+        ),
+        cli_resolver=lambda: (Path(sys.executable), CLI_VERSION),
+        environment_resolver=lambda _: environment,
+    )
+    try:
+        preview = manager.validate(request)
+    finally:
+        manager.close()
+
+    assert preview.execution_ready is False
+    assert preview.adapter_status == "unavailable"
+    assert "command:reference-anomaly-time-series" in " ".join(preview.blocking_issues)
 
 
 def test_validation_reference_rejects_dataset_change_before_process_creation(

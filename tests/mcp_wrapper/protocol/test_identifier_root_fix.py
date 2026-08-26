@@ -156,7 +156,44 @@ def test_original_result_pairing_respects_xlsx_numeric_storage_precision(tmp_pat
     pairing = verify_original_row_pairing(source, output, "SampleID", snapshot.row_lineage)
 
     assert pairing["verified"] is True
-    assert pairing["numeric_comparison_policy"] == "xlsx_relative_1e-14"
+    assert pairing["numeric_comparison_policy"] == "xlsx_relative_1e-14_absolute_1e-15"
+
+
+def test_original_result_pairing_accepts_small_csv_to_xlsx_round_trip_error(tmp_path: Path) -> None:
+    source = tmp_path / "source.csv"
+    source.write_text("SampleID,MgO\n43,0.0023160599651085574\n", encoding="utf-8")
+    snapshot = snapshot_dataset(source, 1024 * 1024)
+    output = tmp_path / "output"
+    data_directory = output / "artifacts" / "data"
+    data_directory.mkdir(parents=True)
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.append(["SampleID", "MgO"])
+    worksheet.append([43, 0.0023160599651085])
+    workbook.save(data_directory / "Data Original.xlsx")
+    workbook.close()
+
+    pairing = verify_original_row_pairing(source, output, "SampleID", snapshot.row_lineage)
+
+    assert pairing["verified"] is True
+
+
+def test_original_result_pairing_rejects_meaningful_small_numeric_change(tmp_path: Path) -> None:
+    source = tmp_path / "source.csv"
+    source.write_text("SampleID,MgO\n43,0.0023160599651085574\n", encoding="utf-8")
+    snapshot = snapshot_dataset(source, 1024 * 1024)
+    output = tmp_path / "output"
+    data_directory = output / "artifacts" / "data"
+    data_directory.mkdir(parents=True)
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.append(["SampleID", "MgO"])
+    worksheet.append([43, 0.0023160599661085])
+    workbook.save(data_directory / "Data Original.xlsx")
+    workbook.close()
+
+    with pytest.raises(SourceRowIdentityError, match="changed or reordered source row"):
+        verify_original_row_pairing(source, output, "SampleID", snapshot.row_lineage)
 
 
 def test_original_result_pairing_preserves_numeric_looking_text_from_csv(tmp_path: Path) -> None:

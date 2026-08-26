@@ -105,6 +105,8 @@ and managed MLflow UI control. Its analysis schemas cover:
 - anomaly detection;
 - world-map configuration;
 - time-series workflows;
+- externally labelled time-series and identifier-safe embedding/label artifact
+  composition;
 - exact all-model execution;
 - one-or-more-target regression with named per-target holdout metrics and
   application predictions;
@@ -137,6 +139,9 @@ computation into MCP:
    package versions plus supported runtime constraints; it selects a contract,
    not an installer. The validation response reports `READY`, `MISMATCH`, or
    `UNSPECIFIED`; a mismatch blocks process creation.
+   The observed CLI identity also hashes every installed `geochemistrypi/`
+   package payload file, so replacing package code without changing the Windows
+   launcher or version still changes the validation identity.
 4. Artifact validation binds produced files to scientific types and roles,
    adapter-declared CLI paths, safe path patterns, media types, cardinality,
    and optional JSON keys. Unsupported evidence is recorded as an unavailable

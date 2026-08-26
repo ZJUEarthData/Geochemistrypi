@@ -16,13 +16,8 @@ import pandas as pd
 
 matplotlib.use("Agg", force=True)
 
-from .run_time_series import (
-    _atomic_json,
-    _safe_output_name,
-    _sha256,
-    load_time_series_data,
-)
-from .utils.base import copy_files, create_geopi_output_dir
+from .run_time_series import _atomic_json, _safe_output_name, _sha256, load_time_series_data  # noqa: E402
+from .utils.base import copy_files, create_geopi_output_dir  # noqa: E402
 
 _ASSOCIATION_DIRECTIONS = {"before_event", "after_event", "symmetric"}
 _COMPARISON_PROVENANCE = {"calculated", "external", "reference"}
@@ -129,33 +124,22 @@ def _prepare_observations(
     )
     if comparison_label_column is None and comparison_positive_values:
         raise ValueError("comparison_positive_values require comparison_label_column.")
-    comparison_keys = (
-        _positive_label_keys(comparison_positive_values, "comparison_positive_values")
-        if comparison_label_column is not None
-        else frozenset()
-    )
+    comparison_keys = _positive_label_keys(comparison_positive_values, "comparison_positive_values") if comparison_label_column is not None else frozenset()
 
     selected = frame.loc[:, list(required)].copy()
     selected.insert(0, "source_row", np.arange(2, selected.shape[0] + 2, dtype=int))
     selected["observation_time_utc"] = _parse_times(selected[time_column], time_column)
     if selected["observation_time_utc"].duplicated().any():
         duplicate_count = int(selected["observation_time_utc"].duplicated(keep=False).sum())
-        raise ValueError(
-            "Observation time identifiers must be unique; "
-            f"{duplicate_count} rows share a configured time value."
-        )
+        raise ValueError("Observation time identifiers must be unique; " f"{duplicate_count} rows share a configured time value.")
     for column in signals:
         selected[column] = pd.to_numeric(selected[column], errors="coerce")
         values = selected[column].to_numpy(dtype=float)
         if not np.isfinite(values).all():
             raise ValueError(f"Signal column {column!r} must contain only finite numeric values.")
-    selected["reference_is_anomaly"] = selected[reference_label_column].map(
-        lambda value: _normalized_label(value) in reference_keys
-    )
+    selected["reference_is_anomaly"] = selected[reference_label_column].map(lambda value: _normalized_label(value) in reference_keys)
     if comparison_label_column is not None:
-        selected["comparison_is_anomaly"] = selected[comparison_label_column].map(
-            lambda value: _normalized_label(value) in comparison_keys
-        )
+        selected["comparison_is_anomaly"] = selected[comparison_label_column].map(lambda value: _normalized_label(value) in comparison_keys)
     selected = selected.sort_values(
         ["observation_time_utc", "source_row"],
         kind="stable",
@@ -168,29 +152,15 @@ def _prepare_observations(
                 "time": row["observation_time_utc"].isoformat(),
                 "signals": [float(row[column]) for column in signals],
                 "reference_label": _normalized_label(row[reference_label_column]),
-                **(
-                    {
-                        "comparison_label": _normalized_label(
-                            row[comparison_label_column]
-                        )
-                    }
-                    if comparison_label_column is not None
-                    else {}
-                ),
+                **({"comparison_label": _normalized_label(row[comparison_label_column])} if comparison_label_column is not None else {}),
             }
         )
     return selected, {
-        "source_order_identity_sha256": _canonical_sha256(
-            sorted(identity_rows, key=lambda item: item["source_row"])
-        ),
+        "source_order_identity_sha256": _canonical_sha256(sorted(identity_rows, key=lambda item: item["source_row"])),
         "time_order_identity_sha256": _canonical_sha256(identity_rows),
         "row_count": int(selected.shape[0]),
         "reference_anomaly_count": int(selected["reference_is_anomaly"].sum()),
-        "comparison_anomaly_count": (
-            int(selected["comparison_is_anomaly"].sum())
-            if comparison_label_column is not None
-            else None
-        ),
+        "comparison_anomaly_count": (int(selected["comparison_is_anomaly"].sum()) if comparison_label_column is not None else None),
     }
 
 
@@ -226,30 +196,18 @@ def _prepare_events(
     )
     _validate_columns(frame, required, "Event input")
     if bool(event_filter_column) != bool(event_filter_values):
-        raise ValueError(
-            "event_filter_column and event_filter_values must be supplied together."
-        )
-    filter_keys = (
-        _positive_label_keys(event_filter_values, "event_filter_values")
-        if event_filter_column is not None
-        else frozenset()
-    )
+        raise ValueError("event_filter_column and event_filter_values must be supplied together.")
+    filter_keys = _positive_label_keys(event_filter_values, "event_filter_values") if event_filter_column is not None else frozenset()
     events = frame.copy()
     events.insert(0, "event_source_row", np.arange(2, events.shape[0] + 2, dtype=int))
     input_count = int(events.shape[0])
     if event_filter_column is not None:
-        events = events.loc[
-            events[event_filter_column].map(
-                lambda value: _normalized_label(value) in filter_keys
-            )
-        ].copy()
+        events = events.loc[events[event_filter_column].map(lambda value: _normalized_label(value) in filter_keys)].copy()
     if events.empty:
         raise ValueError("Event filtering removed every event row.")
     events["event_time_utc"] = _parse_times(events[event_time_column], event_time_column)
     if event_identifier_column is None:
-        events["event_identifier"] = events["event_source_row"].map(
-            lambda value: f"source-row-{int(value)}"
-        )
+        events["event_identifier"] = events["event_source_row"].map(lambda value: f"source-row-{int(value)}")
     else:
         if events[event_identifier_column].isna().any():
             raise ValueError("Event identifiers must not contain missing values.")
@@ -285,21 +243,15 @@ def _associate_events(
     direction: str,
 ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     if direction not in _ASSOCIATION_DIRECTIONS:
-        raise ValueError(
-            f"association_direction must be one of {sorted(_ASSOCIATION_DIRECTIONS)}."
-        )
-    if window_days is not None and (
-        not np.isfinite(window_days) or window_days < 0
-    ):
+        raise ValueError(f"association_direction must be one of {sorted(_ASSOCIATION_DIRECTIONS)}.")
+    if window_days is not None and (not np.isfinite(window_days) or window_days < 0):
         raise ValueError("association_window_days must be a finite non-negative value.")
     anomalies = list(anomaly_times.sort_values())
     records = []
     for event in events.itertuples(index=False):
         candidates = []
         for anomaly_time in anomalies:
-            signed_days = (
-                event.event_time_utc - anomaly_time
-            ).total_seconds() / 86_400.0
+            signed_days = (event.event_time_utc - anomaly_time).total_seconds() / 86_400.0
             if direction == "before_event" and signed_days < 0:
                 continue
             if direction == "after_event" and signed_days > 0:
@@ -307,25 +259,15 @@ def _associate_events(
             candidates.append((abs(signed_days), signed_days, anomaly_time))
         nearest = min(candidates, default=None, key=lambda item: item[0])
         distance = nearest[0] if nearest is not None else None
-        associated = (
-            window_days is not None
-            and distance is not None
-            and distance <= window_days
-        )
+        associated = window_days is not None and distance is not None and distance <= window_days
         records.append(
             {
                 "event_source_row": int(event.event_source_row),
                 "event_identifier": str(event.event_identifier),
                 "event_time_utc": event.event_time_utc.isoformat(),
-                "nearest_reference_anomaly_time_utc": (
-                    nearest[2].isoformat() if nearest is not None else None
-                ),
-                "signed_days_event_minus_anomaly": (
-                    float(nearest[1]) if nearest is not None else None
-                ),
-                "absolute_distance_days": (
-                    float(distance) if distance is not None else None
-                ),
+                "nearest_reference_anomaly_time_utc": (nearest[2].isoformat() if nearest is not None else None),
+                "signed_days_event_minus_anomaly": (float(nearest[1]) if nearest is not None else None),
+                "absolute_distance_days": (float(distance) if distance is not None else None),
                 "within_association_window": bool(associated),
             }
         )
@@ -341,16 +283,12 @@ def _associate_events(
             "within_association_window",
         ],
     )
-    associated_count = (
-        int(table["within_association_window"].sum()) if not table.empty else 0
-    )
+    associated_count = int(table["within_association_window"].sum()) if not table.empty else 0
     return table, {
         "association_window_days": window_days,
         "association_direction": direction,
         "associated_event_count": associated_count,
-        "association_rate": (
-            float(associated_count / table.shape[0]) if not table.empty else None
-        ),
+        "association_rate": (float(associated_count / table.shape[0]) if not table.empty else None),
     }
 
 
@@ -484,9 +422,7 @@ def run_reference_anomaly_series(
     if not provenance or "\n" in provenance or "\r" in provenance:
         raise ValueError("reference_label_provenance must be a non-blank single-line value.")
     if comparison_label_provenance not in _COMPARISON_PROVENANCE:
-        raise ValueError(
-            "comparison_label_provenance must be calculated, external, or reference."
-        )
+        raise ValueError("comparison_label_provenance must be calculated, external, or reference.")
     source = Path(input_path).expanduser().resolve(strict=True)
     observations, observation_identity = _prepare_observations(
         load_time_series_data(source, sheet),
@@ -498,16 +434,8 @@ def run_reference_anomaly_series(
         comparison_positive_values=comparison_positive_values,
     )
 
-    event_source = (
-        Path(event_path).expanduser().resolve(strict=True)
-        if event_path is not None
-        else None
-    )
-    event_frame = (
-        load_time_series_data(event_source, event_sheet)
-        if event_source is not None
-        else None
-    )
+    event_source = Path(event_path).expanduser().resolve(strict=True) if event_path is not None else None
+    event_frame = load_time_series_data(event_source, event_sheet) if event_source is not None else None
     events, event_identity = _prepare_events(
         event_frame,
         event_time_column=event_time_column,
@@ -515,9 +443,7 @@ def run_reference_anomaly_series(
         event_filter_column=event_filter_column,
         event_filter_values=event_filter_values,
     )
-    anomaly_times = observations.loc[
-        observations["reference_is_anomaly"], "observation_time_utc"
-    ]
+    anomaly_times = observations.loc[observations["reference_is_anomaly"], "observation_time_utc"]
     associations, association_metrics = _associate_events(
         events,
         anomaly_times,
@@ -544,9 +470,7 @@ def run_reference_anomaly_series(
     manifest_path = summary_directory / "Reference Anomaly Time Series Manifest.json"
 
     csv_observations = observations.copy()
-    csv_observations["observation_time_utc"] = csv_observations[
-        "observation_time_utc"
-    ].map(lambda value: value.isoformat())
+    csv_observations["observation_time_utc"] = csv_observations["observation_time_utc"].map(lambda value: value.isoformat())
     csv_observations.to_csv(joined_path, index=False)
     associations.to_csv(association_path, index=False)
     _plot_reference_series(
@@ -598,11 +522,7 @@ def run_reference_anomaly_series(
             "reference_positive_values": list(reference_positive_values),
             "reference_provenance": provenance,
             "comparison_positive_values": list(comparison_positive_values),
-            "comparison_provenance": (
-                comparison_label_provenance
-                if comparison_label_column is not None
-                else None
-            ),
+            "comparison_provenance": (comparison_label_provenance if comparison_label_column is not None else None),
         },
         "event_filter_values": list(event_filter_values),
         "association": {
@@ -621,10 +541,7 @@ def run_reference_anomaly_series(
         (metrics_path, "reference_anomaly.metrics"),
         (parameters_path, "provenance.parameters"),
     )
-    artifact_entries = [
-        _artifact_entry(path, output_directory, role)
-        for path, role in primary_artifacts
-    ]
+    artifact_entries = [_artifact_entry(path, output_directory, role) for path, role in primary_artifacts]
     _atomic_json(
         artifact_index_path,
         {
@@ -639,19 +556,13 @@ def run_reference_anomaly_series(
             "workflow": "reference_anomaly_time_series",
             "label_provenance": {
                 "reference": provenance,
-                "comparison": (
-                    comparison_label_provenance
-                    if comparison_label_column is not None
-                    else None
-                ),
+                "comparison": (comparison_label_provenance if comparison_label_column is not None else None),
             },
             "observation_identity": observation_identity,
             "event_identity": event_identity,
             "metrics": metrics,
             "artifact_index": {
-                "relative_path": artifact_index_path.relative_to(
-                    output_directory
-                ).as_posix(),
+                "relative_path": artifact_index_path.relative_to(output_directory).as_posix(),
                 "sha256": _sha256(artifact_index_path),
             },
         },

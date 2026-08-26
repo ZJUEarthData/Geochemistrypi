@@ -134,6 +134,19 @@ def _semantic_override(relative_path: str) -> tuple[str, str] | None:
             "reference_anomaly_joined_table" if suffix == ".csv" else "reference_anomaly_figure",
             "reference_anomaly.joined_observations" if suffix == ".csv" else "reference_anomaly.figure",
         )
+    if "embedding label overlay artifact index" in name:
+        return "artifact_index", "provenance.artifact_index"
+    if "embedding label overlay manifest" in name:
+        return "scientific_manifest", "provenance.scientific_manifest"
+    if "embedding label overlay parameters" in name:
+        return "parameter_record", "provenance.parameters"
+    if "embedding label overlay counts" in name:
+        return "class_count_metrics", "artifact_composition.counts"
+    if "embedding label overlay" in name:
+        return (
+            "embedding_label_joined_table" if suffix == ".csv" else "embedding_label_overlay_figure",
+            "artifact_composition.joined_table" if suffix == ".csv" else "artifact_composition.figure",
+        )
     if "subaerial proportion" in name:
         return (
             "time_series_bin_table" if suffix == ".csv" else "time_series_figure",

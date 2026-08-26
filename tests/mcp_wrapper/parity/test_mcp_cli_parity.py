@@ -306,6 +306,93 @@ async def test_stdio_mcp_time_series_matches_noninteractive_public_cli(
 
 @pytest.mark.anyio
 @pytest.mark.mcp_cli_parity
+async def test_stdio_mcp_embedding_label_overlay_matches_direct_public_cli(
+    tmp_path: Path,
+) -> None:
+    cli_executable = Path(os.environ["GEOCHEMISTRYPI_CLI_EXECUTABLE"]).resolve()
+    coordinates = tmp_path / "coordinates.csv"
+    coordinates.write_text(
+        "SampleID,PC1,PC2\nC,3.0,30.0\nA,1.0,10.0\nB,2.0,20.0\n",
+        encoding="utf-8",
+    )
+    labels = tmp_path / "labels.csv"
+    labels.write_text(
+        "RecordID,Anomaly\nB,-1\nC,1\nA,-1\n",
+        encoding="utf-8",
+    )
+    request = DecompositionRequest(
+        training_dataset_path=coordinates,
+        application_dataset_path=labels,
+        mode="embedding_label_overlay",
+        experiment_name="Artifact Composition Parity",
+        run_name="Embedding Overlay",
+        identifier_column="SampleID",
+        feature_columns=("PC1", "PC2"),
+        scaling="none",
+        label_identifier_column="RecordID",
+        label_column="Anomaly",
+        positive_label_values=("-1",),
+    )
+    plan = AnalysisPlanCompiler().compile(request, cli_executable=cli_executable)
+    plan = _with_tracking_root(plan, tmp_path / "direct-overlay-tracking")
+    assert plan.steps == ()
+    direct_workspace = tmp_path / "direct-overlay"
+    direct_workspace.mkdir()
+    direct_environment = os.environ.copy()
+    for inherited_name in ISOLATED_CLI_ENVIRONMENT_VARIABLES:
+        direct_environment.pop(inherited_name, None)
+    direct_environment.update({"MPLBACKEND": "Agg", "PYTHONIOENCODING": "utf-8"})
+    direct = subprocess.run(
+        plan.public_command,
+        cwd=direct_workspace,
+        env=direct_environment,
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=180,
+    )
+    assert direct.returncode == 0, direct.stdout + direct.stderr
+
+    parameters = StdioServerParameters(
+        command=sys.executable,
+        args=["-m", "geochemistrypi_mcp"],
+        env=_stdio_environment(cli_executable, tmp_path / "overlay-state"),
+    )
+    async with Client(stdio_client(parameters)) as client:
+        started = await client.call_tool(
+            "start_analysis",
+            request.model_dump(mode="json"),
+        )
+        assert started.is_error is False, started.content[0].text
+        run_id = started.structured_content["run_id"]
+        deadline = time.monotonic() + 180
+        while True:
+            status = await client.call_tool("get_run_status", {"run_id": run_id})
+            assert status.is_error is False
+            state = status.structured_content["state"]
+            if state in {"succeeded", "partial_failure", "failed", "cancelled"}:
+                break
+            assert time.monotonic() < deadline
+            await asyncio.sleep(0.2)
+        assert state == "succeeded", status.structured_content
+        result_call = await client.call_tool("get_run_result", {"run_id": run_id})
+        assert result_call.is_error is False
+        result = result_call.structured_content
+
+    direct_run = direct_workspace / "geopi_output" / request.experiment_name / request.run_name
+    wrapped_run = Path(result["output_directory"])
+    assert result["task"] == "decomposition"
+    assert result["model"] == "embedding_label_overlay"
+    assert result["tuning"] == "not_applicable"
+    assert result["input_sha256"] == _sha256(coordinates)
+    assert _all_files(direct_run) == _all_files(wrapped_run)
+    assert (direct_run / "artifacts" / "data" / "Embedding Label Overlay.csv").read_bytes() == (wrapped_run / "artifacts" / "data" / "Embedding Label Overlay.csv").read_bytes()
+    assert _load_json(direct_run / "metrics" / "Embedding Label Overlay Counts.json") == _load_json(wrapped_run / "metrics" / "Embedding Label Overlay Counts.json")
+    assert result["reported_metrics"]["Embedding Label Overlay Counts.json"]["anomaly_count"] == 2
+
+
+@pytest.mark.anyio
+@pytest.mark.mcp_cli_parity
 async def test_stdio_mcp_anomaly_all_models_matches_real_cli_aggregate(
     request: pytest.FixtureRequest,
 ) -> None:

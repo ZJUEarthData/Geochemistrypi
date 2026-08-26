@@ -103,6 +103,12 @@ def _request_model_parameters(request: Any) -> dict[str, Any]:
                 }
             ),
         }
+    if request.task == "decomposition" and request.mode == "embedding_label_overlay":
+        return {
+            "mode": request.mode,
+            "join_policy": "exact_identifier_set_one_to_one",
+            "positive_label_values": list(request.positive_label_values),
+        }
     all_models = request.model_selection.mode == "all"
     tuning = request.model_selection.tuning if all_models else getattr(request, "tuning", "manual")
     if all_models or tuning == "automl":
@@ -370,6 +376,7 @@ class InteractionPlan:
     model_parameter_binding: Literal["interaction_plan", "runtime_selected", "not_applicable"] = "not_applicable"
     preprocessing_parameter_binding: Literal["interaction_plan", "not_applicable"] = "not_applicable"
     scientific_execution_contract_json: str | None = None
+    required_cli_capabilities: Tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if self.schema_version < 1:
@@ -386,6 +393,10 @@ class InteractionPlan:
         mapping_ids = [mapping.mapping_id for mapping in self.artifact_mappings]
         if len(mapping_ids) != len(set(mapping_ids)):
             raise ValueError("Interaction plan artifact mapping ids must be unique.")
+        if any(not requirement for requirement in self.required_cli_capabilities):
+            raise ValueError("Required CLI capabilities must not contain blank values.")
+        if len(self.required_cli_capabilities) != len(set(self.required_cli_capabilities)):
+            raise ValueError("Required CLI capabilities must be unique.")
         if self.scientific_execution_contract_json is not None:
             try:
                 scientific_execution = json.loads(self.scientific_execution_contract_json)
@@ -2941,6 +2952,82 @@ class DecompositionPlanCompiler:
         dataset_context: DatasetCompilationContext | None = None,
     ) -> InteractionPlan:
         dataset_context = dataset_context or DatasetCompilationContext()
+        if request.mode == "embedding_label_overlay":
+            coordinate_path = request.training_dataset_path.expanduser().resolve()
+            label_path = request.application_dataset_path.expanduser().resolve()
+            if not coordinate_path.is_file():
+                raise PlanCompilationError(f"Coordinate data file does not exist: {coordinate_path}")
+            if not label_path.is_file():
+                raise PlanCompilationError(f"Label data file does not exist: {label_path}")
+            coordinate_columns = _read_dataset_columns(
+                coordinate_path,
+                source=dataset_context.training_source,
+                sheet=request.coordinate_sheet,
+            )
+            label_columns = _read_dataset_columns(
+                label_path,
+                source=dataset_context.application_source or "path",
+                sheet=request.label_sheet,
+            )
+            missing_coordinate_columns = sorted({request.identifier_column, *request.feature_columns} - set(coordinate_columns))
+            if missing_coordinate_columns:
+                raise PlanCompilationError("Embedding coordinate columns are absent from the coordinate dataset: " f"{missing_coordinate_columns}")
+            missing_label_columns = sorted({request.label_identifier_column, request.label_column} - set(label_columns))
+            if missing_label_columns:
+                raise PlanCompilationError("Embedding label columns are absent from the label dataset: " f"{missing_label_columns}")
+            executable = Path(cli_executable).expanduser().resolve() if cli_executable else resolve_public_cli_executable()
+            if not executable.is_file():
+                raise PlanCompilationError(f"CLI executable does not exist: {executable}")
+            command = [
+                str(executable),
+                "embedding-label-overlay",
+                "--coordinates",
+                str(coordinate_path),
+                "--labels",
+                str(label_path),
+                "--coordinate-sheet",
+                request.coordinate_sheet,
+                "--label-sheet",
+                request.label_sheet,
+                "--coordinate-identifier-column",
+                request.identifier_column,
+                "--label-identifier-column",
+                request.label_identifier_column,
+                "--x-column",
+                request.feature_columns[0],
+                "--y-column",
+                request.feature_columns[1],
+                "--label-column",
+                request.label_column,
+                "--experiment-name",
+                request.experiment_name,
+                "--run-name",
+                request.run_name,
+            ]
+            for value in request.positive_label_values:
+                command.extend(("--positive-label-value", value))
+            base = Path(request.experiment_name) / request.run_name
+            return InteractionPlan(
+                schema_version=INTERACTION_PLAN_VERSION,
+                name="decomposition-embedding-label-overlay-v1",
+                public_command=tuple(command),
+                steps=(),
+                expected_output_relative_paths=(
+                    (base / "artifacts" / "data" / "Embedding Label Overlay.csv").as_posix(),
+                    (base / "artifacts" / "image" / "model_output" / "Embedding Label Overlay.png").as_posix(),
+                    (base / "artifacts" / "image" / "model_output" / "Embedding Label Overlay.pdf").as_posix(),
+                    (base / "metrics" / "Embedding Label Overlay Counts.json").as_posix(),
+                    (base / "parameters" / "Embedding Label Overlay Parameters.json").as_posix(),
+                    (base / "summary" / "Embedding Label Overlay Artifact Index.json").as_posix(),
+                    (base / "summary" / "Embedding Label Overlay Manifest.json").as_posix(),
+                ),
+                workflow_family="artifact_composition",
+                workflow_mode="embedding_label_overlay",
+                method="exact_identifier_join",
+                adapter_id="geochemistrypi-cli.artifact-composition.embedding-label-overlay",
+                adapter_version="1",
+                required_cli_capabilities=("command:embedding-label-overlay",),
+            )
         data_path = request.training_dataset_path.expanduser().resolve()
         if not data_path.is_file():
             raise PlanCompilationError(f"Training data file does not exist: {data_path}")
@@ -3892,6 +3979,7 @@ class AnalysisPlanCompiler:
                     plan,
                     scientific_contract_id=f"scientific-contract-v2/time_series/{request.mode}/{method}",
                     seed_binding="request_parameter" if request.mode == "subaerial_proportion" else "not_applicable",
+                    required_cli_capabilities=(("command:reference-anomaly-time-series",) if request.mode == "reference_anomaly_series" else plan.required_cli_capabilities),
                     **binding_fields,
                 )
             return dataclass_replace(
@@ -3903,6 +3991,24 @@ class AnalysisPlanCompiler:
                 adapter_id=f"geochemistrypi-cli.time-series.{request.mode.replace('_', '-')}",
                 adapter_version="1",
                 seed_binding="request_parameter" if request.mode == "subaerial_proportion" else "not_applicable",
+                required_cli_capabilities=(("command:reference-anomaly-time-series",) if request.mode == "reference_anomaly_series" else plan.required_cli_capabilities),
+                **binding_fields,
+            )
+        if request.task == "decomposition" and request.mode == "embedding_label_overlay":
+            binding_fields = _scientific_binding_fields(
+                request,
+                "artifact_composition",
+                request.mode,
+                "exact_identifier_join",
+                plan.expected_output_relative_paths,
+                (),
+            )
+            binding_fields["model_parameter_binding"] = "not_applicable"
+            return dataclass_replace(
+                plan,
+                scientific_contract_id="scientific-contract-v2/artifact_composition/embedding_label_overlay/exact_identifier_join",
+                seed_binding="not_applicable",
+                required_cli_capabilities=("command:embedding-label-overlay",),
                 **binding_fields,
             )
         all_models = request.model_selection.mode == "all"
@@ -4026,6 +4132,7 @@ class AnalysisPlanCompiler:
             seed_binding=seed_binding,
             scientific_execution_contract_json=scientific_execution_json,
             expected_output_relative_paths=expected_output_relative_paths,
+            required_cli_capabilities=(("option:data-mining:--scientific-config",) if scientific_execution is not None else plan.required_cli_capabilities),
             **binding_fields,
         )
 

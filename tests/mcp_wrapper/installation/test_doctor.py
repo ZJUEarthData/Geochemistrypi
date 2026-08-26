@@ -82,6 +82,8 @@ def test_doctor_checks_both_runtimes_storage_and_real_protocol_boundary(tmp_path
         command = tuple(command)
         if command[-1] == "--version":
             return subprocess.CompletedProcess(command, 0, f"Geochemistry Pi {CLI_VERSION}\n", "")
+        if command[-1] == "--help":
+            return subprocess.CompletedProcess(command, 0, "--scientific-config\n", "")
         if "scientific-runtime-ready" in command[-1]:
             return subprocess.CompletedProcess(command, 0, "scientific-runtime-ready\n", "")
         package = "geochemistrypi-mcp" if str(paths.mcp_python) == command[0] else "geochemistrypi"
@@ -114,6 +116,38 @@ def test_doctor_checks_both_runtimes_storage_and_real_protocol_boundary(tmp_path
         "cli-command",
         "mcp-protocol",
     }
+
+
+def test_doctor_rejects_cli_without_scientific_config_option(tmp_path: Path) -> None:
+    paths = _prepared_paths(tmp_path)
+
+    def runner(command):
+        command = tuple(command)
+        if command[-1] == "--version":
+            return subprocess.CompletedProcess(command, 0, f"Geochemistry Pi {CLI_VERSION}\n", "")
+        if command[-1] == "--help":
+            return subprocess.CompletedProcess(command, 0, "public command help\n", "")
+        if "scientific-runtime-ready" in command[-1]:
+            return subprocess.CompletedProcess(command, 0, "scientific-runtime-ready\n", "")
+        package = "geochemistrypi-mcp" if str(paths.mcp_python) == command[0] else "geochemistrypi"
+        python = [3, 11, 9] if package == "geochemistrypi-mcp" else [3, 9, 19]
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            json.dumps({"python": python, "package": SERVER_VERSION if package.endswith("-mcp") else CLI_VERSION}),
+            "",
+        )
+
+    report = run_doctor(
+        paths,
+        runner=runner,
+        protocol_probe=lambda _: (True, "13 tools discovered"),
+        inventory_probe=_inventory,
+    )
+
+    check = next(item for item in report.checks if item.name == "cli-command")
+    assert check.healthy is False
+    assert "--scientific-config" in check.detail
 
 
 def test_doctor_reports_version_and_protocol_failures_without_crashing(tmp_path: Path) -> None:

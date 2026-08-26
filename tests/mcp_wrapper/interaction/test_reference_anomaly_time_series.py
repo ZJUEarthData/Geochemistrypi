@@ -2,15 +2,10 @@ import csv
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
-
 from geochemistrypi_mcp.api.schemas import TimeSeriesRequest
 from geochemistrypi_mcp.planning.interaction_plan import AnalysisPlanCompiler, PlanCompilationError
-from geochemistrypi_mcp.planning.scientific_contract import (
-    assess_scientific_compatibility,
-    canonical_scientific_contract,
-    planned_artifact_requirements,
-)
+from geochemistrypi_mcp.planning.scientific_contract import assess_scientific_compatibility, canonical_scientific_contract, planned_artifact_requirements
+from pydantic import ValidationError
 
 
 def _write_observations(path: Path) -> None:
@@ -130,9 +125,7 @@ def test_reference_anomaly_series_fails_before_cli_on_missing_signal(
     events = tmp_path / "events.csv"
     _write_observations(observations)
     _write_events(events)
-    request = _request(observations, events).model_copy(
-        update={"signal_columns": ("absent signal",)}
-    )
+    request = _request(observations, events).model_copy(update={"signal_columns": ("absent signal",)})
     with pytest.raises(PlanCompilationError, match="absent from the observation dataset"):
         AnalysisPlanCompiler().compile(
             request,

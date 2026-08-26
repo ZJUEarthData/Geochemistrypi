@@ -14,6 +14,9 @@ from .headers import HeaderValidationError, normalize_dataset_header
 from .row_identity import SourceRowIdentityError, SourceRowLineage
 from .source_rows import iter_cli_csv_rows, iter_cli_excel_rows
 
+_XLSX_RELATIVE_NUMERIC_TOLERANCE = Decimal("1e-14")
+_XLSX_ABSOLUTE_NUMERIC_TOLERANCE = Decimal("1e-15")
+
 
 def _canonical_number(number: Decimal) -> str:
     if not number.is_finite():
@@ -76,7 +79,10 @@ def _values_equivalent(
             return False
         if source_number.is_finite() and output_number.is_finite() and output_is_xlsx:
             magnitude = max(abs(source_number), abs(output_number))
-            tolerance = magnitude * Decimal("1e-14")
+            tolerance = max(
+                magnitude * _XLSX_RELATIVE_NUMERIC_TOLERANCE,
+                _XLSX_ABSOLUTE_NUMERIC_TOLERANCE,
+            )
             return abs(source_number - output_number) <= tolerance
         return source_number == output_number
     return _canonical_value(source_value) == _canonical_value(output_value)
@@ -177,7 +183,7 @@ def verify_original_row_pairing(
         "scientific_identifier_column": identifier_column,
         "scientific_identifier_values_preserved": True,
         "source_rows_and_order_preserved": True,
-        "numeric_comparison_policy": "xlsx_relative_1e-14" if output_is_xlsx else "exact",
+        "numeric_comparison_policy": "xlsx_relative_1e-14_absolute_1e-15" if output_is_xlsx else "exact",
         "source_row_count": lineage.source_row_count,
         "ordered_pairing_sha256": pairing_digest.hexdigest(),
     }

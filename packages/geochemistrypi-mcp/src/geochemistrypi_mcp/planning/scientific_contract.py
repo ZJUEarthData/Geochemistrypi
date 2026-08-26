@@ -73,6 +73,13 @@ def _column_roles(request: Any) -> dict[str, Any]:
             "features": list(request.feature_columns),
             "target": list(request.resolved_target_columns),
         }
+    if request.task == "decomposition" and request.mode == "embedding_label_overlay":
+        return {
+            "coordinate_identifier": request.identifier_column,
+            "coordinates": list(request.feature_columns),
+            "label_identifier": request.label_identifier_column,
+            "label": request.label_column,
+        }
     if request.task in {"clustering", "decomposition", "anomaly_detection"}:
         return {
             "identifier": request.identifier_column,
@@ -157,6 +164,12 @@ def _parameters(request: Any) -> dict[str, Any]:
             "iterations": request.iterations,
             "seed": request.seed,
             "fit_curve": request.fit_curve,
+        }
+    if request.task == "decomposition" and request.mode == "embedding_label_overlay":
+        return {
+            "mode": request.mode,
+            "join_policy": "exact_identifier_set_one_to_one",
+            "positive_label_values": list(request.positive_label_values),
         }
     return {
         "model_selection": request.model_selection.model_dump(mode="json"),

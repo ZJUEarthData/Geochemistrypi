@@ -200,7 +200,6 @@ def test_decomposition_rejects_invalid_data_and_model_dimensions(tmp_path: Path)
 def test_decomposition_schema_rejects_supervised_and_unavailable_inputs() -> None:
     for field, value in (
         ("target_column", "Label"),
-        ("application_dataset_path", DATASET_PATH),
         ("tuning", "manual"),
         ("feature_selection", {"method": "none"}),
     ):
@@ -211,3 +210,55 @@ def test_decomposition_schema_rejects_supervised_and_unavailable_inputs() -> Non
         _request(missing_values={"method": "keep"})
     with pytest.raises(ValidationError, match="union_tag_invalid"):
         _request(model={"type": "umap"})
+
+
+def test_embedding_label_overlay_compiles_generic_noninteractive_producer(
+    tmp_path: Path,
+) -> None:
+    coordinates = tmp_path / "coordinates.csv"
+    coordinates.write_text(
+        "SampleID,PC1,PC2\nA,1.0,2.0\nB,3.0,4.0\n",
+        encoding="utf-8",
+    )
+    labels = tmp_path / "labels.csv"
+    labels.write_text(
+        "RecordID,Anomaly\nB,-1\nA,1\n",
+        encoding="utf-8",
+    )
+
+    request = _request(
+        coordinates,
+        mode="embedding_label_overlay",
+        application_dataset_path=labels,
+        feature_columns=("PC1", "PC2"),
+        scaling="none",
+        label_identifier_column="RecordID",
+        label_column="Anomaly",
+        positive_label_values=("-1",),
+    )
+    plan = DecompositionPlanCompiler().compile(
+        request,
+        cli_executable=Path(sys.executable),
+    )
+
+    assert plan.name == "decomposition-embedding-label-overlay-v1"
+    assert plan.steps == ()
+    assert plan.public_command[1] == "embedding-label-overlay"
+    assert "command:embedding-label-overlay" in plan.required_cli_capabilities
+    assert {Path(path).name for path in plan.expected_output_relative_paths} == {
+        "Embedding Label Overlay.csv",
+        "Embedding Label Overlay.png",
+        "Embedding Label Overlay.pdf",
+        "Embedding Label Overlay Counts.json",
+        "Embedding Label Overlay Parameters.json",
+        "Embedding Label Overlay Artifact Index.json",
+        "Embedding Label Overlay Manifest.json",
+    }
+
+
+def test_decomposition_model_mode_rejects_overlay_secondary_dataset() -> None:
+    with pytest.raises(
+        ValidationError,
+        match="decomposition model mode does not accept an application dataset",
+    ):
+        _request(application_dataset_path=DATASET_PATH)

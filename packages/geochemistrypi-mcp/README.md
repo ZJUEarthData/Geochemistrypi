@@ -190,7 +190,8 @@ On macOS or Linux:
 The doctor performs ten checks: persisted paths and all six resource limits;
 the exact CLI/MCP compatibility manifest; release-manifest and wheel hashes;
 both installed distribution-inventory hashes; writable managed storage; exact
-private Python/package versions; the public CLI command; the complete
+private Python/package versions; the required public CLI commands and
+`--scientific-config` option; the complete
 scientific CLI import path (including native dependencies); zero-argument MCP
 startup; and the 13 expected tools. It also rejects a claimed rollback whose
 private snapshot is missing. Add `--json` for machine-readable output.
@@ -486,7 +487,8 @@ bounds before the CLI starts; the CLI remains responsible for the original
 normal/anomalous tables, diagrams, model files, and transform pipeline.
 
 A Time Series request selects `mode="subaerial_proportion"` (the backward-
-compatible default) or `mode="element_mean"`. Subaerial-proportion requests
+compatible default), `mode="element_mean"`, or
+`mode="reference_anomaly_series"`. Subaerial-proportion requests
 can reproduce the complete selected-data and missing-value preparation
 performed by the interactive workflow. For example,
 `selected_columns` may contain the nine consecutive scientific fields selected
@@ -501,6 +503,16 @@ sample counts. The current public CLI has no matching element-mean command, so
 validation returns `valid=true`, `execution_ready=false`, and an unavailable
 adapter; starting that receipt fails before process creation. It is never
 substituted with the subaerial-proportion workflow.
+
+`reference_anomaly_series` renders externally supplied anomaly labels and
+optional event records without fitting or changing a detector. Its CLI command
+is probed before validation can report execution readiness. Decomposition also
+offers `mode="embedding_label_overlay"` as a generic artifact-composition
+producer: it joins an existing two-coordinate table and a label table by exact
+one-to-one identifier sets, then writes the joined CSV, anomaly counts,
+PNG/PDF figures, parameters, artifact index, and scientific manifest. It does
+not rerun PCA or anomaly detection and uses the existing analysis tools rather
+than adding another MCP tool.
 
 ## Development verification
 
@@ -545,7 +557,10 @@ all-empty worksheet tail rows are not misclassified as samples. For non-Time
 Series runs, the wrapper verifies the complete ordered `Data Original` table
 against the source before publishing the result. Identity collisions, schema or
 row-count mismatches, changed/reordered rows, and indeterminate pairing remain
-fail-closed.
+fail-closed. Numeric CSV-to-XLSX round trips use the explicit policy
+`max(1e-14 * magnitude, 1e-15)` so spreadsheet serialization noise does not
+invalidate an otherwise identical row; text, identifiers, dates, missingness,
+row order, and numeric changes above that bound are still checked strictly.
 
 `list_datasets` discovers the eight datasets shipped with the installed CLI and
 supported `.csv`/`.xlsx` files directly inside `Desktop/geopi_input`. Discovery
