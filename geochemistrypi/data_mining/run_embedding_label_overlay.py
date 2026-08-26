@@ -238,11 +238,11 @@ def run_embedding_label_overlay(
     root = Path(output_root).expanduser().resolve()
     create_geopi_output_dir(str(root), experiment_name, run_name)
     output_directory = Path(os.environ["GEOPI_OUTPUT_PATH"]).resolve()
-    data_directory = Path(os.environ["GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"])
-    image_directory = Path(os.environ["GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH"])
-    metrics_directory = Path(os.environ["GEOPI_OUTPUT_METRICS_PATH"])
-    parameters_directory = Path(os.environ["GEOPI_OUTPUT_PARAMETERS_PATH"])
-    summary_directory = Path(os.environ["GEOPI_OUTPUT_SUMMARY_PATH"])
+    data_directory = Path(os.environ["GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"]).resolve()
+    image_directory = Path(os.environ["GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH"]).resolve()
+    metrics_directory = Path(os.environ["GEOPI_OUTPUT_METRICS_PATH"]).resolve()
+    parameters_directory = Path(os.environ["GEOPI_OUTPUT_PARAMETERS_PATH"]).resolve()
+    summary_directory = Path(os.environ["GEOPI_OUTPUT_SUMMARY_PATH"]).resolve()
 
     joined_path = data_directory / "Embedding Label Overlay.csv"
     png_path = image_directory / "Embedding Label Overlay.png"

@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 from pytest import MonkeyPatch
 
-from geochemistrypi.data_mining.data.data_readiness import limit_num_input, num2option, num_input, select_column_name
+from geochemistrypi.data_mining.data.data_readiness import limit_num_input, num2option, num_input, optional_num_input, select_column_name
 
 
 def test_num2option() -> None:
@@ -22,6 +22,12 @@ def test_valid_num_input_one_time(monkeypatch: MonkeyPatch) -> None:
     slogan = "@Number"
     monkeypatch.setattr("builtins.input", lambda _: inputs.pop(0))
     assert num_input(prefix, slogan) == 1
+
+
+def test_optional_num_input_maps_blank_to_typed_none(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setattr("builtins.input", lambda _: "")
+
+    assert optional_num_input("Model", "Max Depth") is None
 
 
 def test_invalid_num_input_two_time(monkeypatch: MonkeyPatch) -> None:

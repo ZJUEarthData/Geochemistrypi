@@ -213,6 +213,28 @@ def _plan_identity(plan: InteractionPlan) -> dict[str, Any]:
     }
 
 
+def _materialize_tracking_root(
+    plan: InteractionPlan,
+    tracking_root: Path | None,
+) -> InteractionPlan:
+    """Bind installer-owned runtime paths before a plan receives an identity."""
+
+    if "data-mining" not in plan.public_command:
+        return plan
+    if tracking_root is None:
+        raise RunStateError("The installer-owned MLflow tracking root is not configured.")
+    if "--tracking-root" in plan.public_command:
+        return plan
+    return replace(
+        plan,
+        public_command=(
+            *plan.public_command,
+            "--tracking-root",
+            str(tracking_root),
+        ),
+    )
+
+
 def _replace_with_bounded_permission_retry(source: Path, destination: Path) -> None:
     """Retry only transient permission failures while publishing metadata."""
     for attempt in range(len(_ATOMIC_REPLACE_RETRY_DELAYS_SECONDS) + 1):
@@ -862,6 +884,7 @@ class RunManager:
                     )
                 ),
             )
+        plan = _materialize_tracking_root(plan, self.settings.tracking_root)
         artifact_requirements = planned_artifact_requirements(request, plan)
         assessment = assess_scientific_compatibility(request, plan, artifact_requirements, environment_snapshot)
         if plan.execution_ready:
@@ -1128,6 +1151,7 @@ class RunManager:
                     )
                 ),
             )
+        plan = _materialize_tracking_root(plan, self.settings.tracking_root)
         if validation is not None:
             self._assert_validation_still_matches(
                 validation,
@@ -1146,17 +1170,8 @@ class RunManager:
             explanation = "; ".join(assessment.blocking_issues) or "The exact scientific contract has no executable CLI adapter."
             raise RunStateError(f"Validated scientific contract is not execution-ready: {explanation}")
         if "data-mining" in plan.public_command:
-            if self.settings.tracking_root is None:
-                raise RunStateError("The installer-owned MLflow tracking root is not configured.")
+            assert self.settings.tracking_root is not None
             self.settings.tracking_root.mkdir(parents=True, exist_ok=True)
-            plan = replace(
-                plan,
-                public_command=(
-                    *plan.public_command,
-                    "--tracking-root",
-                    str(self.settings.tracking_root),
-                ),
-            )
         run_id = _new_run_id()
         paths = RunPaths.create(self.settings.runs_root, run_id)
         validate_workspace_path(plan, paths.workspace)
@@ -1398,7 +1413,7 @@ class RunManager:
                     source_row_count=snapshot.row_lineage.source_row_count,
                     indexed_relative_paths=tuple(entry["relative_path"] for entry in discovered.all_index_entries),
                 )
-                if request.task == "time_series"
+                if request.task == "time_series" and request.mode in {"subaerial_proportion", "continuous"}
                 else None
             )
             is_aggregate = request.task != "time_series" and request.model_selection.mode == "all"

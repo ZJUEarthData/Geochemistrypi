@@ -147,7 +147,7 @@ def _semantic_override(relative_path: str) -> tuple[str, str] | None:
             "embedding_label_joined_table" if suffix == ".csv" else "embedding_label_overlay_figure",
             "artifact_composition.joined_table" if suffix == ".csv" else "artifact_composition.figure",
         )
-    if "subaerial proportion" in name:
+    if "subaerial proportion" in name or "continuous time series" in name:
         return (
             "time_series_bin_table" if suffix == ".csv" else "time_series_figure",
             "time_series.bins" if suffix == ".csv" else "time_series.figure",

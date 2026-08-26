@@ -93,7 +93,7 @@ def _request_model_parameters(request: Any) -> dict[str, Any]:
                     "age_unit": request.age_unit,
                     "fit_curve": request.fit_curve,
                 }
-                if request.mode == "subaerial_proportion"
+                if request.mode in {"subaerial_proportion", "continuous"}
                 else {
                     "aggregation": request.aggregation,
                     "uncertainty": request.uncertainty,
@@ -101,6 +101,17 @@ def _request_model_parameters(request: Any) -> dict[str, Any]:
                     "filter_minimum": request.filter_minimum,
                     "filter_maximum": request.filter_maximum,
                 }
+            ),
+            **(
+                {
+                    "relative_value_two_sigma": request.relative_value_two_sigma,
+                    "minimum_samples_per_bin": request.minimum_samples_per_bin,
+                    "filter_minimum": request.filter_minimum,
+                    "filter_maximum": request.filter_maximum,
+                    "compact_y_axis": request.compact_y_axis,
+                }
+                if request.mode == "continuous"
+                else {}
             ),
         }
     if request.task == "decomposition" and request.mode == "embedding_label_overlay":
@@ -202,11 +213,16 @@ def _scientific_execution_contract_json(
     folds = request.evaluation.folds if request.evaluation.folds is not None else 10
     evaluation_mode = request.model.detection_mode if model_type == "local_outlier_factor" else "external_labeled" if request.evaluation.mode == "external_labeled" else "internal_holdout"
     payload = {
-        "schema_version": 2,
+        "schema_version": 3,
         "workflow_family": workflow_family,
         "workflow_mode": workflow_mode,
         "method": model_type,
         "split_seed": split_seed,
+        "split_strategy": (
+            None
+            if external_labeled_training or not supervised
+            else (request.evaluation.split_strategy if request.evaluation.split_strategy != "cli_default" else "stratified_holdout" if request.task == "classification" else "random_holdout")
+        ),
         "model_seed": model_seed,
         "cross_validation_folds": folds,
         "evaluation_mode": evaluation_mode,
@@ -269,7 +285,7 @@ def _scientific_binding_fields(
 ) -> dict[str, Any]:
     environment_pointer, environment_profile_id, environment_identity = _environment_profile_binding(request)
     if request.task == "time_series":
-        requested_seeds = (("model", request.seed),) if request.mode == "subaerial_proportion" else ()
+        requested_seeds = (("model", request.seed),) if request.mode in {"subaerial_proportion", "continuous"} else ()
     else:
         reproducibility = request.reproducibility
         requested_seeds = tuple(
@@ -463,6 +479,7 @@ def _read_dataset_columns(
     *,
     source: DatasetSource = "path",
     sheet: str = "0",
+    requested_columns: Sequence[str] = (),
 ) -> Tuple[str, ...]:
     suffix = path.suffix.lower()
     if suffix == ".csv":
@@ -494,11 +511,16 @@ def _read_dataset_columns(
             raise PlanCompilationError(f"Unable to read the Excel header from {path}: {exc}") from exc
     else:
         raise PlanCompilationError(f"PR3 supports .csv and .xlsx data; received {path.suffix or 'a file without an extension'}.")
+    if requested_columns:
+        canonical_names = [(f"Unnamed: {index}" if value is None or value == "" else str(value)).lstrip("\ufeff") for index, value in enumerate(row)]
+        ambiguous = sorted(column for column in set(requested_columns) if canonical_names.count(column) > 1)
+        if ambiguous:
+            raise PlanCompilationError("Selected or otherwise referenced dataset columns are ambiguous after header normalization: " f"{ambiguous}")
     try:
         return normalize_dataset_header(
             row,
             256,
-            allow_pandas_duplicate_mangling=source_allows_pandas_duplicate_mangling(source),
+            allow_pandas_duplicate_mangling=(source_allows_pandas_duplicate_mangling(source) or bool(requested_columns)),
         )
     except HeaderValidationError as exc:
         raise PlanCompilationError(str(exc)) from exc
@@ -1143,7 +1165,7 @@ def _model_steps(request: ClassificationRequest) -> list[InteractionStep]:
 
     def add(step_id: str, label: str, response: Any) -> None:
         anchors = (prompt, label, "(Model) ➜") if not steps else (label, "(Model) ➜")
-        steps.append(InteractionStep(step_id, anchors, str(response)))
+        steps.append(InteractionStep(step_id, anchors, "" if response is None else str(response)))
 
     def add_float(step_id: str, label: str, value: float, default: float) -> None:
         add(step_id, label, _float_response(value, default))
@@ -1345,7 +1367,7 @@ def _regression_model_steps(request: RegressionRequest) -> list[InteractionStep]
 
     def add(step_id: str, label: str, response: Any) -> None:
         anchors = (prompt, label, "(Model)") if not steps else (label, "(Model)")
-        steps.append(InteractionStep(step_id, anchors, str(response)))
+        steps.append(InteractionStep(step_id, anchors, "" if response is None else str(response)))
 
     def add_float(step_id: str, label: str, value: float, default: float) -> None:
         add(step_id, label, _float_response(value, default))
@@ -3577,6 +3599,10 @@ class TimeSeriesPlanCompiler:
             data_path,
             source=dataset_context.training_source,
             sheet=request.sheet,
+            requested_columns=(
+                *request.resolved_selected_columns,
+                *((request.identifier_column,) if request.identifier_column is not None else ()),
+            ),
         )
         if request.mode == "reference_anomaly_series":
             observation_roles = (
@@ -3786,12 +3812,24 @@ class TimeSeriesPlanCompiler:
                     "the prohibited scientific/CLI layer.",
                 ),
             )
+        continuous = request.mode == "continuous"
         roles = (
-            request.age_column,
-            request.maximum_age_column,
-            request.probability_column,
-            request.latitude_column,
-            request.longitude_column,
+            (
+                request.age_column,
+                request.minimum_age_column,
+                request.maximum_age_column,
+                request.value_column,
+                request.latitude_column,
+                request.longitude_column,
+            )
+            if continuous
+            else (
+                request.age_column,
+                request.maximum_age_column,
+                request.probability_column,
+                request.latitude_column,
+                request.longitude_column,
+            )
         )
         selected_columns = request.resolved_selected_columns
         required_columns = set(selected_columns)
@@ -3829,13 +3867,31 @@ class TimeSeriesPlanCompiler:
                 if not math.isfinite(number):
                     raise PlanCompilationError(f"Time Series column {column!r} contains a missing or non-finite value at data row {row_number}.")
                 values.append(number)
-            age, age_max, probability, latitude, longitude = values
-            if age < 0:
-                raise PlanCompilationError(f"Time Series ages must be non-negative; data row {row_number} contains {age}.")
-            if age_max < 0:
-                raise PlanCompilationError(f"Time Series comparison ages must be non-negative; data row {row_number} contains {age_max}.")
-            if probability < 0 or probability > 1:
-                raise PlanCompilationError(f"Time Series probability must be between 0 and 1 at data row {row_number}.")
+            if continuous:
+                age, age_min, age_max, _value, latitude, longitude = values
+                if age < 0:
+                    raise PlanCompilationError(f"Time Series central ages must be non-negative at data row {row_number}.")
+                if request.filter_column is not None:
+                    try:
+                        filter_value = float(row[request.filter_column])
+                    except (TypeError, ValueError) as exc:
+                        raise PlanCompilationError(f"Time Series filter column {request.filter_column!r} contains a non-numeric value at data row {row_number}.") from exc
+                    if not math.isfinite(filter_value):
+                        raise PlanCompilationError(f"Time Series filter column {request.filter_column!r} contains a non-finite value at data row {row_number}.")
+                    if request.filter_minimum is not None and filter_value < request.filter_minimum:
+                        row_count -= 1
+                        continue
+                    if request.filter_maximum is not None and filter_value > request.filter_maximum:
+                        row_count -= 1
+                        continue
+            else:
+                age, age_max, probability, latitude, longitude = values
+                if age < 0:
+                    raise PlanCompilationError(f"Time Series ages must be non-negative; data row {row_number} contains {age}.")
+                if age_max < 0:
+                    raise PlanCompilationError(f"Time Series comparison ages must be non-negative; data row {row_number} contains {age_max}.")
+                if probability < 0 or probability > 1:
+                    raise PlanCompilationError(f"Time Series probability must be between 0 and 1 at data row {row_number}.")
             if latitude < -90 or latitude > 90:
                 raise PlanCompilationError(f"Time Series latitude must be between -90 and 90 degrees at data row {row_number}.")
             if longitude < -180 or longitude > 180:
@@ -3871,13 +3927,34 @@ class TimeSeriesPlanCompiler:
             request.age_column,
             "--maximum-age-column",
             request.maximum_age_column,
-            "--probability-column",
-            request.probability_column,
             "--latitude-column",
             request.latitude_column,
             "--longitude-column",
             request.longitude_column,
         ]
+        if continuous:
+            command.extend(
+                (
+                    "--analysis-mode",
+                    request.mode,
+                    "--minimum-age-column",
+                    request.minimum_age_column,
+                    "--value-column",
+                    request.value_column,
+                    "--relative-value-two-sigma",
+                    format(request.relative_value_two_sigma, ".15g"),
+                    "--minimum-samples-per-bin",
+                    str(request.minimum_samples_per_bin),
+                )
+            )
+            if request.filter_column is not None:
+                command.extend(("--filter-column", request.filter_column))
+            if request.filter_minimum is not None:
+                command.extend(("--filter-minimum", format(request.filter_minimum, ".15g")))
+            if request.filter_maximum is not None:
+                command.extend(("--filter-maximum", format(request.filter_maximum, ".15g")))
+        else:
+            command.extend(("--probability-column", request.probability_column))
         if request.identifier_column is not None:
             command.extend(("--identifier-column", request.identifier_column))
         for column in selected_columns:
@@ -3894,22 +3971,34 @@ class TimeSeriesPlanCompiler:
                 "--fit-curve" if request.fit_curve else "--no-fit-curve",
             )
         )
+        if continuous:
+            command.append("--compact-y-axis" if request.compact_y_axis else "--no-compact-y-axis")
         base = Path(request.experiment_name) / request.run_name
-        return InteractionPlan(
-            schema_version=INTERACTION_PLAN_VERSION,
-            name="time-series-subaerial-proportion-v1",
-            public_command=tuple(command),
-            steps=(),
-            expected_output_relative_paths=(
+        if continuous:
+            expected_outputs = (
+                (base / "artifacts" / "data" / "Continuous Time Series.csv").as_posix(),
+                (base / "artifacts" / "image" / "model_output" / "Continuous Time Series.pdf").as_posix(),
+                (base / "artifacts" / "image" / "model_output" / "Continuous Time Series.png").as_posix(),
+                (base / "metrics" / "Time Series Metrics.json").as_posix(),
+                (base / "parameters" / "Time Series Parameters.json").as_posix(),
+            )
+        else:
+            expected_outputs = (
                 (base / "artifacts" / "data" / "Subaerial Proportion.csv").as_posix(),
                 (base / "artifacts" / "image" / "model_output" / "Subaerial Proportion.pdf").as_posix(),
                 (base / "metrics" / "Time Series Metrics.json").as_posix(),
                 (base / "parameters" / "Time Series Parameters.json").as_posix(),
-            ),
+            )
+        return InteractionPlan(
+            schema_version=INTERACTION_PLAN_VERSION,
+            name=("time-series-continuous-v1" if continuous else "time-series-subaerial-proportion-v1"),
+            public_command=tuple(command),
+            steps=(),
+            expected_output_relative_paths=expected_outputs,
             workflow_family="time_series",
-            workflow_mode="subaerial_proportion",
-            method="subaerial_proportion_bootstrap",
-            adapter_id="geochemistrypi-cli.time-series.subaerial-proportion",
+            workflow_mode=request.mode,
+            method=("spatiotemporal_weighted_continuous_bootstrap" if continuous else "subaerial_proportion_bootstrap"),
+            adapter_id=("geochemistrypi-cli.time-series.continuous" if continuous else "geochemistrypi-cli.time-series.subaerial-proportion"),
             adapter_version="1",
         )
 
@@ -4103,7 +4192,7 @@ class AnalysisPlanCompiler:
                 display_name = MODEL_DISPLAY_NAMES[model_type]
                 additional_paths.append(str(output_root / "metrics" / f"Cross Validation - {display_name}.txt"))
                 normalization = request.evaluation.confusion_matrix_normalization
-                if normalization is not None:
+                if normalization not in {None, "none"}:
                     normalized_name = f"Normalized Confusion Matrix ({normalization}) - {display_name}"
                     additional_paths.extend(
                         (

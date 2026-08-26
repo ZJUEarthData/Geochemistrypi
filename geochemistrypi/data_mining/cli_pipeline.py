@@ -737,11 +737,15 @@ def cli_pipeline(
             test_ratio = float_input(default=0.2, prefix=SECTION[1], slogan="@Test Ratio: ")
             stratify_target = None
             if mode_num == 2:
-                class_counts = y.iloc[:, 0].value_counts().sort_index()
-                if (class_counts < 2).any():
-                    too_small = class_counts[class_counts < 2].to_dict()
-                    raise ValueError(f"Each classification class must have at least 2 samples for stratified splitting. Too-small classes: {too_small}")
-                stratify_target = y.iloc[:, 0]
+                split_strategy = scientific_execution.split_strategy if scientific_execution is not None else "stratified_holdout"
+                if split_strategy == "stratified_holdout":
+                    class_counts = y.iloc[:, 0].value_counts().sort_index()
+                    if (class_counts < 2).any():
+                        too_small = class_counts[class_counts < 2].to_dict()
+                        raise ValueError(f"Each classification class must have at least 2 samples for stratified splitting. Too-small classes: {too_small}")
+                    stratify_target = y.iloc[:, 0]
+                elif split_strategy != "random_holdout":
+                    raise ValueError(f"Unsupported classification split strategy: {split_strategy!r}")
             split_seed = scientific_execution.split_seed if scientific_execution is not None and scientific_execution.split_seed is not None else 42
             train_test_data = data_split(
                 X,

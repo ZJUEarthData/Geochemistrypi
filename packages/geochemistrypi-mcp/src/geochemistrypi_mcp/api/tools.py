@@ -619,6 +619,7 @@ def build_tool_handlers(
             mode
             for mode, requirement in (
                 ("subaerial_proportion", "command:time-series"),
+                ("continuous", "command:time-series"),
                 (
                     "reference_anomaly_series",
                     "command:reference-anomaly-time-series",
@@ -628,6 +629,7 @@ def build_tool_handlers(
         )
         scientific_time_series_modes = (
             "subaerial_proportion",
+            "continuous",
             "element_mean",
             "reference_anomaly_series",
         )
@@ -697,6 +699,9 @@ def build_tool_handlers(
                 "application_data": ("disabled", "enabled"),
                 "sample_balancing": ("none",),
                 "model_selection": ("single", "all"),
+                "split_strategy": ("stratified_holdout", "random_holdout"),
+                "xgboost_objective": ("auto", "binary:logistic", "multi:softprob", "multi:softmax"),
+                "xgboost_importance_type": ("gain", "weight", "cover", "total_gain", "total_cover"),
             },
             regression_options={
                 "missing_values": MISSING_VALUE_METHODS,
@@ -747,6 +752,10 @@ def build_tool_handlers(
                             "subaerial_proportion",
                         ),
                         (
+                            "spatiotemporal_weighted_continuous_bootstrap",
+                            "continuous",
+                        ),
+                        (
                             "reference_label_event_overlay",
                             "reference_anomaly_series",
                         ),
@@ -772,6 +781,10 @@ def build_tool_handlers(
                         (
                             "subaerial_proportion_bootstrap",
                             "subaerial_proportion",
+                        ),
+                        (
+                            "spatiotemporal_weighted_continuous_bootstrap",
+                            "continuous",
                         ),
                         (
                             "reference_label_event_overlay",

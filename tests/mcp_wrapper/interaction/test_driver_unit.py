@@ -251,6 +251,77 @@ def test_time_series_plan_is_noninteractive_and_semantically_validated(
     assert "Time Series Metrics.json" in plan.expected_output_relative_paths[2]
 
 
+def test_continuous_time_series_plan_binds_generic_scientific_parameters(
+    tmp_path: Path,
+) -> None:
+    data_path = tmp_path / "continuous-time-series.csv"
+    data_path.write_text(
+        "AGE,MIN AGE,MAX AGE,MGO,SIO2,LATITUDE,LONGITUDE\n" "10,8,12,8.0,43,-20,100\n" "20,18,22,9.0,51,5,110\n" "115,110,120,6.0,48,30,120\n" "130,125,135,7.0,60,45,130\n",
+        encoding="utf-8",
+    )
+    request = TimeSeriesRequest(
+        training_dataset_path=data_path,
+        mode="continuous",
+        age_column="AGE",
+        minimum_age_column="MIN AGE",
+        maximum_age_column="MAX AGE",
+        value_column="MGO",
+        filter_column="SIO2",
+        filter_minimum=43,
+        filter_maximum=51,
+        bin_width=100,
+        iterations=100,
+        seed=2025,
+        relative_value_two_sigma=0.04,
+        fit_curve=False,
+        compact_y_axis=True,
+    )
+
+    plan = TimeSeriesPlanCompiler().compile(request, cli_executable=Path(sys.executable))
+
+    assert plan.execution_ready is True
+    assert plan.name == "time-series-continuous-v1"
+    assert plan.method == "spatiotemporal_weighted_continuous_bootstrap"
+    assert plan.adapter_id == "geochemistrypi-cli.time-series.continuous"
+    assert plan.public_command[plan.public_command.index("--analysis-mode") + 1] == "continuous"
+    assert plan.public_command[plan.public_command.index("--relative-value-two-sigma") + 1] == "0.04"
+    assert plan.public_command[plan.public_command.index("--filter-minimum") + 1] == "43"
+    assert plan.public_command[-2:] == ("--no-fit-curve", "--compact-y-axis")
+    assert plan.expected_output_relative_paths == (
+        "Time Series/Subaerial Proportion/artifacts/data/Continuous Time Series.csv",
+        "Time Series/Subaerial Proportion/artifacts/image/model_output/Continuous Time Series.pdf",
+        "Time Series/Subaerial Proportion/artifacts/image/model_output/Continuous Time Series.png",
+        "Time Series/Subaerial Proportion/metrics/Time Series Metrics.json",
+        "Time Series/Subaerial Proportion/parameters/Time Series Parameters.json",
+    )
+
+
+def test_time_series_allows_unrelated_duplicate_headers_but_not_ambiguous_roles(
+    tmp_path: Path,
+) -> None:
+    data_path = tmp_path / "duplicate-unrelated.csv"
+    data_path.write_text(
+        "ID,ID,R_AGE,R_MAX_AGE,SBAP,LATITUDE,LONGITUDE\n" "A,B,10,12,0.9,-20,100\n" "C,D,20,25,0.1,5,110\n",
+        encoding="utf-8",
+    )
+
+    plan = TimeSeriesPlanCompiler().compile(
+        TimeSeriesRequest(training_dataset_path=data_path, bin_width=10),
+        cli_executable=Path(sys.executable),
+    )
+    assert plan.execution_ready is True
+
+    with pytest.raises(PlanCompilationError, match="ambiguous"):
+        TimeSeriesPlanCompiler().compile(
+            TimeSeriesRequest(
+                training_dataset_path=data_path,
+                bin_width=10,
+                identifier_column="ID",
+            ),
+            cli_executable=Path(sys.executable),
+        )
+
+
 def test_time_series_plan_rejects_invalid_rows_before_cli(tmp_path: Path) -> None:
     data_path = tmp_path / "invalid-time-series.csv"
     data_path.write_text(

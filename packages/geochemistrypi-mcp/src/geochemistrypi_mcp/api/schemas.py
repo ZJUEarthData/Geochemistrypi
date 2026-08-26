@@ -625,6 +625,19 @@ class XGBoostSettings(StrictModel):
     l2_regularization: float = Field(1.0, ge=0)
     gamma: float = Field(0.0, ge=0)
     tree_method: Literal["auto", "exact", "approx", "hist", "gpu_hist"] = "auto"
+    objective: Literal[
+        "auto",
+        "binary:logistic",
+        "multi:softprob",
+        "multi:softmax",
+    ] = "auto"
+    importance_type: Literal[
+        "gain",
+        "weight",
+        "cover",
+        "total_gain",
+        "total_cover",
+    ] = "gain"
 
 
 class MultiLayerPerceptronSettings(StrictModel):
@@ -1874,6 +1887,7 @@ class TimeSeriesRequest(ScientificRequest):
     )
     mode: Literal[
         "subaerial_proportion",
+        "continuous",
         "element_mean",
         "reference_anomaly_series",
     ] = "subaerial_proportion"
@@ -1905,8 +1919,16 @@ class TimeSeriesRequest(ScientificRequest):
         description="Top-level deterministic random seed; use seed, not random_seed.",
     )
     age_column: ColumnName = Field("R_AGE", description="Top-level central-age column role.")
+    minimum_age_column: ColumnName | None = Field(
+        None,
+        description="Minimum-age column required by continuous mode.",
+    )
     maximum_age_column: ColumnName = Field("R_MAX_AGE", description="Top-level comparison/maximum-age column role.")
     probability_column: ColumnName = Field("SBAP", description="Top-level subaerial-proportion probability column role.")
+    value_column: ColumnName | None = Field(
+        None,
+        description="Numeric response column required by continuous mode.",
+    )
     latitude_column: ColumnName = Field("LATITUDE", description="Top-level latitude column role.")
     longitude_column: ColumnName = Field("LONGITUDE", description="Top-level longitude column role.")
     element_columns: tuple[ColumnName, ...] = Field(
@@ -1916,15 +1938,21 @@ class TimeSeriesRequest(ScientificRequest):
     )
     filter_column: ColumnName | None = Field(
         default=None,
-        description="Optional numeric filter role for element_mean mode.",
+        description="Optional numeric filter role for element_mean and continuous modes.",
     )
     filter_minimum: float | None = None
     filter_maximum: float | None = None
     aggregation: Literal["mean"] = "mean"
     uncertainty: Literal["standard_error"] = "standard_error"
     minimum_samples_per_bin: int = Field(1, ge=1)
+    relative_value_two_sigma: float = Field(
+        0.0,
+        ge=0,
+        description="Relative analytical two-sigma uncertainty for continuous values.",
+    )
     age_unit: Literal["Ma", "Ga"] = "Ma"
     fit_curve: bool = True
+    compact_y_axis: bool = False
     sheet: str = Field(
         "0",
         min_length=1,
@@ -1991,8 +2019,10 @@ class TimeSeriesRequest(ScientificRequest):
 
     @field_validator(
         "age_column",
+        "minimum_age_column",
         "maximum_age_column",
         "probability_column",
+        "value_column",
         "latitude_column",
         "longitude_column",
         "time_column",
@@ -2099,6 +2129,20 @@ class TimeSeriesRequest(ScientificRequest):
                     )
                 )
             )
+        if self.mode == "continuous":
+            return tuple(
+                dict.fromkeys(
+                    (
+                        self.age_column,
+                        *((self.minimum_age_column,) if self.minimum_age_column is not None else ()),
+                        self.maximum_age_column,
+                        *((self.value_column,) if self.value_column is not None else ()),
+                        self.latitude_column,
+                        self.longitude_column,
+                        *((self.filter_column,) if self.filter_column is not None else ()),
+                    )
+                )
+            )
         return (
             self.age_column,
             self.maximum_age_column,
@@ -2114,7 +2158,7 @@ class TimeSeriesRequest(ScientificRequest):
             raise ValueError("must be finite")
         return value
 
-    @field_validator("filter_minimum", "filter_maximum")
+    @field_validator("filter_minimum", "filter_maximum", "relative_value_two_sigma")
     @classmethod
     def validate_finite_filter_bound(cls, value: float | None) -> float | None:
         if value is not None and not math.isfinite(value):
@@ -2170,6 +2214,36 @@ class TimeSeriesRequest(ScientificRequest):
             return self
         if self.bin_width is None:
             raise ValueError(f"{self.mode} mode requires bin_width")
+        if self.mode == "continuous":
+            if self.minimum_age_column is None or self.value_column is None:
+                raise ValueError("continuous mode requires minimum_age_column and value_column")
+            roles = {
+                self.age_column,
+                self.minimum_age_column,
+                self.maximum_age_column,
+                self.value_column,
+                self.latitude_column,
+                self.longitude_column,
+            }
+            if len(roles) != 6:
+                raise ValueError("continuous Time Series roles must identify six different columns")
+            if self.filter_column is not None and self.filter_column in roles:
+                raise ValueError("filter_column must have a distinct scientific role")
+            has_filter_bounds = self.filter_minimum is not None or self.filter_maximum is not None
+            if has_filter_bounds and self.filter_column is None:
+                raise ValueError("filter bounds require filter_column")
+            if self.filter_minimum is not None and self.filter_maximum is not None and self.filter_minimum > self.filter_maximum:
+                raise ValueError("filter_minimum must not exceed filter_maximum")
+            missing_roles = sorted(set(self.resolved_selected_columns) - set(self.selected_columns)) if self.selected_columns else []
+            if missing_roles:
+                raise ValueError(f"selected_columns must include every continuous Time Series role: {missing_roles}")
+            if self.missing_values.method not in {"error", "drop_rows"}:
+                raise ValueError("Time Series missing_values supports only 'error' or 'drop_rows'")
+            drop_columns = tuple(getattr(self.missing_values, "columns", ()))
+            unknown_drop_columns = sorted(set(drop_columns) - set(self.resolved_selected_columns))
+            if unknown_drop_columns:
+                raise ValueError(f"missing_values.columns were not selected: {unknown_drop_columns}")
+            return self
         if self.mode == "element_mean":
             if not self.element_columns:
                 raise ValueError("element_mean mode requires at least one element column")

@@ -266,6 +266,7 @@ def test_external_labeled_regression_fits_the_complete_training_cohort(
         model={
             "type": "extra_trees",
             "number_of_estimators": 550,
+            "maximum_depth": None,
             "maximum_features": 2,
             "bootstrap": False,
             "maximum_samples": None,
@@ -293,10 +294,12 @@ def test_external_labeled_regression_fits_the_complete_training_cohort(
     assert "continue_after_split" not in step_ids
     assert "continue_after_external_training_scope" in step_ids
     assert execution["evaluation_mode"] == "external_labeled"
+    assert execution["model_parameters"]["max_depth"] is None
     assert execution["split_seed"] is None
     assert execution["model_seed"] == 280
     assert dict(plan.effective_seeds) == {"model": 280}
     assert dict(plan.effective_model_parameters)["random_state"] == "280"
+    assert next(step.response for step in plan.steps if step.id == "maximum_depth") == ""
     assert "Y Test Predict.xlsx" not in output_names
     assert "Model Score - Extra-Trees.txt" not in output_names
     assert "Predicted vs. Actual Diagram - Extra-Trees.png" not in output_names

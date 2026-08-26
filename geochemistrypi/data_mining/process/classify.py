@@ -44,10 +44,20 @@ class ClassificationModelSelection(ModelSelectionBase):
         self.metric_average = metric_average
         self.scientific_execution = active_scientific_execution()
 
-    def _constructor_parameters(self, method: str, legacy: Dict[str, Any]) -> Dict[str, Any]:
+    def _constructor_parameters(
+        self,
+        method: str,
+        legacy: Dict[str, Any],
+        *,
+        class_count: Optional[int] = None,
+    ) -> Dict[str, Any]:
         if self.scientific_execution is None:
             return legacy
-        return self.scientific_execution.constructor_parameters(method, legacy)
+        return self.scientific_execution.constructor_parameters(
+            method,
+            legacy,
+            class_count=class_count,
+        )
 
     def _attach_label_config(self) -> None:
         self.clf_workflow.label_config = self.label_config
@@ -136,6 +146,7 @@ class ClassificationModelSelection(ModelSelectionBase):
                         "reg_alpha": hyper_parameters["alpha"],
                         "reg_lambda": hyper_parameters["lambd"],
                     },
+                    class_count=int(y.iloc[:, 0].nunique()),
                 )
             )
         elif self.model_name == "Logistic Regression":

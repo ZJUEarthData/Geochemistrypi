@@ -9,10 +9,11 @@ from geochemistrypi.scientific_execution import ScientificExecutionContract, Sci
 
 def _contract(**updates: object) -> dict:
     value = {
-        "schema_version": 2,
+        "schema_version": 3,
         "workflow_family": "supervised_learning",
         "workflow_mode": "regression",
         "method": "xgboost",
+        "split_strategy": "random_holdout",
         "split_seed": 99,
         "model_seed": 0,
         "cross_validation_folds": 5,
@@ -57,6 +58,24 @@ def test_scientific_contract_rejects_unknown_fields(tmp_path: Path) -> None:
         ScientificExecutionContract.load(_write_contract(tmp_path, value))
 
 
+def test_classification_xgboost_objective_is_resolved_from_observed_classes(tmp_path: Path) -> None:
+    value = _contract(
+        workflow_mode="classification",
+        split_strategy="random_holdout",
+        target_transformations={},
+        model_parameters={"objective": "auto", "importance_type": "gain"},
+    )
+    contract = ScientificExecutionContract.load(_write_contract(tmp_path, value))
+
+    assert contract.constructor_parameters("xgboost", {}, class_count=2)["objective"] == "binary:logistic"
+    assert contract.constructor_parameters("xgboost", {}, class_count=3)["objective"] == "multi:softprob"
+
+    value["model_parameters"]["objective"] = "multi:softprob"
+    incompatible = ScientificExecutionContract.load(_write_contract(tmp_path, value))
+    with pytest.raises(ScientificExecutionContractError, match="incompatible with two-class data"):
+        incompatible.constructor_parameters("xgboost", {}, class_count=2)
+
+
 def test_lof_contract_requires_explicit_native_evaluation_semantics(
     tmp_path: Path,
 ) -> None:
@@ -94,6 +113,7 @@ def test_external_labeled_regression_has_no_internal_split_seed(
 ) -> None:
     value = _contract(
         split_seed=None,
+        split_strategy=None,
         evaluation_mode="external_labeled",
         external_evaluation_identifier_column="ExternalSampleID",
         external_evaluation_target_columns=["pressure"],

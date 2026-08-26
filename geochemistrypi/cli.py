@@ -332,6 +332,11 @@ def datasets(
 @app.command("time-series")
 def time_series(
     input_path: str = typer.Option(..., "--input", help="Path to a .csv or .xlsx Time Series dataset."),
+    analysis_mode: str = typer.Option(
+        "subaerial_proportion",
+        "--analysis-mode",
+        help="Scientific producer: subaerial_proportion or continuous.",
+    ),
     bin_width: float = typer.Option(..., "--bin-width", help="Positive age-bin width in Ma."),
     iterations: int = typer.Option(100, "--iterations", min=1, max=10_000, help="Bootstrap iterations (1-10000)."),
     seed: int = typer.Option(2025, "--seed", min=0, help="Non-negative deterministic random seed."),
@@ -340,12 +345,20 @@ def time_series(
     run_name: str = typer.Option("Subaerial Proportion", "--run-name"),
     sheet: str = typer.Option("0", "--sheet", help="Excel sheet index or name; ignored for CSV."),
     age_column: str = typer.Option("R_AGE", "--age-column"),
+    minimum_age_column: Optional[str] = typer.Option(None, "--minimum-age-column"),
     maximum_age_column: str = typer.Option("R_MAX_AGE", "--maximum-age-column"),
     probability_column: str = typer.Option("SBAP", "--probability-column"),
+    value_column: Optional[str] = typer.Option(None, "--value-column"),
     latitude_column: str = typer.Option("LATITUDE", "--latitude-column"),
     longitude_column: str = typer.Option("LONGITUDE", "--longitude-column"),
+    relative_value_two_sigma: float = typer.Option(0.0, "--relative-value-two-sigma", min=0),
+    minimum_samples_per_bin: int = typer.Option(1, "--minimum-samples-per-bin", min=1),
+    filter_column: Optional[str] = typer.Option(None, "--filter-column"),
+    filter_minimum: Optional[float] = typer.Option(None, "--filter-minimum"),
+    filter_maximum: Optional[float] = typer.Option(None, "--filter-maximum"),
     age_unit: str = typer.Option("Ma", "--age-unit", help="Output age unit: Ma or Ga."),
     fit_curve: bool = typer.Option(True, "--fit-curve/--no-fit-curve", help="Include the fitted trend curve in the PDF."),
+    compact_y_axis: bool = typer.Option(False, "--compact-y-axis/--no-compact-y-axis"),
     identifier_column: Optional[str] = typer.Option(None, "--identifier-column", help="Optional sample-name column validated against the source data."),
     selected_column: Optional[List[str]] = typer.Option(None, "--selected-column", help="Repeat in source order to reproduce the interactive selected-data range."),
     missing_values: str = typer.Option("error", "--missing-values", help="Missing-value handling: error or drop_rows."),
@@ -354,7 +367,7 @@ def time_series(
     automation_plan: str = typer.Option("", help="Absolute path to a versioned machine-input plan."),
     automation_events: str = typer.Option("", help="Absolute path for versioned machine-input events."),
 ) -> None:
-    """Run reproducible subaerial-proportion Time Series analysis."""
+    """Run a reproducible public Time Series producer."""
     if bool(automation_plan) != bool(automation_events):
         raise typer.BadParameter("--automation-plan and --automation-events must be provided together.")
 
@@ -373,13 +386,22 @@ def time_series(
                 iterations=iterations,
                 seed=seed,
                 sheet=sheet,
+                analysis_mode=analysis_mode,
                 age_col=age_column,
+                age_min_col=minimum_age_column,
                 age_max_col=maximum_age_column,
                 probability_col=probability_column,
+                value_col=value_column,
                 latitude_col=latitude_column,
                 longitude_col=longitude_column,
+                relative_value_two_sigma=relative_value_two_sigma,
+                minimum_samples_per_bin=minimum_samples_per_bin,
+                filter_col=filter_column,
+                filter_minimum=filter_minimum,
+                filter_maximum=filter_maximum,
                 age_unit=age_unit,
                 fit_curve=fit_curve,
+                compact_y_axis=compact_y_axis,
                 identifier_column=identifier_column,
                 selected_columns=tuple(selected_column or ()),
                 missing_value_method=missing_values,

@@ -103,6 +103,17 @@ def _column_roles(request: Any) -> dict[str, Any]:
             "filter": request.filter_column,
             "identifier": request.identifier_column,
         }
+    if request.mode == "continuous":
+        return {
+            "time": request.age_column,
+            "minimum_time": request.minimum_age_column,
+            "maximum_time": request.maximum_age_column,
+            "value": request.value_column,
+            "latitude": request.latitude_column,
+            "longitude": request.longitude_column,
+            "filter": request.filter_column,
+            "identifier": request.identifier_column,
+        }
     return {
         "time": request.age_column,
         "comparison_time": request.maximum_age_column,
@@ -158,6 +169,18 @@ def _parameters(request: Any) -> dict[str, Any]:
                 "minimum_samples_per_bin": request.minimum_samples_per_bin,
                 "filter_minimum": request.filter_minimum,
                 "filter_maximum": request.filter_maximum,
+            }
+        if request.mode == "continuous":
+            return {
+                **shared,
+                "iterations": request.iterations,
+                "seed": request.seed,
+                "fit_curve": request.fit_curve,
+                "relative_value_two_sigma": request.relative_value_two_sigma,
+                "minimum_samples_per_bin": request.minimum_samples_per_bin,
+                "filter_minimum": request.filter_minimum,
+                "filter_maximum": request.filter_maximum,
+                "compact_y_axis": request.compact_y_axis,
             }
         return {
             **shared,
@@ -290,7 +313,7 @@ def describe_scientific_output(relative_path: str, workflow_family: str | None =
     elif "predicted vs" in name or "model prediction" in name or "y test predict" in name or "application data predicted" in name:
         scientific_type = "prediction_table" if suffix in {".csv", ".xlsx"} else "prediction_figure"
         output_role = "evaluation.predictions"
-    elif "subaerial proportion" in name:
+    elif "subaerial proportion" in name or "continuous time series" in name:
         scientific_type = "time_series_table" if suffix == ".csv" else "time_series_figure"
         output_role = "time_series.estimate" if suffix == ".csv" else "time_series.figure"
     elif suffix == ".joblib" and "model" in lowered:
@@ -516,7 +539,11 @@ def assess_scientific_compatibility(
         blockers.append("Holdout evaluation is available only for supervised-learning adapters.")
         scientific_unmet = True
     if evaluation.mode == "holdout" and request.task in {"classification", "regression"}:
-        effective_split = "stratified_holdout" if request.task == "classification" else "random_holdout"
+        configured_execution = json.loads(plan.scientific_execution_contract_json) if plan.scientific_execution_contract_json is not None else {}
+        effective_split = configured_execution.get(
+            "split_strategy",
+            "stratified_holdout" if request.task == "classification" else "random_holdout",
+        )
         if evaluation.split_strategy not in {"cli_default", effective_split}:
             blockers.append(f"Requested split strategy {evaluation.split_strategy!r} does not match the CLI adapter's " f"effective {effective_split!r} strategy.")
             scientific_unmet = True
@@ -540,7 +567,7 @@ def assess_scientific_compatibility(
     reproducibility = request.reproducibility
     requested_seeds = (
         {"model": request.seed}
-        if request.task == "time_series" and request.mode == "subaerial_proportion"
+        if request.task == "time_series" and request.mode in {"subaerial_proportion", "continuous"}
         else {
             "split": getattr(reproducibility, "split_seed", None),
             "model": getattr(reproducibility, "model_seed", None),
