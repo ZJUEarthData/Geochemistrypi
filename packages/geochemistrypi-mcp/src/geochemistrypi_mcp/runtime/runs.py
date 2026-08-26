@@ -1473,16 +1473,8 @@ class RunManager:
                 missing_artifact_requirement_ids=missing_artifact_requirement_ids,
                 state=result_state,
                 task=request.task,
-                model=(
-                    "subaerial_proportion_bootstrap"
-                    if request.task == "time_series" and request.mode == "subaerial_proportion"
-                    else "element_mean"
-                    if request.task == "time_series"
-                    else "all_models"
-                    if is_aggregate
-                    else request.model.type
-                ),
-                tuning=(request.model_selection.tuning if is_aggregate else getattr(request, "tuning", "not_applicable")),
+                model=("all_models" if is_aggregate else _selected_models(request)[0]),
+                tuning=(request.model_selection.tuning if is_aggregate else _selected_tuning(request)),
                 output_directory=str(output_directory),
                 interaction_trace=str(cli_result.trace_path),
                 cli_stdout_log=str(cli_result.stdout_path),

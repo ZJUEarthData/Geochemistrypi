@@ -16,6 +16,7 @@ from geochemistrypi_mcp.contracts.classification import MODEL_DISPLAY_NAMES as C
 from geochemistrypi_mcp.contracts.classification import MODEL_ORDER as CLASSIFICATION_MODEL_ORDER
 from geochemistrypi_mcp.data.catalog import ResolvedDataset
 from geochemistrypi_mcp.planning.interaction_plan import AnalysisPlanCompiler, PlanCompilationError
+from geochemistrypi_mcp.runtime.cli_capabilities import CliCapabilityProbe
 from geochemistrypi_mcp.runtime.environment import EnvironmentSnapshot
 from geochemistrypi_mcp.runtime.runs import RunManager, RunStateError
 from openpyxl import Workbook
@@ -566,7 +567,7 @@ def test_validate_and_start_reject_unsafe_output_paths_before_creating_a_run(tmp
         manager.close()
 
 
-def test_run_is_non_blocking_atomic_and_references_only_original_cli_outputs(tmp_path: Path) -> None:
+def test_run_is_non_blocking_atomic_and_references_only_original_cli_outputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     script = tmp_path / "successful_cli.py"
     script.write_text(
         """import json
@@ -590,6 +591,10 @@ if sys.argv[2] == "Time Series Run":
         encoding="utf-8",
     )
     dataset = _dataset(tmp_path)
+    monkeypatch.setattr(
+        "geochemistrypi_mcp.runtime.runs.probe_cli_capabilities",
+        lambda _executable, requirements: CliCapabilityProbe(tuple(requirements), ()),
+    )
     manager = _manager(tmp_path, script)
     started = time.monotonic()
     acknowledgement = manager.start(_request(dataset))
@@ -682,6 +687,37 @@ if sys.argv[2] == "Time Series Run":
             "accuracy": 0.75,
             "f1": 0.73,
         }
+
+        overlay_coordinates = tmp_path / "overlay-coordinates.csv"
+        overlay_coordinates.write_text(
+            "SampleID,PC1,PC2\nA,1.0,10.0\nB,2.0,20.0\n",
+            encoding="utf-8",
+        )
+        overlay_labels = tmp_path / "overlay-labels.csv"
+        overlay_labels.write_text(
+            "RecordID,Anomaly\nA,-1\nB,1\n",
+            encoding="utf-8",
+        )
+        overlay = manager.start(
+            DecompositionRequest(
+                training_dataset_path=overlay_coordinates,
+                application_dataset_path=overlay_labels,
+                mode="embedding_label_overlay",
+                experiment_name="MCP Contract",
+                run_name="Embedding Overlay Run",
+                identifier_column="SampleID",
+                feature_columns=("PC1", "PC2"),
+                scaling="none",
+                label_identifier_column="RecordID",
+                label_column="Anomaly",
+                positive_label_values=("-1",),
+            )
+        )
+        assert _wait_for_state(manager, overlay.run_id, {"succeeded"}) == "succeeded"
+        overlay_result = manager.get_result(overlay.run_id)
+        assert overlay_result.task == "decomposition"
+        assert overlay_result.model == "embedding_label_overlay"
+        assert overlay_result.tuning == "not_applicable"
 
         time_series = manager.start(
             TimeSeriesRequest(

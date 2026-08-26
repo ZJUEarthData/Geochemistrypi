@@ -2705,7 +2705,11 @@ class RunResultResponse(StrictModel):
         "time_series",
     ]
     model: ClassificationModelName | RegressionModelName | ClusteringModelName | DecompositionModelName | AnomalyDetectionModelName | Literal[
-        "subaerial_proportion_bootstrap", "element_mean", "all_models"
+        "subaerial_proportion_bootstrap",
+        "element_mean",
+        "reference_label_event_overlay",
+        "embedding_label_overlay",
+        "all_models",
     ]
     tuning: Literal["manual", "automl", "not_applicable"] = "manual"
     output_directory: str
