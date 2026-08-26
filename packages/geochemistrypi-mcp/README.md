@@ -487,7 +487,7 @@ bounds before the CLI starts; the CLI remains responsible for the original
 normal/anomalous tables, diagrams, model files, and transform pipeline.
 
 A Time Series request selects `mode="subaerial_proportion"` (the backward-
-compatible default), `mode="element_mean"`, or
+compatible default), `mode="continuous"`, `mode="element_mean"`, or
 `mode="reference_anomaly_series"`. Subaerial-proportion requests
 can reproduce the complete selected-data and missing-value preparation
 performed by the interactive workflow. For example,
@@ -497,7 +497,14 @@ means drop rows missing any selected field. `identifier_column` records the
 sample-name field, and `feature_engineering` currently accepts only `none`.
 The public noninteractive CLI applies these operations before the seeded
 bootstrap and records input, retained, and dropped row counts in `Time Series
-Parameters.json`. Element-mean requests express age/value/filter roles, bin
+Parameters.json`. Continuous requests bind central/minimum/maximum age,
+arbitrary numeric value, latitude/longitude, optional inclusive numeric
+filter, relative two-sigma analytical uncertainty, bootstrap iterations,
+seed, minimum samples per bin, and plotting controls to the public
+`time-series --analysis-mode continuous` producer. The producer uses generic
+spatiotemporal density weights and writes a machine-readable mean/uncertainty
+table plus PNG/PDF figures; no dataset, paper, or element name changes its
+algorithm. Element-mean requests express age/value/filter roles, bin
 width, arithmetic-mean aggregation, standard-error uncertainty, and minimum
 sample counts. The current public CLI has no matching element-mean command, so
 validation returns `valid=true`, `execution_ready=false`, and an unavailable

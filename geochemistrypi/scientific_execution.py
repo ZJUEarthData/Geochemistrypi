@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterator, Mapping, Optional, Tuple
 
-SCIENTIFIC_EXECUTION_CONTRACT_VERSION = 2
+SCIENTIFIC_EXECUTION_CONTRACT_VERSION = 3
 _MAX_CONTRACT_BYTES = 1024 * 1024
 _PARAMETER_NAME = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 _TOKEN = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,127}$")
@@ -31,6 +31,9 @@ _EVALUATION_MODES = frozenset(
     }
 )
 _CONFUSION_MATRIX_NORMALIZATIONS = frozenset({"true", "predicted", "all"})
+_SPLIT_STRATEGIES = frozenset({"random_holdout", "stratified_holdout"})
+_CLASSIFICATION_XGBOOST_OBJECTIVES = frozenset({"auto", "binary:logistic", "multi:softprob", "multi:softmax"})
+_XGBOOST_IMPORTANCE_TYPES = frozenset({"gain", "weight", "cover", "total_gain", "total_cover"})
 _ALLOWED_MODEL_PARAMETERS = {
     "xgboost": frozenset(
         {
@@ -193,6 +196,7 @@ class ScientificExecutionContract:
     workflow_mode: str
     method: str
     split_seed: Optional[int]
+    split_strategy: Optional[str]
     model_seed: Optional[int]
     cross_validation_folds: int
     evaluation_mode: str
@@ -232,6 +236,7 @@ class ScientificExecutionContract:
                 "workflow_mode",
                 "method",
                 "split_seed",
+                "split_strategy",
                 "model_seed",
                 "cross_validation_folds",
                 "evaluation_mode",
@@ -336,15 +341,35 @@ class ScientificExecutionContract:
             transformations.append((column, float(scale), float(offset)))
         if transformations and workflow_mode != "regression":
             raise ScientificExecutionContractError("Target transformations are available only for regression.")
+        resolved_parameters = dict(parameters)
+        if method == "xgboost" and workflow_mode == "classification":
+            objective = resolved_parameters.get("objective")
+            if objective not in _CLASSIFICATION_XGBOOST_OBJECTIVES:
+                raise ScientificExecutionContractError("Classification XGBoost objective must be auto, binary:logistic, multi:softprob, or multi:softmax.")
+            importance_type = resolved_parameters.get("importance_type")
+            if importance_type not in _XGBOOST_IMPORTANCE_TYPES:
+                raise ScientificExecutionContractError("XGBoost importance_type must be gain, weight, cover, total_gain, or total_cover.")
         split_seed = _validate_seed(value["split_seed"], "split_seed")
+        split_strategy = value["split_strategy"]
+        if split_strategy is not None and split_strategy not in _SPLIT_STRATEGIES:
+            raise ScientificExecutionContractError(f"split_strategy must be null or one of {sorted(_SPLIT_STRATEGIES)}.")
         if evaluation_mode == "external_labeled" and split_seed is not None:
             raise ScientificExecutionContractError("external_labeled evaluation fits the complete training cohort and must not declare a split_seed.")
+        if evaluation_mode == "external_labeled" and split_strategy is not None:
+            raise ScientificExecutionContractError("external_labeled evaluation must not declare a split_strategy.")
+        if evaluation_mode == "internal_holdout" and workflow_mode == "classification" and split_strategy is None:
+            raise ScientificExecutionContractError("Classification holdout evaluation requires an explicit split_strategy.")
+        if evaluation_mode == "internal_holdout" and workflow_mode == "regression" and split_strategy != "random_holdout":
+            raise ScientificExecutionContractError("Regression holdout evaluation requires split_strategy='random_holdout'.")
+        if workflow_family != "supervised_learning" and split_strategy is not None:
+            raise ScientificExecutionContractError("split_strategy is available only for supervised learning.")
         return cls(
             schema_version=SCIENTIFIC_EXECUTION_CONTRACT_VERSION,
             workflow_family=workflow_family,
             workflow_mode=workflow_mode,
             method=method,
             split_seed=split_seed,
+            split_strategy=split_strategy,
             model_seed=_validate_seed(value["model_seed"], "model_seed"),
             cross_validation_folds=folds,
             evaluation_mode=evaluation_mode,
@@ -356,11 +381,35 @@ class ScientificExecutionContract:
             source_sha256=hashlib.sha256(raw).hexdigest(),
         )
 
-    def constructor_parameters(self, method: str, legacy: Mapping[str, Any]) -> Dict[str, Any]:
+    def resolved_model_parameters(self, class_count: Optional[int] = None) -> Dict[str, Any]:
+        """Resolve typed context-dependent parameters before estimator construction."""
+
+        parameters = self.model_parameters
+        if self.method != "xgboost" or self.workflow_mode != "classification":
+            return parameters
+        objective = parameters.get("objective")
+        if objective == "auto":
+            if class_count is None or class_count < 2:
+                raise ScientificExecutionContractError("XGBoost classification objective='auto' requires at least two observed classes.")
+            parameters["objective"] = "binary:logistic" if class_count == 2 else "multi:softprob"
+        elif class_count is not None:
+            if class_count == 2 and objective in {"multi:softprob", "multi:softmax"}:
+                raise ScientificExecutionContractError(f"XGBoost objective {objective!r} is incompatible with two-class data.")
+            if class_count > 2 and objective == "binary:logistic":
+                raise ScientificExecutionContractError("XGBoost objective 'binary:logistic' is incompatible with multiclass data.")
+        return parameters
+
+    def constructor_parameters(
+        self,
+        method: str,
+        legacy: Mapping[str, Any],
+        *,
+        class_count: Optional[int] = None,
+    ) -> Dict[str, Any]:
         if self.method != method:
             raise ScientificExecutionContractError(f"Scientific execution method {self.method!r} cannot configure selected CLI method {method!r}.")
         parameters = dict(legacy)
-        parameters.update(self.model_parameters)
+        parameters.update(self.resolved_model_parameters(class_count))
         if self.model_seed is not None and method in {"xgboost", "extra_trees"}:
             parameters["random_state"] = self.model_seed
         if method == "local_outlier_factor":
@@ -384,6 +433,7 @@ class ScientificExecutionContract:
             "workflow_mode": self.workflow_mode,
             "method": self.method,
             "split_seed": self.split_seed,
+            "split_strategy": self.split_strategy,
             "model_seed": self.model_seed,
             "cross_validation_folds": self.cross_validation_folds,
             "evaluation_mode": self.evaluation_mode,
@@ -433,7 +483,10 @@ def save_scientific_execution_attestation(estimator: Any, output_directory: Opti
     if not hasattr(estimator, "get_params"):
         raise ScientificExecutionContractError("The selected estimator cannot attest effective parameters.")
     observed = _json_safe(estimator.get_params(deep=False))
-    expected = contract.model_parameters
+    class_count = None
+    if contract.workflow_mode == "classification" and hasattr(estimator, "classes_"):
+        class_count = len(estimator.classes_)
+    expected = contract.resolved_model_parameters(class_count)
     if contract.model_seed is not None and contract.method in {
         "xgboost",
         "extra_trees",

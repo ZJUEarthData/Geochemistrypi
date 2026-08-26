@@ -416,6 +416,25 @@ def num_input(prefix: Optional[str] = None, slogan: Optional[str] = "@Number: ")
     return option
 
 
+def optional_num_input(
+    prefix: Optional[str] = None,
+    slogan: Optional[str] = "@Number (blank for None): ",
+) -> Optional[int]:
+    """Read a positive integer or an explicit blank ``None`` value.
+
+    Tree estimators use ``None`` to mean that nodes may expand without a
+    configured maximum depth.  Keeping that value typed at the CLI boundary
+    prevents automation from substituting an arbitrary numeric sentinel.
+    """
+    while True:
+        raw_value = input(f"({prefix}) ➜ {slogan}").strip()
+        if raw_value == "":
+            return None
+        if raw_value.isdigit() and int(raw_value) > 0:
+            return int(raw_value)
+        print("Caution: enter a positive integer, or leave the value blank for None.")
+
+
 def np2pd(array: np.ndarray, columns_name: List[str]) -> pd.DataFrame:
     """Convert numpy array to pandas dataframe.
 

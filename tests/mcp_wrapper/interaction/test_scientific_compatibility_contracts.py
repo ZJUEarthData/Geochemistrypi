@@ -308,17 +308,22 @@ def test_structured_xgboost_controls_are_bound_and_attested(
         target_column="Label",
         evaluation={
             "mode": "holdout",
-            "split_strategy": "stratified_holdout",
+            "split_strategy": "random_holdout",
+            "confusion_matrix_normalization": "none",
             "folds": 5,
         },
         model=XGBoostSettings(
             gamma=0.3,
             tree_method="hist",
+            objective="binary:logistic",
+            importance_type="gain",
         ),
         reproducibility={
             "model_seed": 0,
             "model_parameter_assertions": {
                 "gamma": 0.3,
+                "importance_type": "gain",
+                "objective": "binary:logistic",
                 "random_state": 0,
                 "tree_method": "hist",
             },
@@ -338,9 +343,14 @@ def test_structured_xgboost_controls_are_bound_and_attested(
     assert dict(plan.requested_model_parameters)["gamma"] == "0.3"
     assert dict(plan.effective_model_parameters)["gamma"] == "0.3"
     assert dict(plan.effective_model_parameters)["random_state"] == "0"
-    assert json.loads(plan.scientific_execution_contract_json)["model_parameters"]["gamma"] == 0.3
-    assert json.loads(plan.scientific_execution_contract_json)["model_seed"] == 0
-    assert json.loads(plan.scientific_execution_contract_json)["cross_validation_folds"] == 5
+    execution = json.loads(plan.scientific_execution_contract_json)
+    assert execution["model_parameters"]["gamma"] == 0.3
+    assert execution["model_parameters"]["objective"] == "binary:logistic"
+    assert execution["model_parameters"]["importance_type"] == "gain"
+    assert execution["split_strategy"] == "random_holdout"
+    assert execution["model_seed"] == 0
+    assert execution["cross_validation_folds"] == 5
+    assert not any("Normalized Confusion Matrix (none)" in path for path in plan.expected_output_relative_paths)
     assert plan.adapter_version == "2"
     assert assessment.execution_ready is True
     assert "gamma" not in " ".join(assessment.blocking_issues)

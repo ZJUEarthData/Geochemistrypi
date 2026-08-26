@@ -10,7 +10,7 @@ from typer.testing import CliRunner
 from geochemistrypi.cli import app
 from geochemistrypi.data_mining.cli_pipeline import semantic_mode_number
 from geochemistrypi.data_mining.constants import MODE_OPTION, MODE_OPTION_WITH_MISSING_VALUES
-from geochemistrypi.data_mining.process.time_series import TimeSeriesValidationError, compute_subaerial_proportion
+from geochemistrypi.data_mining.process.time_series import TimeSeriesValidationError, compute_binned_time_series, compute_subaerial_proportion
 from geochemistrypi.data_mining.run_time_series import _atomic_json, prepare_time_series_dataframe
 
 
@@ -20,6 +20,20 @@ def _frame() -> pd.DataFrame:
             "R_AGE": [10.0, 20.0, 35.0, 50.0],
             "R_MAX_AGE": [12.0, 25.0, 40.0, 55.0],
             "SBAP": [0.9, 0.1, 0.8, 0.2],
+            "LATITUDE": [-20.0, 5.0, 30.0, 45.0],
+            "LONGITUDE": [100.0, 110.0, 120.0, 130.0],
+        }
+    )
+
+
+def _continuous_frame() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "AGE": [10.0, 20.0, 115.0, 130.0],
+            "MIN AGE": [8.0, 18.0, 110.0, 125.0],
+            "MAX AGE": [12.0, 22.0, 120.0, 135.0],
+            "MGO": [8.0, 9.0, 6.0, 7.0],
+            "SIO2": [43.0, 51.0, 48.0, 60.0],
             "LATITUDE": [-20.0, 5.0, 30.0, 45.0],
             "LONGITUDE": [100.0, 110.0, 120.0, 130.0],
         }
@@ -76,6 +90,38 @@ def test_time_series_bins_follow_central_age_not_comparison_age() -> None:
 
     assert age_x.tolist() == [5.0, 15.0, 25.0, 35.0, 45.0]
     assert mean.shape == two_sigma.shape == age_x.shape
+
+
+def test_continuous_time_series_is_seeded_and_does_not_mutate_global_random_state() -> None:
+    np.random.seed(99)
+    expected = np.random.random(3)
+    np.random.seed(99)
+
+    first = compute_binned_time_series(
+        _continuous_frame(),
+        100.0,
+        n_iter=8,
+        age_col="AGE",
+        age_min_col="MIN AGE",
+        age_max_col="MAX AGE",
+        value_col="MGO",
+        seed=2025,
+        relative_value_two_sigma=0.04,
+    )
+    second = compute_binned_time_series(
+        _continuous_frame(),
+        100.0,
+        n_iter=8,
+        age_col="AGE",
+        age_min_col="MIN AGE",
+        age_max_col="MAX AGE",
+        value_col="MGO",
+        seed=2025,
+        relative_value_two_sigma=0.04,
+    )
+
+    assert all(np.array_equal(left, right, equal_nan=True) for left, right in zip(first, second))
+    assert np.array_equal(np.random.random(3), expected)
 
 
 def test_time_series_preparation_drops_rows_across_the_full_selected_range() -> None:
@@ -232,3 +278,63 @@ def test_time_series_cli_records_explicit_preprocessing_configuration(tmp_path: 
     assert parameters["preprocessing"]["input_row_count"] == 4
     assert parameters["preprocessing"]["analysis_row_count"] == 3
     assert parameters["preprocessing"]["dropped_row_count"] == 1
+
+
+def test_continuous_time_series_cli_binds_filter_uncertainty_and_outputs(tmp_path: Path) -> None:
+    source = tmp_path / "continuous.csv"
+    output_root = tmp_path / "outputs"
+    _continuous_frame().to_csv(source, index=False)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "time-series",
+            "--analysis-mode",
+            "continuous",
+            "--input",
+            str(source),
+            "--bin-width",
+            "100",
+            "--iterations",
+            "8",
+            "--seed",
+            "2025",
+            "--age-column",
+            "AGE",
+            "--minimum-age-column",
+            "MIN AGE",
+            "--maximum-age-column",
+            "MAX AGE",
+            "--value-column",
+            "MGO",
+            "--filter-column",
+            "SIO2",
+            "--filter-minimum",
+            "43",
+            "--filter-maximum",
+            "51",
+            "--relative-value-two-sigma",
+            "0.04",
+            "--compact-y-axis",
+            "--no-fit-curve",
+            "--output-root",
+            str(output_root),
+            "--experiment-name",
+            "Continuous Test",
+            "--run-name",
+            "Generic Producer",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    run = output_root / "Continuous Test" / "Generic Producer"
+    csv_path = run / "artifacts" / "data" / "Continuous Time Series.csv"
+    assert csv_path.is_file()
+    assert (run / "artifacts" / "image" / "model_output" / "Continuous Time Series.pdf").is_file()
+    assert (run / "artifacts" / "image" / "model_output" / "Continuous Time Series.png").is_file()
+    assert list(pd.read_csv(csv_path).columns) == ["age_Ma", "mean_value", "two_sem"]
+    parameters = json.loads((run / "parameters" / "Time Series Parameters.json").read_text(encoding="utf-8"))
+    assert parameters["analysis_mode"] == "continuous"
+    assert parameters["relative_value_two_sigma"] == pytest.approx(0.04)
+    assert parameters["filter"] == {"column": "SIO2", "minimum": 43.0, "maximum": 51.0, "inclusive": True}
+    assert parameters["preprocessing"]["analysis_row_count"] == 3

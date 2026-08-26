@@ -534,6 +534,49 @@ def test_validate_time_series_mangles_duplicate_headers_only_for_trusted_builtin
         builtin_manager.close()
 
 
+def test_validate_continuous_time_series_reports_the_registered_method(tmp_path: Path) -> None:
+    dataset = tmp_path / "continuous-time-series.csv"
+    dataset.write_text(
+        "AGE,MIN AGE,MAX AGE,MGO,SIO2,LATITUDE,LONGITUDE\n" "10,8,12,8.0,43,-20,100\n" "20,18,22,9.0,51,5,110\n" "115,110,120,6.0,48,30,120\n",
+        encoding="utf-8",
+    )
+    settings = McpSettings(
+        runs_root=tmp_path / "runs",
+        service_state_root=tmp_path / "service-state",
+        cli_executable=Path(sys.executable),
+        maximum_dataset_bytes=1024 * 1024,
+    )
+    manager = RunManager(
+        settings,
+        plan_compiler=AnalysisPlanCompiler(),
+        cli_resolver=lambda: (Path(sys.executable), CLI_VERSION),
+    )
+    try:
+        preview = manager.validate(
+            TimeSeriesRequest(
+                training_dataset_path=dataset,
+                mode="continuous",
+                age_column="AGE",
+                minimum_age_column="MIN AGE",
+                maximum_age_column="MAX AGE",
+                value_column="MGO",
+                filter_column="SIO2",
+                filter_minimum=43,
+                filter_maximum=51,
+                bin_width=100,
+                iterations=8,
+                seed=2025,
+                relative_value_two_sigma=0.04,
+                fit_curve=False,
+            )
+        )
+        assert preview.models == ("spatiotemporal_weighted_continuous_bootstrap",)
+        assert preview.workflow_mode == "continuous"
+        assert preview.method == "spatiotemporal_weighted_continuous_bootstrap"
+    finally:
+        manager.close()
+
+
 @pytest.mark.skipif(os.name != "nt", reason="Windows legacy path budget regression")
 def test_validate_and_start_reject_unsafe_output_paths_before_creating_a_run(tmp_path: Path) -> None:
     script = tmp_path / "never-started.py"

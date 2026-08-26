@@ -142,6 +142,34 @@ class ProtocolRunManager:
         self.closed = True
 
 
+def test_run_result_schema_accepts_the_registered_continuous_method() -> None:
+    result = RunResultResponse(
+        run_id="run-0000000000000000",
+        state="succeeded",
+        task="time_series",
+        model="spatiotemporal_weighted_continuous_bootstrap",
+        tuning="not_applicable",
+        output_directory="C:/managed/output",
+        interaction_trace="C:/managed/wrapper/interaction-trace.json",
+        cli_stdout_log="C:/managed/wrapper/stdout.log",
+        cli_stderr_log="C:/managed/wrapper/stderr.log",
+        cli_exit_code=0,
+        cli_version=CLI_VERSION,
+        input_sha256="0" * 64,
+        input_hash_verified=True,
+        reported_metrics={"total_bins": 2},
+        artifact_count=0,
+        artifact_offset=0,
+        returned_artifact_count=0,
+        next_artifact_offset=None,
+        artifacts=(),
+        artifacts_truncated=False,
+        limitations=(),
+    )
+
+    assert result.model == "spatiotemporal_weighted_continuous_bootstrap"
+
+
 def _compact_bytes(value: object) -> int:
     return len(json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
 
@@ -187,11 +215,11 @@ async def test_advertised_time_series_schemas_remove_only_non_validation_annotat
         listing = await client.list_tools()
         schemas = {tool.name: tool.input_schema for tool in listing.tools}
         assert all(not _annotation_paths(schema) for schema in schemas.values())
-        # The named environment-profile, deterministic filter, and reference-labelled
-        # event-series contracts add validation-bearing fields. Keep the same 13-tool
-        # surface under a tight revised payload budget.
-        assert sum(_compact_bytes(schema) for schema in schemas.values()) < 13_300
-        assert _compact_bytes(listing.model_dump(mode="json", by_alias=True, exclude_none=True)) < 14_700
+        # The named environment-profile, deterministic filter, reference-labelled
+        # event-series, and continuous-value contracts add validation-bearing fields.
+        # Keep the same 13-tool surface under a tight revised payload budget.
+        assert sum(_compact_bytes(schema) for schema in schemas.values()) < 13_400
+        assert _compact_bytes(listing.model_dump(mode="json", by_alias=True, exclude_none=True)) < 14_800
 
         time_series = schemas["validate_analysis"]
         assert time_series["additionalProperties"] is False
@@ -275,7 +303,7 @@ async def test_time_series_schema_scope_is_strict_small_and_keeps_all_tool_names
         assert "title" not in validate_schema
         assert validate_schema["additionalProperties"] is False
         assert validate_schema["properties"]["task"]["const"] == "time_series"
-        assert _compact_bytes(validate_schema) < 8000
+        assert _compact_bytes(validate_schema) < 8150
         assert sum(_compact_bytes(tool.input_schema) for tool in tools.values()) < 15000
 
         capabilities = await client.call_tool("get_capabilities", {})
