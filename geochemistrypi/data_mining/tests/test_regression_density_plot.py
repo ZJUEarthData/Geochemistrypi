@@ -3,12 +3,12 @@ from unittest.mock import patch
 import matplotlib
 import pandas as pd
 
-matplotlib.use("Agg")
-
-import matplotlib.pyplot as plt
-
 from geochemistrypi.data_mining.model.func.algo_regression._common import plot_predicted_actual_density
 from geochemistrypi.data_mining.model.regression import RegressionWorkflowBase
+
+matplotlib.use("Agg")
+
+import matplotlib.pyplot as plt  # noqa: E402
 
 
 def _density_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
