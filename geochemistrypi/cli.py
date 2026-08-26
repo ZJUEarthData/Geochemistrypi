@@ -490,31 +490,47 @@ def embedding_label_overlay(
     run_name: str = typer.Option("Embedding Label Overlay", "--run-name"),
     coordinate_sheet: str = typer.Option("0", "--coordinate-sheet"),
     label_sheet: str = typer.Option("0", "--label-sheet"),
+    automation_plan: str = typer.Option("", help="Absolute path to a versioned machine-input plan."),
+    automation_events: str = typer.Option("", help="Absolute path for versioned machine-input events."),
 ) -> None:
     """Join existing 2-D coordinates and labels by identifier and render an overlay."""
-    from pathlib import Path
+    if bool(automation_plan) != bool(automation_events):
+        raise typer.BadParameter("--automation-plan and --automation-events must be provided together.")
 
-    from .data_mining.run_embedding_label_overlay import run_embedding_label_overlay
+    def execute() -> None:
+        from pathlib import Path
 
-    try:
-        output_directory = run_embedding_label_overlay(
-            coordinate_path=Path(coordinate_path),
-            label_path=Path(label_path),
-            output_root=Path(output_root),
-            experiment_name=experiment_name,
-            run_name=run_name,
-            coordinate_sheet=coordinate_sheet,
-            label_sheet=label_sheet,
-            coordinate_identifier_column=coordinate_identifier_column,
-            label_identifier_column=label_identifier_column,
-            x_column=x_column,
-            y_column=y_column,
-            label_column=label_column,
-            positive_label_values=tuple(positive_label_value),
-        )
-    except (OSError, ValueError) as exc:
-        raise typer.BadParameter(str(exc)) from exc
-    typer.echo(f"Saved embedding-label overlay outputs to {output_directory}")
+        from .data_mining.run_embedding_label_overlay import run_embedding_label_overlay
+
+        try:
+            output_directory = run_embedding_label_overlay(
+                coordinate_path=Path(coordinate_path),
+                label_path=Path(label_path),
+                output_root=Path(output_root),
+                experiment_name=experiment_name,
+                run_name=run_name,
+                coordinate_sheet=coordinate_sheet,
+                label_sheet=label_sheet,
+                coordinate_identifier_column=coordinate_identifier_column,
+                label_identifier_column=label_identifier_column,
+                x_column=x_column,
+                y_column=y_column,
+                label_column=label_column,
+                positive_label_values=tuple(positive_label_value),
+            )
+        except (OSError, ValueError) as exc:
+            raise typer.BadParameter(str(exc)) from exc
+        typer.echo(f"Saved embedding-label overlay outputs to {output_directory}")
+
+    if automation_plan:
+        from pathlib import Path
+
+        from .automation import automation_input_adapter
+
+        with automation_input_adapter(Path(automation_plan), Path(automation_events)):
+            execute()
+    else:
+        execute()
 
 
 # TODO: Currently, the web application is not fully implemented. It is disabled by default.

@@ -3,7 +3,9 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+from typer.testing import CliRunner
 
+import geochemistrypi.cli as cli_module
 from geochemistrypi.data_mining.run_embedding_label_overlay import _prepare_overlay, run_embedding_label_overlay
 
 
@@ -117,3 +119,57 @@ def test_overlay_writes_native_evidence_package(tmp_path: Path) -> None:
     manifest = json.loads(expected[6].read_text(encoding="utf-8"))
     assert manifest["join_policy"] == "exact_identifier_set_one_to_one"
     assert len(manifest["artifact_index"]["sha256"]) == 64
+
+
+def test_overlay_cli_supports_the_standard_noninteractive_automation_contract(tmp_path: Path) -> None:
+    coordinate_path = tmp_path / "coordinates.csv"
+    label_path = tmp_path / "labels.csv"
+    _coordinates().to_csv(coordinate_path, index=False)
+    _labels().to_csv(label_path, index=False)
+    plan_path = (tmp_path / "automation-plan.json").resolve()
+    events_path = (tmp_path / "automation-events.json").resolve()
+    plan_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "plan_name": "embedding-label-overlay-test",
+                "inputs": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        cli_module.app,
+        [
+            "embedding-label-overlay",
+            "--coordinates",
+            str(coordinate_path),
+            "--labels",
+            str(label_path),
+            "--coordinate-identifier-column",
+            "sample id",
+            "--label-identifier-column",
+            "record id",
+            "--x-column",
+            "PC 1",
+            "--y-column",
+            "PC 2",
+            "--label-column",
+            "anomaly label",
+            "--positive-label-value",
+            "-1",
+            "--output-root",
+            str(tmp_path / "output"),
+            "--automation-plan",
+            str(plan_path),
+            "--automation-events",
+            str(events_path),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    events = json.loads(events_path.read_text(encoding="utf-8"))
+    assert events["status"] == "completed"
+    assert events["completed_input_ids"] == []
+    assert events["events"] == []
