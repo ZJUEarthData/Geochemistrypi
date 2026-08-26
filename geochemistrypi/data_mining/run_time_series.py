@@ -47,7 +47,7 @@ def _atomic_json(path: Path, value: Dict[str, Any]) -> None:
         "w",
         encoding="utf-8",
         dir=str(path.parent),
-        prefix=f".{path.name}.",
+        prefix=".geopi-",
         suffix=".tmp",
         delete=False,
     ) as stream:

@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 import numpy as np
@@ -10,7 +11,7 @@ from geochemistrypi.cli import app
 from geochemistrypi.data_mining.cli_pipeline import semantic_mode_number
 from geochemistrypi.data_mining.constants import MODE_OPTION, MODE_OPTION_WITH_MISSING_VALUES
 from geochemistrypi.data_mining.process.time_series import TimeSeriesValidationError, compute_subaerial_proportion
-from geochemistrypi.data_mining.run_time_series import prepare_time_series_dataframe
+from geochemistrypi.data_mining.run_time_series import _atomic_json, prepare_time_series_dataframe
 
 
 def _frame() -> pd.DataFrame:
@@ -28,6 +29,23 @@ def _frame() -> pd.DataFrame:
 def test_time_series_menu_position_maps_to_stable_option_six() -> None:
     assert semantic_mode_number(6, MODE_OPTION) == 6
     assert semantic_mode_number(4, MODE_OPTION_WITH_MISSING_VALUES) == 6
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows path-length regression")
+def test_atomic_json_uses_a_short_temporary_name_in_deep_workspaces(tmp_path: Path) -> None:
+    target_parent_length = 215
+    padding_length = target_parent_length - len(str(tmp_path)) - 1
+    if padding_length < 1:
+        pytest.skip("Temporary test root is already too long for the bounded-path scenario.")
+    target = tmp_path / ("x" * padding_length) / "Embedding Label Overlay Parameters.json"
+
+    _atomic_json(target, {"schema_version": 1, "status": "ok"})
+
+    assert len(str(target.parent)) == target_parent_length
+    assert json.loads(target.read_text(encoding="utf-8")) == {
+        "schema_version": 1,
+        "status": "ok",
+    }
 
 
 def test_time_series_is_seeded_without_mutating_global_random_state() -> None:
