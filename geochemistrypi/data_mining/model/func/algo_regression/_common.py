@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import mlflow
 import numpy as np
 import pandas as pd
+from matplotlib.figure import Figure
 from rich import print
 from scipy.stats import gaussian_kde
 from sklearn.metrics import explained_variance_score, mean_absolute_error, mean_squared_error, r2_score
@@ -140,7 +141,11 @@ def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.D
     return scores_result
 
 
-def plot_predicted_vs_actual(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, algorithm_name: str) -> None:
+def plot_predicted_vs_actual(
+    y_test_predict: pd.DataFrame,
+    y_test: pd.DataFrame,
+    algorithm_name: str,
+) -> Figure:
     """Plot the testing predict values of the trained model and the testing target values.
 
     Parameters
@@ -154,21 +159,39 @@ def plot_predicted_vs_actual(y_test_predict: pd.DataFrame, y_test: pd.DataFrame,
     algorithm_name : str
         The name of the algorithm model.
     """
+    figure, axis = plt.subplots()
     if y_test.shape[1] == 1:
-        plt.scatter(y_test_predict, y_test, color="b")
-        plt.plot(y_test_predict, y_test_predict, color="r", linestyle="--", label="Perfect Prediction Line")
+        predicted = np.asarray(y_test_predict, dtype=float).reshape(-1)
+        actual = np.asarray(y_test, dtype=float).reshape(-1)
+        finite = np.isfinite(predicted) & np.isfinite(actual)
+        predicted = predicted[finite]
+        actual = actual[finite]
+        if not predicted.size:
+            raise ValueError("Predicted-versus-actual output has no finite observations.")
+        axis.scatter(predicted, actual, color="b")
+        minimum = min(float(predicted.min()), float(actual.min()))
+        maximum = max(float(predicted.max()), float(actual.max()))
+        axis.plot(
+            [minimum, maximum],
+            [minimum, maximum],
+            color="r",
+            linestyle="--",
+            label="Perfect Prediction Line",
+        )
     else:
         for column in y_test.columns:
-            predicted = y_test_predict[column]
-            actual = y_test[column]
-            plt.scatter(predicted, actual, label=str(column))
+            predicted = np.asarray(y_test_predict[column], dtype=float).reshape(-1)
+            actual = np.asarray(y_test[column], dtype=float).reshape(-1)
+            finite = np.isfinite(predicted) & np.isfinite(actual)
+            axis.scatter(predicted[finite], actual[finite], label=str(column))
         minimum = min(float(y_test_predict.min().min()), float(y_test.min().min()))
         maximum = max(float(y_test_predict.max().max()), float(y_test.max().max()))
-        plt.plot([minimum, maximum], [minimum, maximum], color="r", linestyle="--", label="Perfect Prediction Line")
-    plt.xlabel("Predicted Values")
-    plt.ylabel("Actual Values")
-    plt.legend()
-    plt.title(f"Predicted vs. Actual Diagram - {algorithm_name}")
+        axis.plot([minimum, maximum], [minimum, maximum], color="r", linestyle="--", label="Perfect Prediction Line")
+    axis.set_xlabel("Predicted Values")
+    axis.set_ylabel("Actual Values")
+    axis.legend()
+    axis.set_title(f"Predicted vs. Actual Diagram - {algorithm_name}")
+    return figure
 
 
 def plot_predicted_actual_density(

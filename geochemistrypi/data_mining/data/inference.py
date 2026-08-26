@@ -258,7 +258,7 @@ def save_external_regression_evaluation(
         MLFLOW_ARTIFACT_DATA_PATH,
     )
     if actual_values.shape[1] == 1:
-        plot_predicted_vs_actual(
+        figure = plot_predicted_vs_actual(
             predicted_values,
             actual_values,
             algorithm_name,
@@ -268,4 +268,5 @@ def save_external_regression_evaluation(
             f"External Predicted vs. Actual - {algorithm_name}",
             image_path,
             "image/model_output",
+            figure=figure,
         )

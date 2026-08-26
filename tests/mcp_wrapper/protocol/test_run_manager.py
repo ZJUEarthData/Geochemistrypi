@@ -372,6 +372,11 @@ for name in ('artifacts', 'metrics', 'parameters', 'summary'):
             preview.request_hash,
         )
         assert _wait_for_state(manager, acknowledgement.run_id, {"succeeded"}) == "succeeded"
+        result = manager.get_result(acknowledgement.run_id)
+        request_record = json.loads((manager.settings.runs_root / acknowledgement.run_id / "wrapper" / "request.json").read_text(encoding="utf-8"))
+        assert result.request_hash == preview.request_hash
+        assert request_record["request_hash"] == preview.request_hash
+        assert request_record["request"] == receipt["request"]
     finally:
         manager.close()
 

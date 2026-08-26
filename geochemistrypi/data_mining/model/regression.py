@@ -197,8 +197,13 @@ class RegressionWorkflowBase(WorkflowBase):
     def _plot_predicted_vs_actual(y_test_predict: pd.DataFrame, y_test: pd.DataFrame, name_column: str, algorithm_name: str, local_path: str, mlflow_path: str, graph_name: str) -> None:
         """Plot the predicted vs. actual diagram."""
         print(f"-----* {graph_name} *-----")
-        plot_predicted_vs_actual(y_test_predict, y_test, algorithm_name)
-        save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+        figure = plot_predicted_vs_actual(y_test_predict, y_test, algorithm_name)
+        save_fig(
+            f"{graph_name} - {algorithm_name}",
+            local_path,
+            mlflow_path,
+            figure=figure,
+        )
         prediction_data = y_test_predict
         if y_test.shape[1] > 1:
             prediction_data = y_test_predict.rename(columns=lambda column: f"Predicted_{column}")
@@ -233,7 +238,12 @@ class RegressionWorkflowBase(WorkflowBase):
             y_test,
             algorithm_name,
         )
-        save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+        save_fig(
+            f"{graph_name} - {algorithm_name}",
+            local_path,
+            mlflow_path,
+            tight_layout=False,
+        )
 
     @staticmethod
     def _score(y_true: pd.DataFrame, y_predict: pd.DataFrame, algorithm_name: str, store_path: str, graph_name: str) -> None:

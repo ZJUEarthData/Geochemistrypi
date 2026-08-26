@@ -1,6 +1,8 @@
 import hashlib
 import json
+import struct
 import sys
+import zlib
 from pathlib import Path
 
 import pytest
@@ -19,6 +21,7 @@ from geochemistrypi_mcp.config.constants import CLI_VERSION
 from geochemistrypi_mcp.config.settings import McpSettings
 from geochemistrypi_mcp.data.inspector import snapshot_dataset
 from geochemistrypi_mcp.data.preparation import DatasetPreparationError, prepare_dataset_view
+from geochemistrypi_mcp.planning.artifact_mapping import AdapterArtifactMapping
 from geochemistrypi_mcp.planning.interaction_plan import AnalysisPlanCompiler
 from geochemistrypi_mcp.planning.profiles import attest_profile_plan, load_benchmark_profile
 from geochemistrypi_mcp.planning.scientific_contract import assess_scientific_compatibility, planned_artifact_requirements
@@ -56,6 +59,17 @@ def _environment() -> EnvironmentSnapshot:
         "dependencies": {"geochemistrypi": CLI_VERSION, "xgboost": "1.3.3"},
     }
     return EnvironmentSnapshot(identity_sha256="a" * 64, record=record)
+
+
+def _write_rgb_png(path: Path, pixels: list[list[tuple[int, int, int]]]) -> None:
+    height = len(pixels)
+    width = len(pixels[0])
+    scanlines = b"".join(b"\x00" + bytes(channel for pixel in row for channel in pixel) for row in pixels)
+
+    def chunk(kind: bytes, payload: bytes) -> bytes:
+        return struct.pack(">I", len(payload)) + kind + payload + struct.pack(">I", zlib.crc32(kind + payload) & 0xFFFFFFFF)
+
+    path.write_bytes(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(scanlines)) + chunk(b"IEND", b""))
 
 
 def _classification_request(dataset: Path, preparation: DatasetPreparationContract, **updates) -> ClassificationRequest:
@@ -488,6 +502,62 @@ def test_workflow_aware_artifact_contract_checks_role_cardinality_and_content(tm
     assert complete.all_index_entries[0]["requirement_ids"] == ["evaluation.holdout"]
     assert incomplete.missing_requirement_ids == ("evaluation.recall",)
     assert "missing required JSON keys" in incomplete.requirement_failures["evaluation.recall"]
+
+
+def test_observed_predicted_figure_contract_rejects_a_plot_without_visible_data(tmp_path: Path) -> None:
+    output = tmp_path / "output"
+    for directory in ("artifacts", "metrics", "parameters", "summary"):
+        (output / directory).mkdir(parents=True)
+    image_directory = output / "artifacts" / "image" / "model_output"
+    image_directory.mkdir(parents=True)
+    figure = image_directory / "External Predicted vs. Actual - Extra-Trees.png"
+    blank_pixels = [[(255, 255, 255) for _ in range(40)] for _ in range(40)]
+    for index in range(40):
+        blank_pixels[4][index] = (0, 0, 0)
+        blank_pixels[35][index] = (0, 0, 0)
+    _write_rgb_png(figure, blank_pixels)
+    requirement = ArtifactRequirement(
+        requirement_id="evaluation.figure",
+        scientific_type="observed_predicted_figure",
+        output_role="evaluation.figure",
+        category="artifacts",
+        path_pattern="artifacts/image/model_output/External Predicted vs. Actual*.png",
+        media_types=("image/png",),
+    )
+    mapping = AdapterArtifactMapping(
+        mapping_id="regression.external.figure",
+        scientific_type="observed_predicted_figure",
+        output_role="evaluation.figure",
+        relative_path=("artifacts/image/model_output/" "External Predicted vs. Actual - Extra-Trees.png"),
+    )
+
+    blank = discover_artifacts(
+        output,
+        20,
+        (requirement,),
+        workflow_family="regression",
+        artifact_mappings=(mapping,),
+    )
+
+    assert blank.missing_requirement_ids == ("evaluation.figure",)
+    assert "visible plot data" in blank.requirement_failures["evaluation.figure"]
+
+    plotted_pixels = [[(255, 255, 255) for _ in range(40)] for _ in range(40)]
+    for index in range(10, 30):
+        plotted_pixels[index][index] = (0, 0, 255)
+        plotted_pixels[index][39 - index] = (255, 0, 0)
+    _write_rgb_png(figure, plotted_pixels)
+
+    complete = discover_artifacts(
+        output,
+        20,
+        (requirement,),
+        workflow_family="regression",
+        artifact_mappings=(mapping,),
+    )
+
+    assert complete.missing_requirement_ids == ()
+    assert complete.requirement_matches["evaluation.figure"] == ("artifacts/image/model_output/External Predicted vs. Actual - Extra-Trees.png",)
 
 
 def test_artifact_cardinality_counts_unique_content_not_identical_cli_mirrors(

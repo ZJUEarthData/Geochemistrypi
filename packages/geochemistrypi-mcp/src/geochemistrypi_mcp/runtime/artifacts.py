@@ -3,6 +3,8 @@
 import hashlib
 import json
 import mimetypes
+import struct
+import zlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -19,6 +21,8 @@ _MAX_METRIC_FILES = 20
 _MAX_METRIC_FILE_BYTES = 1024 * 1024
 _MAX_METRIC_VALUES = 100
 _MAX_PARAMETERS_FILE_BYTES = 1024 * 1024
+_MAX_PNG_PIXELS = 50_000_000
+_MAX_PNG_COMPRESSED_BYTES = 64 * 1024 * 1024
 _TIME_SERIES_PARAMETERS_RELATIVE_PATH = "parameters/Time Series Parameters.json"
 
 
@@ -109,6 +113,126 @@ def _has_required_json_keys(path: Path, keys: tuple[str, ...]) -> bool:
                 return False
             value = value[part]
     return True
+
+
+def _paeth_predictor(left: int, above: int, upper_left: int) -> int:
+    estimate = left + above - upper_left
+    left_distance = abs(estimate - left)
+    above_distance = abs(estimate - above)
+    upper_left_distance = abs(estimate - upper_left)
+    if left_distance <= above_distance and left_distance <= upper_left_distance:
+        return left
+    if above_distance <= upper_left_distance:
+        return above
+    return upper_left
+
+
+def _png_has_visible_plot_data(path: Path) -> bool:
+    """Reject a valid PNG whose central plotting region contains no visible marks."""
+
+    try:
+        encoded = path.read_bytes()
+    except OSError:
+        return False
+    if not encoded.startswith(b"\x89PNG\r\n\x1a\n"):
+        return False
+    offset = 8
+    header = None
+    compressed_parts = []
+    compressed_size = 0
+    while offset + 12 <= len(encoded):
+        length = struct.unpack(">I", encoded[offset : offset + 4])[0]
+        chunk_end = offset + 12 + length
+        if chunk_end > len(encoded):
+            return False
+        chunk_type = encoded[offset + 4 : offset + 8]
+        payload = encoded[offset + 8 : offset + 8 + length]
+        if chunk_type == b"IHDR":
+            if header is not None or length != 13:
+                return False
+            header = struct.unpack(">IIBBBBB", payload)
+        elif chunk_type == b"IDAT":
+            compressed_size += length
+            if compressed_size > _MAX_PNG_COMPRESSED_BYTES:
+                return False
+            compressed_parts.append(payload)
+        elif chunk_type == b"IEND":
+            break
+        offset = chunk_end
+    if header is None or not compressed_parts:
+        return False
+    width, height, bit_depth, color_type, compression, filtering, interlace = header
+    channels_by_color_type = {0: 1, 2: 3, 4: 2, 6: 4}
+    channels = channels_by_color_type.get(color_type)
+    if channels is None or bit_depth != 8 or compression != 0 or filtering != 0 or interlace != 0 or width < 2 or height < 2 or width * height > _MAX_PNG_PIXELS:
+        return False
+    row_bytes = width * channels
+    expected_size = height * (row_bytes + 1)
+    try:
+        decompressor = zlib.decompressobj()
+        decoded = decompressor.decompress(
+            b"".join(compressed_parts),
+            expected_size + 1,
+        )
+        decoded += decompressor.flush()
+    except zlib.error:
+        return False
+    if len(decoded) != expected_size or not decompressor.eof:
+        return False
+    x_start = width * 15 // 100
+    x_stop = max(x_start + 1, width * 85 // 100)
+    y_start = height * 15 // 100
+    y_stop = max(y_start + 1, height * 85 // 100)
+    required_visible_pixels = max(4, min(width, height) // 50)
+    prior = bytearray(row_bytes)
+    cursor = 0
+    visible_pixels = 0
+    for y_position in range(height):
+        filter_type = decoded[cursor]
+        cursor += 1
+        scanline = bytearray(decoded[cursor : cursor + row_bytes])
+        cursor += row_bytes
+        if filter_type not in {0, 1, 2, 3, 4}:
+            return False
+        for index in range(row_bytes):
+            left = scanline[index - channels] if index >= channels else 0
+            above = prior[index]
+            upper_left = prior[index - channels] if index >= channels else 0
+            if filter_type == 1:
+                scanline[index] = (scanline[index] + left) & 0xFF
+            elif filter_type == 2:
+                scanline[index] = (scanline[index] + above) & 0xFF
+            elif filter_type == 3:
+                scanline[index] = (scanline[index] + ((left + above) // 2)) & 0xFF
+            elif filter_type == 4:
+                scanline[index] = (scanline[index] + _paeth_predictor(left, above, upper_left)) & 0xFF
+        if y_start <= y_position < y_stop:
+            for x_position in range(x_start, x_stop):
+                pixel_offset = x_position * channels
+                if color_type in {0, 4}:
+                    red = green = blue = scanline[pixel_offset]
+                    alpha = scanline[pixel_offset + 1] if color_type == 4 else 255
+                else:
+                    red, green, blue = scanline[pixel_offset : pixel_offset + 3]
+                    alpha = scanline[pixel_offset + 3] if color_type == 6 else 255
+                if alpha > 16 and (max(red, green, blue) - min(red, green, blue) >= 24 or max(red, green, blue) < 180):
+                    visible_pixels += 1
+                    if visible_pixels >= required_visible_pixels:
+                        return True
+        prior = scanline
+    return False
+
+
+def _requirement_content_failure(
+    path: Path,
+    requirement: ArtifactRequirement,
+) -> str | None:
+    if not _has_required_json_keys(path, requirement.required_json_keys):
+        return "matched artifact is missing required JSON keys"
+    if requirement.scientific_type == "observed_predicted_figure":
+        if path.suffix.lower() != ".png" or not _png_has_visible_plot_data(path):
+            return "matched figure contains no visible plot data in the central plotting region"
+    return None
 
 
 def _media_type(path: Path) -> str:
@@ -243,13 +367,14 @@ def discover_artifacts(
         relative = path.relative_to(output_directory).as_posix()
         content_sha256 = _sha256(path)
         matched_requirements = _matched_requirement(relative, requirements, workflow_family, artifact_mappings)
-        satisfied_requirements = tuple(requirement for requirement in matched_requirements if _has_required_json_keys(path, requirement.required_json_keys))
+        content_failures = {requirement.requirement_id: _requirement_content_failure(path, requirement) for requirement in matched_requirements}
+        satisfied_requirements = tuple(requirement for requirement in matched_requirements if content_failures[requirement.requirement_id] is None)
         for requirement in matched_requirements:
             if requirement in satisfied_requirements:
                 requirement_paths[requirement.requirement_id].append(relative)
                 requirement_content_hashes[requirement.requirement_id].add(content_sha256)
-            elif requirement.required_json_keys:
-                requirement_failures[requirement.requirement_id] = "matched artifact is missing required JSON keys"
+            else:
+                requirement_failures[requirement.requirement_id] = str(content_failures[requirement.requirement_id])
         descriptors = _produced_descriptors(relative, workflow_family, artifact_mappings)
         descriptor = descriptors[0]
         reference = ArtifactReference(

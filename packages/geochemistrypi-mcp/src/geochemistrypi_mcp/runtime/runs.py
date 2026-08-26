@@ -1177,12 +1177,19 @@ class RunManager:
         paths = RunPaths.create(self.settings.runs_root, run_id)
         validate_workspace_path(plan, paths.workspace)
         created_at = _utc_now()
+        request_value = _validation_request_value(request)
+        request_hash = _json_sha256(request_value)
+        if validation is not None and not hmac.compare_digest(
+            request_hash,
+            str(validation["request_hash"]),
+        ):
+            raise RunStateError("Validated request serialization changed before run creation.")
         request_record = {
             "schema_version": 1,
             "run_id": run_id,
-            "request_hash": _json_sha256(request.model_dump(mode="json")),
+            "request_hash": request_hash,
             "canonical_contract_hash": canonical_sha256(canonical_scientific_contract(request, plan)),
-            "request": request.model_dump(mode="json"),
+            "request": request_value,
             "validation": (
                 {
                     "validation_id": validation["validation_id"],

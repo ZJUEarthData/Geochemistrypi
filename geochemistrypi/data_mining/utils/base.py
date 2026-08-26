@@ -10,6 +10,7 @@ import joblib
 import mlflow
 import pandas as pd
 from matplotlib import pyplot as plt
+from matplotlib.figure import Figure
 from rich import print
 
 
@@ -169,7 +170,13 @@ def clear_output(text: str = None) -> None:
     print("")
 
 
-def save_fig(fig_name: str, local_image_path: str, mlflow_artifact_image_path: str = None, tight_layout: bool = True) -> None:
+def save_fig(
+    fig_name: str,
+    local_image_path: str,
+    mlflow_artifact_image_path: str = None,
+    tight_layout: bool = True,
+    figure: Optional[Figure] = None,
+) -> None:
     """Save the figure in the local directory and in mlflow specialized directory.
 
     Parameters
@@ -197,8 +204,9 @@ def save_fig(fig_name: str, local_image_path: str, mlflow_artifact_image_path: s
 
     full_path = os.path.join(local_image_path, fig_name + ".png")
     print(f"Save figure '{fig_name}' in {local_image_path}.")
+    figure_to_save = figure if figure is not None else plt.gcf()
     if tight_layout:
-        plt.tight_layout()
+        figure_to_save.tight_layout()
 
     # Check that the original file exists,
     # and if it does, add a number after the filename to distinguish
@@ -207,8 +215,8 @@ def save_fig(fig_name: str, local_image_path: str, mlflow_artifact_image_path: s
     while os.path.isfile(full_path):
         full_path = dir + str(i) + ".png"
         i = i + 1
-    plt.savefig(full_path, format="png", dpi=300)
-    plt.close()
+    figure_to_save.savefig(full_path, format="png", dpi=300)
+    plt.close(figure_to_save)
 
     # MLflow logging with comprehensive error handling
     try:
