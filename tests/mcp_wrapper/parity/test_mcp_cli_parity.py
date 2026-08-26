@@ -359,11 +359,23 @@ async def test_stdio_mcp_embedding_label_overlay_matches_direct_public_cli(
         env=_stdio_environment(cli_executable, tmp_path / "overlay-state"),
     )
     async with Client(stdio_client(parameters)) as client:
-        started = await client.call_tool(
-            "start_analysis",
+        validation_call = await client.call_tool(
+            "validate_analysis",
             request.model_dump(mode="json"),
         )
+        assert validation_call.is_error is False, validation_call.content[0].text
+        validation = validation_call.structured_content
+        assert validation["execution_ready"] is True
+        assert validation["workflow_family"] == "artifact_composition"
+        started = await client.call_tool(
+            "start_analysis",
+            {
+                "validation_id": validation["validation_id"],
+                "request_hash": validation["request_hash"],
+            },
+        )
         assert started.is_error is False, started.content[0].text
+        assert started.structured_content["started_from_validation"] is True
         run_id = started.structured_content["run_id"]
         deadline = time.monotonic() + 180
         while True:

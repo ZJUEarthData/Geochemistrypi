@@ -2544,6 +2544,7 @@ class AnalysisValidationResponse(StrictModel):
         "dimension_reduction",
         "clustering",
         "anomaly_detection",
+        "artifact_composition",
     ]
     workflow_mode: str = Field(min_length=1, max_length=80)
     method: str = Field(min_length=1, max_length=120)
