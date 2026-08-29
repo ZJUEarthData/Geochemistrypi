@@ -314,6 +314,45 @@ def data_mining(
                 )
 
 
+@app.command("replay")
+def replay_execution_bundle(
+    bundle: str = typer.Option(..., "--bundle", help="Path to an MCP-generated CLI execution bundle."),
+    training: str = typer.Option("", "--training", help="Replacement training data with the bundle-recorded SHA-256."),
+    application: str = typer.Option("", "--application", help="Replacement application data with the bundle-recorded SHA-256."),
+    output: str = typer.Option(".geochemistrypi-replay", "--output", help="Directory for replay transport events."),
+    tracking_root: str = typer.Option("", "--tracking-root", help="Override the bundle's absolute MLflow tracking directory."),
+) -> None:
+    """Replay an audited MCP run through the same local GeochemistryPi CLI path."""
+    from .execution_bundle import ExecutionBundle, ExecutionBundleError
+
+    try:
+        loaded = ExecutionBundle.load(
+            Path(bundle),
+            training_override=Path(training) if training else None,
+            application_override=Path(application) if application else None,
+        )
+    except ExecutionBundleError as exc:
+        raise typer.BadParameter(str(exc), param_hint="--bundle") from exc
+    selected_tracking_root = tracking_root or loaded.tracking_root
+    if selected_tracking_root and not Path(selected_tracking_root).expanduser().is_absolute():
+        raise typer.BadParameter("--tracking-root must be absolute.", param_hint="--tracking-root")
+    replay_directory = Path(output).expanduser().resolve()
+    replay_directory.mkdir(parents=True, exist_ok=True)
+    events_path = replay_directory / "automation-events.json"
+    _run_cli_pipeline(
+        training_data_path=str(loaded.training_data.path) if loaded.training_data else "",
+        application_data_path=str(loaded.application_data.path) if loaded.application_data else "",
+        data_source_name=loaded.data_source_name,
+        automation_plan=str(loaded.automation_plan.path),
+        automation_events=str(events_path),
+        scientific_config=str(loaded.scientific_config.path) if loaded.scientific_config else "",
+        world_map_config=loaded.world_map_config,
+        tracking_root=selected_tracking_root,
+        existing_experiment_id=loaded.existing_experiment_id,
+    )
+    typer.echo(f"Replay completed for {loaded.plan_name}; events: {events_path}")
+
+
 @app.command()
 def datasets(
     source: str = typer.Option("all", help="Dataset source to list: all, builtin, or desktop."),

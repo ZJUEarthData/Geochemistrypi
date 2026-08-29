@@ -1,6 +1,7 @@
 """Prompt-synchronized, cross-platform subprocess operation for the public CLI."""
 
 import codecs
+import hashlib
 import json
 import os
 import queue
@@ -21,6 +22,7 @@ from ..planning.interaction_plan import InteractionPlan, InteractionStep
 
 ANSI_ESCAPE = re.compile(r"\x1b(?:\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1b\\))")
 CAPTURE_DIRECTORY_NAME = ".geochemistrypi-driver"
+REPLAY_BUNDLE_FILENAME = "cli-execution-bundle.json"
 DETERMINISTIC_NUMERIC_ENVIRONMENT = {
     "BLIS_NUM_THREADS": "1",
     "MKL_NUM_THREADS": "1",
@@ -72,6 +74,76 @@ def _write_text_atomically(path: Path, value: str) -> None:
 
 def _write_json_atomically(path: Path, value: Dict[str, Any]) -> None:
     _write_text_atomically(path, json.dumps(value, indent=2, ensure_ascii=False) + "\n")
+
+
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _command_option(command: List[str], name: str) -> Optional[str]:
+    positions = [index for index, value in enumerate(command) if value == name]
+    if len(positions) > 1:
+        raise ValueError(f"Public CLI command contains duplicate {name} options.")
+    if not positions:
+        return None
+    index = positions[0]
+    if index + 1 >= len(command) or command[index + 1].startswith("--"):
+        raise ValueError(f"Public CLI command has no value for {name}.")
+    return command[index + 1]
+
+
+def _bound_file(path: Path, *, relative_to: Optional[Path] = None) -> Dict[str, str]:
+    resolved = path.expanduser().resolve(strict=True)
+    rendered = str(resolved)
+    if relative_to is not None:
+        try:
+            rendered = str(resolved.relative_to(relative_to.resolve()))
+        except ValueError:
+            pass
+    return {"path": rendered, "sha256": _file_sha256(resolved)}
+
+
+def _write_replay_bundle(
+    capture_path: Path,
+    plan: InteractionPlan,
+    command: List[str],
+    automation_plan_path: Path,
+    scientific_config_path: Optional[Path],
+) -> Path:
+    """Publish a generic, hash-bound local replay contract for every MCP CLI run."""
+    if "data-mining" not in command:
+        raise ValueError("Replay bundles require the public data-mining command.")
+    data = _command_option(command, "--data")
+    training = _command_option(command, "--training")
+    application = _command_option(command, "--application")
+    if data and training:
+        raise ValueError("Public CLI command cannot combine --data and --training.")
+    training_path = data or training
+    if application and not training:
+        raise ValueError("Public CLI command cannot use --application without --training.")
+    payload = {
+        "schema_version": 1,
+        "plan_name": plan.name,
+        "data_source": "ANY_PATH" if training_path else "BUILT_IN",
+        "training_data": _bound_file(Path(training_path)) if training_path else None,
+        "application_data": _bound_file(Path(application)) if application else None,
+        "automation_plan": _bound_file(automation_plan_path, relative_to=capture_path),
+        "scientific_config": (
+            _bound_file(scientific_config_path, relative_to=capture_path)
+            if scientific_config_path is not None
+            else None
+        ),
+        "world_map_config": _command_option(command, "--world-map-config") or "",
+        "tracking_root": _command_option(command, "--tracking-root") or "",
+        "existing_experiment_id": _command_option(command, "--existing-experiment-id") or "",
+    }
+    destination = capture_path / REPLAY_BUNDLE_FILENAME
+    _write_json_atomically(destination, payload)
+    return destination
 
 
 def _require_exact_fields(value: Dict[str, Any], expected: set[str], location: str, workspace: Path) -> None:
@@ -388,6 +460,14 @@ class CliInteractionDriver:
                         str(scientific_config_path),
                     )
                 )
+            if "data-mining" in executed_command:
+                _write_replay_bundle(
+                    capture_path,
+                    plan,
+                    executed_command,
+                    automation_plan_path,
+                    scientific_config_path if plan.scientific_execution_contract_json is not None else None,
+                )
         process_environment = os.environ.copy()
         if environment:
             process_environment.update({str(key): str(value) for key, value in environment.items()})
@@ -582,6 +662,11 @@ class CliInteractionDriver:
                 "plan_name": plan.name,
                 "plan_schema_version": plan.schema_version,
                 "command": executed_command,
+                "replay_bundle": (
+                    str(capture_path / REPLAY_BUNDLE_FILENAME)
+                    if (capture_path / REPLAY_BUNDLE_FILENAME).is_file()
+                    else None
+                ),
                 "input_transport": ("cli_automation_v1" if self.automation_mode else "legacy_prompt_sync_v1"),
                 "workspace": str(workspace_path),
                 "started_at": started_at,

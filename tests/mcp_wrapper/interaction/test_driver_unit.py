@@ -1,4 +1,5 @@
 import ast
+import hashlib
 import json
 import os
 import sys
@@ -25,6 +26,7 @@ from geochemistrypi_mcp import (
 )
 from geochemistrypi_mcp.api.schemas import BuiltInDatasetReference
 from geochemistrypi_mcp.planning.interaction_plan import _console_script_name
+from geochemistrypi_mcp.runtime.cli_driver import _write_replay_bundle
 from pydantic import ValidationError
 
 
@@ -71,6 +73,41 @@ def _plan(script: Path, steps: tuple[InteractionStep, ...]) -> InteractionPlan:
         public_command=(sys.executable, "-u", str(script)),
         steps=steps,
     )
+
+
+def test_driver_exports_hash_bound_generic_cli_replay_bundle(tmp_path: Path) -> None:
+    data = _dataset(tmp_path)
+    capture = tmp_path / "capture"
+    capture.mkdir()
+    automation = capture / "automation-plan.json"
+    automation.write_text('{"schema_version":1}', encoding="utf-8")
+    science = capture / "scientific-execution.json"
+    science.write_text('{"schema_version":3}', encoding="utf-8")
+    plan = InteractionPlan(
+        schema_version=1,
+        name="classification-extra-trees-v1",
+        public_command=("geochemistrypi", "data-mining", "--data", str(data)),
+        steps=(),
+    )
+
+    result = _write_replay_bundle(
+        capture,
+        plan,
+        list(plan.public_command),
+        automation,
+        science,
+    )
+    value = json.loads(result.read_text(encoding="utf-8"))
+
+    assert value["schema_version"] == 1
+    assert value["plan_name"] == plan.name
+    assert value["data_source"] == "ANY_PATH"
+    assert value["training_data"]["path"] == str(data.resolve())
+    assert value["training_data"]["sha256"] == hashlib.sha256(
+        data.read_bytes()
+    ).hexdigest()
+    assert value["automation_plan"]["path"] == "automation-plan.json"
+    assert value["scientific_config"]["path"] == "scientific-execution.json"
 
 
 def test_semantic_request_rejects_unknown_fields_and_conflicting_columns(tmp_path: Path) -> None:
@@ -549,6 +586,7 @@ print('automation completed', flush=True)
     assert trace["input_transport"] == "cli_automation_v1"
     assert trace["events"][0]["response"] == "alpha"
     assert "--automation-plan" in trace["command"]
+    assert trace["replay_bundle"] is None
     assert "OLD FIRST PROMPT" not in result.stdout_path.read_text(encoding="utf-8")
 
 

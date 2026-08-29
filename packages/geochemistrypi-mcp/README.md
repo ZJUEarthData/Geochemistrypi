@@ -387,6 +387,25 @@ one adapter can execute the complete chain. Benchmark names are metadata only
 and never participate in execution dispatch. See
 `benchmark_profiles/README.md` for the format.
 
+### Replaying an MCP run with the local CLI
+
+Every automated MCP run that uses the public `data-mining` command now writes
+`.geochemistrypi-driver/cli-execution-bundle.json`. The bundle is paper-agnostic:
+it binds the prepared training/application data, automation plan, and optional
+scientific execution contract by SHA-256. The same run can therefore be
+executed locally through the public GeochemistryPi CLI without rebuilding MCP
+planning logic in a second implementation:
+
+```console
+geochemistrypi replay --bundle D:/managed-run/workspace/.geochemistrypi-driver/cli-execution-bundle.json
+```
+
+If the prepared dataset was copied elsewhere, provide `--training` and, when
+applicable, `--application`. Overrides are accepted only when their SHA-256
+matches the files recorded by MCP. Outputs are produced by the existing
+GeochemistryPi scientific pipeline; replay does not dispatch on benchmark or
+paper names.
+
 A minimal regression request is:
 
 ```json
