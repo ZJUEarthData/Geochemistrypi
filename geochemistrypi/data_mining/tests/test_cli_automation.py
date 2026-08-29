@@ -188,3 +188,30 @@ def test_data_mining_tracking_options_require_safe_stable_selection(tmp_path: Pa
     assert accepted.exit_code == 0, accepted.output
     assert captured["tracking_root"] == str(tracking_root)
     assert captured["existing_experiment_id"] == "stable-7"
+
+
+def test_interactive_data_mining_accepts_scientific_config_without_automation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    scientific_path = (tmp_path / "scientific-execution.json").resolve()
+    scientific_path.write_text("{}", encoding="utf-8")
+    observed = {}
+    monkeypatch.setattr(
+        cli_module, "_run_cli_pipeline", lambda **values: observed.update(values)
+    )
+
+    result = CliRunner().invoke(
+        cli_module.app,
+        [
+            "data-mining",
+            "--data",
+            str(tmp_path / "rocks.csv"),
+            "--scientific-config",
+            str(scientific_path),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert observed["scientific_config"] == str(scientific_path)
+    assert observed["automation_plan"] == ""
+    assert observed["automation_events"] == ""

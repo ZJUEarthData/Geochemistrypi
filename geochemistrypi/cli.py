@@ -121,16 +121,21 @@ def _run_cli_pipeline(
             existing_experiment_id=existing_experiment_id or None,
         )
 
-    if automation_plan:
-        from .automation import automation_input_adapter
+    if automation_plan or scientific_config:
         from .scientific_execution import scientific_execution_context
 
-        if scientific_config:
-            with scientific_execution_context(Path(scientific_config)):
+        if automation_plan:
+            from .automation import automation_input_adapter
+
+            if scientific_config:
+                with scientific_execution_context(Path(scientific_config)):
+                    with automation_input_adapter(Path(automation_plan), Path(automation_events)):
+                        execute()
+            else:
                 with automation_input_adapter(Path(automation_plan), Path(automation_events)):
                     execute()
         else:
-            with automation_input_adapter(Path(automation_plan), Path(automation_events)):
+            with scientific_execution_context(Path(scientific_config)):
                 execute()
     else:
         execute()
@@ -150,6 +155,27 @@ def main(version: bool = typer.Option(False, "--version", "-v", help="Show versi
     It has the cores components of continous training, machine learning lifecycle management and model inference.
     """
     return
+
+
+@app.command("prepare-data")
+def prepare_data_command(
+    source: str = typer.Option(..., "--source", help="Original .csv or .xlsx dataset."),
+    config: str = typer.Option(..., "--config", help="Paper-independent JSON preparation contract."),
+    output: str = typer.Option(..., "--output", help="Destination CLI-ready .csv file."),
+    manifest: str = typer.Option("", "--manifest", help="Optional preparation audit JSON path."),
+) -> None:
+    """Select worksheets, normalize headers, filter rows, and project columns."""
+    from .data_preparation import DataPreparationError, load_preparation_config, prepare_data
+
+    try:
+        record = prepare_data(Path(source), Path(output), load_preparation_config(Path(config)))
+        manifest_path = Path(manifest) if manifest else Path(output).with_suffix(".preparation.json")
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        manifest_path.write_text(__import__("json").dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    except (OSError, DataPreparationError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(f"Prepared {record['source_row_count']} rows at {record['output']}")
+    typer.echo(f"Saved preparation audit to {manifest_path.resolve()}")
 
 
 @app.command()
@@ -179,8 +205,6 @@ def data_mining(
 
     if bool(automation_plan) != bool(automation_events):
         raise typer.BadParameter("--automation-plan and --automation-events must be provided together.")
-    if scientific_config and not automation_plan:
-        raise typer.BadParameter("--scientific-config requires --automation-plan and --automation-events.")
     selected_sources = int(bool(data)) + int(bool(training)) + int(bool(desktop))
     if selected_sources > 1:
         raise typer.BadParameter("Use exactly one training source: --data, --training, or --desktop.")
