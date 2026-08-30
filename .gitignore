@@ -32,6 +32,7 @@ __pycache__
 
 # pytest
 .pytest_cache
+.pytest_tmp_*
 
 # Python Virtual Environment
 venv_geo/*
@@ -71,6 +72,17 @@ docs/build
 # mlflow
 mlruns
 geopi_tracking
+
+# Local benchmark execution evidence and reproducible intermediates
+/runs/
+/cli_reproductions/**/input.csv
+/cli_reproductions/**/test.csv
+/cli_reproductions/**/training.csv
+/cli_reproductions/**/*-events*.json
+/cli_reproductions/**/input.preparation.json
+/cli_reproductions/**/*.preparation.json
+/cli_reproductions/**/preparation.audit.json
+/cli_reproductions/**/verified_run/
 
 multiclass_classification
 multiclass_cli_test.csv
