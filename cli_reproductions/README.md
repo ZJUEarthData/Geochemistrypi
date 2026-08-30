@@ -23,8 +23,10 @@ $env:PYTHONNOUSERSITE="1"
 | Stracke et al. (2022) | Figure 5a coordinates | Passed | 2,775 rows; SHA-256 `89975795...57ba2` | t-SNE PNG equals MCP |
 | Sharapatov et al. (2025) | Figure 3a | Passed | 3,112 rows; SHA-256 `5a3f7220...21cb3e` | anomaly tables numerically equal MCP; final overlay PNG equals MCP |
 | More et al. (2024) | Figure 3a | Scientific result passed; layout approximate | 1,380 pH values equal MCP point-by-point | 68/1,312 anomaly labels equal MCP; CLI time-series layout differs from paper |
+| White et al. (2025) | Figure 4 | Passed (structural criterion) | 1,952 rows; SHA-256 `a320d0af...fc509b`; 26 Hotspots | six-cluster cut exactly recovers HIMU, EM I, EM II, DM, LOND, and PREMA |
 | Liu et al. (2024) | Figure 3a | Passed | 22,623 rows; SHA-256 `0b3221d6...a17876` | numeric CSV and metrics equal MCP |
-| Lu et al. (2025) | Figures 1a/1b | Long-running | 20,127 rows; SHA-256 `42589bbc...47f85b` | exact run stopped after >2 CPU hours |
+| Lu et al. (2025) | Figures 1a/1b | Passed | 20,127 rows; SHA-256 `42589bbc...47f85b` | four principal PNGs and model/CV metrics equal MCP |
+| Keller & Schoene (2012) | Figure 1a | Passed | 68,696 rows; SHA-256 `678d3bb5...a0cfce` | binned CSV, PNG, and metrics equal MCP |
 
 ## Ji et al. (2024): classification
 
@@ -94,6 +96,39 @@ probability `Estimated Proportion of Subaerial Basalts`; identifier `ROCK NAME`;
 drop rows missing `MIN_AGE`, `AGE`, or `MAX_AGE`; no feature engineering; no
 curve fit.
 
+## Keller & Schoene (2012): MgO time series
+
+Prepare `Sheet1` and retain, in order, `AGE`, `MIN AGE`, `MAX AGE`, `MGO`,
+`LATITUDE`, `LONGITUDE`, and `SIO2`. The prepared 68,696-row CSV has SHA-256
+`678d3bb542262486ab515ed63ea17cb7318e5855811b2227a1661c1f18a0cfce`,
+identical to the MCP input.
+
+Run `time-series` in `continuous` mode with age/minimum/maximum age columns
+`AGE`/`MIN AGE`/`MAX AGE`, value `MGO`, coordinates `LATITUDE`/`LONGITUDE`,
+100 Ma bins, 100 bootstrap iterations, seed 2025, mean aggregation, standard
+error uncertainty, relative two-sigma value uncertainty 0.04, and at least one
+sample per bin. Retain `43 <= SIO2 <= 51`, drop rows missing any selected
+column, use age unit `Ma`, disable curve fitting, and enable the compact y axis.
+The analysis retains 20,364 rows and populates all 39 bins. Its binned CSV,
+PNG, and metrics JSON are byte-identical to MCP; the PDF differs only in
+generated document metadata, and the parameters JSON only in the absolute
+local input path.
+
+## Lu et al. (2025): XGBoost pressure regression
+
+Input sequence: identifier `1`; world map disabled; columns `[2,10]`; keep
+missing values `2`; feature engineering `2`; regression `1`; X `[1,8]`; Y `9`;
+scaling `2`; feature selection `2`; test ratio Enter (`0.2`); XGBoost `1`;
+AutoML `2`; estimators `890`; learning rate `0.11`; maximum depth `19`;
+subsample Enter (`1`); column subsample `0.9`; L1 Enter (`0`); L2 Enter (`1`).
+
+Scientific controls not exposed by the legacy prompts are supplied through
+`--scientific-config`: base score 0.2; booster `gbtree`; minimum child weight
+130; gamma 0; `n_jobs=1`; model seed 0; split seed 99; random 80/20 holdout;
+five-fold cross-validation. Result: test R2 0.9551965660 and RMSE
+0.1134148112 GPa; mean cross-validation R2 0.9477753009. Predicted-vs-actual,
+density, residual, and feature-importance PNGs are byte-identical to MCP.
+
 ## Stracke et al. (2022): t-SNE
 
 Input sequence: identifier `1`; world map disabled; columns `[5,10]`; feature
@@ -141,3 +176,18 @@ signal `pH`, reference label `is_abnormal`, and positive value `-1`. The generic
 CLI renders anomaly dates on a separate marker track above the series, so the
 scientific labels are exact while the visual layout remains an approximation
 of the published Figure 3a.
+
+## White et al. (2025): grouped t-SNE hierarchy
+
+Prepare `Sheet1`; generate `source_row`; exclude `Baffin Is`; retain
+`SR87_SR86 <= 0.71`; require complete `SR87_SR86`, `E_ND`, `PB206_PB204`,
+`PB207_PB204`, `PB208_PB204`, and `Pb208_Pb206`. The resulting 1,952-row input
+is byte-identical to MCP.
+
+Run `grouped-embedding-hierarchy` with group `Hotspot`, metadata `Clan`, the six
+features above, StandardScaler, 3 components, perplexity 35, 1,000 iterations,
+PCA initialization, early exaggeration 12, learning rate `auto` (effective 50),
+Euclidean metric, seed 42, complete linkage, and cluster count 6. The cut
+recovers six pure groups: HIMU (2 Hotspots), EM II (3), PREMA (5), LOND (6),
+DM (4), and EM I (6). Exact branch lengths and high-order branch orientation
+remain version- and seed-dependent, as declared in the reproduction criterion.

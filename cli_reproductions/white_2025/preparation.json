@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "worksheet": "Sheet1",
+  "header_row_index": 0,
+  "source_row_column": "source_row",
+  "selected_columns": [
+    "source_row", "E_ND", "SR87_SR86", "PB206_PB204", "PB207_PB204",
+    "PB208_PB204", "Pb208_Pb206", "sample_name", "Hotspot", "Clan"
+  ],
+  "filters": [
+    {"column": "Hotspot", "operator": "not_equal", "value": "Baffin Is"},
+    {"column": "SR87_SR86", "operator": "less_than_or_equal", "value": 0.71},
+    {"column": "E_ND", "operator": "not_null"},
+    {"column": "SR87_SR86", "operator": "not_null"},
+    {"column": "PB206_PB204", "operator": "not_null"},
+    {"column": "PB207_PB204", "operator": "not_null"},
+    {"column": "PB208_PB204", "operator": "not_null"},
+    {"column": "Pb208_Pb206", "operator": "not_null"}
+  ],
+  "operations": []
+}

@@ -623,6 +623,45 @@ def embedding_label_overlay(
         execute()
 
 
+@app.command("grouped-embedding-hierarchy")
+def grouped_embedding_hierarchy(
+    input_path: str = typer.Option(..., "--input", help="Prepared .csv or .xlsx sample table."),
+    group_column: str = typer.Option(..., "--group-column"),
+    feature_column: List[str] = typer.Option(..., "--feature-column", help="Repeat in scientific feature order."),
+    output_root: str = typer.Option("geopi_output", "--output-root"),
+    experiment_name: str = typer.Option("Grouped Embedding", "--experiment-name"),
+    run_name: str = typer.Option("Grouped Hierarchy", "--run-name"),
+    sheet: str = typer.Option("0", "--sheet"),
+    components: int = typer.Option(3, "--components", min=2, max=3),
+    perplexity: float = typer.Option(35.0, "--perplexity", min=1),
+    iterations: int = typer.Option(1000, "--iterations", min=250),
+    early_exaggeration: float = typer.Option(12.0, "--early-exaggeration", min=0.01),
+    learning_rate: str = typer.Option("auto", "--learning-rate"),
+    init: str = typer.Option("pca", "--init"),
+    seed: int = typer.Option(42, "--seed", min=0),
+    metric: str = typer.Option("euclidean", "--metric"),
+    linkage_method: str = typer.Option("complete", "--linkage"),
+    metadata_column: Optional[str] = typer.Option(None, "--metadata-column"),
+    cluster_count: Optional[int] = typer.Option(None, "--cluster-count", min=2),
+) -> None:
+    """Standardize samples, embed them, average by group, and draw a dendrogram."""
+    from .data_mining.run_grouped_embedding_hierarchy import run_grouped_embedding_hierarchy
+
+    try:
+        output_directory = run_grouped_embedding_hierarchy(
+            input_path=Path(input_path), output_root=Path(output_root),
+            experiment_name=experiment_name, run_name=run_name,
+            group_column=group_column, feature_columns=tuple(feature_column), sheet=sheet,
+            components=components, perplexity=perplexity, iterations=iterations,
+            early_exaggeration=early_exaggeration, learning_rate=learning_rate,
+            init=init, seed=seed, metric=metric, linkage_method=linkage_method,
+            metadata_column=metadata_column, cluster_count=cluster_count,
+        )
+    except (OSError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(f"Saved grouped embedding hierarchy outputs to {output_directory}")
+
+
 # TODO: Currently, the web application is not fully implemented. It is disabled by default.
 # @app.command()
 # def web_setup() -> None:
