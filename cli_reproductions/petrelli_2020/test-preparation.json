@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "worksheet": "SM Tab4",
+  "header_row_indices": [0, 1],
+  "header_join_separator": " | ",
+  "empty_header_policy": "forward_fill",
+  "header_whitespace_policy": "reject",
+  "header_bom_policy": "preserve",
+  "duplicate_header_policy": "suffix",
+  "selected_columns": [],
+  "excluded_columns": [],
+  "filters": [
+    {"column": "Test Dataset | Sample_ID", "operator": "not_null"}
+  ],
+  "operations": []
+}

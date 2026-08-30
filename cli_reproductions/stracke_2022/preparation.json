@@ -1,0 +1,20 @@
+{
+  "worksheets": ["Data_MORB", "Data_OIB"],
+  "union_mode": "rows",
+  "source_sheet_column": "__source_sheet__",
+  "source_row_column": "__source_row__",
+  "selected_columns": [
+    "SAMPLE ID", "Location", "__source_sheet__", "__source_row__",
+    "iso87Sr86Sr", "iso143Nd144Nd", "iso176Hf177Hf",
+    "iso206Pb204Pb", "iso207Pb204Pb", "iso208Pb204Pb"
+  ],
+  "filters": [
+    {"column": "Location", "operator": "not_null"},
+    {"column": "iso87Sr86Sr", "operator": "not_null"},
+    {"column": "iso143Nd144Nd", "operator": "not_null"},
+    {"column": "iso176Hf177Hf", "operator": "not_null"},
+    {"column": "iso206Pb204Pb", "operator": "not_null"},
+    {"column": "iso207Pb204Pb", "operator": "not_null"},
+    {"column": "iso208Pb204Pb", "operator": "not_null"}
+  ]
+}
