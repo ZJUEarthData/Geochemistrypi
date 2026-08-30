@@ -22,6 +22,7 @@ $env:PYTHONNOUSERSITE="1"
 | Tao et al. (2021) | Figure 3c coordinates | Passed | 38 rows; SHA-256 `97d7595f...5f031d2` | t-SNE PNG equals MCP |
 | Stracke et al. (2022) | Figure 5a coordinates | Passed | 2,775 rows; SHA-256 `89975795...57ba2` | t-SNE PNG equals MCP |
 | Sharapatov et al. (2025) | Figure 3a | Passed | 3,112 rows; SHA-256 `5a3f7220...21cb3e` | anomaly tables numerically equal MCP; final overlay PNG equals MCP |
+| More et al. (2024) | Figure 3a | Scientific result passed; layout approximate | 1,380 pH values equal MCP point-by-point | 68/1,312 anomaly labels equal MCP; CLI time-series layout differs from paper |
 | Liu et al. (2024) | Figure 3a | Passed | 22,623 rows; SHA-256 `0b3221d6...a17876` | numeric CSV and metrics equal MCP |
 | Lu et al. (2025) | Figures 1a/1b | Long-running | 20,127 rows; SHA-256 `42589bbc...47f85b` | exact run stopped after >2 CPU hours |
 
@@ -124,3 +125,19 @@ Final overlay command joins PCA `X Reduced.xlsx` and Isolation Forest
 `Principal Axis 2`; label column is `is_abnormal`; positive anomaly value is
 `-1`. The final PNG SHA-256 is
 `99634c394bb62cb5201783270fad71832fc2b71e5a142271d300f824764ac01f`.
+
+## More et al. (2024): Eastrand pH anomaly series
+
+Prepare `CleanData`; retain `Date` and `pH`; require pH non-null and pH <= 8.
+The latter removes the same eight early high-pH values omitted by the audited
+1,380-point benchmark input. Input sequence: identifier `1`; world map
+disabled; column `2`; feature engineering `2`; anomaly detection `5`; scaling
+`2`; Isolation Forest `1`; estimators `100`; contamination `0.05`; maximum
+features `1`; bootstrap `2`. Result: 68 anomalies and 1,312 normal points,
+point-by-point equal to MCP.
+
+For the date-based plot, run `reference-anomaly-time-series` with time `Date`,
+signal `pH`, reference label `is_abnormal`, and positive value `-1`. The generic
+CLI renders anomaly dates on a separate marker track above the series, so the
+scientific labels are exact while the visual layout remains an approximation
+of the published Figure 3a.
