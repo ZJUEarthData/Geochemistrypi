@@ -1,0 +1,20 @@
+{
+  "worksheet": "Data_Original",
+  "header_row_index": 1,
+  "source_row_column": "SourceRow",
+  "selected_columns": [
+    "SourceRow",
+    "TRUE VALUE",
+    "SiO2(wt.%)",
+    "TiO2(wt.%)",
+    "Al2O3(wt.%)",
+    "Cr2O3(wt.%)",
+    "FeOtot(wt.%)",
+    "MnO(wt.%)",
+    "NiO(wt.%)",
+    "MgO(wt.%)"
+  ],
+  "filters": [
+    {"column": "TRUE VALUE", "operator": "not_null"}
+  ]
+}

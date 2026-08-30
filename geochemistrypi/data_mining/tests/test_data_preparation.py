@@ -107,3 +107,18 @@ def test_prepare_data_cli_writes_audit_manifest(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.output
     assert output.is_file()
     assert output.with_suffix(".preparation.json").is_file()
+
+
+def test_selected_projection_disambiguates_unreferenced_duplicate_headers(tmp_path: Path) -> None:
+    source = tmp_path / "duplicates.xlsx"
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.append(["ID", "P2O5", "P2O5"])
+    sheet.append(["A", 1, 99])
+    workbook.save(source)
+
+    output = tmp_path / "prepared.csv"
+    prepare_data(source, output, {"selected_columns": ["ID", "P2O5"]})
+
+    with output.open(encoding="utf-8", newline="") as stream:
+        assert list(csv.reader(stream)) == [["ID", "P2O5"], ["A", "1"]]

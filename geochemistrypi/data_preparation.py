@@ -51,13 +51,17 @@ def _headers(rows: Sequence[Sequence[Any]], config: Dict[str, Any]) -> List[str]
     if config.get("header_bom_policy") == "strip" and result:
         result[0] = result[0].lstrip("\ufeff")
     duplicates = {name for name in result if name and result.count(name) > 1}
-    if duplicates and config.get("duplicate_header_policy", "reject") != "suffix":
+    selected_projection = bool(config.get("selected_columns"))
+    if duplicates and config.get("duplicate_header_policy", "reject") != "suffix" and not selected_projection:
         raise DataPreparationError(f"Duplicate column names: {sorted(duplicates)}")
     counts: Dict[str, int] = {}
     for index, name in enumerate(result):
         counts[name] = counts.get(name, 0) + 1
         if name in duplicates:
-            result[index] = f"{name}{separator}{counts[name]}"
+            if config.get("duplicate_header_policy", "reject") == "suffix":
+                result[index] = f"{name}{separator}{counts[name]}"
+            elif counts[name] > 1:
+                result[index] = f"{name}.{counts[name] - 1}"
     if any(not name for name in result):
         raise DataPreparationError("The selected header contains an empty column name.")
     return result

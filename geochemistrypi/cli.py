@@ -111,7 +111,12 @@ def _run_cli_pipeline(
         from .data_mining.enum_ import DataSource
         from .data_mining.plot.map_plot import WorldMapConfiguration
 
-        parsed_world_map_config = WorldMapConfiguration.from_json(world_map_config) if world_map_config else None
+        world_map_value = world_map_config
+        if world_map_config:
+            candidate = Path(world_map_config).expanduser()
+            if candidate.is_file():
+                world_map_value = candidate.read_text(encoding="utf-8")
+        parsed_world_map_config = WorldMapConfiguration.from_json(world_map_value) if world_map_value else None
         cli_pipeline(
             training_data_path=training_data_path,
             application_data_path=application_data_path,
@@ -195,7 +200,7 @@ def data_mining(
     world_map_config: str = typer.Option(
         "",
         "--world-map-config",
-        help="Versioned JSON world-map configuration; omit it for the human interactive map flow.",
+        help="Versioned JSON world-map configuration or JSON file path; omit it for the human interactive map flow.",
     ),
     tracking_root: str = typer.Option("", "--tracking-root", help="Absolute local MLflow tracking directory."),
     existing_experiment_id: str = typer.Option("", "--existing-experiment-id", help="Stable MLflow experiment ID in --tracking-root."),
