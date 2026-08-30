@@ -27,6 +27,18 @@ def anyio_backend() -> str:
     return "asyncio"
 
 
+def _assert_strict_object_schemas(schema: dict) -> None:
+    if schema.get("type") == "object" and "properties" in schema:
+        assert schema.get("additionalProperties") is False
+    for value in schema.values():
+        if isinstance(value, dict):
+            _assert_strict_object_schemas(value)
+        elif isinstance(value, list):
+            for item in value:
+                if isinstance(item, dict):
+                    _assert_strict_object_schemas(item)
+
+
 def test_server_keeps_the_user_conversation_non_technical() -> None:
     instructions = " ".join(SERVER_INSTRUCTIONS.lower().split())
 
@@ -40,6 +52,8 @@ def test_server_keeps_the_user_conversation_non_technical() -> None:
     assert "infer or default only choices the user omitted" in instructions
     assert "rather than silently substituting another choice" in instructions
     assert "never expose implementation details" in instructions
+    assert "one bounded result wait" in instructions
+    assert "never poll in a tight loop" in instructions
 
 
 class FakeRunManager:
@@ -62,6 +76,20 @@ class FakeRunManager:
 
     def validate(self, request) -> AnalysisValidationResponse:
         return AnalysisValidationResponse(
+            validation_id="val-0123456789abcdef0123456789abcdef",
+            request_hash="1" * 64,
+            canonical_contract_hash="2" * 64,
+            compiled_plan_hash="3" * 64,
+            validation_expires_at="2026-08-22T06:00:00+00:00",
+            execution_ready=True,
+            scientific_status="valid",
+            adapter_status="available",
+            artifact_status="planned",
+            workflow_family=("supervised_learning" if request.task in {"classification", "regression"} else "dimension_reduction" if request.task == "decomposition" else request.task),
+            workflow_mode=request.task,
+            method=request.model.type,
+            adapter_id="test-adapter",
+            adapter_version="1",
             task=request.task,
             models=(request.model.type,),
             estimated_model_count=1,
@@ -74,13 +102,14 @@ class FakeRunManager:
             identifier_column=request.identifier_column,
             feature_columns=request.feature_columns,
             target_column=request.target_column,
+            target_columns=(request.resolved_target_columns if isinstance(request, RegressionRequest) else ((request.target_column,) if isinstance(request, ClassificationRequest) else ())),
             resolved_model_parameters=request.model.model_dump(mode="python", exclude={"type"}),
             experiment_mode="new",
             experiment_name=request.experiment_name,
             interaction_plan="fake-plan",
         )
 
-    def get_status(self, run_id: str) -> RunStatusResponse:
+    def get_status(self, run_id: str, *, wait_seconds: float = 0) -> RunStatusResponse:
         return RunStatusResponse(
             run_id=run_id,
             state="running",
@@ -91,7 +120,14 @@ class FakeRunManager:
             progress_message="running",
         )
 
-    def get_result(self, run_id: str) -> RunResultResponse:
+    def get_result(
+        self,
+        run_id: str,
+        *,
+        wait_seconds: float = 0,
+        artifact_offset: int = 0,
+        artifact_limit: int | None = None,
+    ) -> RunResultResponse:
         return RunResultResponse(
             run_id=run_id,
             state="succeeded",
@@ -147,16 +183,65 @@ async def test_tool_discovery_strict_validation_and_structured_results(
             "validate_analysis",
             "start_analysis",
         }
-        request_schema = tools["start_analysis"].input_schema
-        assert request_schema["title"] == "AnalysisRequest"
+        request_schema = tools["validate_analysis"].input_schema
+        assert "title" not in request_schema
         assert request_schema["type"] == "object"
         assert request_schema["discriminator"]["propertyName"] == "task"
         assert len(request_schema["oneOf"]) == 6
         assert request_schema["$defs"]["ClassificationRequest"]["additionalProperties"] is False
         assert request_schema["$defs"]["RegressionRequest"]["additionalProperties"] is False
+        regression_schema = request_schema["$defs"]["RegressionRequest"]
+        assert "target_columns" in regression_schema["properties"]
+        assert "target_column" not in regression_schema["required"]
+        assert "target_columns" not in regression_schema["required"]
+        assert "description" not in regression_schema["properties"]["target_columns"]
         assert request_schema["$defs"]["ClusteringRequest"]["additionalProperties"] is False
         assert request_schema["$defs"]["DecompositionRequest"]["additionalProperties"] is False
         assert request_schema["$defs"]["AnomalyDetectionRequest"]["additionalProperties"] is False
+        _assert_strict_object_schemas(request_schema)
+        time_series_schema = request_schema["$defs"]["TimeSeriesRequest"]
+        assert time_series_schema["additionalProperties"] is False
+        assert "description" not in time_series_schema
+        properties = time_series_schema["properties"]
+        assert {
+            "task",
+            "training_dataset",
+            "bin_width",
+            "iterations",
+            "seed",
+            "age_column",
+            "maximum_age_column",
+            "probability_column",
+            "latitude_column",
+            "longitude_column",
+            "identifier_column",
+            "selected_columns",
+            "missing_values",
+            "feature_engineering",
+            "age_unit",
+            "fit_curve",
+            "experiment_name",
+            "run_name",
+        } <= set(properties)
+        assert {
+            "dataset",
+            "model",
+            "model_parameters",
+            "bin_width_ma",
+            "bootstrap_iterations",
+            "random_seed",
+        }.isdisjoint(properties)
+        assert "description" not in properties["training_dataset"]
+        assert "description" not in properties["bin_width"]
+        assert "description" not in properties["iterations"]
+        assert "description" not in properties["seed"]
+        start_schema = tools["start_analysis"].input_schema
+        assert "title" not in start_schema
+        assert set(start_schema["properties"]) == {"validation_id", "request_hash"}
+        assert start_schema["additionalProperties"] is False
+        assert all(tool.output_schema is None for tool in tools.values())
+        builtin_dataset = request_schema["$defs"]["BuiltInDatasetReference"]
+        assert "description" not in builtin_dataset["properties"]["dataset_id"]
 
         capabilities = await client.call_tool("get_capabilities", {})
         assert capabilities.is_error is False
@@ -200,7 +285,10 @@ async def test_tool_discovery_strict_validation_and_structured_results(
             "local_outlier_factor",
         ]
         assert capabilities.structured_content["classification_options"]["sample_balancing"] == ["none"]
-        assert capabilities.structured_content["regression_options"]["target_columns"] == ["single_numeric"]
+        assert capabilities.structured_content["regression_options"]["target_columns"] == [
+            "single_numeric",
+            "multiple_numeric",
+        ]
         assert capabilities.structured_content["clustering_options"]["target_columns"] == ["not_applicable"]
         assert capabilities.structured_content["decomposition_options"]["transformed_data"] == ["enabled"]
         assert capabilities.structured_content["anomaly_detection_options"]["detection_labels"] == [
@@ -259,6 +347,68 @@ async def test_tool_discovery_strict_validation_and_structured_results(
         assert "Resolve it from the conversation or earlier tool results" in missing.content[0].text
         assert "never ask the user for a schema field name or JSON" in missing.content[0].text
 
+        malformed_time_series = {
+            "task": "time_series",
+            "dataset": {
+                "source": "builtin",
+                "dataset_id": "builtin:time_series",
+            },
+            "model": "subaerial_proportion_bootstrap",
+            "model_parameters": {"bin_width_ma": 100},
+            "bootstrap_iterations": 100,
+            "random_seed": 2025,
+        }
+        invalid_time_series = await client.call_tool(
+            "validate_analysis",
+            malformed_time_series,
+        )
+        assert invalid_time_series.is_error is True
+        validation_text = invalid_time_series.content[0].text
+        assert "place supported fields such as 'bin_width'" in validation_text
+        assert "time_series.dataset" in validation_text
+        assert "training_dataset" in validation_text
+        assert "time_series.model" in validation_text
+        assert "time_series.model_parameters" in validation_text
+        assert "bin_width" in validation_text
+        assert "time_series.bootstrap_iterations" in validation_text
+        assert "iterations" in validation_text
+        assert "time_series.random_seed" in validation_text
+        assert "seed" in validation_text
+        assert validation_text.count("Next action:") == 1
+        assert len(validation_text) <= 3035
+
+        requests_before_invalid_start = len(fake_runs.requests)
+        invalid_start = await client.call_tool(
+            "start_analysis",
+            malformed_time_series,
+        )
+        assert invalid_start.is_error is True
+        assert len(fake_runs.requests) == requests_before_invalid_start
+
+        bounded_invalid = await client.call_tool(
+            "validate_analysis",
+            {
+                "task": "time_series",
+                "training_dataset": {
+                    "source": "builtin",
+                    "dataset_id": "time_series",
+                },
+                "bin_width": 0,
+                "iterations": 0,
+                "age_unit": "years",
+                **{f"unsupported_{index}": "sensitive-value" for index in range(20)},
+            },
+        )
+        assert bounded_invalid.is_error is True
+        bounded_text = bounded_invalid.content[0].text
+        assert "pattern" in bounded_text
+        assert "range" in bounded_text
+        assert "literal" in bounded_text
+        assert "Additional issues omitted" in bounded_text
+        assert "sensitive-value" not in bounded_text
+        assert bounded_text.count("Next action:") == 1
+        assert len(bounded_text) <= 3035
+
         preview = await client.call_tool(
             "validate_analysis",
             {
@@ -308,6 +458,22 @@ async def test_tool_discovery_strict_validation_and_structured_results(
         )
         assert regression_started.is_error is False
         assert fake_runs.requests[-1].task == "regression"
+
+        multi_regression_started = await client.call_tool(
+            "start_analysis",
+            {
+                "task": "regression",
+                "training_dataset_path": str(dataset),
+                "experiment_name": "Protocol",
+                "run_name": "Multi Regression",
+                "identifier_column": "SampleID",
+                "feature_columns": ["SIO2"],
+                "target_columns": ["Label", "SIO2_Second_Target"],
+                "model": {"type": "ridge_regression"},
+            },
+        )
+        assert multi_regression_started.is_error is False
+        assert fake_runs.requests[-1].resolved_target_columns == ("Label", "SIO2_Second_Target")
 
         clustering_started = await client.call_tool(
             "start_analysis",
@@ -381,6 +547,8 @@ async def test_real_stdio_server_reserves_stdout_for_protocol_after_tool_error(
         )
         assert failed.is_error is True
         assert "does not exist" in failed.content[0].text
+        assert str(tmp_path) not in failed.content[0].text
+        assert "<local-path>" in failed.content[0].text
         after = await client.call_tool("get_capabilities", {})
         assert after.is_error is False
         assert after.structured_content["server_version"] == SERVER_VERSION

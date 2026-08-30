@@ -3,6 +3,7 @@ import os
 
 import pandas as pd
 
+from ...scientific_execution import active_scientific_execution, save_scientific_execution_attestation
 from ..constants import MLFLOW_ARTIFACT_DATA_PATH
 from ..model.detection import AnomalyDetectionWorkflowBase, IsolationForestAnomalyDetection, LocalOutlierFactorAnomalyDetection
 from ._base import ModelSelectionBase
@@ -15,6 +16,7 @@ class AnomalyDetectionModelSelection(ModelSelectionBase):
         self.model_name = model_name
         self.ad_workflow = AnomalyDetectionWorkflowBase()
         self.transformer_config = {}
+        self.scientific_execution = active_scientific_execution()
 
     def activate(
         self,
@@ -56,18 +58,40 @@ class AnomalyDetectionModelSelection(ModelSelectionBase):
         if self.model_name == "Local Outlier Factor":
             hyper_parameters = LocalOutlierFactorAnomalyDetection.manual_hyper_parameters()
             self.ad_workflow = LocalOutlierFactorAnomalyDetection(
-                n_neighbors=hyper_parameters["n_neighbors"],
-                contamination=hyper_parameters["contamination"],
-                leaf_size=hyper_parameters["leaf_size"],
-                n_jobs=hyper_parameters["n_jobs"],
-                p=hyper_parameters["p"],
+                **(
+                    self.scientific_execution.constructor_parameters(
+                        "local_outlier_factor",
+                        {
+                            "n_neighbors": hyper_parameters["n_neighbors"],
+                            "contamination": hyper_parameters["contamination"],
+                            "leaf_size": hyper_parameters["leaf_size"],
+                            "n_jobs": hyper_parameters["n_jobs"],
+                            "p": hyper_parameters["p"],
+                        },
+                    )
+                    if self.scientific_execution is not None
+                    else {
+                        "n_neighbors": hyper_parameters["n_neighbors"],
+                        "contamination": hyper_parameters["contamination"],
+                        "leaf_size": hyper_parameters["leaf_size"],
+                        "n_jobs": hyper_parameters["n_jobs"],
+                        "p": hyper_parameters["p"],
+                    }
+                )
             )
 
         self.ad_workflow.show_info()
 
         # Use Scikit-learn style API to process input data
-        self.ad_workflow.fit(X)
-        y_predict = self.ad_workflow.predict(X)
+        if self.model_name == "Local Outlier Factor" and self.scientific_execution is not None and self.scientific_execution.evaluation_mode == "training_outlier":
+            y_predict = self.ad_workflow.model.fit_predict(X)
+        else:
+            self.ad_workflow.fit(X)
+            y_predict = self.ad_workflow.predict(X)
+        save_scientific_execution_attestation(
+            self.ad_workflow.model,
+            os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"),
+        )
         X_anomaly_detection, X_normal, X_abnormal, name_normal, name_abnormal = self.ad_workflow._detect_data(X, name_all, y_predict)
         self.ad_workflow.anomaly_detection_result = pd.Series(
             y_predict,
@@ -87,7 +111,12 @@ class AnomalyDetectionModelSelection(ModelSelectionBase):
         )
 
         # Save the model hyper-parameters
-        self.ad_workflow.save_hyper_parameters(hyper_parameters, self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
+        effective_hyper_parameters = self.ad_workflow.model.get_params(deep=False) if self.scientific_execution is not None else hyper_parameters
+        self.ad_workflow.save_hyper_parameters(
+            effective_hyper_parameters,
+            self.model_name,
+            os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"),
+        )
 
         # Common components for every anomaly detection algorithm
         self.ad_workflow.common_components()

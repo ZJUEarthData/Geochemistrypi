@@ -1,0 +1,25 @@
+{
+  "schema_version": 3,
+  "workflow_family": "supervised_learning",
+  "workflow_mode": "regression",
+  "method": "extra_trees",
+  "evaluation_mode": "external_labeled",
+  "split_strategy": null,
+  "split_seed": null,
+  "confusion_matrix_normalization": null,
+  "external_evaluation_identifier_column": "Test Dataset | Sample_ID",
+  "external_evaluation_target_columns": ["Clinopyroxene Compositions - in Weight Percent | T_K | 1"],
+  "cross_validation_folds": 10,
+  "model_seed": 280,
+  "model_parameters": {
+    "n_estimators": 550,
+    "max_depth": null,
+    "min_samples_split": 2,
+    "min_samples_leaf": 1,
+    "max_features": 22,
+    "bootstrap": false,
+    "max_samples": null,
+    "oob_score": false
+  },
+  "target_transformations": {}
+}

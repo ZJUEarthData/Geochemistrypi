@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 import os
+from typing import Dict
 
 import pandas as pd
 from multipledispatch import dispatch
 from rich import print
 
+from ...scientific_execution import active_scientific_execution, save_scientific_execution_attestation
 from ..constants import MLFLOW_ARTIFACT_DATA_PATH, SECTION
 from ..data.data_readiness import num_input
 from ..model.regression import (
@@ -35,6 +37,12 @@ class RegressionModelSelection(ModelSelectionBase):
         self.model_name = model_name
         self.reg_workflow = RegressionWorkflowBase()
         self.transformer_config = {}
+        self.scientific_execution = active_scientific_execution()
+
+    def _constructor_parameters(self, method: str, legacy: Dict) -> Dict:
+        if self.scientific_execution is None:
+            return legacy
+        return self.scientific_execution.constructor_parameters(method, legacy)
 
     @dispatch(object, object, object, object, object, object, object, object, object)
     def activate(
@@ -66,13 +74,18 @@ class RegressionModelSelection(ModelSelectionBase):
         elif self.model_name == "XGBoost":
             hyper_parameters = XGBoostRegression.manual_hyper_parameters()
             self.reg_workflow = XGBoostRegression(
-                n_estimators=hyper_parameters["n_estimators"],
-                learning_rate=hyper_parameters["learning_rate"],
-                max_depth=hyper_parameters["max_depth"],
-                subsample=hyper_parameters["subsample"],
-                colsample_bytree=hyper_parameters["colsample_bytree"],
-                alpha=hyper_parameters["alpha"],
-                lambd=hyper_parameters["lambd"],
+                **self._constructor_parameters(
+                    "xgboost",
+                    {
+                        "n_estimators": hyper_parameters["n_estimators"],
+                        "learning_rate": hyper_parameters["learning_rate"],
+                        "max_depth": hyper_parameters["max_depth"],
+                        "subsample": hyper_parameters["subsample"],
+                        "colsample_bytree": hyper_parameters["colsample_bytree"],
+                        "reg_alpha": hyper_parameters["alpha"],
+                        "reg_lambda": hyper_parameters["lambd"],
+                    },
+                )
             )
         elif self.model_name == "Decision Tree":
             hyper_parameters = DecisionTreeRegression.manual_hyper_parameters()
@@ -86,14 +99,19 @@ class RegressionModelSelection(ModelSelectionBase):
         elif self.model_name == "Extra-Trees":
             hyper_parameters = ExtraTreesRegression.manual_hyper_parameters()
             self.reg_workflow = ExtraTreesRegression(
-                n_estimators=hyper_parameters["n_estimators"],
-                max_depth=hyper_parameters["max_depth"],
-                min_samples_split=hyper_parameters["min_samples_split"],
-                min_samples_leaf=hyper_parameters["min_samples_leaf"],
-                max_features=hyper_parameters["max_features"],
-                bootstrap=hyper_parameters["bootstrap"],
-                oob_score=hyper_parameters["oob_score"],
-                max_samples=hyper_parameters["max_samples"],
+                **self._constructor_parameters(
+                    "extra_trees",
+                    {
+                        "n_estimators": hyper_parameters["n_estimators"],
+                        "max_depth": hyper_parameters["max_depth"],
+                        "min_samples_split": hyper_parameters["min_samples_split"],
+                        "min_samples_leaf": hyper_parameters["min_samples_leaf"],
+                        "max_features": hyper_parameters["max_features"],
+                        "bootstrap": hyper_parameters["bootstrap"],
+                        "oob_score": hyper_parameters["oob_score"],
+                        "max_samples": hyper_parameters["max_samples"],
+                    },
+                )
             )
         elif self.model_name == "Random Forest":
             hyper_parameters = RandomForestRegression.manual_hyper_parameters()
@@ -213,6 +231,10 @@ class RegressionModelSelection(ModelSelectionBase):
 
         # Use Scikit-learn style API to process input data
         self.reg_workflow.fit(X_train, y_train)
+        save_scientific_execution_attestation(
+            self.reg_workflow.model,
+            os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"),
+        )
         y_train_predict = self.reg_workflow.predict(X_train)
         # Support multiple Y columns: Make sure the number of columns in the predicted results matches the number of columns in the original Y
         if y_train_predict.ndim == 1 and y_train.shape[1] > 1:
@@ -222,28 +244,43 @@ class RegressionModelSelection(ModelSelectionBase):
         y_train_predict = y_train_predict.dropna()
         y_train_predict = y_train_predict.reset_index(drop=True)
         self.reg_workflow.data_upload(y_train_predict=y_train_predict)
-        y_test_predict = self.reg_workflow.predict(X_test)
-        # Support multiple Y columns: Make sure the number of columns in the predicted results matches the number of columns in the original Y
-        if y_test_predict.ndim == 1 and y_test.shape[1] > 1:
-            # If the predicted result is 1D but Y is multi-column, reshape it
-            y_test_predict = y_test_predict.reshape(-1, y_test.shape[1])
-        y_test_predict = self.reg_workflow.np2pd(y_test_predict, y_test.columns)
-        y_test_predict = y_test_predict.dropna()
-        y_test_predict = y_test_predict.reset_index(drop=True)
-        self.reg_workflow.data_upload(y_test_predict=y_test_predict)
+        external_labeled_evaluation = self.scientific_execution is not None and self.scientific_execution.evaluation_mode == "external_labeled"
+        if external_labeled_evaluation:
+            y_test_predict = pd.DataFrame(columns=y_test.columns)
+            self.reg_workflow.data_upload(y_test_predict=y_test_predict)
+        else:
+            y_test_predict = self.reg_workflow.predict(X_test)
+            # Support multiple Y columns: Make sure the number of columns in the predicted results matches the number of columns in the original Y
+            if y_test_predict.ndim == 1 and y_test.shape[1] > 1:
+                # If the predicted result is 1D but Y is multi-column, reshape it
+                y_test_predict = y_test_predict.reshape(-1, y_test.shape[1])
+            y_test_predict = self.reg_workflow.np2pd(y_test_predict, y_test.columns)
+            y_test_predict = y_test_predict.dropna()
+            y_test_predict = y_test_predict.reset_index(drop=True)
+            self.reg_workflow.data_upload(y_test_predict=y_test_predict)
 
         # Save the model hyper-parameters
-        self.reg_workflow.save_hyper_parameters(hyper_parameters, self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
+        effective_hyper_parameters = self.reg_workflow.model.get_params(deep=False) if self.scientific_execution is not None else hyper_parameters
+        self.reg_workflow.save_hyper_parameters(
+            effective_hyper_parameters,
+            self.model_name,
+            os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"),
+        )
 
-        # Common components for every regression algorithm
-        self.reg_workflow.common_components()
+        # An external labeled cohort replaces the internal holdout.  Only
+        # training/CV evidence is valid before the independent evaluation.
+        if external_labeled_evaluation:
+            self.reg_workflow.training_components()
+        else:
+            self.reg_workflow.common_components()
 
         # Special components of different algorithms
         self.reg_workflow.special_components()
 
         # Save the prediction result
         self.reg_workflow.data_save(y_train_predict, name_train, "Y Train Predict", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Model Train Prediction")
-        self.reg_workflow.data_save(y_test_predict, name_test, "Y Test Predict", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Model Test Prediction")
+        if not external_labeled_evaluation:
+            self.reg_workflow.data_save(y_test_predict, name_test, "Y Test Predict", os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH"), MLFLOW_ARTIFACT_DATA_PATH, "Model Test Prediction")
 
         # Save the trained model
         self.reg_workflow.model_save()

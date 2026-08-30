@@ -1,0 +1,21 @@
+{
+  "worksheet": "Sheet1",
+  "duplicate_header_policy": "suffix",
+  "selected_columns": [
+    "ROCK NAME",
+    "LATITUDE",
+    "LONGITUDE",
+    "MIN_AGE",
+    "AGE",
+    "MAX_AGE",
+    "R_MIN_AGE",
+    "R_AGE",
+    "R_MAX_AGE",
+    "Estimated Proportion of Subaerial Basalts"
+  ],
+  "filters": [
+    {"column": "MIN_AGE", "operator": "not_null"},
+    {"column": "AGE", "operator": "not_null"},
+    {"column": "MAX_AGE", "operator": "not_null"}
+  ]
+}

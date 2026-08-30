@@ -57,8 +57,16 @@ MODELS_WITH_INTERACTIVE_PLOT_SELECTION: Final[tuple[str, ...]] = (
     "ridge_regression",
 )
 
+MODELS_WITH_FEATURE_IMPORTANCE: Final[tuple[str, ...]] = (
+    "decision_tree",
+    "random_forest",
+    "extra_trees",
+    "gradient_boosting",
+    "xgboost",
+)
+
 UNSUPPORTED_INTERACTIONS: Final[tuple[str, ...]] = (
-    "regression.multiple_targets: the CLI contains partial multi-target support, but PR5 exposes one numeric target per validated run",
+    "regression.multiple_targets.feature_selection: the public CLI's supervised feature selectors are univariate, so multiple-target requests must set feature_selection.method='none'",
     "regression.previous_experiment: MCP runs use explicit new experiment and run names so results cannot attach to an ambiguous prior run",
     "regression.automl.linear_regression: the public CLI does not offer AutoML for Linear Regression",
     "regression.automl.polynomial_regression: the public CLI does not offer AutoML for Polynomial Regression",

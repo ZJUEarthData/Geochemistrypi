@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "worksheet": "Sheet1",
+  "header_row_index": 0,
+  "header_join_separator": " | ",
+  "empty_header_policy": "forward_fill",
+  "header_whitespace_policy": "reject",
+  "header_bom_policy": "preserve",
+  "duplicate_header_policy": "reject",
+  "selected_columns": [],
+  "excluded_columns": [],
+  "filters": [],
+  "operations": []
+}

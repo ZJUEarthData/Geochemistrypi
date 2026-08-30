@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -91,7 +91,13 @@ class MeanNormalScaler(BaseEstimator, TransformerMixin):
         return X * self.scale_ + self.mean_
 
 
-def feature_scaler(X: pd.DataFrame, method: List[str], method_idx: int) -> tuple[dict, np.ndarray]:
+def feature_scaler(
+    X: pd.DataFrame,
+    method: List[str],
+    method_idx: int,
+    *,
+    fit: bool = True,
+) -> Tuple[dict, Optional[np.ndarray]]:
     """Apply feature scaling methods.
 
     Parameters
@@ -119,12 +125,15 @@ def feature_scaler(X: pd.DataFrame, method: List[str], method_idx: int) -> tuple
         scaler = StandardScaler()
     elif method[method_idx] == "Mean Normalization":
         scaler = MeanNormalScaler()
+    feature_scaling_config = {type(scaler).__name__: scaler.get_params()}
+    if not fit:
+        return feature_scaling_config, None
     try:
         X_scaled = scaler.fit_transform(X)
     except ValueError:
         print("The selected feature scaling method is not applicable to the dataset!")
         print("Please check the dataset to find the reason.")
-    feature_scaling_config = {type(scaler).__name__: scaler.get_params()}
+        raise
     return feature_scaling_config, X_scaled
 
 

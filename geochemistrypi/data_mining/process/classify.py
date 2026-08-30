@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 import pandas as pd
 from multipledispatch import dispatch
 
+from ...scientific_execution import active_scientific_execution, save_scientific_execution_attestation
 from ..constants import MLFLOW_ARTIFACT_DATA_PATH
 from ..model.classification import (
     AdaBoostClassification,
@@ -41,6 +42,22 @@ class ClassificationModelSelection(ModelSelectionBase):
         self.label_config = label_config
         self.labels_already_customized = labels_already_customized
         self.metric_average = metric_average
+        self.scientific_execution = active_scientific_execution()
+
+    def _constructor_parameters(
+        self,
+        method: str,
+        legacy: Dict[str, Any],
+        *,
+        class_count: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        if self.scientific_execution is None:
+            return legacy
+        return self.scientific_execution.constructor_parameters(
+            method,
+            legacy,
+            class_count=class_count,
+        )
 
     def _attach_label_config(self) -> None:
         self.clf_workflow.label_config = self.label_config
@@ -118,13 +135,19 @@ class ClassificationModelSelection(ModelSelectionBase):
         elif self.model_name == "XGBoost":
             hyper_parameters = XGBoostClassification.manual_hyper_parameters()
             self.clf_workflow = XGBoostClassification(
-                n_estimators=hyper_parameters["n_estimators"],
-                learning_rate=hyper_parameters["learning_rate"],
-                max_depth=hyper_parameters["max_depth"],
-                subsample=hyper_parameters["subsample"],
-                colsample_bytree=hyper_parameters["colsample_bytree"],
-                alpha=hyper_parameters["alpha"],
-                lambd=hyper_parameters["lambd"],
+                **self._constructor_parameters(
+                    "xgboost",
+                    {
+                        "n_estimators": hyper_parameters["n_estimators"],
+                        "learning_rate": hyper_parameters["learning_rate"],
+                        "max_depth": hyper_parameters["max_depth"],
+                        "subsample": hyper_parameters["subsample"],
+                        "colsample_bytree": hyper_parameters["colsample_bytree"],
+                        "reg_alpha": hyper_parameters["alpha"],
+                        "reg_lambda": hyper_parameters["lambd"],
+                    },
+                    class_count=int(y.iloc[:, 0].nunique()),
+                )
             )
         elif self.model_name == "Logistic Regression":
             hyper_parameters = LogisticRegressionClassification.manual_hyper_parameters()
@@ -209,6 +232,10 @@ class ClassificationModelSelection(ModelSelectionBase):
         self._attach_label_config()
         self.clf_workflow.show_info()
         self.clf_workflow.fit(X_train, y_train)
+        save_scientific_execution_attestation(
+            self.clf_workflow.model,
+            os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"),
+        )
         y_train_predict = self.clf_workflow.predict(X_train)
         y_train_predict = self.clf_workflow.np2pd(y_train_predict, y_train.columns)
         y_train_predict = y_train_predict.dropna()
@@ -223,7 +250,12 @@ class ClassificationModelSelection(ModelSelectionBase):
 
         save_param_path = os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH") or "./output"
         os.makedirs(save_param_path, exist_ok=True)
-        self.clf_workflow.save_hyper_parameters(hyper_parameters, self.model_name, save_param_path)
+        effective_hyper_parameters = self.clf_workflow.model.get_params(deep=False) if self.scientific_execution is not None else hyper_parameters
+        self.clf_workflow.save_hyper_parameters(
+            effective_hyper_parameters,
+            self.model_name,
+            save_param_path,
+        )
 
         save_target_transform_configuration(self.label_config, self.metric_average, local_path, mlflow_path)
         save_class_counts(y_train, y_test, local_path, mlflow_path)

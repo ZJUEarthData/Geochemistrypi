@@ -1,14 +1,17 @@
 {
   "schema_version": 1,
-  "manifest_id": "geochemistrypi-cli-0.8.1-pr9i",
+  "manifest_id": "geochemistrypi-cli-0.8.1-pr12",
   "cli_version": "0.8.1",
   "automation_contract_version": 1,
   "declarations": {
     "commands": {
       "root": ["--install-completion", "--show-completion", "--version", "-v"],
-      "data-mining": ["--application", "--automation-events", "--automation-plan", "--data", "--desktop", "--existing-experiment-id", "--mlflow", "--tracking-root", "--training", "--world-map-config"],
+      "data-mining": ["--application", "--automation-events", "--automation-plan", "--data", "--desktop", "--existing-experiment-id", "--mlflow", "--scientific-config", "--tracking-root", "--training", "--world-map-config"],
+      "replay": ["--application", "--bundle", "--output", "--tracking-root", "--training"],
       "datasets": ["--output", "--source"],
-      "time-series": ["--age-column", "--age-unit", "--automation-events", "--automation-plan", "--bin-width", "--experiment-name", "--fit-curve", "--input", "--iterations", "--latitude-column", "--longitude-column", "--maximum-age-column", "--output-root", "--probability-column", "--run-name", "--seed", "--sheet"]
+      "time-series": ["--age-column", "--age-unit", "--analysis-mode", "--automation-events", "--automation-plan", "--bin-width", "--compact-y-axis", "--drop-missing-column", "--experiment-name", "--feature-engineering", "--filter-column", "--filter-maximum", "--filter-minimum", "--fit-curve", "--identifier-column", "--input", "--iterations", "--latitude-column", "--longitude-column", "--maximum-age-column", "--minimum-age-column", "--minimum-samples-per-bin", "--missing-values", "--output-root", "--probability-column", "--relative-value-two-sigma", "--run-name", "--seed", "--selected-column", "--sheet", "--value-column"],
+      "reference-anomaly-time-series": ["--association-direction", "--association-window-days", "--automation-events", "--automation-plan", "--comparison-label-column", "--comparison-label-provenance", "--comparison-positive-value", "--event-filter-column", "--event-filter-value", "--event-identifier-column", "--event-input", "--event-sheet", "--event-time-column", "--experiment-name", "--input", "--output-root", "--reference-label-column", "--reference-label-provenance", "--reference-positive-value", "--run-name", "--sheet", "--signal-column", "--time-column"],
+      "embedding-label-overlay": ["--automation-events", "--automation-plan", "--coordinate-identifier-column", "--coordinate-sheet", "--coordinates", "--experiment-name", "--label-column", "--label-identifier-column", "--label-sheet", "--labels", "--output-root", "--positive-label-value", "--run-name", "--x-column", "--y-column"]
     },
     "modes": ["Regression", "Classification", "Clustering", "Dimensional Reduction", "Anomaly Detection", "Time Series"],
     "models_by_task": {
@@ -30,6 +33,7 @@
     {"id":"data_source.builtin_discovery","category":"data_source","status":"verified","cli_public":true,"mcp_supported":true,"evidence":["tests/mcp_wrapper/parity/test_mcp_cli_parity.py::test_stdio_mcp_lists_and_inspects_every_installed_builtin_dataset"]},
     {"id":"cli.data_mining.mlflow_ui","category":"lifecycle","status":"verified","cli_public":true,"mcp_supported":true,"evidence":["tests/mcp_wrapper/protocol/test_mlflow_ui.py"]},
     {"id":"cli.data_mining.automation_v1","category":"automation","status":"verified","cli_public":true,"mcp_supported":true,"evidence":["tests/mcp_wrapper/interaction/test_driver_unit.py::test_driver_uses_cli_automation_contract_without_prompt_matching"]},
+    {"id":"cli.replay.execution_bundle_v1","category":"automation","status":"verified","cli_public":true,"mcp_supported":true,"evidence":["geochemistrypi/data_mining/tests/test_execution_bundle.py","tests/mcp_wrapper/interaction/test_driver_unit.py::test_driver_exports_hash_bound_generic_cli_replay_bundle"]},
     {"id":"cli.datasets.list","category":"data_source","status":"verified","cli_public":true,"mcp_supported":true,"evidence":["tests/mcp_wrapper/protocol/test_dataset_catalog.py"]},
     {"id":"format.csv","category":"dataset_format","status":"verified","cli_public":true,"mcp_supported":true,"evidence":["tests/mcp_wrapper/protocol/test_dataset_inspector.py"]},
     {"id":"format.xlsx","category":"dataset_format","status":"verified","cli_public":true,"mcp_supported":true,"evidence":["tests/mcp_wrapper/protocol/test_dataset_inspector.py"]},
@@ -39,12 +43,15 @@
     {"id":"task.clustering","category":"task","status":"verified","cli_public":true,"mcp_supported":true,"evidence":["tests/mcp_wrapper/parity/test_mcp_cli_parity.py"]},
     {"id":"task.decomposition","category":"task","status":"verified","cli_public":true,"mcp_supported":true,"evidence":["tests/mcp_wrapper/parity/test_mcp_cli_parity.py"]},
     {"id":"task.anomaly_detection","category":"task","status":"verified","cli_public":true,"mcp_supported":true,"evidence":["tests/mcp_wrapper/parity/test_mcp_cli_parity.py"]},
-    {"id":"task.time_series","category":"task","status":"verified","cli_public":true,"mcp_supported":true,"evidence":["geochemistrypi/data_mining/tests/test_time_series.py","tests/mcp_wrapper/interaction/test_driver_unit.py::test_time_series_plan_is_noninteractive_and_semantically_validated"]},
+    {"id":"task.time_series","category":"task","status":"verified","cli_public":true,"mcp_supported":true,"evidence":["geochemistrypi/data_mining/tests/test_time_series.py","tests/mcp_wrapper/interaction/test_driver_unit.py::test_time_series_plan_is_noninteractive_and_semantically_validated","tests/mcp_wrapper/interaction/test_driver_unit.py::test_real_builtin_time_series_compiles_the_liu_workflow_configuration"]},
+    {"id":"workflow.reference_anomaly_time_series","category":"workflow_branch","status":"verified","cli_public":true,"mcp_supported":true,"evidence":["geochemistrypi/data_mining/tests/test_reference_anomaly_series.py","tests/mcp_wrapper/protocol/test_run_manager.py::test_validation_fails_closed_when_configured_cli_lacks_required_command"]},
+    {"id":"workflow.embedding_label_overlay","category":"artifact_composition","status":"verified","cli_public":true,"mcp_supported":true,"evidence":["geochemistrypi/data_mining/tests/test_embedding_label_overlay.py","tests/mcp_wrapper/interaction/test_decomposition_coverage.py::test_embedding_label_overlay_compiles_generic_noninteractive_producer"]},
     {"id":"branch.world_map","category":"workflow_branch","status":"verified","cli_public":true,"mcp_supported":true,"evidence":["geochemistrypi/data_mining/tests/test_world_map.py","tests/mcp_wrapper/interaction/test_driver_unit.py::test_coordinate_dataset_can_disable_or_semantically_configure_world_map"]},
     {"id":"branch.previous_experiment","category":"workflow_branch","status":"verified","cli_public":true,"mcp_supported":true,"evidence":["tests/mcp_wrapper/protocol/test_experiments.py","tests/mcp_wrapper/interaction/test_classification_coverage.py::test_existing_experiment_id_skips_ambiguous_name_prompts"]},
     {"id":"branch.all_models","category":"workflow_branch","status":"verified","cli_public":true,"mcp_supported":true,"evidence":["geochemistrypi/data_mining/tests/test_aggregate.py","tests/mcp_wrapper/interaction/test_all_models_coverage.py","tests/mcp_wrapper/protocol/test_run_manager.py::test_all_models_partial_failure_is_terminal_and_result_remains_available","tests/mcp_wrapper/parity/test_mcp_cli_parity.py::test_stdio_mcp_anomaly_all_models_matches_real_cli_aggregate"]},
     {"id":"branch.classification_inference","category":"inference","status":"verified","cli_public":true,"mcp_supported":true,"evidence":["tests/mcp_wrapper/parity/test_mcp_cli_parity.py::test_real_cli_application_feature_engineering_branch"]},
     {"id":"branch.regression_inference","category":"inference","status":"verified","cli_public":true,"mcp_supported":true,"evidence":["tests/mcp_wrapper/parity/test_mcp_cli_parity.py::test_stdio_mcp_regression_matches_direct_cli_with_application_data"]},
+    {"id":"branch.regression_multiple_targets","category":"target","status":"verified","cli_public":true,"mcp_supported":true,"evidence":["geochemistrypi/data_mining/tests/test_multioutput_regression.py","tests/mcp_wrapper/parity/test_mcp_cli_parity.py::test_stdio_mcp_regression_matches_direct_cli_with_application_data"]},
     {"id":"branch.unsupervised_inference","category":"inference","status":"known_gap","cli_public":true,"mcp_supported":false,"evidence":[]},
     {"id":"branch.classification_automl","category":"automl","status":"verified","cli_public":true,"mcp_supported":true,"evidence":["tests/mcp_wrapper/parity/test_full_parity_matrix.py::test_full_real_model_parity","parity-group:automl.classification"]},
     {"id":"branch.regression_automl","category":"automl","status":"verified","cli_public":true,"mcp_supported":true,"evidence":["tests/mcp_wrapper/parity/test_full_parity_matrix.py::test_full_real_model_parity","parity-group:automl.regression"]},

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "worksheet": "CleanData",
+  "header_row_index": 0,
+  "selected_columns": ["Date", "pH"],
+  "excluded_columns": [],
+  "filters": [
+    {"column": "pH", "operator": "not_null"},
+    {"column": "pH", "operator": "less_than_or_equal", "value": 8.0}
+  ],
+  "operations": []
+}

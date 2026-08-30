@@ -22,6 +22,14 @@ request into a deterministic interaction plan, runs the public CLI in an
 isolated subprocess, and returns bounded status, result, artifact, dataset, and
 experiment metadata.
 
+Before selecting the CLI adapter, the wrapper normalizes task-specific v1
+requests into an additive v2 scientific identity: workflow family/mode/method,
+column roles, preprocessing, model parameters, evaluation, reproducibility,
+and required artifacts. Validation records separate request, canonical
+contract, and compiled-plan hashes. A structurally valid request may therefore
+be reported as non-execution-ready when no exact public CLI adapter exists;
+the planner never substitutes a related scientific workflow.
+
 ## Runtime architecture
 
 ```text
@@ -97,13 +105,74 @@ and managed MLflow UI control. Its analysis schemas cover:
 - anomaly detection;
 - world-map configuration;
 - time-series workflows;
+- externally labelled time-series and identifier-safe embedding/label artifact
+  composition;
 - exact all-model execution;
+- one-or-more-target regression with named per-target holdout metrics and
+  application predictions;
 - training-only and training-plus-application data paths;
 - built-in, local-path, and supported Desktop dataset sources.
 
 The versioned capability manifest is the machine-readable source of truth for
 supported tasks, models, modes, and known restrictions. Request schemas reject
 unknown fields and invalid combinations before a CLI process starts.
+
+Scientific reproduction adds four linked contracts without moving scientific
+computation into MCP:
+
+1. Dataset preparation records the original file hash, explicit Excel
+   worksheet, one or more zero-based header rows, deterministic compound-header
+   and duplicate-name policies, selected or excluded columns, ordered row
+   identity, optional hash-pinned source mapping, and declared preparation
+   operations. Typed null, equality, comparison, range, and membership
+   predicates filter rows before projection; the contract, retained source-row
+   sequence, row counts, and prepared view are hashed. Multi-sheet workbooks
+   without a worksheet are rejected. The source and cached CLI input remain
+   separate in validation and provenance.
+2. The interaction plan records a generic scientific contract ID, workflow
+   family/mode/method, adapter identity/version, named environment profile ID
+   and hash, requested/effective seeds and parameters, explicit CLI-output
+   mappings, and blocking issues.
+3. Environment validation compares the complete observed runtime identity and
+   any exact requested Python, GeochemistryPi, MCP, platform, runtime, and
+   dependency versions. A named `environment_profile` carries exact Python and
+   package versions plus supported runtime constraints; it selects a contract,
+   not an installer. The validation response reports `READY`, `MISMATCH`, or
+   `UNSPECIFIED`; a mismatch blocks process creation.
+   The observed CLI identity also hashes every installed `geochemistrypi/`
+   package payload file, so replacing package code without changing the Windows
+   launcher or version still changes the validation identity.
+4. Artifact validation binds produced files to scientific types and roles,
+   adapter-declared CLI paths, safe path patterns, media types, cardinality,
+   and optional JSON keys. Unsupported evidence is recorded as an unavailable
+   mapping rather than inferred from a related file. The final manifest stores
+   producer, SHA-256, matched requirement IDs, and any missing evidence.
+
+Configuration-only YAML profiles are compiled through
+`geochemistrypi_mcp.planning.profiles` into ordinary strict analysis requests.
+Paper identity is metadata; profile dispatch uses only the generic workflow.
+Incomplete profiles retain `UNKNOWN` values behind an explicit non-executable
+readiness gate and compile to blocked diagnostic plans. Generic multi-stage
+profiles carry a validated acyclic stage graph; no pipeline is executed unless
+an adapter exists for the complete graph.
+The profile format is documented in
+`packages/geochemistrypi-mcp/benchmark_profiles/README.md`.
+
+Time-series requests preserve the interactive workflow's sample-name field,
+ordered selected-data range, missing-row policy, and explicit absence of
+feature engineering. The noninteractive CLI performs that preparation before
+calling the shared Liu et al. computation and records row counts and the final
+preprocessing configuration with the scientific parameters.
+
+Regression keeps `target_column` as the backward-compatible single-target
+request field and adds `target_columns` for one or more numeric outcomes. A
+request must provide exactly one form. The plan compiler validates every target,
+prevents target leakage, and uses source-dataset order because the public CLI
+normalizes selected column indices. `validate_analysis.target_columns` exposes
+that resolved order. Holdout metrics contain both the legacy uniformly averaged
+values and a named `Per Target` mapping; cross-validation remains uniformly
+averaged. Multi-target requests with feature selection fail before execution
+because the current public CLI selectors are univariate.
 
 ## Installation and client configuration
 
@@ -133,7 +202,11 @@ configuration without deleting scientific results.
 - Managed state uses private application directories and atomic writes.
 - Cancellation terminates the CLI process tree and records a durable terminal
   state.
-- Result metadata refers to artifacts inside the managed run directory.
+- Result metadata refers to artifacts inside the managed run directory. Every
+  indexed artifact includes a content SHA-256 and optional requirement binding.
+- Each completed run publishes `scientific-run-manifest.json` in wrapper state,
+  binding request, validation, run, adapter/plan, input, runtime, artifact
+  hashes, and required-artifact completeness.
 - The production wheels must not contain repository tests.
 - A capability is not considered complete without direct-CLI versus wrapper
   parity evidence.

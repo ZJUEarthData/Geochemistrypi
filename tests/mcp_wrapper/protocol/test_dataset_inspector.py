@@ -37,7 +37,35 @@ def test_csv_inspection_is_bounded_typed_and_read_only(tmp_path: Path) -> None:
     assert dataset.read_bytes() == before
 
 
-def test_xlsx_inspection_uses_bounded_rows_and_marks_metadata_count_as_inexact(tmp_path: Path) -> None:
+def test_names_only_inspection_returns_all_headers_without_verbose_column_summaries(
+    tmp_path: Path,
+) -> None:
+    dataset = tmp_path / "wide.csv"
+    headers = [f"COLUMN_{index:03d}" for index in range(59)]
+    dataset.write_text(
+        ",".join(headers) + "\n" + ",".join(str(index) for index in range(59)) + "\n",
+        encoding="utf-8",
+    )
+
+    full = inspect_dataset(
+        DatasetInspectionRequest(dataset_path=dataset, sample_rows=0, detail="full"),
+        _settings(tmp_path),
+    )
+    names = inspect_dataset(
+        DatasetInspectionRequest(dataset_path=dataset, sample_rows=0, detail="names"),
+        _settings(tmp_path),
+    )
+
+    assert [column.name for column in full.columns] == headers
+    assert full.column_names == ()
+    assert names.columns == ()
+    assert names.column_names == tuple(headers)
+    assert names.column_count == 59
+    assert names.sample_rows == ()
+    assert len(names.model_dump_json()) < len(full.model_dump_json()) / 2
+
+
+def test_xlsx_inspection_uses_bounded_rows_and_exact_cli_row_count(tmp_path: Path) -> None:
     dataset = tmp_path / "rocks.xlsx"
     workbook = Workbook()
     worksheet = workbook.active
@@ -51,7 +79,7 @@ def test_xlsx_inspection_uses_bounded_rows_and_marks_metadata_count_as_inexact(t
 
     assert result.format == "xlsx"
     assert result.row_count == 2
-    assert result.row_count_exact is False
+    assert result.row_count_exact is True
     assert result.sample_rows == ({"SampleID": "A", "SIO2": 50.1, "Label": "basalt"},)
 
 

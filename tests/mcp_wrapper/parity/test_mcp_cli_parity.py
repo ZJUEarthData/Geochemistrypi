@@ -292,11 +292,115 @@ async def test_stdio_mcp_time_series_matches_noninteractive_public_cli(
     assert result["model"] == "subaerial_proportion_bootstrap"
     assert result["tuning"] == "not_applicable"
     assert result["input_sha256"] == _sha256(source)
+    assert result["preprocessing_summary"] == {
+        "input_row_count": 4,
+        "analysis_row_count": 4,
+        "dropped_row_count": 0,
+    }
     assert _all_files(direct_run) == _all_files(wrapped_run)
     assert (direct_run / "artifacts" / "data" / "Subaerial Proportion.csv").read_bytes() == (wrapped_run / "artifacts" / "data" / "Subaerial Proportion.csv").read_bytes()
     assert _load_json(direct_run / "metrics" / "Time Series Metrics.json") == _load_json(wrapped_run / "metrics" / "Time Series Metrics.json")
     assert result["reported_metrics"]["Time Series Metrics.json"]["populated_bins"] > 0
     assert result["artifact_count"] == len(_all_files(wrapped_run))
+
+
+@pytest.mark.anyio
+@pytest.mark.mcp_cli_parity
+async def test_stdio_mcp_embedding_label_overlay_matches_direct_public_cli(
+    tmp_path: Path,
+) -> None:
+    cli_executable = Path(os.environ["GEOCHEMISTRYPI_CLI_EXECUTABLE"]).resolve()
+    coordinates = tmp_path / "coordinates.csv"
+    coordinates.write_text(
+        "SampleID,PC1,PC2\nC,3.0,30.0\nA,1.0,10.0\nB,2.0,20.0\n",
+        encoding="utf-8",
+    )
+    labels = tmp_path / "labels.csv"
+    labels.write_text(
+        "RecordID,Anomaly\nB,-1\nC,1\nA,-1\n",
+        encoding="utf-8",
+    )
+    request = DecompositionRequest(
+        training_dataset_path=coordinates,
+        application_dataset_path=labels,
+        mode="embedding_label_overlay",
+        experiment_name="Artifact Composition Parity",
+        run_name="Embedding Overlay",
+        identifier_column="SampleID",
+        feature_columns=("PC1", "PC2"),
+        scaling="none",
+        label_identifier_column="RecordID",
+        label_column="Anomaly",
+        positive_label_values=("-1",),
+    )
+    plan = AnalysisPlanCompiler().compile(request, cli_executable=cli_executable)
+    plan = _with_tracking_root(plan, tmp_path / "direct-overlay-tracking")
+    assert plan.steps == ()
+    direct_workspace = tmp_path / "direct-overlay"
+    direct_workspace.mkdir()
+    direct_environment = os.environ.copy()
+    for inherited_name in ISOLATED_CLI_ENVIRONMENT_VARIABLES:
+        direct_environment.pop(inherited_name, None)
+    direct_environment.update({"MPLBACKEND": "Agg", "PYTHONIOENCODING": "utf-8"})
+    direct = subprocess.run(
+        plan.public_command,
+        cwd=direct_workspace,
+        env=direct_environment,
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=180,
+    )
+    assert direct.returncode == 0, direct.stdout + direct.stderr
+
+    parameters = StdioServerParameters(
+        command=sys.executable,
+        args=["-m", "geochemistrypi_mcp"],
+        env=_stdio_environment(cli_executable, tmp_path / "overlay-state"),
+    )
+    async with Client(stdio_client(parameters)) as client:
+        validation_call = await client.call_tool(
+            "validate_analysis",
+            request.model_dump(mode="json"),
+        )
+        assert validation_call.is_error is False, validation_call.content[0].text
+        validation = validation_call.structured_content
+        assert validation["execution_ready"] is True
+        assert validation["workflow_family"] == "artifact_composition"
+        started = await client.call_tool(
+            "start_analysis",
+            {
+                "validation_id": validation["validation_id"],
+                "request_hash": validation["request_hash"],
+            },
+        )
+        assert started.is_error is False, started.content[0].text
+        assert started.structured_content["started_from_validation"] is True
+        run_id = started.structured_content["run_id"]
+        deadline = time.monotonic() + 180
+        while True:
+            status = await client.call_tool("get_run_status", {"run_id": run_id})
+            assert status.is_error is False
+            state = status.structured_content["state"]
+            if state in {"succeeded", "partial_failure", "failed", "cancelled"}:
+                break
+            assert time.monotonic() < deadline
+            await asyncio.sleep(0.2)
+        assert state == "succeeded", status.structured_content
+        result_call = await client.call_tool("get_run_result", {"run_id": run_id})
+        assert result_call.is_error is False
+        result = result_call.structured_content
+
+    direct_run = direct_workspace / "geopi_output" / request.experiment_name / request.run_name
+    wrapped_run = Path(result["output_directory"])
+    assert result["task"] == "decomposition"
+    assert result["model"] == "embedding_label_overlay"
+    assert result["tuning"] == "not_applicable"
+    assert result["input_sha256"] == _sha256(coordinates)
+    assert _all_files(direct_run) == _all_files(wrapped_run)
+    assert (direct_run / "artifacts" / "data" / "Embedding Label Overlay.csv").read_bytes() == (wrapped_run / "artifacts" / "data" / "Embedding Label Overlay.csv").read_bytes()
+    assert _load_json(direct_run / "metrics" / "Embedding Label Overlay Counts.json") == _load_json(wrapped_run / "metrics" / "Embedding Label Overlay Counts.json")
+    assert result["reported_metrics"]["Embedding Label Overlay Counts.json"]["anomaly_count"] == 2
 
 
 @pytest.mark.anyio
@@ -679,23 +783,35 @@ async def test_stdio_mcp_regression_matches_direct_cli_with_application_data() -
 
     with tempfile.TemporaryDirectory(prefix="gpi-pr5-regression-parity-") as temporary_root:
         parity_root = Path(temporary_root)
+        training_path = parity_root / "regression-multi-target.csv"
         application_path = parity_root / "regression-application.csv"
         with REGRESSION_DATASET_PATH.open(encoding="utf-8", newline="") as source:
-            rows = list(csv.DictReader(source))[:5]
+            training_rows = list(csv.DictReader(source))
+        with training_path.open("w", encoding="utf-8", newline="") as destination:
+            fieldnames = ("SampleID", "Target", "TargetB", "SIO2", "TIO2")
+            writer = csv.DictWriter(destination, fieldnames=fieldnames)
+            writer.writeheader()
+            for row in training_rows:
+                writer.writerow(
+                    {
+                        **{column: row[column] for column in ("SampleID", "Target", "SIO2", "TIO2")},
+                        "TargetB": float(row["Target"]) * 0.5 + float(row["TIO2"]),
+                    }
+                )
         with application_path.open("w", encoding="utf-8", newline="") as destination:
             writer = csv.DictWriter(destination, fieldnames=("SampleID", "SIO2", "TIO2"))
             writer.writeheader()
-            writer.writerows({column: row[column] for column in writer.fieldnames} for row in rows)
+            writer.writerows({column: row[column] for column in writer.fieldnames} for row in training_rows[:5])
 
         request = RegressionRequest(
             task="regression",
-            training_dataset_path=REGRESSION_DATASET_PATH,
+            training_dataset_path=training_path,
             application_dataset_path=application_path,
             experiment_name="PR5 Regression Parity",
             run_name="Linear Regression",
             identifier_column="SampleID",
             feature_columns=("SIO2", "TIO2"),
-            target_column="Target",
+            target_columns=("Target", "TargetB"),
             model={"type": "linear_regression"},
         )
         plan = RegressionPlanCompiler().compile(request, cli_executable=cli_executable)
@@ -735,7 +851,7 @@ async def test_stdio_mcp_regression_matches_direct_cli_with_application_data() -
         )
         async with Client(stdio_client(server_parameters)) as client:
             started = await client.call_tool("start_analysis", request.model_dump(mode="json"))
-            assert started.is_error is False
+            assert started.is_error is False, started.content[0].text
             run_id = started.structured_content["run_id"]
             deadline = time.monotonic() + 360
             while True:
@@ -755,16 +871,23 @@ async def test_stdio_mcp_regression_matches_direct_cli_with_application_data() -
 
         direct_run = direct_workspace / "geopi_output" / request.experiment_name / request.run_name
         wrapped_run = Path(result["output_directory"])
-        assert _sha256(REGRESSION_DATASET_PATH) == fixture_hash_before == result["input_sha256"]
+        assert _sha256(REGRESSION_DATASET_PATH) == fixture_hash_before
+        assert _sha256(training_path) == result["input_sha256"]
         assert result["task"] == "regression"
         assert result["model"] == "linear_regression"
         assert result["application_input_hash_verified"] is True
         assert _all_files(direct_run) == _all_files(wrapped_run)
-        assert _load_json(direct_run / "metrics" / "Model Score - Linear Regression.txt") == _load_json(wrapped_run / "metrics" / "Model Score - Linear Regression.txt")
+        direct_metrics = _load_json(direct_run / "metrics" / "Model Score - Linear Regression.txt")
+        wrapped_metrics = _load_json(wrapped_run / "metrics" / "Model Score - Linear Regression.txt")
+        assert direct_metrics == wrapped_metrics
+        assert set(wrapped_metrics["Per Target"]) == {"Target", "TargetB"}
         assert _load_json(direct_run / "metrics" / "Cross Validation - Linear Regression.txt") == _load_json(wrapped_run / "metrics" / "Cross Validation - Linear Regression.txt")
         assert _load_json(direct_run / "parameters" / "Hyper Parameters - Linear Regression.txt") == _load_json(wrapped_run / "parameters" / "Hyper Parameters - Linear Regression.txt")
         assert _worksheet_values(direct_run / "artifacts" / "data" / "Y Test Predict.xlsx") == _worksheet_values(wrapped_run / "artifacts" / "data" / "Y Test Predict.xlsx")
-        assert _worksheet_values(direct_run / "artifacts" / "data" / "Application Data Predicted.xlsx") == _worksheet_values(wrapped_run / "artifacts" / "data" / "Application Data Predicted.xlsx")
+        direct_application = _worksheet_values(direct_run / "artifacts" / "data" / "Application Data Predicted.xlsx")
+        wrapped_application = _worksheet_values(wrapped_run / "artifacts" / "data" / "Application Data Predicted.xlsx")
+        assert direct_application == wrapped_application
+        assert {"Predicted_Target", "Predicted_TargetB"} <= set(wrapped_application[0])
         for plot_name in (
             "Predicted vs. Actual Diagram - Linear Regression.png",
             "Residuals Diagram - Linear Regression.png",

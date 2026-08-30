@@ -1,0 +1,18 @@
+{
+  "worksheet": "Datasets",
+  "header_row_index": 0,
+  "duplicate_header_policy": "reject",
+  "source_row_column": "SampleID",
+  "selected_columns": [
+    "SampleID",
+    "MgO",
+    "Al2O3",
+    "SiO2",
+    "K2O",
+    "CaO",
+    "TiO2",
+    "FeOT",
+    "Na2O",
+    "P (GPa)"
+  ]
+}

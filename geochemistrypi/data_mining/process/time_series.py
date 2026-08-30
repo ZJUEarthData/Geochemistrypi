@@ -1,7 +1,4 @@
-"""Time series utilities for data_mining.
-
-Provides functions to compute and plot subaerial proportion time series.
-"""
+"""Validated numerical producers for binned geochemical Time Series."""
 import math
 import os
 from typing import Optional, Tuple
@@ -13,10 +10,161 @@ import pandas as pd
 TIME_SERIES_RANDOM_SEED = 2025
 MAX_BOOTSTRAP_ITERATIONS = 10_000
 MAX_TIME_BINS = 10_000
+SPATIAL_DENSITY_SCALE_DEGREES = 1.8
+TEMPORAL_DENSITY_SCALE_MA = 38.0
 
 
 class TimeSeriesValidationError(ValueError):
     """Raised before numerical work when Time Series inputs are unsafe."""
+
+
+def _spatiotemporal_weights(
+    age: np.ndarray,
+    latitude: np.ndarray,
+    longitude: np.ndarray,
+    *,
+    spatial_scale_degrees: float = SPATIAL_DENSITY_SCALE_DEGREES,
+    temporal_scale_ma: float = TEMPORAL_DENSITY_SCALE_MA,
+    batch_size: int = 256,
+) -> np.ndarray:
+    """Return inverse sampling-density weights using bounded memory.
+
+    The two Cauchy kernels reproduce the paper's generic spatial and temporal
+    density terms. Spatial separation is the great-circle angle in degrees,
+    including correct antimeridian and high-latitude behaviour.
+    """
+    if age.ndim != 1 or latitude.shape != age.shape or longitude.shape != age.shape:
+        raise TimeSeriesValidationError("Time Series weight arrays must be aligned one-dimensional values.")
+    if age.size == 0:
+        raise TimeSeriesValidationError("Time Series weights require at least one sample.")
+    if spatial_scale_degrees <= 0 or temporal_scale_ma <= 0 or batch_size < 1:
+        raise TimeSeriesValidationError("Time Series density scales and batch_size must be positive.")
+
+    latitude_radians = np.deg2rad(latitude)
+    longitude_radians = np.deg2rad(longitude)
+    sin_latitude = np.sin(latitude_radians)
+    cos_latitude = np.cos(latitude_radians)
+    density = np.empty(age.size, dtype=float)
+    for start in range(0, age.size, batch_size):
+        stop = min(start + batch_size, age.size)
+        cosine_angle = sin_latitude[start:stop, np.newaxis] * sin_latitude[np.newaxis, :] + cos_latitude[start:stop, np.newaxis] * cos_latitude[np.newaxis, :] * np.cos(
+            longitude_radians[start:stop, np.newaxis] - longitude_radians[np.newaxis, :]
+        )
+        angular_distance = np.rad2deg(np.arccos(np.clip(cosine_angle, -1.0, 1.0)))
+        spatial_density = np.sum(
+            1.0 / ((angular_distance / spatial_scale_degrees) ** 2 + 1.0),
+            axis=1,
+        )
+        temporal_delta = (age[start:stop, np.newaxis] - age[np.newaxis, :]) / temporal_scale_ma
+        temporal_density = np.sum(1.0 / (temporal_delta**2 + 1.0), axis=1)
+        density[start:stop] = spatial_density + temporal_density
+
+    weights = 1.0 / density
+    if not bool(np.isfinite(weights).all()) or bool((weights <= 0).any()):
+        raise TimeSeriesValidationError("Time Series spatial-temporal weights are not finite and positive.")
+    return weights / weights.sum()
+
+
+def compute_binned_time_series(
+    df: pd.DataFrame,
+    bin_width: float,
+    n_iter: int = 100,
+    age_col: str = "AGE",
+    age_min_col: str = "MIN AGE",
+    age_max_col: str = "MAX AGE",
+    value_col: str = "VALUE",
+    lat_col: str = "LATITUDE",
+    lon_col: str = "LONGITUDE",
+    relative_value_two_sigma: float = 0.0,
+    minimum_samples_per_bin: int = 1,
+    seed: int = TIME_SERIES_RANDOM_SEED,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Compute a weighted-bootstrap mean and two-standard-error time series."""
+    if not isinstance(df, pd.DataFrame) or df.empty:
+        raise TimeSeriesValidationError("Time Series input must contain at least one data row.")
+    if not math.isfinite(bin_width) or bin_width <= 0:
+        raise TimeSeriesValidationError("bin_width must be a finite positive number.")
+    if isinstance(n_iter, bool) or not isinstance(n_iter, int) or not 1 <= n_iter <= MAX_BOOTSTRAP_ITERATIONS:
+        raise TimeSeriesValidationError(f"n_iter must be an integer between 1 and {MAX_BOOTSTRAP_ITERATIONS}.")
+    if isinstance(seed, bool) or not isinstance(seed, int) or seed < 0:
+        raise TimeSeriesValidationError("seed must be a non-negative integer.")
+    if not math.isfinite(relative_value_two_sigma) or relative_value_two_sigma < 0:
+        raise TimeSeriesValidationError("relative_value_two_sigma must be finite and non-negative.")
+    if isinstance(minimum_samples_per_bin, bool) or not isinstance(minimum_samples_per_bin, int) or minimum_samples_per_bin < 1:
+        raise TimeSeriesValidationError("minimum_samples_per_bin must be a positive integer.")
+
+    roles = {
+        "age": age_col,
+        "minimum age": age_min_col,
+        "maximum age": age_max_col,
+        "value": value_col,
+        "latitude": lat_col,
+        "longitude": lon_col,
+    }
+    if len(set(roles.values())) != len(roles):
+        raise TimeSeriesValidationError("Continuous Time Series roles must identify six different columns.")
+    missing = sorted(set(roles.values()) - set(df.columns))
+    if missing:
+        raise TimeSeriesValidationError(f"Time Series input is missing required columns: {missing}.")
+    arrays = {}
+    for role, column in roles.items():
+        try:
+            values = pd.to_numeric(df[column], errors="raise").to_numpy(dtype=float)
+        except (TypeError, ValueError) as exc:
+            raise TimeSeriesValidationError(f"Time Series {role} column must contain only numeric values: {column!r}.") from exc
+        if not bool(np.isfinite(values).all()):
+            rows = [int(index) + 2 for index in np.flatnonzero(~np.isfinite(values))[:10]]
+            raise TimeSeriesValidationError(f"Time Series {role} column contains missing or non-finite values at data rows {rows}: {column!r}.")
+        arrays[role] = values
+
+    age = arrays["age"]
+    minimum_age = np.minimum(arrays["minimum age"], arrays["maximum age"])
+    maximum_age = np.maximum(arrays["minimum age"], arrays["maximum age"])
+    value = arrays["value"]
+    latitude = arrays["latitude"]
+    longitude = arrays["longitude"]
+    if bool((age < 0).any()):
+        raise TimeSeriesValidationError("Time Series central ages must be non-negative.")
+    if bool(((latitude < -90) | (latitude > 90)).any()):
+        raise TimeSeriesValidationError("Time Series latitude values must be between -90 and 90 degrees.")
+    if bool(((longitude < -180) | (longitude > 180)).any()):
+        raise TimeSeriesValidationError("Time Series longitude values must be between -180 and 180 degrees.")
+    data_max = float(np.max(age))
+    if data_max <= 0:
+        raise TimeSeriesValidationError("Time Series input must contain at least one positive age.")
+    num_bins = int(math.ceil(data_max / bin_width))
+    if num_bins < 1 or num_bins > MAX_TIME_BINS:
+        raise TimeSeriesValidationError(f"bin_width creates {num_bins} bins; the safety limit is {MAX_TIME_BINS}.")
+
+    # MIN/MAX are treated as the reported two-sigma age interval.  Taking the
+    # larger side also preserves asymmetric and slightly off-centre records.
+    age_sigma = np.maximum(np.abs(age - minimum_age), np.abs(maximum_age - age)) / 2.0
+    value_sigma = np.abs(value) * relative_value_two_sigma / 2.0
+    probabilities = _spatiotemporal_weights(age, latitude, longitude)
+    random = np.random.RandomState(seed)
+    simulated_bin_means = np.full((num_bins, n_iter), np.nan, dtype=float)
+
+    for iteration in range(n_iter):
+        sampled = random.choice(age.size, size=age.size, replace=True, p=probabilities)
+        sampled_age = random.normal(age[sampled], age_sigma[sampled])
+        sampled_value = random.normal(value[sampled], value_sigma[sampled])
+        bin_index = np.floor(sampled_age / bin_width).astype(np.int64)
+        valid = (bin_index >= 0) & (bin_index < num_bins)
+        counts = np.bincount(bin_index[valid], minlength=num_bins)
+        sums = np.bincount(
+            bin_index[valid],
+            weights=sampled_value[valid],
+            minlength=num_bins,
+        )
+        populated = counts >= minimum_samples_per_bin
+        simulated_bin_means[populated, iteration] = sums[populated] / counts[populated]
+
+    mean_value = np.asarray([np.mean(row[np.isfinite(row)]) if np.isfinite(row).any() else np.nan for row in simulated_bin_means])
+    two_sem = np.asarray([2.0 * np.std(row[np.isfinite(row)]) if np.isfinite(row).any() else np.nan for row in simulated_bin_means])
+    if not bool(np.isfinite(mean_value).any()):
+        raise TimeSeriesValidationError("Time Series computation produced no populated age bins.")
+    age_x = (np.arange(num_bins, dtype=float) + 0.5) * bin_width
+    return age_x, mean_value, two_sem
 
 
 def _validated_time_series_arrays(
@@ -67,17 +215,19 @@ def _validated_time_series_arrays(
     longitude = arrays["longitude"]
     if bool((age < 0).any()):
         raise TimeSeriesValidationError("Time Series ages must be non-negative.")
-    if bool((age_max < age).any()):
-        raise TimeSeriesValidationError("Time Series maximum ages must be greater than or equal to ages.")
+    if bool((age_max < 0).any()):
+        raise TimeSeriesValidationError("Time Series comparison ages must be non-negative.")
     if bool(((probability < 0) | (probability > 1)).any()):
         raise TimeSeriesValidationError("Time Series probability values must be between 0 and 1.")
     if bool(((latitude < -90) | (latitude > 90)).any()):
         raise TimeSeriesValidationError("Time Series latitude values must be between -90 and 90 degrees.")
     if bool(((longitude < -180) | (longitude > 180)).any()):
         raise TimeSeriesValidationError("Time Series longitude values must be between -180 and 180 degrees.")
-    data_max = float(np.max(age_max))
+    # Preserve the published workflow: the central reconstructed age defines
+    # the plotted time span; the comparison age only defines uncertainty.
+    data_max = float(np.max(age))
     if data_max <= 0:
-        raise TimeSeriesValidationError("Time Series input must contain at least one positive maximum age.")
+        raise TimeSeriesValidationError("Time Series input must contain at least one positive age.")
     num_bins = int(math.ceil(data_max / bin_width))
     if num_bins < 1 or num_bins > MAX_TIME_BINS:
         raise TimeSeriesValidationError(f"bin_width creates {num_bins} bins; the safety limit is {MAX_TIME_BINS}.")
@@ -111,7 +261,11 @@ def compute_subaerial_proportion(
         lat_col,
         lon_col,
     )
-    age_error = (age_max - age) / 2
+    # The Liu et al. workflow treats the distance between the reconstructed
+    # age and its comparison age as an unsigned uncertainty.  In the bundled
+    # workbook R_AGE is rounded more coarsely than R_MAX_AGE, so either value
+    # can be the larger one for otherwise valid rows.
+    age_error = np.abs(age_max - age) / 2
     random = np.random.RandomState(seed)
 
     WEI = np.ones((age.size, 1))
@@ -175,6 +329,12 @@ def plot_and_save(
     fit_curve: bool = True,
     csv_out_dir: Optional[str] = None,
     pdf_out_dir: Optional[str] = None,
+    png_out_dir: Optional[str] = None,
+    y_label: str = "Estimated Proportion of Subaerial Basalts (%)",
+    series_label: str = "Mean proportion",
+    mean_column: str = "mean_percent",
+    uncertainty_column: str = "two_sigma_percent",
+    compact_y_axis: bool = False,
 ) -> str:
     """
     Plot the result and save PDF and CSV.
@@ -208,6 +368,8 @@ def plot_and_save(
     pdf_directory = pdf_out_dir or out_dir
     os.makedirs(csv_directory, exist_ok=True)
     os.makedirs(pdf_directory, exist_ok=True)
+    if png_out_dir is not None:
+        os.makedirs(png_out_dir, exist_ok=True)
 
     # Convert age unit if needed
     if age_unit == "Ga":
@@ -261,7 +423,7 @@ def plot_and_save(
         # ---- 2a. Draw gray error band (2-sigma, semi-transparent) ----
         ax.fill_between(plot_age_valid, ave_bin_valid - std_bin_valid, ave_bin_valid + std_bin_valid, color="gray", alpha=0.35, label=r"$\pm 2\sigma$")
         # ---- 2b. Draw main curve ----
-        ax.plot(plot_age_valid, ave_bin_valid, color="#1f77b4", linewidth=2.5, label="Mean proportion")
+        ax.plot(plot_age_valid, ave_bin_valid, color="#1f77b4", linewidth=2.5, label=series_label)
     else:
         # ---- 2b. Draw scatter points with error bars ----
         ax.errorbar(
@@ -276,7 +438,7 @@ def plot_and_save(
             markerfacecolor="#1f77b4",
             markeredgecolor="black",
             markersize=6,
-            label="Mean proportion",
+            label=series_label,
         )
 
     # ============================================================
@@ -294,15 +456,22 @@ def plot_and_save(
     ax.invert_xaxis()
 
     # ---- 3c. Automatic y-axis range detection ----
-    y_min = 0
-    y_max = np.nanmax(ave_bin_valid) + 5
-    if y_max < 20:
-        y_max = 100
+    if compact_y_axis:
+        y_min = float(np.nanmin(ave_bin_valid - std_bin_valid))
+        y_max = float(np.nanmax(ave_bin_valid + std_bin_valid))
+        padding = max((y_max - y_min) * 0.08, max(abs(y_min), abs(y_max), 1.0) * 0.01)
+        y_min -= padding
+        y_max += padding
+    else:
+        y_min = 0
+        y_max = np.nanmax(ave_bin_valid) + 5
+        if y_max < 20:
+            y_max = 100
     ax.set_ylim((y_min, y_max))
 
     # ---- 3d. Axis labels ----
     ax.set_xlabel(f"Age ({age_unit})", fontsize=14)
-    ax.set_ylabel("Estimated Proportion of Subaerial Basalts (%)", fontsize=14)
+    ax.set_ylabel(y_label, fontsize=14)
 
     # ---- 3e. Tick control (fine-grained) ----
     # x-axis ticks: 0.5 Ga interval for Ga, 500 Ma interval for Ma
@@ -312,7 +481,8 @@ def plot_and_save(
         ax.set_xticks(np.arange(0, 4500, 500))
 
     # y-axis ticks: 0, 20, 40, 60, 80, 100
-    ax.set_yticks(np.arange(0, 101, 20))
+    if not compact_y_axis:
+        ax.set_yticks(np.arange(0, 101, 20))
 
     # ============================================================
     # 4. Add grid lines (light gray, dashed)
@@ -348,14 +518,20 @@ def plot_and_save(
             "ModDate": None,
         },
     )
+    if png_out_dir is not None:
+        plt.savefig(
+            os.path.join(png_out_dir, f"{out_name}.png"),
+            dpi=300,
+            bbox_inches="tight",
+        )
     plt.close()
 
     # Save CSV with columns: age, mean, std
     df_out = pd.DataFrame(
         {
             f"age_{age_unit}": plot_age,
-            "mean_percent": ave_bin,
-            "two_sigma_percent": std_bin,
+            mean_column: ave_bin,
+            uncertainty_column: std_bin,
         }
     )
     df_out.to_csv(
@@ -368,4 +544,8 @@ def plot_and_save(
     return os.path.join(out_dir, out_name)
 
 
-__all__ = ["compute_subaerial_proportion", "plot_and_save"]
+__all__ = [
+    "compute_binned_time_series",
+    "compute_subaerial_proportion",
+    "plot_and_save",
+]

@@ -3,7 +3,7 @@ from typing import Dict
 from rich import print
 
 from ....constants import SECTION
-from ....data.data_readiness import bool_input, float_input, num_input
+from ....data.data_readiness import bool_input, float_input, num_input, optional_num_input
 
 
 def extra_trees_manual_hyper_parameters() -> Dict:
@@ -19,7 +19,7 @@ def extra_trees_manual_hyper_parameters() -> Dict:
     n_estimators = num_input(SECTION[2], "@N Estimators: ")
     print("Max Depth: The maximum depth of a tree. Increasing this value will make the model more complex and more likely to overfit.")
     print("Please specify the maximum depth of a tree. A good starting range could be between 5 and 10, such as 4.")
-    max_depth = num_input(SECTION[2], "@Max Depth: ")
+    max_depth = optional_num_input(SECTION[2], "@Max Depth (blank for None): ")
     print("Min Samples Split: The minimum number of samples required to split an internal node.")
     print("Please specify the minimum number of samples required to split an internal node. A good starting range could be between 2 and 10, such as 2.")
     min_samples_split = num_input(SECTION[2], "@Min Samples Split: ")

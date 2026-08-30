@@ -7,6 +7,7 @@ import subprocess
 import threading
 from functools import wraps
 from pathlib import Path
+from typing import List, Optional
 
 import click
 import typer
@@ -96,6 +97,7 @@ def _run_cli_pipeline(
     data_source_name: str,
     automation_plan: str = "",
     automation_events: str = "",
+    scientific_config: str = "",
     world_map_config: str = "",
     tracking_root: str = "",
     existing_experiment_id: str = "",
@@ -109,7 +111,12 @@ def _run_cli_pipeline(
         from .data_mining.enum_ import DataSource
         from .data_mining.plot.map_plot import WorldMapConfiguration
 
-        parsed_world_map_config = WorldMapConfiguration.from_json(world_map_config) if world_map_config else None
+        world_map_value = world_map_config
+        if world_map_config:
+            candidate = Path(world_map_config).expanduser()
+            if candidate.is_file():
+                world_map_value = candidate.read_text(encoding="utf-8")
+        parsed_world_map_config = WorldMapConfiguration.from_json(world_map_value) if world_map_value else None
         cli_pipeline(
             training_data_path=training_data_path,
             application_data_path=application_data_path,
@@ -119,11 +126,22 @@ def _run_cli_pipeline(
             existing_experiment_id=existing_experiment_id or None,
         )
 
-    if automation_plan:
-        from .automation import automation_input_adapter
+    if automation_plan or scientific_config:
+        from .scientific_execution import scientific_execution_context
 
-        with automation_input_adapter(Path(automation_plan), Path(automation_events)):
-            execute()
+        if automation_plan:
+            from .automation import automation_input_adapter
+
+            if scientific_config:
+                with scientific_execution_context(Path(scientific_config)):
+                    with automation_input_adapter(Path(automation_plan), Path(automation_events)):
+                        execute()
+            else:
+                with automation_input_adapter(Path(automation_plan), Path(automation_events)):
+                    execute()
+        else:
+            with scientific_execution_context(Path(scientific_config)):
+                execute()
     else:
         execute()
 
@@ -144,6 +162,27 @@ def main(version: bool = typer.Option(False, "--version", "-v", help="Show versi
     return
 
 
+@app.command("prepare-data")
+def prepare_data_command(
+    source: str = typer.Option(..., "--source", help="Original .csv or .xlsx dataset."),
+    config: str = typer.Option(..., "--config", help="Paper-independent JSON preparation contract."),
+    output: str = typer.Option(..., "--output", help="Destination CLI-ready .csv file."),
+    manifest: str = typer.Option("", "--manifest", help="Optional preparation audit JSON path."),
+) -> None:
+    """Select worksheets, normalize headers, filter rows, and project columns."""
+    from .data_preparation import DataPreparationError, load_preparation_config, prepare_data
+
+    try:
+        record = prepare_data(Path(source), Path(output), load_preparation_config(Path(config)))
+        manifest_path = Path(manifest) if manifest else Path(output).with_suffix(".preparation.json")
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        manifest_path.write_text(__import__("json").dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    except (OSError, DataPreparationError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(f"Prepared {record['source_row_count']} rows at {record['output']}")
+    typer.echo(f"Saved preparation audit to {manifest_path.resolve()}")
+
+
 @app.command()
 def data_mining(
     data: str = typer.Option("", help="The path of the training data without model inference."),
@@ -153,10 +192,15 @@ def data_mining(
     mlflow: bool = typer.Option(False, "--mlflow", help="Start the mlflow server.", is_flag=True),
     automation_plan: str = typer.Option("", help="Absolute path to a versioned machine-input plan."),
     automation_events: str = typer.Option("", help="Absolute path for versioned machine-input events."),
+    scientific_config: str = typer.Option(
+        "",
+        "--scientific-config",
+        help="Absolute path to versioned scientific execution controls for machine automation.",
+    ),
     world_map_config: str = typer.Option(
         "",
         "--world-map-config",
-        help="Versioned JSON world-map configuration; omit it for the human interactive map flow.",
+        help="Versioned JSON world-map configuration or JSON file path; omit it for the human interactive map flow.",
     ),
     tracking_root: str = typer.Option("", "--tracking-root", help="Absolute local MLflow tracking directory."),
     existing_experiment_id: str = typer.Option("", "--existing-experiment-id", help="Stable MLflow experiment ID in --tracking-root."),
@@ -239,6 +283,7 @@ def data_mining(
                 data_source_name="DESKTOP",
                 automation_plan=automation_plan,
                 automation_events=automation_events,
+                scientific_config=scientific_config,
                 world_map_config=world_map_config,
                 tracking_root=tracking_root,
                 existing_experiment_id=existing_experiment_id,
@@ -252,6 +297,7 @@ def data_mining(
                     data_source_name="ANY_PATH",
                     automation_plan=automation_plan,
                     automation_events=automation_events,
+                    scientific_config=scientific_config,
                     world_map_config=world_map_config,
                     tracking_root=tracking_root,
                     existing_experiment_id=existing_experiment_id,
@@ -264,6 +310,7 @@ def data_mining(
                     data_source_name="ANY_PATH",
                     automation_plan=automation_plan,
                     automation_events=automation_events,
+                    scientific_config=scientific_config,
                     world_map_config=world_map_config,
                     tracking_root=tracking_root,
                     existing_experiment_id=existing_experiment_id,
@@ -276,6 +323,7 @@ def data_mining(
                     data_source_name="ANY_PATH",
                     automation_plan=automation_plan,
                     automation_events=automation_events,
+                    scientific_config=scientific_config,
                     world_map_config=world_map_config,
                     tracking_root=tracking_root,
                     existing_experiment_id=existing_experiment_id,
@@ -288,10 +336,50 @@ def data_mining(
                     data_source_name="BUILT_IN",
                     automation_plan=automation_plan,
                     automation_events=automation_events,
+                    scientific_config=scientific_config,
                     world_map_config=world_map_config,
                     tracking_root=tracking_root,
                     existing_experiment_id=existing_experiment_id,
                 )
+
+
+@app.command("replay")
+def replay_execution_bundle(
+    bundle: str = typer.Option(..., "--bundle", help="Path to an MCP-generated CLI execution bundle."),
+    training: str = typer.Option("", "--training", help="Replacement training data with the bundle-recorded SHA-256."),
+    application: str = typer.Option("", "--application", help="Replacement application data with the bundle-recorded SHA-256."),
+    output: str = typer.Option(".geochemistrypi-replay", "--output", help="Directory for replay transport events."),
+    tracking_root: str = typer.Option("", "--tracking-root", help="Override the bundle's absolute MLflow tracking directory."),
+) -> None:
+    """Replay an audited MCP run through the same local GeochemistryPi CLI path."""
+    from .execution_bundle import ExecutionBundle, ExecutionBundleError
+
+    try:
+        loaded = ExecutionBundle.load(
+            Path(bundle),
+            training_override=Path(training) if training else None,
+            application_override=Path(application) if application else None,
+        )
+    except ExecutionBundleError as exc:
+        raise typer.BadParameter(str(exc), param_hint="--bundle") from exc
+    selected_tracking_root = tracking_root or loaded.tracking_root
+    if selected_tracking_root and not Path(selected_tracking_root).expanduser().is_absolute():
+        raise typer.BadParameter("--tracking-root must be absolute.", param_hint="--tracking-root")
+    replay_directory = Path(output).expanduser().resolve()
+    replay_directory.mkdir(parents=True, exist_ok=True)
+    events_path = replay_directory / "automation-events.json"
+    _run_cli_pipeline(
+        training_data_path=str(loaded.training_data.path) if loaded.training_data else "",
+        application_data_path=str(loaded.application_data.path) if loaded.application_data else "",
+        data_source_name=loaded.data_source_name,
+        automation_plan=str(loaded.automation_plan.path),
+        automation_events=str(events_path),
+        scientific_config=str(loaded.scientific_config.path) if loaded.scientific_config else "",
+        world_map_config=loaded.world_map_config,
+        tracking_root=selected_tracking_root,
+        existing_experiment_id=loaded.existing_experiment_id,
+    )
+    typer.echo(f"Replay completed for {loaded.plan_name}; events: {events_path}")
 
 
 @app.command()
@@ -312,6 +400,11 @@ def datasets(
 @app.command("time-series")
 def time_series(
     input_path: str = typer.Option(..., "--input", help="Path to a .csv or .xlsx Time Series dataset."),
+    analysis_mode: str = typer.Option(
+        "subaerial_proportion",
+        "--analysis-mode",
+        help="Scientific producer: subaerial_proportion or continuous.",
+    ),
     bin_width: float = typer.Option(..., "--bin-width", help="Positive age-bin width in Ma."),
     iterations: int = typer.Option(100, "--iterations", min=1, max=10_000, help="Bootstrap iterations (1-10000)."),
     seed: int = typer.Option(2025, "--seed", min=0, help="Non-negative deterministic random seed."),
@@ -320,16 +413,29 @@ def time_series(
     run_name: str = typer.Option("Subaerial Proportion", "--run-name"),
     sheet: str = typer.Option("0", "--sheet", help="Excel sheet index or name; ignored for CSV."),
     age_column: str = typer.Option("R_AGE", "--age-column"),
+    minimum_age_column: Optional[str] = typer.Option(None, "--minimum-age-column"),
     maximum_age_column: str = typer.Option("R_MAX_AGE", "--maximum-age-column"),
     probability_column: str = typer.Option("SBAP", "--probability-column"),
+    value_column: Optional[str] = typer.Option(None, "--value-column"),
     latitude_column: str = typer.Option("LATITUDE", "--latitude-column"),
     longitude_column: str = typer.Option("LONGITUDE", "--longitude-column"),
+    relative_value_two_sigma: float = typer.Option(0.0, "--relative-value-two-sigma", min=0),
+    minimum_samples_per_bin: int = typer.Option(1, "--minimum-samples-per-bin", min=1),
+    filter_column: Optional[str] = typer.Option(None, "--filter-column"),
+    filter_minimum: Optional[float] = typer.Option(None, "--filter-minimum"),
+    filter_maximum: Optional[float] = typer.Option(None, "--filter-maximum"),
     age_unit: str = typer.Option("Ma", "--age-unit", help="Output age unit: Ma or Ga."),
     fit_curve: bool = typer.Option(True, "--fit-curve/--no-fit-curve", help="Include the fitted trend curve in the PDF."),
+    compact_y_axis: bool = typer.Option(False, "--compact-y-axis/--no-compact-y-axis"),
+    identifier_column: Optional[str] = typer.Option(None, "--identifier-column", help="Optional sample-name column validated against the source data."),
+    selected_column: Optional[List[str]] = typer.Option(None, "--selected-column", help="Repeat in source order to reproduce the interactive selected-data range."),
+    missing_values: str = typer.Option("error", "--missing-values", help="Missing-value handling: error or drop_rows."),
+    drop_missing_column: Optional[List[str]] = typer.Option(None, "--drop-missing-column", help="Repeat to drop on specific selected columns; omit to drop on every selected column."),
+    feature_engineering: str = typer.Option("none", "--feature-engineering", help="Time Series currently supports only none."),
     automation_plan: str = typer.Option("", help="Absolute path to a versioned machine-input plan."),
     automation_events: str = typer.Option("", help="Absolute path for versioned machine-input events."),
 ) -> None:
-    """Run reproducible subaerial-proportion Time Series analysis."""
+    """Run a reproducible public Time Series producer."""
     if bool(automation_plan) != bool(automation_events):
         raise typer.BadParameter("--automation-plan and --automation-events must be provided together.")
 
@@ -348,13 +454,27 @@ def time_series(
                 iterations=iterations,
                 seed=seed,
                 sheet=sheet,
+                analysis_mode=analysis_mode,
                 age_col=age_column,
+                age_min_col=minimum_age_column,
                 age_max_col=maximum_age_column,
                 probability_col=probability_column,
+                value_col=value_column,
                 latitude_col=latitude_column,
                 longitude_col=longitude_column,
+                relative_value_two_sigma=relative_value_two_sigma,
+                minimum_samples_per_bin=minimum_samples_per_bin,
+                filter_col=filter_column,
+                filter_minimum=filter_minimum,
+                filter_maximum=filter_maximum,
                 age_unit=age_unit,
                 fit_curve=fit_curve,
+                compact_y_axis=compact_y_axis,
+                identifier_column=identifier_column,
+                selected_columns=tuple(selected_column or ()),
+                missing_value_method=missing_values,
+                drop_missing_columns=tuple(drop_missing_column or ()),
+                feature_engineering=feature_engineering,
             )
         except (OSError, ValueError) as exc:
             raise typer.BadParameter(str(exc)) from exc
@@ -369,6 +489,177 @@ def time_series(
             execute()
     else:
         execute()
+
+
+@app.command("reference-anomaly-time-series")
+def reference_anomaly_time_series(
+    input_path: str = typer.Option(..., "--input", help="Path to an observation .csv or .xlsx file."),
+    time_column: str = typer.Option(..., "--time-column", help="Observation date/time column."),
+    signal_column: List[str] = typer.Option(..., "--signal-column", help="Repeat for each numeric signal column."),
+    reference_label_column: str = typer.Option(..., "--reference-label-column"),
+    reference_positive_value: List[str] = typer.Option(..., "--reference-positive-value", help="Repeat for every value denoting a reference anomaly."),
+    output_root: str = typer.Option("geopi_output", "--output-root"),
+    experiment_name: str = typer.Option("Time Series", "--experiment-name"),
+    run_name: str = typer.Option("Reference Anomaly Series", "--run-name"),
+    sheet: str = typer.Option("0", "--sheet", help="Observation Excel sheet index or name; ignored for CSV."),
+    reference_label_provenance: str = typer.Option("external_reference", "--reference-label-provenance"),
+    comparison_label_column: Optional[str] = typer.Option(None, "--comparison-label-column"),
+    comparison_positive_value: Optional[List[str]] = typer.Option(None, "--comparison-positive-value"),
+    comparison_label_provenance: str = typer.Option("calculated", "--comparison-label-provenance"),
+    event_path: Optional[str] = typer.Option(None, "--event-input", help="Optional event .csv or .xlsx file."),
+    event_sheet: str = typer.Option("0", "--event-sheet"),
+    event_time_column: Optional[str] = typer.Option(None, "--event-time-column"),
+    event_identifier_column: Optional[str] = typer.Option(None, "--event-identifier-column"),
+    event_filter_column: Optional[str] = typer.Option(None, "--event-filter-column"),
+    event_filter_value: Optional[List[str]] = typer.Option(None, "--event-filter-value"),
+    association_window_days: Optional[float] = typer.Option(None, "--association-window-days", min=0),
+    association_direction: str = typer.Option("before_event", "--association-direction"),
+    automation_plan: str = typer.Option("", help="Absolute path to a versioned machine-input plan."),
+    automation_events: str = typer.Option("", help="Absolute path for versioned machine-input events."),
+) -> None:
+    """Render externally supplied anomaly labels and optional events on numeric time series."""
+    if bool(automation_plan) != bool(automation_events):
+        raise typer.BadParameter("--automation-plan and --automation-events must be provided together.")
+
+    def execute() -> None:
+        from pathlib import Path
+
+        from .data_mining.run_reference_anomaly_series import run_reference_anomaly_series
+
+        try:
+            output_directory = run_reference_anomaly_series(
+                input_path=Path(input_path),
+                output_root=Path(output_root),
+                experiment_name=experiment_name,
+                run_name=run_name,
+                sheet=sheet,
+                time_column=time_column,
+                signal_columns=tuple(signal_column),
+                reference_label_column=reference_label_column,
+                reference_positive_values=tuple(reference_positive_value),
+                reference_label_provenance=reference_label_provenance,
+                comparison_label_column=comparison_label_column,
+                comparison_positive_values=tuple(comparison_positive_value or ()),
+                comparison_label_provenance=comparison_label_provenance,
+                event_path=Path(event_path) if event_path is not None else None,
+                event_sheet=event_sheet,
+                event_time_column=event_time_column,
+                event_identifier_column=event_identifier_column,
+                event_filter_column=event_filter_column,
+                event_filter_values=tuple(event_filter_value or ()),
+                association_window_days=association_window_days,
+                association_direction=association_direction,
+            )
+        except (OSError, ValueError) as exc:
+            raise typer.BadParameter(str(exc)) from exc
+        typer.echo(f"Saved reference anomaly Time Series outputs to {output_directory}")
+
+    if automation_plan:
+        from pathlib import Path
+
+        from .automation import automation_input_adapter
+
+        with automation_input_adapter(Path(automation_plan), Path(automation_events)):
+            execute()
+    else:
+        execute()
+
+
+@app.command("embedding-label-overlay")
+def embedding_label_overlay(
+    coordinate_path: str = typer.Option(..., "--coordinates", help="Path to an embedding-coordinate .csv or .xlsx file."),
+    label_path: str = typer.Option(..., "--labels", help="Path to an identifier-label .csv or .xlsx file."),
+    coordinate_identifier_column: str = typer.Option(..., "--coordinate-identifier-column"),
+    label_identifier_column: str = typer.Option(..., "--label-identifier-column"),
+    x_column: str = typer.Option(..., "--x-column"),
+    y_column: str = typer.Option(..., "--y-column"),
+    label_column: str = typer.Option(..., "--label-column"),
+    positive_label_value: List[str] = typer.Option(..., "--positive-label-value", help="Repeat for every value denoting an anomaly."),
+    output_root: str = typer.Option("geopi_output", "--output-root"),
+    experiment_name: str = typer.Option("Artifact Composition", "--experiment-name"),
+    run_name: str = typer.Option("Embedding Label Overlay", "--run-name"),
+    coordinate_sheet: str = typer.Option("0", "--coordinate-sheet"),
+    label_sheet: str = typer.Option("0", "--label-sheet"),
+    automation_plan: str = typer.Option("", help="Absolute path to a versioned machine-input plan."),
+    automation_events: str = typer.Option("", help="Absolute path for versioned machine-input events."),
+) -> None:
+    """Join existing 2-D coordinates and labels by identifier and render an overlay."""
+    if bool(automation_plan) != bool(automation_events):
+        raise typer.BadParameter("--automation-plan and --automation-events must be provided together.")
+
+    def execute() -> None:
+        from pathlib import Path
+
+        from .data_mining.run_embedding_label_overlay import run_embedding_label_overlay
+
+        try:
+            output_directory = run_embedding_label_overlay(
+                coordinate_path=Path(coordinate_path),
+                label_path=Path(label_path),
+                output_root=Path(output_root),
+                experiment_name=experiment_name,
+                run_name=run_name,
+                coordinate_sheet=coordinate_sheet,
+                label_sheet=label_sheet,
+                coordinate_identifier_column=coordinate_identifier_column,
+                label_identifier_column=label_identifier_column,
+                x_column=x_column,
+                y_column=y_column,
+                label_column=label_column,
+                positive_label_values=tuple(positive_label_value),
+            )
+        except (OSError, ValueError) as exc:
+            raise typer.BadParameter(str(exc)) from exc
+        typer.echo(f"Saved embedding-label overlay outputs to {output_directory}")
+
+    if automation_plan:
+        from pathlib import Path
+
+        from .automation import automation_input_adapter
+
+        with automation_input_adapter(Path(automation_plan), Path(automation_events)):
+            execute()
+    else:
+        execute()
+
+
+@app.command("grouped-embedding-hierarchy")
+def grouped_embedding_hierarchy(
+    input_path: str = typer.Option(..., "--input", help="Prepared .csv or .xlsx sample table."),
+    group_column: str = typer.Option(..., "--group-column"),
+    feature_column: List[str] = typer.Option(..., "--feature-column", help="Repeat in scientific feature order."),
+    output_root: str = typer.Option("geopi_output", "--output-root"),
+    experiment_name: str = typer.Option("Grouped Embedding", "--experiment-name"),
+    run_name: str = typer.Option("Grouped Hierarchy", "--run-name"),
+    sheet: str = typer.Option("0", "--sheet"),
+    components: int = typer.Option(3, "--components", min=2, max=3),
+    perplexity: float = typer.Option(35.0, "--perplexity", min=1),
+    iterations: int = typer.Option(1000, "--iterations", min=250),
+    early_exaggeration: float = typer.Option(12.0, "--early-exaggeration", min=0.01),
+    learning_rate: str = typer.Option("auto", "--learning-rate"),
+    init: str = typer.Option("pca", "--init"),
+    seed: int = typer.Option(42, "--seed", min=0),
+    metric: str = typer.Option("euclidean", "--metric"),
+    linkage_method: str = typer.Option("complete", "--linkage"),
+    metadata_column: Optional[str] = typer.Option(None, "--metadata-column"),
+    cluster_count: Optional[int] = typer.Option(None, "--cluster-count", min=2),
+) -> None:
+    """Standardize samples, embed them, average by group, and draw a dendrogram."""
+    from .data_mining.run_grouped_embedding_hierarchy import run_grouped_embedding_hierarchy
+
+    try:
+        output_directory = run_grouped_embedding_hierarchy(
+            input_path=Path(input_path), output_root=Path(output_root),
+            experiment_name=experiment_name, run_name=run_name,
+            group_column=group_column, feature_columns=tuple(feature_column), sheet=sheet,
+            components=components, perplexity=perplexity, iterations=iterations,
+            early_exaggeration=early_exaggeration, learning_rate=learning_rate,
+            init=init, seed=seed, metric=metric, linkage_method=linkage_method,
+            metadata_column=metadata_column, cluster_count=cluster_count,
+        )
+    except (OSError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(f"Saved grouped embedding hierarchy outputs to {output_directory}")
 
 
 # TODO: Currently, the web application is not fully implemented. It is disabled by default.

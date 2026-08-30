@@ -2,7 +2,10 @@
 
 import json
 import logging
+import os
+import re
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 from typing import Any
 
 import anyio
@@ -50,9 +53,13 @@ from ..contracts.regression import MODEL_ORDER as REGRESSION_MODEL_ORDER
 from ..contracts.regression import MODELS_WITHOUT_AUTOML
 from ..contracts.regression import UNSUPPORTED_INTERACTIONS as REGRESSION_UNSUPPORTED_INTERACTIONS
 from ..data.catalog import DatasetCatalogError
+from ..data.headers import source_allows_pandas_duplicate_mangling
 from ..data.inspector import DatasetInspectionError
 from ..data.inspector import inspect_dataset as inspect_local_dataset
+from ..data.inspector import snapshot_dataset
+from ..data.preparation import DatasetPreparationError, prepare_dataset_view
 from ..planning.interaction_plan import PlanCompilationError
+from ..runtime.cli_capabilities import probe_cli_capabilities
 from ..runtime.cli_driver import CliDriverError
 from ..runtime.runs import RunManager, RunNotFoundError, RunStateError
 from ..tracking.experiments import ExperimentManager, ExperimentStoreError
@@ -60,11 +67,15 @@ from ..tracking.ui import MlflowUiError, MlflowUiManager
 from .schemas import (
     AnalysisRequest,
     AnalysisValidationResponse,
+    AnomalyDetectionRequest,
     CancelRunResponse,
     CapabilitiesResponse,
+    ClassificationRequest,
+    ClusteringRequest,
     CompatibilityPolicy,
     DatasetInspectionRequest,
     DatasetInspectionResponse,
+    DecompositionRequest,
     GetExperimentRequest,
     GetExperimentResponse,
     ListDatasetsRequest,
@@ -72,16 +83,36 @@ from .schemas import (
     ListExperimentsRequest,
     ListExperimentsResponse,
     MlflowUiStatusResponse,
+    RegressionRequest,
     ResourceLimits,
     RunLookupRequest,
+    RunResultRequest,
     RunResultResponse,
+    RunStatusRequest,
     RunStatusResponse,
+    StartAnalysisByValidationRequest,
     StartAnalysisResponse,
     StartMlflowUiRequest,
+    TimeSeriesRequest,
 )
 
 LOGGER = logging.getLogger(__name__)
 _MAX_MODEL_TEXT = 4000
+_MAX_ACTIONABLE_ERROR_TEXT = 3000
+_MAX_VALIDATION_ERRORS = 8
+_MAX_VALIDATION_ISSUE_TEXT = 360
+_SAFE_FIELD_PART = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]{0,63}$")
+_WINDOWS_LOCAL_PATH = re.compile(r"(?i)(?:[A-Z]:[\\/]|\\\\)[^\r\n,;]+")
+_POSIX_LOCAL_PATH = re.compile(r"(?<![\w:])/(?:[^\s'\",;]+/)*[^\s'\",;]*")
+ANALYSIS_SCHEMA_TASK_ENV = "GEOCHEMISTRYPI_MCP_ANALYSIS_SCHEMA_TASK"
+_ANALYSIS_REQUEST_MODELS: dict[str, type[BaseModel]] = {
+    "classification": ClassificationRequest,
+    "regression": RegressionRequest,
+    "clustering": ClusteringRequest,
+    "decomposition": DecompositionRequest,
+    "anomaly_detection": AnomalyDetectionRequest,
+    "time_series": TimeSeriesRequest,
+}
 
 
 class EmptyRequest(BaseModel):
@@ -91,10 +122,12 @@ class EmptyRequest(BaseModel):
 
 
 _ToolFunction = Callable[[BaseModel], BaseModel]
+_SCHEMA_ANNOTATION_KEYS = frozenset({"title", "description", "default", "examples"})
 _PUBLIC_ERRORS = (
     CliDriverError,
     DatasetCatalogError,
     DatasetInspectionError,
+    DatasetPreparationError,
     PlanCompilationError,
     RunNotFoundError,
     RunStateError,
@@ -105,12 +138,175 @@ _PUBLIC_ERRORS = (
 )
 
 
+def _advertised_input_schema(value: Any) -> Any:
+    """Remove JSON Schema annotations without changing validation semantics."""
+    if isinstance(value, dict):
+        return {key: _advertised_input_schema(child) for key, child in value.items() if key not in _SCHEMA_ANNOTATION_KEYS}
+    if isinstance(value, list):
+        return [_advertised_input_schema(child) for child in value]
+    return value
+
+
+def _compact_definition_names(schema: dict[str, Any]) -> dict[str, Any]:
+    """Shorten scoped JSON Schema reference labels without changing validation."""
+    definitions = schema.get("$defs")
+    if not isinstance(definitions, dict):
+        return schema
+    mapping = {name: f"d{index}" for index, name in enumerate(sorted(definitions))}
+
+    def rewrite(value: Any) -> Any:
+        if isinstance(value, dict):
+            rewritten: dict[str, Any] = {}
+            for key, child in value.items():
+                if key == "$defs" and isinstance(child, dict):
+                    rewritten[key] = {mapping.get(name, name): rewrite(definition) for name, definition in child.items()}
+                else:
+                    rewritten[key] = rewrite(child)
+            return rewritten
+        if isinstance(value, list):
+            return [rewrite(child) for child in value]
+        if isinstance(value, str) and value.startswith("#/$defs/"):
+            name = value.removeprefix("#/$defs/")
+            return f"#/$defs/{mapping.get(name, name)}"
+        return value
+
+    return rewrite(schema)
+
+
+def _compact_validation_schema(value: Any) -> Any:
+    """Use smaller JSON Schema forms without changing accepted values."""
+    if isinstance(value, list):
+        return [_compact_validation_schema(child) for child in value]
+    if not isinstance(value, dict):
+        return value
+    compacted = {key: _compact_validation_schema(child) for key, child in value.items()}
+    discriminator = compacted.get("discriminator")
+    if isinstance(discriminator, dict):
+        # ``mapping`` only guides OpenAPI dispatch. The adjacent oneOf branches
+        # and their const fields retain the complete validation semantics.
+        discriminator.pop("mapping", None)
+    variants = compacted.get("anyOf")
+    if isinstance(variants, list) and variants and all(isinstance(item, dict) and set(item) == {"type"} and isinstance(item["type"], str) for item in variants):
+        types = [item["type"] for item in variants]
+        normalized_types = []
+        for item in types:
+            normalized = "number" if item == "integer" and "number" in types else item
+            if normalized not in normalized_types:
+                normalized_types.append(normalized)
+        compacted.pop("anyOf")
+        compacted["type"] = normalized_types[0] if len(normalized_types) == 1 else normalized_types
+    elif isinstance(variants, list) and len(variants) == 2 and {"type": "null"} in variants:
+        typed = next(item for item in variants if item != {"type": "null"})
+        if isinstance(typed, dict) and isinstance(typed.get("type"), str):
+            compacted.pop("anyOf")
+            compacted.update(typed)
+            compacted["type"] = [typed["type"], "null"]
+    enum = compacted.get("enum")
+    if compacted.get("type") == "string" and isinstance(enum, list) and len(enum) > 1 and all(isinstance(item, str) for item in enum):
+        pattern = "^(?:" + "|".join(re.escape(item) for item in enum) + ")(?![\\s\\S])"
+        enum_size = len(json.dumps({"enum": enum}, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+        pattern_size = len(json.dumps({"pattern": pattern}, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+        if pattern_size < enum_size:
+            compacted.pop("enum")
+            compacted["pattern"] = pattern
+    return compacted
+
+
+_SCALAR_SCHEMA_KEYS = frozenset(
+    {
+        "type",
+        "const",
+        "enum",
+        "pattern",
+        "format",
+        "minimum",
+        "maximum",
+        "exclusiveMinimum",
+        "exclusiveMaximum",
+        "multipleOf",
+        "minLength",
+        "maxLength",
+    }
+)
+_ARRAY_SCHEMA_KEYS = _SCALAR_SCHEMA_KEYS | {"items", "minItems", "maxItems", "uniqueItems"}
+
+
+def _deduplicate_validation_fragments(schema: dict[str, Any]) -> dict[str, Any]:
+    """Factor repeated scalar/array constraints into ordinary local references."""
+
+    def canonical(value: dict[str, Any]) -> str:
+        return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+    def eligible(value: dict[str, Any]) -> bool:
+        keys = set(value)
+        if not keys or "$ref" in keys or "type" not in keys:
+            return False
+        if keys <= _SCALAR_SCHEMA_KEYS:
+            return True
+        return keys <= _ARRAY_SCHEMA_KEYS and value.get("type") == "array" and isinstance(value.get("items"), dict)
+
+    def candidates(value: Any, found: dict[str, tuple[int, dict[str, Any]]]) -> None:
+        if isinstance(value, dict):
+            if eligible(value):
+                key = canonical(value)
+                count, _ = found.get(key, (0, value))
+                found[key] = (count + 1, value)
+            for child in value.values():
+                candidates(child, found)
+        elif isinstance(value, list):
+            for child in value:
+                candidates(child, found)
+
+    def replace(value: Any, target: str, reference: dict[str, str]) -> Any:
+        if isinstance(value, dict):
+            if eligible(value) and canonical(value) == target:
+                return reference
+            return {key: replace(child, target, reference) for key, child in value.items()}
+        if isinstance(value, list):
+            return [replace(child, target, reference) for child in value]
+        return value
+
+    compacted = schema
+    for index in range(16):
+        found: dict[str, tuple[int, dict[str, Any]]] = {}
+        candidates(compacted, found)
+        name = f"x{index}"
+        while name in compacted.get("$defs", {}):
+            index += 1
+            name = f"x{index}"
+        reference = {"$ref": f"#/$defs/{name}"}
+        reference_size = len(canonical(reference).encode("utf-8"))
+        best: tuple[int, str, dict[str, Any]] | None = None
+        for key, (count, example) in found.items():
+            if count < 2:
+                continue
+            fragment_size = len(key.encode("utf-8"))
+            definition_overhead = len(json.dumps(name).encode("utf-8")) + 2
+            savings = count * fragment_size - count * reference_size - fragment_size - definition_overhead
+            if savings > 16 and (best is None or savings > best[0]):
+                best = savings, key, example
+        if best is None:
+            break
+        _, target, definition = best
+        compacted = replace(compacted, target, reference)
+        compacted.setdefault("$defs", {})[name] = definition
+    return compacted
+
+
 def _tool(name: str, description: str, request: type[BaseModel], response: type[BaseModel]) -> Tool:
+    input_schema = _advertised_input_schema(request.model_json_schema())
+    if os.environ.get(ANALYSIS_SCHEMA_TASK_ENV):
+        input_schema = _compact_validation_schema(input_schema)
+        input_schema = _compact_definition_names(input_schema)
+        input_schema = _deduplicate_validation_fragments(input_schema)
     return Tool(
         name=name,
         description=description,
-        input_schema=request.model_json_schema(),
-        output_schema=response.model_json_schema(),
+        input_schema=input_schema,
+        # MCP clients replay advertised schemas into every model turn. Runtime
+        # responses remain strictly validated below; omitting duplicated output
+        # schemas removes context overhead without weakening response validation.
+        output_schema=None,
     )
 
 
@@ -120,7 +316,7 @@ def _compact_text(name: str, response: BaseModel) -> str:
         text = f"GeochemistryPi MCP {data['server_version']} supports {', '.join(data['supported_tasks'])} with {', '.join(data['supported_models'])}."
         return text[:_MAX_MODEL_TEXT]
     if name == "inspect_dataset":
-        columns = ", ".join(column["name"] for column in data["columns"])
+        columns = ", ".join(data["column_names"] or [column["name"] for column in data["columns"]])
         text = f"Dataset: {data['row_count']} rows, {data['column_count']} columns. Columns: {columns}. SHA-256: {data['sha256']}."
         return text[:_MAX_MODEL_TEXT]
     if name == "list_datasets":
@@ -136,59 +332,158 @@ def _compact_text(name: str, response: BaseModel) -> str:
     if name == "start_analysis":
         return (f"Queued GeochemistryPi run {data['run_id']} for {data['estimated_model_count']} model(s): " f"{', '.join(data['models'])}. {data['status_hint']}")[:_MAX_MODEL_TEXT]
     if name == "validate_analysis":
-        return (f"Analysis is valid for {data['task']} with {data['estimated_model_count']} model(s): " f"{', '.join(data['models'])}. No analysis process was started.")[:_MAX_MODEL_TEXT]
+        return (
+            f"Analysis is valid for {data['task']} with {data['estimated_model_count']} model(s): "
+            f"{', '.join(data['models'])}. Start this exact request with validation_id "
+            f"{data['validation_id']} and request_hash {data['request_hash']}. No analysis process was started."
+        )[:_MAX_MODEL_TEXT]
     if name == "get_run_status":
         return f"Run {data['run_id']} is {data['state']} at stage {data['stage']}: {data['progress_message']}"[:_MAX_MODEL_TEXT]
     if name == "get_run_result":
         metrics = json.dumps(data["reported_metrics"], ensure_ascii=False, separators=(",", ":"))
-        text = f"Run {data['run_id']} is {data['state']}. Original output: {data['output_directory']}. Artifacts: {data['artifact_count']}. CLI-reported metrics: {metrics}"
+        preprocessing = data.get("preprocessing_summary")
+        row_summary = (
+            " Preprocessing rows: " f"input={preprocessing['input_row_count']}, " f"analysis={preprocessing['analysis_row_count']}, " f"dropped={preprocessing['dropped_row_count']}."
+            if preprocessing is not None
+            else ""
+        )
+        text = (
+            f"Run {data['run_id']} is {data['state']}. Original output: {data['output_directory']}. "
+            f"Artifacts returned: {data['returned_artifact_count']} of {data['artifact_count']} "
+            f"from offset {data['artifact_offset']}.{row_summary} CLI-reported metrics: {metrics}"
+        )
         return text[:_MAX_MODEL_TEXT]
     return f"Run {data['run_id']}: {data['message']}"[:_MAX_MODEL_TEXT]
 
 
 def _bounded_actual(value: Any) -> str:
     if isinstance(value, dict):
-        return "object with fields " + ", ".join(sorted(str(key) for key in value)[:12])
+        return f"object with {len(value)} field(s)"
     if isinstance(value, (list, tuple)):
         return f"{type(value).__name__} with {len(value)} item(s)"
-    text = repr(value)
-    return text if len(text) <= 160 else text[:157] + "..."
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, str):
+        return f"string with {len(value)} character(s)"
+    return "value of an unsupported type"
+
+
+def _safe_error_field(error: dict[str, Any]) -> str:
+    parts = []
+    for part in error.get("loc", ()):
+        if isinstance(part, int):
+            parts.append(str(part))
+            continue
+        text = str(part)
+        parts.append(text if _SAFE_FIELD_PART.fullmatch(text) else "unknown_field")
+    return ".".join(parts) or "request"
+
+
+def _validation_error_kind(error_type: str) -> str:
+    if error_type == "missing":
+        return "missing"
+    if error_type == "extra_forbidden":
+        return "extra_forbidden"
+    if error_type == "string_pattern_mismatch":
+        return "pattern"
+    if error_type in {"greater_than", "greater_than_equal", "less_than", "less_than_equal"}:
+        return "range"
+    if error_type in {"literal_error", "union_tag_invalid", "union_tag_not_found"}:
+        return "literal"
+    if error_type.endswith("_type") or error_type.endswith("_parsing"):
+        return "type"
+    return "value"
+
+
+def _validation_problem(kind: str) -> str:
+    return {
+        "missing": "Required field is missing",
+        "extra_forbidden": "Extra input is not permitted",
+        "pattern": "String does not match the declared pattern",
+        "range": "Value is outside the declared range",
+        "literal": "Value is not one of the declared literals",
+        "type": "Value has the wrong JSON type",
+        "value": "Value does not satisfy the declared field contract",
+    }[kind]
+
+
+def _validation_alternative(field: str, kind: str) -> str:
+    if field.startswith("time_series.") and kind == "extra_forbidden":
+        replacement = {
+            "dataset": "remove it and use top-level 'training_dataset'",
+            "model": "remove it because the Time Series workflow has a fixed model",
+            "model_parameters": "remove it and place supported fields such as 'bin_width', 'iterations', and 'seed' at the top level",
+            "bin_width_ma": "remove it and use top-level 'bin_width'",
+            "bootstrap_iterations": "remove it and use top-level 'iterations'",
+            "random_seed": "remove it and use top-level 'seed'",
+        }.get(field.rsplit(".", 1)[-1])
+        if replacement is not None:
+            return replacement
+    if kind == "missing":
+        return "provide this required field at the location shown"
+    if kind == "extra_forbidden":
+        return "remove this unsupported field"
+    if kind == "pattern" and field.endswith("dataset_id"):
+        return "use the exact 'builtin:<id>' value returned by list_datasets, including its prefix"
+    if kind == "pattern":
+        return "use a value matching the field's declared pattern"
+    if kind == "range":
+        return "use a value within the field's declared minimum and maximum"
+    if kind == "literal":
+        return "use one of the field's declared literal values"
+    if kind == "type":
+        return "use the field's declared JSON type"
+    return "inspect the field description and supported capabilities"
+
+
+def _validation_issue(error: dict[str, Any]) -> tuple[tuple[str, str], str]:
+    field = _safe_error_field(error)
+    error_type = str(error.get("type", ""))
+    kind = _validation_error_kind(error_type)
+    text = (
+        f"[{kind}] Invalid field '{field}'. Actual value: {_bounded_actual(error.get('input'))}. "
+        f"Problem: {_validation_problem(kind)}. "
+        f"Valid alternatives: {_validation_alternative(field, kind)}."
+    )
+    return (field, kind), text[:_MAX_VALIDATION_ISSUE_TEXT]
+
+
+def _redacted_public_error(exc: BaseException) -> str:
+    message = " ".join(str(exc).split())
+    message = _WINDOWS_LOCAL_PATH.sub("<local-path>", message)
+    message = _POSIX_LOCAL_PATH.sub("<local-path>", message)
+    return message[:700] or type(exc).__name__
 
 
 def _actionable_error(exc: BaseException) -> str:
     if isinstance(exc, ValidationError):
-        error = exc.errors(include_url=False)[0]
-        field = ".".join(str(part) for part in error.get("loc", ())) or "request"
-        error_type = str(error.get("type", ""))
-        context = error.get("ctx") or {}
-        alternatives = context.get("expected") or context.get("expected_tags")
-        if error_type == "missing":
-            alternatives = "provide this required field"
-            next_action = (
-                "Resolve it from the conversation or earlier tool results when possible. "
-                "Only if it is a scientific choice the user must make, ask one plain-language "
-                "question; never ask the user for a schema field name or JSON."
-            )
-        elif error_type == "extra_forbidden":
-            alternatives = "remove unknown fields"
-            next_action = f"Remove the unsupported internal field '{field}' and validate again; " "do not ask the user to edit JSON."
-        elif alternatives:
-            next_action = f"Ask the user to choose a scientific option for '{field}' in plain language, " "then validate again."
-        else:
-            alternatives = "inspect the dataset and supported capabilities"
-            next_action = "Resolve what can be resolved automatically, ask one plain-language " "scientific question if needed, and validate again."
-        return (
-            f"Invalid field '{field}'. Actual value: {_bounded_actual(error.get('input'))}. "
-            f"Problem: {error.get('msg', 'validation failed')}. Valid alternatives: {alternatives}. "
-            f"Next action: {next_action}"
-        )[:1000]
-    message = " ".join(str(exc).split())[:700] or type(exc).__name__
+        unique: dict[tuple[str, str], str] = {}
+        for error in exc.errors(include_url=False):
+            key, issue = _validation_issue(error)
+            unique.setdefault(key, issue)
+        ordered = [unique[key] for key in sorted(unique)]
+        shown = ordered[:_MAX_VALIDATION_ERRORS]
+        issue_text = " ".join(f"{index}. {issue}" for index, issue in enumerate(shown, start=1))
+        omitted = len(ordered) - len(shown)
+        omitted_text = f" Additional issues omitted: {omitted}." if omitted else ""
+        next_action = (
+            "Next action: Resolve it from the conversation or earlier tool results when possible, "
+            "apply every listed fix in one request, and validate once. Only if an unresolved scientific "
+            "choice belongs to the user, ask one plain-language question; never ask the user for a schema "
+            "field name or JSON, and do not ask the user to edit JSON."
+        )
+        return (f"Validation failed with {len(ordered)} independent issue(s): {issue_text}{omitted_text} {next_action}")[:_MAX_ACTIONABLE_ERROR_TEXT]
+    message = _redacted_public_error(exc)
     return (
         f"Invalid analysis configuration. Problem: {message}. "
         "Valid alternatives: inspect the dataset for exact columns and check the supported scientific workflows. "
         "Next action: resolve safe defaults automatically, ask the user one plain-language scientific question "
         "if needed, and preview the corrected analysis before starting it."
-    )[:1000]
+    )[:_MAX_ACTIONABLE_ERROR_TEXT]
 
 
 def build_tool_handlers(
@@ -200,82 +495,91 @@ def build_tool_handlers(
     """Build strict schemas and a sanitized dispatcher for one server."""
     experiment_store = experiments or getattr(runs, "experiment_manager", None) or ExperimentManager(settings)
     ui_manager = mlflow_ui or MlflowUiManager(settings)
+    analysis_schema_task_scope = os.environ.get(ANALYSIS_SCHEMA_TASK_ENV)
+    if analysis_schema_task_scope is None:
+        analysis_request_model: type[BaseModel] = AnalysisRequest
+    else:
+        try:
+            analysis_request_model = _ANALYSIS_REQUEST_MODELS[analysis_schema_task_scope]
+        except KeyError as exc:
+            allowed = ", ".join(_ANALYSIS_REQUEST_MODELS)
+            raise SettingsError(f"{ANALYSIS_SCHEMA_TASK_ENV} must be one of: {allowed}.") from exc
     definitions = (
         _tool(
             "get_capabilities",
-            "Discover supported scientific workflows and limits before planning an analysis.",
+            "List supported workflows, options, and limits",
             EmptyRequest,
             CapabilitiesResponse,
         ),
         _tool(
             "list_datasets",
-            "List built-in datasets and safe immediate files in Desktop/geopi_input without modifying them.",
+            "List trusted built-in and Desktop datasets.",
             ListDatasetsRequest,
             ListDatasetsResponse,
         ),
         _tool(
             "inspect_dataset",
-            "Inspect one explicit, built-in, or Desktop CSV/XLSX dataset read-only; return only bounded rows and inferred types.",
+            "Inspect bounded dataset metadata.",
             DatasetInspectionRequest,
             DatasetInspectionResponse,
         ),
         _tool(
             "list_experiments",
-            "List active experiments in the installer-owned persistent MLflow tracking store using stable IDs.",
+            "List MLflow experiments by stable ID.",
             ListExperimentsRequest,
             ListExperimentsResponse,
         ),
         _tool(
             "get_experiment",
-            "Read one persistent MLflow experiment and a bounded list of its newest runs by stable experiment ID.",
+            "Read an experiment and recent runs.",
             GetExperimentRequest,
             GetExperimentResponse,
         ),
         _tool(
             "start_mlflow_ui",
-            "Explicitly start the installer-owned MLflow UI on 127.0.0.1; it is never started automatically.",
+            "Start the managed local MLflow UI.",
             StartMlflowUiRequest,
             MlflowUiStatusResponse,
         ),
         _tool(
             "mlflow_ui_status",
-            "Inspect and recover durable managed MLflow UI state without starting or stopping any process.",
+            "Read managed MLflow UI state.",
             EmptyRequest,
             MlflowUiStatusResponse,
         ),
         _tool(
             "stop_mlflow_ui",
-            "Stop only the MLflow UI process tree whose PID, creation time, command, and tracking root are verified.",
+            "Stop the verified managed MLflow UI.",
             EmptyRequest,
             MlflowUiStatusResponse,
         ),
         _tool(
             "validate_analysis",
-            "Resolve datasets and preview task, column roles, exact model parameters, source, experiment selection, workload count, and warnings without starting an analysis process.",
-            AnalysisRequest,
+            "Validate a scientific request.",
+            analysis_request_model,
             AnalysisValidationResponse,
         ),
         _tool(
             "start_analysis",
-            "Queue a validated local classification, regression, clustering, decomposition, anomaly-detection, or Time Series run through the existing GeochemistryPi CLI and return immediately.",
-            AnalysisRequest,
+            "Start a validated request.",
+            StartAnalysisByValidationRequest,
             StartAnalysisResponse,
         ),
         _tool(
             "get_run_status",
-            "Read the durable state of one wrapper-owned run without blocking on the CLI.",
-            RunLookupRequest,
+            "Read state or wait once for at most 300 seconds.",
+            RunStatusRequest,
             RunStatusResponse,
         ),
         _tool(
             "get_run_result",
-            "Return bounded metrics and references to original CLI outputs after a run succeeds.",
-            RunLookupRequest,
+            "Wait once; return metrics and paged artifacts.",
+            RunResultRequest,
             RunResultResponse,
         ),
         _tool(
             "cancel_run",
-            "Cancel only the live CLI process tree recorded for the specified wrapper-owned run.",
+            "Cancel the recorded live CLI process tree.",
             RunLookupRequest,
             CancelRunResponse,
         ),
@@ -286,18 +590,50 @@ def build_tool_handlers(
         "inspect_dataset": DatasetInspectionRequest,
         "list_experiments": ListExperimentsRequest,
         "get_experiment": GetExperimentRequest,
-        "validate_analysis": AnalysisRequest,
+        "validate_analysis": analysis_request_model,
         "start_mlflow_ui": StartMlflowUiRequest,
         "mlflow_ui_status": EmptyRequest,
         "stop_mlflow_ui": EmptyRequest,
-        "start_analysis": AnalysisRequest,
-        "get_run_status": RunLookupRequest,
-        "get_run_result": RunLookupRequest,
+        "start_analysis": StartAnalysisByValidationRequest,
+        "get_run_status": RunStatusRequest,
+        "get_run_result": RunResultRequest,
         "cancel_run": RunLookupRequest,
     }
 
     def capabilities(_: BaseModel) -> CapabilitiesResponse:
         manifest = load_capability_manifest()
+        capability_requirements = (
+            "command:time-series",
+            "command:reference-anomaly-time-series",
+            "command:embedding-label-overlay",
+            "option:data-mining:--scientific-config",
+        )
+        cli_resolver = getattr(runs, "cli_resolver", None)
+        try:
+            cli_executable = cli_resolver()[0] if callable(cli_resolver) else None
+        except Exception:
+            cli_executable = None
+        cli_probe = probe_cli_capabilities(cli_executable, capability_requirements) if cli_executable is not None and cli_executable.is_file() else probe_cli_capabilities(Path("."), ())
+        available_cli_capabilities = set(cli_probe.available)
+        executable_time_series_modes = tuple(
+            mode
+            for mode, requirement in (
+                ("subaerial_proportion", "command:time-series"),
+                ("continuous", "command:time-series"),
+                (
+                    "reference_anomaly_series",
+                    "command:reference-anomaly-time-series",
+                ),
+            )
+            if requirement in available_cli_capabilities
+        )
+        scientific_time_series_modes = (
+            "subaerial_proportion",
+            "continuous",
+            "element_mean",
+            "reference_anomaly_series",
+        )
+        schema_only_time_series_modes = tuple(mode for mode in scientific_time_series_modes if mode not in executable_time_series_modes)
         return CapabilitiesResponse(
             server_name=SERVER_NAME,
             server_version=SERVER_VERSION,
@@ -310,6 +646,7 @@ def build_tool_handlers(
                 "anomaly_detection",
                 "time_series",
             ),
+            analysis_schema_task_scope=analysis_schema_task_scope,
             supported_models=tuple(
                 dict.fromkeys(
                     (
@@ -362,6 +699,9 @@ def build_tool_handlers(
                 "application_data": ("disabled", "enabled"),
                 "sample_balancing": ("none",),
                 "model_selection": ("single", "all"),
+                "split_strategy": ("stratified_holdout", "random_holdout"),
+                "xgboost_objective": ("auto", "binary:logistic", "multi:softprob", "multi:softmax"),
+                "xgboost_importance_type": ("gain", "weight", "cover", "total_gain", "total_cover"),
             },
             regression_options={
                 "missing_values": MISSING_VALUE_METHODS,
@@ -370,7 +710,7 @@ def build_tool_handlers(
                 "tuning": TUNING_MODES,
                 "automl_models": tuple(model for model in REGRESSION_MODEL_ORDER if model not in MODELS_WITHOUT_AUTOML),
                 "application_data": ("disabled", "enabled"),
-                "target_columns": ("single_numeric",),
+                "target_columns": ("single_numeric", "multiple_numeric"),
                 "model_selection": ("single", "all"),
             },
             clustering_options={
@@ -380,6 +720,7 @@ def build_tool_handlers(
                 "target_columns": ("not_applicable",),
                 "tuning": ("not_applicable",),
                 "model_selection": ("single", "all"),
+                "scientific_methods": ("hierarchical", "DBSCAN"),
             },
             decomposition_options={
                 "missing_values": DECOMPOSITION_MISSING_VALUE_METHODS,
@@ -389,6 +730,8 @@ def build_tool_handlers(
                 "tuning": ("not_applicable",),
                 "transformed_data": ("enabled",),
                 "model_selection": ("single", "all"),
+                "scientific_methods": ("PCA", "tSNE"),
+                "artifact_composition": (("embedding_label_overlay",) if "command:embedding-label-overlay" in available_cli_capabilities else ()),
             },
             anomaly_detection_options={
                 "missing_values": ANOMALY_DETECTION_MISSING_VALUE_METHODS,
@@ -398,9 +741,30 @@ def build_tool_handlers(
                 "tuning": ("not_applicable",),
                 "detection_labels": ("1_inlier", "-1_outlier"),
                 "model_selection": ("single", "all"),
+                "scientific_methods": ("isolation_forest", "LOF"),
             },
             time_series_options={
-                "model": ("subaerial_proportion_bootstrap",),
+                "model": tuple(
+                    model
+                    for model, mode in (
+                        (
+                            "subaerial_proportion_bootstrap",
+                            "subaerial_proportion",
+                        ),
+                        (
+                            "spatiotemporal_weighted_continuous_bootstrap",
+                            "continuous",
+                        ),
+                        (
+                            "reference_label_event_overlay",
+                            "reference_anomaly_series",
+                        ),
+                    )
+                    if mode in executable_time_series_modes
+                ),
+                "scientific_modes": scientific_time_series_modes,
+                "cli_executable_modes": executable_time_series_modes,
+                "schema_only_modes": schema_only_time_series_modes,
                 "age_units": ("Ma", "Ga"),
                 "fit_curve": ("disabled", "enabled"),
                 "randomness": ("explicit_seed",),
@@ -411,7 +775,24 @@ def build_tool_handlers(
                 "clustering": CLUSTERING_MODEL_ORDER,
                 "decomposition": DECOMPOSITION_MODEL_ORDER,
                 "anomaly_detection": ANOMALY_DETECTION_MODEL_ORDER,
-                "time_series": ("subaerial_proportion_bootstrap",),
+                "time_series": tuple(
+                    model
+                    for model, mode in (
+                        (
+                            "subaerial_proportion_bootstrap",
+                            "subaerial_proportion",
+                        ),
+                        (
+                            "spatiotemporal_weighted_continuous_bootstrap",
+                            "continuous",
+                        ),
+                        (
+                            "reference_label_event_overlay",
+                            "reference_anomaly_series",
+                        ),
+                    )
+                    if mode in executable_time_series_modes
+                ),
             },
             unsupported_interactions=(
                 *CLASSIFICATION_UNSUPPORTED_INTERACTIONS,
@@ -435,14 +816,43 @@ def build_tool_handlers(
         if request.dataset is None:
             return inspect_local_dataset(request, settings)
         resolved = runs.dataset_catalog.resolve(request.dataset)
-        response = inspect_local_dataset(
-            request.model_copy(update={"dataset_path": resolved.path, "dataset": None}),
-            settings,
-            allow_pandas_duplicate_mangling=resolved.source == "builtin",
-        )
-        if resolved.expected_sha256 is not None and response.sha256 != resolved.expected_sha256:
+        source_snapshot = snapshot_dataset(resolved.path, settings.maximum_dataset_bytes)
+        if resolved.expected_sha256 is not None and source_snapshot.sha256 != resolved.expected_sha256:
             raise DatasetCatalogError("The dataset changed between source resolution and inspection.")
-        return response
+        if settings.service_state_root is None:
+            raise SettingsError("The MCP service-state root is not configured.")
+        prepared = prepare_dataset_view(
+            source_snapshot,
+            request.dataset.preparation,
+            settings.service_state_root,
+            settings.maximum_dataset_bytes,
+            settings.maximum_columns,
+            allow_pandas_duplicate_mangling=source_allows_pandas_duplicate_mangling(resolved.source),
+        )
+        response = inspect_local_dataset(
+            request.model_copy(update={"dataset_path": prepared.snapshot.resolved_path, "dataset": None}),
+            settings,
+            allow_pandas_duplicate_mangling=(source_allows_pandas_duplicate_mangling(resolved.source) if prepared.snapshot.resolved_path == source_snapshot.resolved_path else False),
+        )
+        return response.model_copy(
+            update={
+                "original_source_path": str(source_snapshot.resolved_path),
+                "original_source_sha256": source_snapshot.sha256,
+                "dataset_preparation": prepared.record,
+            }
+        )
+
+    def analysis_value(request: BaseModel) -> BaseModel:
+        return request.root if isinstance(request, AnalysisRequest) else request
+
+    def start_analysis_request(request: BaseModel) -> StartAnalysisResponse:
+        if isinstance(request, StartAnalysisByValidationRequest):
+            return runs.start_validated(
+                request.validation_id,
+                request.request_hash,
+                expected_task=analysis_schema_task_scope,
+            )
+        return runs.start(analysis_value(request))
 
     functions: dict[str, _ToolFunction] = {
         "get_capabilities": capabilities,
@@ -450,13 +860,21 @@ def build_tool_handlers(
         "inspect_dataset": inspect_dataset_request,
         "list_experiments": lambda request: experiment_store.list(request),
         "get_experiment": lambda request: experiment_store.get(request),
-        "validate_analysis": lambda request: runs.validate(request.root),
+        "validate_analysis": lambda request: runs.validate(analysis_value(request)),
         "start_mlflow_ui": lambda request: ui_manager.start(request),
         "mlflow_ui_status": lambda request: ui_manager.status(),
         "stop_mlflow_ui": lambda request: ui_manager.stop(),
-        "start_analysis": lambda request: runs.start(request.root),
-        "get_run_status": lambda request: runs.get_status(request.run_id),
-        "get_run_result": lambda request: runs.get_result(request.run_id),
+        "start_analysis": start_analysis_request,
+        "get_run_status": lambda request: runs.get_status(
+            request.run_id,
+            wait_seconds=request.wait_seconds,
+        ),
+        "get_run_result": lambda request: runs.get_result(
+            request.run_id,
+            wait_seconds=request.wait_seconds,
+            artifact_offset=request.artifact_offset,
+            artifact_limit=request.artifact_limit,
+        ),
         "cancel_run": lambda request: runs.cancel(request.run_id),
     }
 
@@ -467,7 +885,11 @@ def build_tool_handlers(
         if params.name not in functions:
             raise MCPError(INVALID_PARAMS, f"Unknown tool: {params.name}")
         try:
-            request = request_models[params.name].model_validate(params.arguments or {})
+            arguments = params.arguments or {}
+            if params.name == "start_analysis" and not ("validation_id" in arguments or "request_hash" in arguments):
+                request = analysis_request_model.model_validate(arguments)
+            else:
+                request = request_models[params.name].model_validate(arguments)
             response = await anyio.to_thread.run_sync(functions[params.name], request)
             structured = response.model_dump(mode="json")
             return CallToolResult(

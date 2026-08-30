@@ -1,0 +1,9 @@
+{
+  "worksheet": "Test 1",
+  "source_row_column": "SourceRow",
+  "selected_columns": [
+    "SourceRow", "Sample Name", "Longitude", "Latitude", "H 7",
+    "SiO2", "TiO2", "Al2O3", "FeOt", "CaO", "MgO", "MnO",
+    "K2O", "Na2O", "P2O5"
+  ]
+}

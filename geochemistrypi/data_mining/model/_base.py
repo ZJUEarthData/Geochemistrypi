@@ -421,27 +421,33 @@ class TreeWorkflowMixin:
         """Drawing decision tree diagrams."""
         print(f"-----* {func_name} *-----")  # Single Tree Diagram
 
-        # Fix: Plot decision tree for each output of MultiOutputRegressor
-        if hasattr(trained_model, "estimators_"):
-            # If it's a MultiOutputRegressor, plot a separate decision tree for each internal estimator
-            for i, estimator in enumerate(trained_model.estimators_):
-                # Create a unique function name for each output
-                output_func_name = f"{func_name} - Output {i+1}"
-                print(f"-----* {output_func_name} *-----")
-                plot_decision_tree(estimator, image_config)
+        from sklearn.multioutput import MultiOutputRegressor
 
-                # Save the decision tree for each output separately
-                save_fig(f"{output_func_name} - {algorithm_name}", local_path, mlflow_path)
-        else:
-            # Fix: Handle array type input: if it's an array with a single element, take the first element
-            if hasattr(trained_model, "shape") and len(trained_model) == 1:
-                model_to_use = trained_model[0]
+        def representative_tree(estimator: object) -> object:
+            """Unwrap a tree ensemble without confusing it with multi-output."""
+            children = getattr(estimator, "estimators_", None)
+            if children is None:
+                return estimator
+            if isinstance(children, np.ndarray):
+                if children.size == 0:
+                    raise ValueError("The fitted tree ensemble does not contain an estimator.")
+                child = children.flat[0]
             else:
-                model_to_use = trained_model
+                if not children:
+                    raise ValueError("The fitted tree ensemble does not contain an estimator.")
+                child = children[0]
+            return representative_tree(child)
 
-            # Use the processed model
-            plot_decision_tree(model_to_use, image_config)
-            save_fig(f"{func_name} - {algorithm_name}", local_path, mlflow_path)
+        if isinstance(trained_model, MultiOutputRegressor):
+            for index, output_estimator in enumerate(trained_model.estimators_, start=1):
+                output_func_name = f"{func_name} - Output {index}"
+                print(f"-----* {output_func_name} *-----")
+                plot_decision_tree(representative_tree(output_estimator), image_config)
+                save_fig(f"{output_func_name} - {algorithm_name}", local_path, mlflow_path)
+            return
+
+        plot_decision_tree(representative_tree(trained_model), image_config)
+        save_fig(f"{func_name} - {algorithm_name}", local_path, mlflow_path)
 
 
 class LinearWorkflowMixin:
@@ -482,7 +488,8 @@ class LinearWorkflowMixin:
         print(f"-----* {func_name} *-----")  # 2D Line Diagram
         plot_2d_line_diagram(feature_data, target_data, y_test_predict)
         save_fig(f"{func_name} - {algorithm_name}", local_path, mlflow_path)
-        data = pd.concat([feature_data, target_data, y_test_predict], axis=1)
+        prediction_data = y_test_predict.rename(columns=lambda column: f"Predicted_{column}")
+        data = pd.concat([feature_data, target_data, prediction_data], axis=1)
         save_data(data, data_name, f"{func_name} - {algorithm_name}", local_path, mlflow_path)
 
     @staticmethod
@@ -502,7 +509,8 @@ class LinearWorkflowMixin:
         print(f"-----* {func_name} *-----")  # 3D Surface Diagram
         plot_3d_surface_diagram(feature_data, target_data, y_test_predict)
         save_fig(f"{func_name} - {algorithm_name}", local_path, mlflow_path)
-        data = pd.concat([feature_data, target_data, y_test_predict], axis=1)
+        prediction_data = y_test_predict.rename(columns=lambda column: f"Predicted_{column}")
+        data = pd.concat([feature_data, target_data, prediction_data], axis=1)
         save_data(data, data_name, f"{func_name} - {algorithm_name}", local_path, mlflow_path)
 
 

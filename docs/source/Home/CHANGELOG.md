@@ -13,6 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 + MLOps core of continuous training in web interface
 + More new algorithms and new processing techniques
++ Added a paper-agnostic continuous Time Series CLI/MCP producer with
+  spatiotemporal weighted bootstrap uncertainty, age bounds, numeric filters,
+  deterministic seeds, and indexed CSV/PNG/PDF outputs.
+
+### Fixed
+
++ Preserved nullable forest depth, classification split strategy, XGBoost
+  objective/importance semantics, validation-to-run plan identity, and
+  workflow-specific Time Series artifact finalization across CLI and MCP.
 
 ---
 
