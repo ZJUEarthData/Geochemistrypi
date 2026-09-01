@@ -1,0 +1,59 @@
+# syntax=docker/dockerfile:1
+
+# Build the Vue single-page application with its lockfile-resolved dependencies.
+FROM node:20-bookworm-slim AS frontend-builder
+
+WORKDIR /build/frontend
+
+ARG RENDER_GIT_COMMIT=unknown
+ENV GEOCHEMISTRYPI_ONLINE_INSTANCE_ID=geochemistrypi-online-render \
+    GEOCHEMISTRYPI_SOURCE_REVISION=${RENDER_GIT_COMMIT} \
+    GEOCHEMISTRYPI_BUILD_ID=${RENDER_GIT_COMMIT}
+
+RUN corepack enable && corepack prepare pnpm@11.19.0 --activate
+COPY geochemistrypi/frontend/package.json \
+    geochemistrypi/frontend/pnpm-lock.yaml \
+    geochemistrypi/frontend/pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY geochemistrypi/frontend/ ./
+RUN pnpm run build
+
+# Run the API and serve the built frontend from the same public origin.
+FROM python:3.12-slim-bookworm AS runtime
+
+ARG RENDER_GIT_COMMIT=unknown
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    GEOCHEMISTRYPI_ONLINE_INSTANCE_ID=geochemistrypi-online-render \
+    GEOCHEMISTRYPI_SOURCE_REVISION=${RENDER_GIT_COMMIT} \
+    GEOCHEMISTRYPI_BUILD_ID=${RENDER_GIT_COMMIT} \
+    GEOCHEMISTRYPI_RUNTIME_DIR=/app/runtime \
+    TMPDIR=/app/runtime/tmp \
+    OMP_NUM_THREADS=1 \
+    OPENBLAS_NUM_THREADS=1 \
+    MKL_NUM_THREADS=1 \
+    NUMEXPR_NUM_THREADS=1 \
+    PORT=10000
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements-online.txt ./
+RUN pip install --no-cache-dir -r requirements-online.txt
+
+COPY geochemistrypi/ ./geochemistrypi/
+COPY --from=frontend-builder /build/frontend/dist ./frontend-dist
+
+RUN useradd --create-home --uid 10001 appuser \
+    && mkdir -p /app/runtime/tmp \
+    && chown -R appuser:appuser /app
+
+USER appuser
+
+EXPOSE 10000
+
+CMD ["sh", "-c", "uvicorn geochemistrypi.online.app:app --host 0.0.0.0 --port ${PORT:-10000}"]
