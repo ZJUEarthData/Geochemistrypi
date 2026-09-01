@@ -38,8 +38,6 @@ The command line interface would show:
 2 - Data For Classification
 3 - Data For Clustering
 4 - Data For Dimensional Reduction
-5 - Data For Anomaly Detection
-6 - Data For Time Series
 (User) ➜ @Number: 4
 ```
 
@@ -417,8 +415,6 @@ Select dimensionality reduction
 2 - Classification
 3 - Clustering
 4 - Dimensional Reduction
-5 - Data For Anomaly Detection
-6 - Data For Time Series
 (Model) ➜ @Number: 4
 ```
 

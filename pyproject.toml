@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "geochemistrypi"
-version = "0.8.0"
+dynamic = ["version"]
 authors = [
   { name="Can He", email="sanyhew1097618435@163.com"},
   { name="Jianhao Sun", email="sjh20171502@gmail.com"},
@@ -75,3 +75,6 @@ test = [
 
 [project.scripts]
 geochemistrypi = "geochemistrypi.cli:app"
+
+[tool.hatch.version]
+path = "geochemistrypi/_version.py"

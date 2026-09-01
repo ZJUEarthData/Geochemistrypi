@@ -60,6 +60,7 @@ from .process.cluster import ClusteringModelSelection
 from .process.decompose import DecompositionModelSelection
 from .process.detect import AnomalyDetectionModelSelection
 from .process.regress import RegressionModelSelection
+from .process.time_series import compute_subaerial_proportion, plot_and_save
 from .utils.base import clear_output, copy_files, copy_files_from_source_dir_to_dest_dir, create_geopi_output_dir, get_os, list_excel_files, log, save_data, show_warning
 from .utils.mlflow_utils import retrieve_previous_experiment_id
 
@@ -269,6 +270,8 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
             training_data_path = "Data_Decomposition.xlsx"
         elif built_in_training_data_num == 5:
             training_data_path = "Data_AnomalyDetection.xlsx"
+        elif built_in_training_data_num == 6:
+            training_data_path = "Data_Time_Series.xlsx"
         data = read_data(file_path=training_data_path)
         print(f"Successfully loading the built-in training data set '{training_data_path}'.")
         show_data_columns(data.columns)
@@ -511,6 +514,75 @@ def cli_pipeline(training_data_path: str, application_data_path: Optional[str] =
         num2option(MODE_OPTION)
         mode_num = limit_num_input(MODE_OPTION, SECTION[2], num_input)
     clear_output()
+
+    # Time Series is an analysis workflow rather than an estimator. It must run
+    # before the supervised/unsupervised model split below.
+    mode_options = MODE_OPTION_WITH_MISSING_VALUES if missing_value_flag and not process_missing_value_flag else MODE_OPTION
+    mode_name = mode_options[mode_num - 1]
+    if mode_name == "Time Series":
+        print("[bold green]-*-*- Time Series Analysis -*-*-[/bold green]")
+        default_columns = {
+            "age_col": "R_AGE",
+            "age_max_col": "R_MAX_AGE",
+            "prob_col": "Estimated Proportion of Subaerial Basalts",
+            "lat_col": "LATITUDE",
+            "lon_col": "LONGITUDE",
+        }
+
+        if all(column in data_selected.columns for column in default_columns.values()):
+            age_col = default_columns["age_col"]
+            age_max_col = default_columns["age_max_col"]
+            prob_col = default_columns["prob_col"]
+            lat_col = default_columns["lat_col"]
+            lon_col = default_columns["lon_col"]
+        else:
+            print("Please select the columns corresponding to the following variables:")
+            show_data_columns(data_selected.columns)
+            age_col = data_selected.columns[int_input(column=1, prefix=SECTION[1], slogan="@Column index for Age: ") - 1]
+            age_max_col = data_selected.columns[int_input(column=1, prefix=SECTION[1], slogan="@Column index for Age Max: ") - 1]
+            prob_col = data_selected.columns[int_input(column=1, prefix=SECTION[1], slogan="@Column index for Probability: ") - 1]
+            lat_col = data_selected.columns[int_input(column=1, prefix=SECTION[1], slogan="@Column index for Latitude: ") - 1]
+            lon_col = data_selected.columns[int_input(column=1, prefix=SECTION[1], slogan="@Column index for Longitude: ") - 1]
+
+        age_unit = Prompt.ask("Select Age unit", choices=["Ma", "Ga"], default="Ma")
+        bin_width = float_input(default=10.0, prefix=SECTION[1], slogan=f"@Bin width ({age_unit}): ")
+        n_iter = int_input(column=100, prefix=SECTION[1], slogan="@Bootstrap iterations: ")
+        time_series_data = data_selected.copy()
+        internal_bin_width = bin_width
+        if age_unit == "Ga":
+            time_series_data[age_col] = time_series_data[age_col] * 1000.0
+            time_series_data[age_max_col] = time_series_data[age_max_col] * 1000.0
+            internal_bin_width = bin_width * 1000.0
+
+        age_x, ave_bin, std_bin = compute_subaerial_proportion(
+            time_series_data,
+            bin_width=internal_bin_width,
+            n_iter=n_iter,
+            age_col=age_col,
+            age_max_col=age_max_col,
+            prob_col=prob_col,
+            lat_col=lat_col,
+            lon_col=lon_col,
+        )
+        output_dir = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH") or OUTPUT_PATH
+        output_base = plot_and_save(
+            age_x,
+            ave_bin,
+            std_bin,
+            out_dir=output_dir,
+            age_unit=age_unit,
+            title=f"Subaerial proportion (bin width {bin_width} {age_unit}, bootstrap {n_iter})",
+            out_name=f"Subaerial_proportion_{bin_width:g}{age_unit}_boot{n_iter}",
+        )
+        print(f"Time series outputs saved: {output_base}.pdf and {output_base}.csv")
+        copy_files(
+            output_dir,
+            os.getenv("GEOPI_OUTPUT_METRICS_PATH"),
+            os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"),
+            os.getenv("GEOPI_OUTPUT_SUMMARY_PATH"),
+        )
+        clear_output()
+        return
 
     # <--- Data Segmentation --->
     # divide X and y data set when it is supervised learning

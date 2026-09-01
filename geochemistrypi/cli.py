@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 import inspect
 import os
-
-# import platform
 import subprocess
-import threading
 from functools import wraps
+from typing import Optional
 
 import click
 import typer
@@ -15,71 +13,33 @@ from rich import print
 from ._version import __version__
 
 
-def _patch_typer_option_flag_value_for_click_unset() -> None:
-    """Adapt Typer 0.7 option defaults to Click versions that use UNSET."""
+def _patch_typer_for_click() -> None:
+    """Keep the v0.8 Typer CLI compatible with newer Click releases."""
     unset = getattr(click.core, "UNSET", None)
-    flag_value_parameter = inspect.signature(click.Option.__init__).parameters.get("flag_value")
-    if unset is None or flag_value_parameter is None or flag_value_parameter.default is not unset:
-        return
-    if getattr(typer.core.TyperOption.__init__, "_geopi_click_unset_patch", False):
-        return
+    flag_value = inspect.signature(click.Option.__init__).parameters.get("flag_value")
+    if (
+        unset is not None
+        and flag_value is not None
+        and flag_value.default is unset
+        and not getattr(typer.core.TyperOption.__init__, "_geopi_click_unset_patch", False)
+    ):
+        original_init = typer.core.TyperOption.__init__
 
-    original_init = typer.core.TyperOption.__init__
+        @wraps(original_init)
+        def patched_init(self, *args, **kwargs):
+            if kwargs.get("flag_value") is None:
+                kwargs["flag_value"] = unset
+            return original_init(self, *args, **kwargs)
 
-    @wraps(original_init)
-    def patched_init(self, *args, **kwargs):
-        if kwargs.get("flag_value") is None:
-            kwargs["flag_value"] = unset
-        return original_init(self, *args, **kwargs)
+        patched_init._geopi_click_unset_patch = True
+        typer.core.TyperOption.__init__ = patched_init
 
-    patched_init._geopi_click_unset_patch = True
-    typer.core.TyperOption.__init__ = patched_init
-
-
-def _patch_typer_make_metavar_for_click_context() -> None:
-    """Allow Typer's help code to work with both old and new Click metavar APIs."""
-    if getattr(click.core, "UNSET", None) is None:
-        return
-
-    if not getattr(typer.core.TyperOption.make_metavar, "_geopi_click_ctx_patch", False):
-        original_option_make_metavar = typer.core.TyperOption.make_metavar
-
-        @wraps(original_option_make_metavar)
-        def patched_option_make_metavar(self, ctx=None):
-            return original_option_make_metavar(self, ctx)
-
-        patched_option_make_metavar._geopi_click_ctx_patch = True
-        typer.core.TyperOption.make_metavar = patched_option_make_metavar
-
-    if not getattr(typer.core.TyperArgument.make_metavar, "_geopi_click_ctx_patch", False):
-
-        def patched_argument_make_metavar(self, ctx=None):
-            if self.metavar is not None:
-                return self.metavar
-            var = (self.name or "").upper()
-            if not self.required:
-                var = f"[{var}]"
-            type_var = self.type.get_metavar(param=self, ctx=ctx)
-            if type_var:
-                var += f":{type_var}"
-            if self.nargs != 1:
-                var += "..."
-            return var
-
-        patched_argument_make_metavar._geopi_click_ctx_patch = True
-        typer.core.TyperArgument.make_metavar = patched_argument_make_metavar
-
-
-def _use_click_help_when_typer_rich_help_is_incompatible() -> None:
-    """Keep Typer 0.7 help usable with Click versions that require ctx."""
     ctx_parameter = inspect.signature(click.Parameter.make_metavar).parameters.get("ctx")
     if ctx_parameter is not None and ctx_parameter.default is inspect.Parameter.empty:
         typer.core.rich = None
 
 
-_patch_typer_option_flag_value_for_click_unset()
-_patch_typer_make_metavar_for_click_context()
-_use_click_help_when_typer_rich_help_is_incompatible()
+_patch_typer_for_click()
 
 app = typer.Typer()
 
@@ -89,7 +49,12 @@ BACKEND_PATH = os.path.join(CURRENT_PATH, "start_dash_pipeline.py")
 PIPELINE_PATH = os.path.join(CURRENT_PATH, "start_cli_pipeline.py")
 
 
-def _run_cli_pipeline(training_data_path: str, application_data_path: str, data_source_name: str) -> None:
+def _run_cli_pipeline(
+    training_data_path: str,
+    application_data_path: str,
+    data_source_name: str,
+) -> None:
+    """Import the heavy Data Mining stack only when a run is requested."""
     from .data_mining.cli_pipeline import cli_pipeline
     from .data_mining.enum_ import DataSource
 
@@ -107,96 +72,190 @@ def _version_callback(value: bool) -> None:
         raise typer.Exit()
 
 
-@app.callback()
-def main(version: bool = typer.Option(False, "--version", "-v", help="Show version.", callback=_version_callback, is_eager=True, is_flag=True)) -> None:
-    """
-    Geochemistry Pi is an open-sourced highly automated machine learning Python framework for data-driven geochemistry discovery.
-    It has the cores components of continous training, machine learning lifecycle management and model inference.
-    """
-    return
-
-
-@app.command()
-def data_mining(
-    data: str = typer.Option("", help="The path of the training data without model inference."),
-    desktop: bool = typer.Option(False, "--desktop", help="Use the data in the directory 'geopi_input' on the desktop for model training and model inference.", is_flag=True),
-    training: str = typer.Option("", help="The path of the training data."),
-    application: str = typer.Option("", help="The path of the inference data."),
-    mlflow: bool = typer.Option(False, "--mlflow", help="Start the mlflow server.", is_flag=True),
-    # web: bool = False,
+@app.callback(invoke_without_command=True)
+def main(
+    ctx: typer.Context,
+    version: Optional[bool] = typer.Option(
+        None,
+        "--version",
+        "-v",
+        help="Show version.",
+        callback=_version_callback,
+        is_eager=True,
+    ),
 ) -> None:
-    """Implement the customized automated machine learning pipeline for geochemistry data mining."""
+    """
+    Top-level callback. If no subcommand is invoked, present an interactive launcher
+    that lets the user choose between data_mining and chemical_modeling.
+    """
+    # If a subcommand is invoked explicitly, do nothing here.
+    if ctx.invoked_subcommand:
+        return
 
-    def start_backend():
-        """Start the backend server."""
-        start_backend_command = f"python {BACKEND_PATH}"
-        subprocess.run(start_backend_command, shell=True)
+    # Interactive launcher
+    print("\n[bold blue]Welcome to Geochemistry Pi[/bold blue]")
+    print("[bold]Please choose a module to run:[/bold]")
+    print("1 - Data Mining (automated ML pipelines)")
+    print("2 - Chemical Modeling (equilibrium / fractionation / etc.)")
+    print("Q - Quit")
+    choice = input("Enter 1 or 2 (or Q to quit): ").strip().lower()
 
-    def start_frontend():
-        """Start the frontend server."""
-        start_frontend_command = f"cd {FRONTEND_PATH} && yarn start"
-        subprocess.run(start_frontend_command, shell=True)
+    if choice in ("q", "quit", "exit", ""):
+        print("Exit.")
+        raise typer.Exit()
 
-    def start_mlflow():
-        """Start the mlflow server."""
-        # Check if the current working directory has the 'geopi_tracking' directory to store the tracking data for mlflow
-        # If yes, set the MLFLOW_STORE_PATH to the current working directory
-        # If no, set the MLFLOW_STORE_PATH to the desktop
-        cur_working_dir = os.getcwd()
-        geopi_tracking_dir = os.path.join(cur_working_dir, "geopi_tracking")
-        if not os.path.exists(geopi_tracking_dir):
-            print(f"[bold red]The 'geopi_tracking' directory is not found in the current working directory '{cur_working_dir}'.[bold red]")
-            geopi_tracking_dir = os.path.join(os.path.expanduser("~"), "Desktop", "geopi_tracking")
+    if choice == "1":
+        # Delay-import data_mining modules to avoid loading heavy deps unless needed
+        try:
+            from .data_mining.enum_ import DataSource  # type: ignore
+        except Exception as e:
+            print(f"[red]Failed to import data_mining modules: {e}[/red]")
+            print()
+            print("[yellow]Likely cause: missing system library for lightgbm (libomp).[/yellow]")
+            print("[yellow]To run data_mining on macOS, install libomp (Homebrew):[/yellow]")
+            print("  brew install libomp")
+            print("[yellow]Or with conda (if you use conda):[/yellow]")
+            print("  conda install -c conda-forge libomp")
+            print()
+            print("[green]After installing libomp, re-run the CLI and choose option 1 again.[/green]")
+            raise typer.Exit(code=1)
+
+        # Provide a couple of simple choices for data_mining usage
+        print("\n[bold]Data Mining launcher[/bold]")
+        use_mlflow = input("Start MLflow UI? (y/N): ").strip().lower() == "y"
+        if use_mlflow:
+            # Start mlflow ui
+            cur_working_dir = os.getcwd()
+            geopi_tracking_dir = os.path.join(cur_working_dir, "geopi_tracking")
             if not os.path.exists(geopi_tracking_dir):
-                print("[bold red]The 'geopi_tracking' directory is not found on the desktop.[bold red]")
-                print("[bold green]Creating the 'geopi_tracking' directory ...[/bold green]")
-                print("[bold green]Successfully create 'geopi_tracking' directory on the desktop to store the tracking data for mlflow.[/bold green]")
-            else:
-                print("[bold green]The 'geopi_tracking' directory is found on the desktop.[bold green]")
-                print("[bold green]Our software will use the 'geopi_tracking' directory on the desktop to store the tracking data for mlflow.[bold green]")
-        else:
-            print(f"[bold green]The 'geopi_tracking' directory is found in the current working directory '{cur_working_dir}'.[bold green]")
-            print("[bold green]Our software will use the 'geopi_tracking' directory in the current working directory to store the tracking data for mlflow.[bold green]")
-        MLFLOW_STORE_PATH = "file:///" + geopi_tracking_dir
-        print("[bold green]Press [bold magenta]Ctrl + C[/bold magenta] to close mlflow server at any time.[bold green]")
-        start_mlflow_command = f"mlflow ui --backend-store-uri {MLFLOW_STORE_PATH} "
-        subprocess.run(start_mlflow_command, shell=True)
+                geopi_tracking_dir = os.path.join(os.path.expanduser("~"), "Desktop", "geopi_tracking")
+                if not os.path.exists(geopi_tracking_dir):
+                    os.makedirs(geopi_tracking_dir, exist_ok=True)
+                    print(f"[green]Created geopi_tracking at {geopi_tracking_dir}[/green]")
+            MLFLOW_STORE_PATH = "file:///" + geopi_tracking_dir
+            print("[bold green]Starting MLflow UI... Press Ctrl+C to stop.[/bold green]")
+            subprocess.run(f"mlflow ui --backend-store-uri {MLFLOW_STORE_PATH}", shell=True)
+            raise typer.Exit()
 
-    # TODO: Currently, the web application is not fully implemented. It is disabled by default.
-    web = False
-    if web:
-        # Start the backend and frontend in parallel
-        backend_thread = threading.Thread(target=start_backend)
-        backend_thread.start()
-        frontend_thread = threading.Thread(target=start_frontend)
-        frontend_thread.start()
-        # Wait for the threads to finish
-        backend_thread.join()
-        frontend_thread.join()
+        # Start interactive data_mining pipeline (uses built-in defaults)
+        print("[green]Starting Data Mining CLI pipeline (interactive mode).[/green]")
+        _run_cli_pipeline("", "", DataSource.BUILT_IN.name)
+        raise typer.Exit()
+
+    if choice == "2":
+        # Delay-import chemical_modeling pipeline
+        try:
+            from .chemical_modeling.cli_pipeline import cli_pipeline as cm_cli_pipeline  # type: ignore
+        except Exception as e:
+            print(f"[red]Failed to import chemical_modeling modules: {e}[/red]")
+            raise typer.Exit(code=1)
+
+        print("\n[bold]Chemical Modeling launcher[/bold]")
+        non_interactive = input("Run non-interactively with a file? (y/N): ").strip().lower() == "y"
+        if non_interactive:
+            input_path = input("Path to input data file (absolute path recommended): ").strip()
+            task_in = input("Task name (e.g. algo_fractionation) [or number from the list]: ").strip()
+            method_in = input("Method name (e.g. internal_standard) [or number from the list]: ").strip()
+            element_in = input("Element (e.g. Hg, Mo) [or number from the list]: ").strip()
+            out_dir_in = input("Output directory (leave blank for default 'results'): ").strip() or None
+
+            # If user provided numbers, map them to names using dispatcher helpers
+            try:
+                # import discovery helpers only when needed
+                from .chemical_modeling.dispatcher import discover_tasks, list_method_elements, list_task_methods
+            except Exception as e:
+                print(f"[red]Failed to import dispatcher helpers: {e}[/red]")
+                raise typer.Exit(code=1)
+
+            task = task_in
+            method = method_in
+            element = element_in
+
+            # Map numeric task index -> task name
+            if task and task.isdigit():
+                tasks = discover_tasks()
+                idx = int(task) - 1
+                if 0 <= idx < len(tasks):
+                    task = tasks[idx]
+                else:
+                    print(f"[red]Invalid task index: {task}[/red]")
+                    raise typer.Exit(code=1)
+            # If empty, fall back to interactive later
+            if method and method.isdigit() and task:
+                methods = list_task_methods(task)
+                method_keys = list(methods.keys())
+                idx = int(method) - 1
+                if 0 <= idx < len(method_keys):
+                    method = method_keys[idx]
+                else:
+                    print(f"[red]Invalid method index: {method}[/red]")
+                    raise typer.Exit(code=1)
+            if element and element.isdigit() and task and method:
+                elements = list_method_elements(task, method)
+                idx = int(element) - 1
+                if 0 <= idx < len(elements):
+                    element = elements[idx]
+                else:
+                    print(f"[red]Invalid element index: {element}[/red]")
+                    raise typer.Exit(code=1)
+
+            # If any of task/method/element is blank, fall back to interactive chemical_modeling
+            if not (task and method and element):
+                print("[yellow]Incomplete non-interactive parameters -> falling back to interactive chemical_modeling.[/yellow]")
+                cm_cli_pipeline("", {"non_interactive": False})
+                raise typer.Exit()
+
+            config = {
+                "task": task,
+                "method": method,
+                "element": element,
+                "non_interactive": True,
+            }
+            if out_dir_in:
+                config["out_dir"] = out_dir_in
+
+            print("[green]Starting Chemical Modeling pipeline...[/green]")
+            cm_cli_pipeline(input_path or "", config)
+        else:
+            # Interactive chemical_modeling: let chemical_modeling.cli_pipeline present its menus
+            cm_cli_pipeline("", {"non_interactive": False})
+        raise typer.Exit()
+
+    print("Unknown choice. Exiting.")
+    raise typer.Exit()
+
+
+@app.command(name="data-mining")
+def data_mining(
+    data: str = typer.Option("", "--data", help="Training data path without model inference."),
+    desktop: bool = typer.Option(False, "--desktop", help="Use the desktop geopi_input directory."),
+    training: str = typer.Option("", "--training", help="Training data path."),
+    application: str = typer.Option("", "--application", help="Inference data path."),
+    mlflow: bool = typer.Option(False, "--mlflow", help="Start the MLflow server."),
+) -> None:
+    """Run the v0.8 automated Data Mining pipeline."""
+    if mlflow:
+        tracking_dir = os.path.join(os.getcwd(), "geopi_tracking")
+        os.makedirs(tracking_dir, exist_ok=True)
+        store_uri = "file:///" + tracking_dir.replace("\\", "/")
+        subprocess.run(
+            ["mlflow", "ui", "--backend-store-uri", store_uri],
+            check=False,
+        )
+        return
+
+    if desktop:
+        _run_cli_pipeline("", "", "DESKTOP")
+    elif data:
+        _run_cli_pipeline(data, "", "ANY_PATH")
+    elif training:
+        _run_cli_pipeline(training, application, "ANY_PATH")
     else:
-        if mlflow:
-            # If mlflow is enabled, start the mlflow server, otherwise start the CLI pipeline
-            mlflow_thread = threading.Thread(target=start_mlflow)
-            mlflow_thread.start()
-        elif desktop:
-            # Start the CLI pipeline with the data in the directory 'geopi_input' on the desktop
-            #   - Both continuous training and model inference
-            #   - Continuous training only
-            _run_cli_pipeline(training_data_path="", application_data_path="", data_source_name="DESKTOP")
-        else:
-            if data:
-                # If the data is provided, start the CLI pipeline with continuous training
-                _run_cli_pipeline(training_data_path=data, application_data_path="", data_source_name="ANY_PATH")
-            elif training and application:
-                # If the training data and inference data are provided, start the CLI pipeline with continuous training and inference
-                _run_cli_pipeline(training_data_path=training, application_data_path=application, data_source_name="ANY_PATH")
-            elif training and not application:
-                # If the training data is provided, start the CLI pipeline with continuous training
-                _run_cli_pipeline(training_data_path=training, application_data_path="", data_source_name="ANY_PATH")
-            else:
-                # If no data is provided, use built-in data to start the CLI pipeline with continuous training and inference
-                _run_cli_pipeline(training_data_path="", application_data_path="", data_source_name="BUILT_IN")
+        _run_cli_pipeline("", "", "BUILT_IN")
 
+
+if __name__ == "__main__":
+    app()
 
 # TODO: Currently, the web application is not fully implemented. It is disabled by default.
 # @app.command()

@@ -77,8 +77,6 @@ After pressing the Enter key, the program propts the following options to let yo
 
 5 - Data For Anomaly Detection
 
-6 - Data For Time Series
-
 (User) ➜ @Number: 5
 ```
 
@@ -797,8 +795,6 @@ We select **5 - Anomaly Detection** as our model:
 4 - Dimensional Reduction
 
 5 - Anomaly Detection
-
-6 - Time Series
 
 (Model) ➜ @Number: 5
 (Press Enter key to move forward.)

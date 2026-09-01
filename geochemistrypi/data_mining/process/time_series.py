@@ -5,7 +5,6 @@ Provides functions to compute and plot subaerial proportion time series.
 import os
 from typing import Optional, Tuple
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -32,10 +31,13 @@ def compute_subaerial_proportion(
     Lat = df[lat_col].values
     Lon = df[lon_col].values
 
-    np.random.seed(2025)
+    rng = np.random.RandomState(2025)
 
     WEI = np.ones((age.size, 1))
-    batch_size = 2000
+    # Keep the pairwise working matrices below roughly two million float cells.
+    # The original fixed batch of 2,000 can exceed 700 MB for the bundled v0.8
+    # dataset, which is unsafe for a local Online worker.
+    batch_size = max(1, min(2000, 2_000_000 // max(1, age.size)))
 
     # compute WEI in batches (same formula as original)
     for i in range(0, age.size, batch_size):
@@ -78,13 +80,13 @@ def compute_subaerial_proportion(
 
     for i in range(n_iter):
         if index_wei.size > 0:
-            bootfixa[:, 0] = np.random.normal(loc=age[index_wei], scale=age_error[index_wei])
+            bootfixa[:, 0] = rng.normal(loc=age[index_wei], scale=age_error[index_wei])
 
         if del_age.size == 0:
             break
 
-        bootstrapSamples = np.random.choice(np.arange(del_age.size), size=del_age.size, p=del_WEIP)
-        boot1 = np.random.normal(loc=del_age[bootstrapSamples], scale=del_age_error[bootstrapSamples]).reshape(-1, 1)
+        bootstrapSamples = rng.choice(np.arange(del_age.size), size=del_age.size, p=del_WEIP)
+        boot1 = rng.normal(loc=del_age[bootstrapSamples], scale=del_age_error[bootstrapSamples]).reshape(-1, 1)
         boot2 = del_p[bootstrapSamples].reshape(-1, 1)
 
         bootage_cmb = np.vstack((bootfixa, boot1))
@@ -146,6 +148,14 @@ def plot_and_save(
     str
         Base path of saved files.
     """
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError as exc:
+        raise RuntimeError(
+            "Time Series plotting requires matplotlib. Install the v0.8 core "
+            "dependencies before creating PDF output."
+        ) from exc
+
     if out_dir is None:
         out_dir = os.getcwd()
     os.makedirs(out_dir, exist_ok=True)

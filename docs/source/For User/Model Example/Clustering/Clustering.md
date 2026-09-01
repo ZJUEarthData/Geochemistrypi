@@ -48,8 +48,6 @@ After pressing the Enter key, the program propts the following options to let yo
     2 - Data For Classification
     3 - Data For Clustering
     4 - Data For Dimensional Reduction
-    5 - Data For Anomaly Detection
-    6 - Data For Time Series
     (User) ➜ @Number:3
 
 Here, we choose *3 - Data For Clustering* and press the Enter key to move forward.
@@ -88,10 +86,6 @@ Then, we choose *2 - Data For Clustering* as our **Built-in Application Data**:
     3 - Data For Clustering
 
     4 - Data For Dimensional Reduction
-
-    5 - Data For Anomaly Detection
-
-    6 - Data For Time Series
 
     (User) ➜ @Number: 3
 

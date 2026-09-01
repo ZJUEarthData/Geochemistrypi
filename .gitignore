@@ -23,14 +23,6 @@
 # Pycharm
 .idea
 
-# VSCode
-.vscode/
-
-# Local development environments
-.conda/
-Lib/
-Scripts/
-
 # Bytecode
 __pycache__
 *.pyc
@@ -41,12 +33,11 @@ __pycache__
 # Python Virtual Environment
 venv_geo/*
 venv_geo
+.venv-online/
 
 # Ignore text files for the report
 report.txt
 output.txt
-changes.md
-multiclass_cli_test.csv
 
 # Web Dependency
 node_modules
@@ -69,7 +60,12 @@ docs/build
 
 # env
 .env
+.env.production
+deploy/certs/
 
 # mlflow
 mlruns
 geopi_tracking
+results/
+runtime/
+geochemistrypi/data_mining/data/dataset/Data_Time_Series.xlsx

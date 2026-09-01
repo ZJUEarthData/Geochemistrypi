@@ -29,3 +29,6 @@ python-dotenv==1.0.0
 rich==13.3.5
 mlflow==2.4.1
 imblearn==0.0
+pyautogui==0.9.53
+pygetwindow==0.0.9
+keyboard==0.13.5
