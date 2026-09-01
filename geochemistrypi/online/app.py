@@ -3,8 +3,9 @@
 import os
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from geochemistrypi._version import __version__
 
@@ -69,12 +70,35 @@ def create_app(runtime_dir: Path | None = None) -> FastAPI:
     app.state.task_runner = task_runner
     app.include_router(create_router(service, data_mining_service, task_runner))
 
-    @app.get("/", include_in_schema=False)
-    async def root() -> dict[str, str]:
-        return {
-            "message": "Geochemistry Pi Online API",
-            "docs": "/docs",
-        }
+    frontend_dir = Path(
+        os.getenv("FRONTEND_DIST_DIR", PROJECT_ROOT / "frontend-dist")
+    ).resolve()
+    frontend_index = frontend_dir / "index.html"
+
+    if frontend_index.is_file():
+
+        @app.get("/", include_in_schema=False)
+        async def root() -> FileResponse:
+            return FileResponse(frontend_index)
+
+        @app.get("/{full_path:path}", include_in_schema=False)
+        async def frontend_application(full_path: str) -> FileResponse:
+            if full_path.startswith("api/"):
+                raise HTTPException(status_code=404, detail="Not found")
+
+            requested_file = (frontend_dir / full_path).resolve()
+            if requested_file.is_file() and requested_file.is_relative_to(frontend_dir):
+                return FileResponse(requested_file)
+            return FileResponse(frontend_index)
+
+    else:
+
+        @app.get("/", include_in_schema=False)
+        async def root() -> dict[str, str]:
+            return {
+                "message": "Geochemistry Pi Online API",
+                "docs": "/docs",
+            }
 
     return app
 
