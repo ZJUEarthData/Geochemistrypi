@@ -67,6 +67,10 @@ class LabelEncodedXGBClassifier(ClassifierMixin, BaseEstimator):
         max_depth: int = 4,
         subsample: float = 0.8,
         colsample_bytree: float = 1.0,
+        min_child_weight: float = 1.0,
+        gamma: float = 0.0,
+        reg_alpha: float = 0.0,
+        base_score: float = 0.5,
         random_state: int = 42,
         n_jobs: int = 1,
     ) -> None:
@@ -75,6 +79,10 @@ class LabelEncodedXGBClassifier(ClassifierMixin, BaseEstimator):
         self.max_depth = max_depth
         self.subsample = subsample
         self.colsample_bytree = colsample_bytree
+        self.min_child_weight = min_child_weight
+        self.gamma = gamma
+        self.reg_alpha = reg_alpha
+        self.base_score = base_score
         self.random_state = random_state
         self.n_jobs = n_jobs
 
@@ -89,6 +97,10 @@ class LabelEncodedXGBClassifier(ClassifierMixin, BaseEstimator):
             "max_depth": self.max_depth,
             "subsample": self.subsample,
             "colsample_bytree": self.colsample_bytree,
+            "min_child_weight": self.min_child_weight,
+            "gamma": self.gamma,
+            "reg_alpha": self.reg_alpha,
+            "base_score": self.base_score,
             "random_state": self.random_state,
             "n_jobs": self.n_jobs,
             "tree_method": "hist",
@@ -303,6 +315,8 @@ REGRESSION_MODELS: dict[str, RegressionModelDefinition] = {
                 max_depth=4,
                 subsample=0.8,
                 colsample_bytree=1.0,
+                min_child_weight=1.0,
+                base_score=0.5,
                 objective="reg:squarederror",
                 eval_metric="rmse",
                 random_state=42,
@@ -517,6 +531,10 @@ REGRESSION_HYPERPARAMETERS: dict[str, tuple[HyperparameterDefinition, ...]] = {
         _parameter("learning_rate", "Learning rate", "Contribution of each boosted tree.", "number", 0.1, minimum=0.001, maximum=1, step=0.01),
         _parameter("max_depth", "Tree depth", "Maximum depth of each boosted tree.", "integer", 4, minimum=1, maximum=20, step=1),
         _parameter("subsample", "Row subsample", "Fraction of rows used for each boosted tree.", "number", 0.8, minimum=0.1, maximum=1, step=0.05),
+        _parameter("colsample_bytree", "Feature subsample", "Fraction of predictor columns used for each boosted tree.", "number", 1.0, minimum=0.1, maximum=1, step=0.05),
+        _parameter("min_child_weight", "Minimum child weight", "Minimum sum of instance weights required in a child node.", "number", 1.0, minimum=0, maximum=10000, step=1),
+        _parameter("base_score", "Base score", "Initial prediction score before boosting.", "number", 0.5, minimum=-10000, maximum=10000, step=0.1),
+        _parameter("random_state", "Random state", "Seed used by the XGBoost estimator.", "integer", 42, minimum=0, maximum=2147483647, step=1),
     ),
 }
 
@@ -562,7 +580,11 @@ CLASSIFICATION_HYPERPARAMETERS: dict[str, tuple[HyperparameterDefinition, ...]] 
         _parameter("n_estimators", "Boosting stages", "Maximum number of estimators.", "integer", 100, minimum=10, maximum=1000, step=10),
         _parameter("learning_rate", "Learning rate", "Contribution of each estimator.", "number", 1.0, minimum=0.001, maximum=10, step=0.05),
     ),
-    "xgboost": REGRESSION_HYPERPARAMETERS["xgboost"],
+    "xgboost": (
+        *REGRESSION_HYPERPARAMETERS["xgboost"],
+        _parameter("gamma", "Gamma", "Minimum loss reduction required for a further tree split.", "number", 0.0, minimum=0, maximum=10000, step=0.1),
+        _parameter("reg_alpha", "Alpha", "L1 regularization applied to leaf weights.", "number", 0.0, minimum=0, maximum=10000, step=0.1),
+    ),
 }
 
 
@@ -611,12 +633,17 @@ def configure_model(
                 raise ValueError(f"Hyperparameter '{name}' must be a number")
             value = float(raw_value)
         elif item.value_type == "select":
-            if raw_value not in item.options:
+            matching_options = tuple(
+                option for option in item.options if raw_value == option
+            )
+            if not matching_options:
                 raise ValueError(
                     f"Hyperparameter '{name}' must be one of: "
                     + ", ".join(str(option) for option in item.options)
                 )
-            value = raw_value
+            # JSON has one numeric type, so a catalog float such as 1.0 can
+            # arrive as integer 1. Keep the registry option's intended type.
+            value = matching_options[0]
         else:
             raise ValueError(f"Unsupported hyperparameter type: {item.value_type}")
 
@@ -624,6 +651,7 @@ def configure_model(
             raise ValueError(f"Hyperparameter '{name}' must be at least {item.minimum}")
         if item.maximum is not None and value > item.maximum:
             raise ValueError(f"Hyperparameter '{name}' must be at most {item.maximum}")
+        supplied[name] = value
         estimator_parameters[item.estimator_parameter or item.name] = value
 
     if estimator_parameters:

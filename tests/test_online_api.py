@@ -8,12 +8,17 @@ import threading
 import time
 from xml.etree import ElementTree as ET
 
+import joblib
 import numpy as np
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
 from geochemistrypi.online.app import create_app
+from geochemistrypi.online.data_mining_models import (
+    configure_model,
+    get_regression_model,
+)
 from geochemistrypi.online.data_mining_service import DataMiningService
 from geochemistrypi.online.limits import (
     MAX_CONCURRENT_TASKS,
@@ -1187,9 +1192,300 @@ def test_linear_regression_returns_metrics_coefficients_and_downloads(tmp_path):
     assert report["random_state"] == 42
     assert report["metrics"]["r2"] == pytest.approx(1.0)
     assert report["pipeline_artifact"] == "trained_pipeline.joblib"
+    assert report["refit_on_all_rows"] is True
+    assert report["pipeline_training_rows"] == 40
     pipeline_download = client.get(payload["artifacts"][2]["download_url"])
     assert pipeline_download.status_code == 200
     assert pipeline_download.content
+
+
+def test_saved_regression_pipeline_is_refit_on_all_usable_rows(tmp_path):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    response = client.post(
+        "/api/data-mining/regression",
+        data={
+            "model": "extra_trees",
+            "target_column": "Target",
+            "feature_columns": json.dumps(["X1", "X2"]),
+            "test_size": "0.25",
+        },
+        files={
+            "dataset": (
+                "regression.csv",
+                make_linear_regression_csv(),
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["summary"]["train_rows"] == 30
+    assert payload["summary"]["test_rows"] == 10
+
+    report_artifact = next(
+        artifact
+        for artifact in payload["artifacts"]
+        if artifact["name"] == "regression_report.json"
+    )
+    report = client.get(report_artifact["download_url"]).json()
+    assert report["refit_on_all_rows"] is True
+    assert report["pipeline_training_rows"] == 40
+
+    pipeline_artifact = next(
+        artifact
+        for artifact in payload["artifacts"]
+        if artifact["name"] == "trained_pipeline.joblib"
+    )
+    pipeline_bundle = joblib.load(
+        BytesIO(client.get(pipeline_artifact["download_url"]).content)
+    )
+    fitted_model = pipeline_bundle["pipeline"].named_steps["model"]
+    assert {
+        estimator.tree_.n_node_samples[0]
+        for estimator in fitted_model.estimators_
+    } == {40}
+
+
+def test_extra_trees_numeric_select_uses_catalog_float_option(tmp_path):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    common_data = {
+        "model": "extra_trees",
+        "target_column": "Target",
+        "feature_columns": json.dumps(["X1", "X2"]),
+        "test_size": "0.25",
+    }
+    files = {
+        "dataset": (
+            "regression.csv",
+            make_linear_regression_csv(),
+            "text/csv",
+        )
+    }
+    default_response = client.post(
+        "/api/data-mining/regression",
+        data=common_data,
+        files=files,
+    )
+    selected_response = client.post(
+        "/api/data-mining/regression",
+        data={
+            **common_data,
+            "hyperparameters": json.dumps({"max_features": 1}),
+        },
+        files=files,
+    )
+
+    assert default_response.status_code == 200, default_response.text
+    assert selected_response.status_code == 200, selected_response.text
+    default_payload = default_response.json()
+    selected_payload = selected_response.json()
+    assert selected_payload["metrics"] == pytest.approx(default_payload["metrics"])
+    assert selected_payload["hyperparameters"]["max_features"] == 1.0
+    assert isinstance(selected_payload["hyperparameters"]["max_features"], float)
+
+    report_artifact = next(
+        item
+        for item in selected_payload["artifacts"]
+        if item["name"] == "regression_report.json"
+    )
+    report = client.get(report_artifact["download_url"]).json()
+    assert report["hyperparameters"]["max_features"] == 1.0
+    assert isinstance(report["hyperparameters"]["max_features"], float)
+
+    def load_pipeline(payload):
+        artifact = next(
+            item
+            for item in payload["artifacts"]
+            if item["name"] == "trained_pipeline.joblib"
+        )
+        return joblib.load(BytesIO(client.get(artifact["download_url"]).content))[
+            "pipeline"
+        ]
+
+    default_pipeline = load_pipeline(default_payload)
+    selected_pipeline = load_pipeline(selected_payload)
+    selected_model = selected_pipeline.named_steps["model"]
+    assert selected_model.max_features == 1.0
+    assert isinstance(selected_model.max_features, float)
+
+    full_data = pd.read_csv(BytesIO(make_linear_regression_csv()))
+    full_features = full_data.loc[:, ["X1", "X2"]]
+    np.testing.assert_array_equal(
+        selected_pipeline.predict(full_features),
+        default_pipeline.predict(full_features),
+    )
+
+    knn_hyperparameters = {"p": 1.0}
+    knn = configure_model(
+        "regression",
+        get_regression_model("k_nearest_neighbors"),
+        knn_hyperparameters,
+    )
+    assert knn_hyperparameters["p"] == 1
+    assert isinstance(knn_hyperparameters["p"], int)
+    assert isinstance(knn.get_params()["kneighborsregressor__p"], int)
+
+
+def test_xgboost_regression_catalog_accepts_released_author_parameters(tmp_path):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    catalog = client.get("/api/data-mining/catalog").json()
+    regression = next(
+        feature for feature in catalog["features"] if feature["name"] == "regression"
+    )
+    xgboost = next(
+        method for method in regression["methods"] if method["name"] == "xgboost"
+    )
+    parameter_catalog = {
+        parameter["name"]: parameter for parameter in xgboost["hyperparameters"]
+    }
+    author_parameters = {
+        "n_estimators": 890,
+        "learning_rate": 0.11,
+        "max_depth": 19,
+        "subsample": 1.0,
+        "colsample_bytree": 0.9,
+        "min_child_weight": 130.0,
+        "base_score": 0.2,
+        "random_state": 0,
+    }
+
+    assert set(author_parameters) <= set(parameter_catalog)
+    for name, value in author_parameters.items():
+        definition = parameter_catalog[name]
+        assert definition["minimum"] <= value <= definition["maximum"]
+
+    configured = author_parameters.copy()
+    estimator = configure_model(
+        "regression",
+        get_regression_model("xgboost"),
+        configured,
+    )
+    estimator_parameters = estimator.get_params()
+    for name, value in author_parameters.items():
+        assert estimator_parameters[name] == pytest.approx(value)
+        assert configured[name] == pytest.approx(value)
+
+
+def test_xgboost_regression_uses_native_missing_values_end_to_end(tmp_path):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    row_count = 40
+    x1 = np.linspace(0.0, 3.9, row_count)
+    x2 = np.linspace(2.0, 5.9, row_count)
+    target = 0.2 + 0.4 * x1 + 0.1 * x2
+    training_frame = pd.DataFrame({"X1": x1, "X2": x2, "Target": target})
+    training_frame.loc[2, "X1"] = np.nan
+    training_frame.loc[5, "X2"] = np.nan
+    training_frame.loc[8, ["X1", "X2"]] = np.nan
+    training_content = training_frame.to_csv(index=False).encode("utf-8")
+    hyperparameters = {
+        "n_estimators": 20,
+        "learning_rate": 0.11,
+        "max_depth": 6,
+        "subsample": 1.0,
+        "colsample_bytree": 0.9,
+        "min_child_weight": 2.0,
+        "base_score": 0.2,
+        "random_state": 0,
+    }
+
+    training = client.post(
+        "/api/data-mining/regression",
+        data={
+            "model": "xgboost",
+            "target_column": "Target",
+            "feature_columns": json.dumps(["X1", "X2"]),
+            "test_size": "0.25",
+            "hyperparameters": json.dumps(hyperparameters),
+        },
+        files={"dataset": ("training.csv", training_content, "text/csv")},
+    )
+    assert training.status_code == 200, training.text
+    training_payload = training.json()
+    assert training_payload["summary"] == {
+        "original_rows": row_count,
+        "usable_rows": row_count,
+        "dropped_rows": 0,
+        "train_rows": 30,
+        "test_rows": 10,
+        "feature_count": 2,
+    }
+    assert training_payload["hyperparameters"] == hyperparameters
+    assert any(
+        "native missing-value handling" in warning
+        for warning in training_payload["warnings"]
+    )
+
+    pipeline_artifact = next(
+        artifact
+        for artifact in training_payload["artifacts"]
+        if artifact["name"] == "trained_pipeline.joblib"
+    )
+    pipeline_bundle = joblib.load(
+        BytesIO(client.get(pipeline_artifact["download_url"]).content)
+    )
+    pipeline = pipeline_bundle["pipeline"]
+    assert list(pipeline.named_steps) == ["model"]
+    assert pipeline_bundle["missing_value_handling"] == "xgboost_native"
+    fitted_parameters = pipeline.named_steps["model"].get_params()
+    for name, value in hyperparameters.items():
+        assert fitted_parameters[name] == pytest.approx(value)
+    assert np.isfinite(
+        pipeline.predict(pd.DataFrame({"X1": [np.nan], "X2": [np.nan]}))[0]
+    )
+
+    training_report_artifact = next(
+        artifact
+        for artifact in training_payload["artifacts"]
+        if artifact["name"] == "regression_report.json"
+    )
+    training_report = client.get(training_report_artifact["download_url"]).json()
+    assert training_report["pipeline_training_rows"] == row_count
+    assert training_report["missing_value_handling"] == "xgboost_native"
+    assert training_report["native_missing_rows"] == 3
+
+    application = client.post(
+        "/api/data-mining/inference",
+        data={"training_job_id": training_payload["job_id"]},
+        files={
+            "dataset": (
+                "application.csv",
+                b"Sample,X1,X2\nA,4.0,6.0\nB,4.1,\nC,,\n",
+                "text/csv",
+            )
+        },
+    )
+    assert application.status_code == 200, application.text
+    application_payload = application.json()
+    assert application_payload["summary"] == {
+        "original_rows": 3,
+        "predicted_rows": 3,
+        "excluded_rows": 0,
+        "imputed_rows": 0,
+        "feature_count": 2,
+    }
+    assert [row["inference_status"] for row in application_payload["preview"]] == [
+        "predicted",
+        "predicted_with_native_missing",
+        "predicted_with_native_missing",
+    ]
+    assert any(
+        "native missing-value handling" in warning
+        for warning in application_payload["warnings"]
+    )
+    assert all(
+        "training-set medians" not in warning
+        for warning in application_payload["warnings"]
+    )
+
+    inference_report_artifact = next(
+        artifact
+        for artifact in application_payload["artifacts"]
+        if artifact["name"] == "application_inference_report.json"
+    )
+    inference_report = client.get(inference_report_artifact["download_url"]).json()
+    assert inference_report["missing_value_handling"] == "xgboost_native"
+    assert inference_report["native_missing_rows"] == 2
 
 
 def test_regression_accepts_hyperparameters_and_cross_validation(tmp_path):
@@ -1744,6 +2040,87 @@ def test_v080_classification_registry_runs_verified_models(
     report_payload = json.loads(report.content.decode("utf-8"))
     assert report_payload["model"] == model_name
     assert report_payload["model_display_name"] == expected_display_name
+
+
+def test_xgboost_classification_accepts_ui_defaults_and_native_missing(tmp_path):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    catalog = client.get("/api/data-mining/catalog").json()
+    classification = next(
+        feature
+        for feature in catalog["features"]
+        if feature["name"] == "classification"
+    )
+    xgboost = next(
+        method
+        for method in classification["methods"]
+        if method["name"] == "xgboost"
+    )
+    defaults = {
+        parameter["name"]: parameter["default"]
+        for parameter in xgboost["hyperparameters"]
+    }
+    assert {"min_child_weight", "base_score", "gamma", "reg_alpha"} <= set(
+        defaults
+    )
+
+    row_count = 40
+    feature_1 = np.linspace(-2.0, 2.0, row_count)
+    feature_2 = np.linspace(4.0, 8.0, row_count)
+    labels = np.where(feature_1 >= 0, "Arc", "Non-arc")
+    frame = pd.DataFrame({"X1": feature_1, "X2": feature_2, "Class": labels})
+    frame.loc[2, "X1"] = np.nan
+    frame.loc[5, "X2"] = np.nan
+    frame.loc[8, ["X1", "X2"]] = np.nan
+    response = client.post(
+        "/api/data-mining/classification",
+        data={
+            "model": "xgboost",
+            "target_column": "Class",
+            "feature_columns": json.dumps(["X1", "X2"]),
+            "test_size": "0.25",
+            "hyperparameters": json.dumps(defaults),
+        },
+        files={
+            "dataset": (
+                "classification.csv",
+                frame.to_csv(index=False).encode("utf-8"),
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["summary"]["original_rows"] == row_count
+    assert payload["summary"]["usable_rows"] == row_count
+    assert payload["summary"]["dropped_rows"] == 0
+    assert payload["summary"]["test_rows"] == 10
+    assert any(
+        "native missing-value handling" in warning
+        for warning in payload["warnings"]
+    )
+
+    report_artifact = next(
+        item
+        for item in payload["artifacts"]
+        if item["name"] == "classification_report.json"
+    )
+    report = client.get(report_artifact["download_url"]).json()
+    assert report["missing_value_handling"] == "xgboost_native"
+    assert report["native_missing_rows"] == 3
+
+    pipeline_artifact = next(
+        item
+        for item in payload["artifacts"]
+        if item["name"] == "trained_pipeline.joblib"
+    )
+    bundle = joblib.load(BytesIO(client.get(pipeline_artifact["download_url"]).content))
+    assert bundle["missing_value_handling"] == "xgboost_native"
+    pipeline = bundle["pipeline"]
+    assert list(pipeline.named_steps) == ["model"]
+    estimator_parameters = pipeline.named_steps["model"].get_params()
+    for name, value in defaults.items():
+        assert estimator_parameters[name] == pytest.approx(value)
 
 
 def test_reject_unknown_classification_model(tmp_path):

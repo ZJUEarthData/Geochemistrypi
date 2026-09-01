@@ -2071,10 +2071,15 @@ function formatCell(value: unknown) {
 
             <el-alert
               :title="
-                t(
-                  'Rows containing missing or infinite values in the selected columns are removed before training. At least 10 complete rows are required. The split uses random state 42 for reproducibility.',
-                  '训练前会删除已选列中含缺失值或无穷值的行。至少需要 10 行完整数据。数据划分使用随机种子 42 以保证可复现性。'
-                )
+                regressionModel === 'xgboost'
+                  ? t(
+                      'XGBoost retains rows with a numeric target and handles missing or infinite predictor values natively; predictor imputation is not applied. At least 10 rows with an observed target are required. The split uses random state 42 for reproducibility.',
+                      'XGBoost 会保留目标值有效的记录，并原生处理预测变量中的缺失值或无穷值；不会对预测变量进行插补。至少需要 10 行目标值有效的数据。数据划分使用随机种子 42 以保证可复现性。'
+                    )
+                  : t(
+                      'Rows containing missing or infinite values in the selected columns are removed before training. At least 10 complete rows are required. The split uses random state 42 for reproducibility.',
+                      '训练前会删除已选列中含缺失值或无穷值的行。至少需要 10 行完整数据。数据划分使用随机种子 42 以保证可复现性。'
+                    )
               "
               type="info"
               :closable="false"
@@ -2410,8 +2415,8 @@ function formatCell(value: unknown) {
                 <p class="field-help">
                   {{
                     t(
-                      'Features are standardized automatically before the classifier is fitted.',
-                      '拟合分类器前会自动标准化特征。'
+                      'Model-specific preprocessing is applied automatically; scaling is used only for scale-sensitive classifiers.',
+                      '系统会自动采用与模型匹配的预处理；仅对尺度敏感的分类器执行标准化。'
                     )
                   }}
                 </p>
@@ -2433,10 +2438,15 @@ function formatCell(value: unknown) {
 
             <el-alert
               :title="
-                t(
-                  'Incomplete rows are removed before training. At least 12 complete rows and two rows per class are required. The split is stratified and uses random state 42.',
-                  '训练前会删除不完整行。至少需要 12 行完整数据，且每类至少有 2 行。数据按类别分层划分，随机种子为 42。'
-                )
+                classificationRunMode === 'single' && classificationModel === 'xgboost'
+                  ? t(
+                      'XGBoost retains rows with missing predictor values and uses native missing-value handling; rows with missing class labels are excluded. The holdout split is stratified and uses random state 42.',
+                      'XGBoost 会保留预测变量缺失的行并采用原生缺失值处理；仅排除类别标签缺失的行。留出集按类别分层划分，随机种子为 42。'
+                    )
+                  : t(
+                      'Incomplete rows are removed before training. At least 12 complete rows and two rows per class are required. The holdout split is stratified and uses random state 42.',
+                      '训练前会删除不完整行。至少需要 12 行完整数据，且每类至少有 2 行。留出集按类别分层划分，随机种子为 42。'
+                    )
               "
               type="info"
               :closable="false"

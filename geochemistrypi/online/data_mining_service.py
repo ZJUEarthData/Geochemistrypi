@@ -16,6 +16,7 @@ import joblib
 import numpy as np
 import pandas as pd
 from sklearn import __version__ as sklearn_version
+from sklearn.base import clone
 from sklearn.decomposition import PCA
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import (
@@ -603,8 +604,14 @@ class DataMiningService:
         )
 
     @staticmethod
-    def _build_supervised_pipeline(estimator: Any) -> Pipeline:
+    def _build_supervised_pipeline(
+        estimator: Any,
+        *,
+        native_missing: bool = False,
+    ) -> Pipeline:
         """Keep training and later application inference in one fitted object."""
+        if native_missing:
+            return Pipeline(steps=[("model", estimator)])
         return Pipeline(
             steps=[
                 ("imputer", SimpleImputer(strategy="median")),
@@ -724,6 +731,7 @@ class DataMiningService:
         target_column: str,
         feature_columns: list[str],
         source_filename: str,
+        missing_value_handling: str = "median_imputation",
     ) -> None:
         joblib.dump(
             {
@@ -738,6 +746,7 @@ class DataMiningService:
                 "target_column": target_column,
                 "feature_columns": feature_columns,
                 "source_filename": source_filename,
+                "missing_value_handling": missing_value_handling,
                 "pipeline": pipeline,
             },
             path,
@@ -795,16 +804,27 @@ class DataMiningService:
                 + ", ".join(non_numeric)
             )
 
-        model_data = (
-            dataframe.loc[:, model_columns]
-            .replace([np.inf, -np.inf], np.nan)
-            .dropna(axis=0, how="any")
+        uses_native_missing = model_name == "xgboost"
+        model_data = dataframe.loc[:, model_columns].replace(
+            [np.inf, -np.inf], np.nan
         )
+        if uses_native_missing:
+            # XGBoost learns default split directions for NaN values. Retain
+            # rows with an observed target even when one or all predictors are
+            # missing, and pass NaNs directly to the estimator.
+            model_data = model_data.dropna(subset=[target_column])
+        else:
+            model_data = model_data.dropna(axis=0, how="any")
         usable_rows = int(model_data.shape[0])
         dropped_rows = int(dataframe.shape[0] - usable_rows)
         if usable_rows < 10:
+            requirement = (
+                "rows with a numeric target"
+                if uses_native_missing
+                else "complete numeric rows"
+            )
             raise InvalidDatasetError(
-                "Regression requires at least 10 complete numeric rows"
+                f"Regression requires at least 10 {requirement}"
             )
         self._validate_cross_validation_folds(
             cross_validation_folds,
@@ -846,7 +866,10 @@ class DataMiningService:
             )
         except (TypeError, ValueError) as exc:
             raise InvalidDatasetError(str(exc)) from exc
-        model = self._build_supervised_pipeline(estimator)
+        model = self._build_supervised_pipeline(
+            estimator,
+            native_missing=uses_native_missing,
+        )
         cross_validation = self._cross_validate_supervised(
             task_type="regression",
             model=model,
@@ -869,7 +892,29 @@ class DataMiningService:
             )
         else:
             r2 = r2_value
-        if dropped_rows:
+
+        inference_model = clone(model)
+        inference_model.fit(feature_data, target)
+
+        native_missing_rows = int(feature_data.isna().any(axis=1).sum())
+        if uses_native_missing:
+            if native_missing_rows:
+                warnings.append(
+                    f"XGBoost retained {native_missing_rows} rows with missing or "
+                    "non-finite predictor values and used native missing-value "
+                    "handling; no predictor imputation was applied."
+                )
+            else:
+                warnings.append(
+                    "All predictor values were available to XGBoost; no predictor "
+                    "imputation was applied."
+                )
+            if dropped_rows:
+                warnings.append(
+                    f"{dropped_rows} rows were excluded because the regression "
+                    "target was missing or non-finite."
+                )
+        elif dropped_rows:
             warnings.append(
                 f"训练前删除了 {dropped_rows} 行含缺失值或无穷值的记录。"
             )
@@ -946,13 +991,16 @@ class DataMiningService:
         )
         self._save_supervised_pipeline(
             pipeline_path,
-            pipeline=model,
+            pipeline=inference_model,
             task_type="regression",
             model_name=model_name,
             model_display_name=model_definition.display_name,
             target_column=target_column,
             feature_columns=features,
             source_filename=Path(filename or "dataset").name,
+            missing_value_handling=(
+                "xgboost_native" if uses_native_missing else "median_imputation"
+            ),
         )
         report_payload = {
             "report_version": (
@@ -984,6 +1032,14 @@ class DataMiningService:
             "warnings": warnings,
             "pipeline_artifact": pipeline_path.name,
             "pipeline_schema_version": self.supervised_pipeline_schema,
+            "refit_on_all_rows": True,
+            "pipeline_training_rows": usable_rows,
+            "missing_value_handling": (
+                "xgboost_native" if uses_native_missing else "median_imputation"
+            ),
+            "native_missing_rows": (
+                native_missing_rows if uses_native_missing else 0
+            ),
         }
         report_path.write_text(
             json.dumps(report_payload, ensure_ascii=False, indent=2),
@@ -1087,16 +1143,27 @@ class DataMiningService:
             )
 
         model_columns = [*features, target_column]
-        model_data = (
-            dataframe.loc[:, model_columns]
-            .replace([np.inf, -np.inf], np.nan)
-            .dropna(axis=0, how="any")
+        uses_native_missing = model_name == "xgboost"
+        model_data = dataframe.loc[:, model_columns].replace(
+            [np.inf, -np.inf], np.nan
         )
+        if uses_native_missing:
+            # XGBoost learns default split directions for NaN values. Retain
+            # rows with an observed class label and pass predictor NaNs to the
+            # estimator, matching the documented Liu et al. workflow.
+            model_data = model_data.dropna(subset=[target_column])
+        else:
+            model_data = model_data.dropna(axis=0, how="any")
         usable_rows = int(model_data.shape[0])
         dropped_rows = int(dataframe.shape[0] - usable_rows)
         if usable_rows < 12:
+            requirement = (
+                "rows with an observed class label"
+                if uses_native_missing
+                else "complete rows"
+            )
             raise InvalidDatasetError(
-                "Classification requires at least 12 complete rows"
+                f"Classification requires at least 12 {requirement}"
             )
 
         target = model_data[target_column].astype(str)
@@ -1143,7 +1210,10 @@ class DataMiningService:
             )
         except (TypeError, ValueError) as exc:
             raise InvalidDatasetError(str(exc)) from exc
-        model = self._build_supervised_pipeline(estimator)
+        model = self._build_supervised_pipeline(
+            estimator,
+            native_missing=uses_native_missing,
+        )
         cross_validation = self._cross_validate_supervised(
             task_type="classification",
             model=model,
@@ -1216,11 +1286,29 @@ class DataMiningService:
             }
             for row in prediction_frame.head(20).to_dict(orient="records")
         ]
-        warnings = [
-            f"训练前删除了 {dropped_rows} 行含缺失值或无穷值的记录。"
-            if dropped_rows
-            else "所有数据行均可用于分类。"
-        ]
+        native_missing_rows = int(feature_data.isna().any(axis=1).sum())
+        if uses_native_missing:
+            warnings = [
+                (
+                    f"XGBoost retained {native_missing_rows} rows with missing or "
+                    "non-finite predictor values and used native missing-value "
+                    "handling; no predictor imputation was applied."
+                    if native_missing_rows
+                    else "All predictor values were available to XGBoost; no "
+                    "predictor imputation was applied."
+                )
+            ]
+            if dropped_rows:
+                warnings.append(
+                    f"{dropped_rows} rows were excluded because the class label "
+                    "was missing."
+                )
+        else:
+            warnings = [
+                f"训练前删除了 {dropped_rows} 行含缺失值或无穷值的记录。"
+                if dropped_rows
+                else "所有数据行均可用于分类。"
+            ]
         summary = ClassificationSummary(
             original_rows=int(dataframe.shape[0]),
             usable_rows=usable_rows,
@@ -1251,6 +1339,9 @@ class DataMiningService:
             target_column=target_column,
             feature_columns=features,
             source_filename=Path(filename or "dataset").name,
+            missing_value_handling=(
+                "xgboost_native" if uses_native_missing else "median_imputation"
+            ),
         )
         report_payload = {
             "report_version": (
@@ -1278,6 +1369,12 @@ class DataMiningService:
             "warnings": warnings,
             "pipeline_artifact": pipeline_path.name,
             "pipeline_schema_version": self.supervised_pipeline_schema,
+            "missing_value_handling": (
+                "xgboost_native" if uses_native_missing else "median_imputation"
+            ),
+            "native_missing_rows": (
+                native_missing_rows if uses_native_missing else 0
+            ),
         }
         report_path.write_text(
             json.dumps(report_payload, ensure_ascii=False, indent=2),
@@ -1655,15 +1752,33 @@ class DataMiningService:
             pd.to_numeric,
             errors="coerce",
         ).replace([np.inf, -np.inf], np.nan)
-        predictable_mask = feature_data.notna().any(axis=1)
+        uses_native_missing = (
+            task_type in {"regression", "classification"}
+            and bundle.get("model") == "xgboost"
+            and bundle.get(
+                "missing_value_handling",
+                "xgboost_native" if "imputer" not in pipeline.named_steps else None,
+            )
+            == "xgboost_native"
+        )
+        native_missing_mask = feature_data.isna().any(axis=1)
+        if uses_native_missing:
+            predictable_mask = pd.Series(True, index=feature_data.index)
+        else:
+            predictable_mask = feature_data.notna().any(axis=1)
         predicted_rows = int(predictable_mask.sum())
         excluded_rows = int((~predictable_mask).sum())
         if predicted_rows == 0:
             raise InvalidDatasetError(
                 "Application Data contains no row with a usable numeric feature"
             )
-        imputed_rows = int(
-            feature_data.loc[predictable_mask].isna().any(axis=1).sum()
+        native_missing_rows = (
+            int(native_missing_mask.sum()) if uses_native_missing else 0
+        )
+        imputed_rows = (
+            0
+            if uses_native_missing
+            else int(feature_data.loc[predictable_mask].isna().any(axis=1).sum())
         )
         predicted = pipeline.predict(feature_data.loc[predictable_mask])
 
@@ -1683,7 +1798,11 @@ class DataMiningService:
         output_frame[status_column] = "excluded_no_numeric_features"
         output_frame.loc[predictable_mask, prediction_column] = np.asarray(predicted)
         output_frame.loc[predictable_mask, status_column] = "predicted"
-        if imputed_rows:
+        if uses_native_missing and native_missing_rows:
+            output_frame.loc[
+                native_missing_mask, status_column
+            ] = "predicted_with_native_missing"
+        elif imputed_rows:
             imputed_mask = predictable_mask & feature_data.isna().any(axis=1)
             output_frame.loc[imputed_mask, status_column] = "predicted_with_imputation"
 
@@ -1695,7 +1814,13 @@ class DataMiningService:
             for row in output_frame.head(20).to_dict(orient="records")
         ]
         warnings: list[str] = []
-        if imputed_rows:
+        if uses_native_missing and native_missing_rows:
+            warnings.append(
+                f"{native_missing_rows} application rows contained missing or "
+                "non-numeric feature values and were predicted using XGBoost's "
+                "native missing-value handling; no imputation was applied."
+            )
+        elif imputed_rows:
             warnings.append(
                 f"{imputed_rows} application rows contained missing or non-numeric feature "
                 "values and were imputed with training-set medians."
@@ -1706,7 +1831,13 @@ class DataMiningService:
                 "features were missing or non-numeric."
             )
         if not warnings:
-            warnings.append("All application rows were predicted without imputation.")
+            if uses_native_missing:
+                warnings.append(
+                    "All application rows were predicted; no missing-value "
+                    "imputation was applied."
+                )
+            else:
+                warnings.append("All application rows were predicted without imputation.")
 
         job_id = uuid4().hex
         output_dir = self.jobs_dir / job_id / "output"
@@ -1738,6 +1869,10 @@ class DataMiningService:
             "training_pandas_version": bundle.get("pandas_version"),
             "inference_software_version": __version__,
             "summary": summary.model_dump(),
+            "missing_value_handling": (
+                "xgboost_native" if uses_native_missing else "median_imputation"
+            ),
+            "native_missing_rows": native_missing_rows,
             "prediction_preview": preview,
             "warnings": warnings,
         }
