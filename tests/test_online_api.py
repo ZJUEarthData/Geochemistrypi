@@ -1033,7 +1033,7 @@ def test_preprocess_rejects_upload_over_size_limit(tmp_path):
         files={
             "dataset": (
                 "oversized.csv",
-                b"Sample\n" + b"A" * (20 * 1024 * 1024 + 1),
+                b"Sample\n" + b"A" * (MAX_UPLOAD_BYTES + 1),
                 "text/csv",
             )
         },
@@ -1042,10 +1042,10 @@ def test_preprocess_rejects_upload_over_size_limit(tmp_path):
     assert "exceeds" in response.json()["detail"]
 
 
-def test_default_upload_limit_is_20_mib(tmp_path):
+def test_default_upload_limit_is_10_mib(tmp_path):
     app = create_app(tmp_path / "runtime")
 
-    expected_bytes = 20 * 1024 * 1024
+    expected_bytes = 10 * 1024 * 1024
     assert app.state.online_service.max_upload_bytes == expected_bytes
     assert app.state.data_mining_service.max_upload_bytes == expected_bytes
 

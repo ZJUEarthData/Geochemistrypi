@@ -11,7 +11,7 @@ The MVP provides:
 - a dynamic chemical-modeling catalog;
 - method-level `verified` and `testing` readiness states;
 - structured input documentation with formulas, columns, meanings, units, types, examples, and notes;
-- `.xlsx` and UTF-8 `.csv` upload with a 20 MB limit;
+- `.xlsx` and UTF-8 `.csv` upload with a 10 MB limit;
 - a 30-minute hard limit for every calculation process;
 - one site-wide calculation slot; additional calculation requests wait in a serial queue;
 - synchronous calculation in an isolated job directory;
