@@ -69,6 +69,8 @@ Eos Website: https://eos.org/editor-highlights/machine-learning-for-geochemists
 
 Have an overview of how our software can accelerate your data-mining experiment.
 
+- Interact with Deepseek to help install the new version of Geochemistry π and upgrade from the old version [[Bilibili]](https://www.bilibili.com/video/BV1regY6sE9s/?spm_id_from=333.1387.homepage.video_card.click) | [[YouTube]](https://www.youtube.com/watch?v=S5PLFnpB1jA)
+- Introduction to New Features in Geochemistrypi V0.8.0 - Yunzhou Han and Chufan Zhou [[Bilibili]](https://www.bilibili.com/video/BV14W3T6FEvf/?spm_id_from=333.1387.homepage.video_card.click)
 - Geochemistry π v0.7.0 Introduction Video [[Bilibili]](https://www.bilibili.com/video/BV1TorTYVEgn/?vd_source=27944ab3b73a78970c1a52a5dcbb9140) | [[YouTube]](https://www.youtube.com/watch?v=6IVaO_gq22A)
 
 - Geochemistry π v0.7.0 for Regression Demo [[Bilibili]](https://www.bilibili.com/video/BV1VormYvEt8/?spm_id_from=333.1387.homepage.video_card.click&vd_source=27944ab3b73a78970c1a52a5dcbb9140) | [[YouTube]](https://www.youtube.com/watch?v=eTJ-IV1n4QM)
@@ -94,8 +96,9 @@ pip install geochemistrypi
 ```
 
 Download the latest version to avoid some old version issues, such as dependency downloading.
-```
-pip install "geochemistrypi==0.7.0"
+
+```bash
+pip install "geochemistrypi==0.8.0"
 ```
 
 One instruction to download on **Jupyter Notebook** or **Google Colab**.
@@ -104,8 +107,9 @@ One instruction to download on **Jupyter Notebook** or **Google Colab**.
 !pip install geochemistrypi
 ```
 Download the latest version to avoid some old version issues, such as dependency downloading.
-```
-!pip install "geochemistrypi==0.7.0"
+
+```python
+!pip install "geochemistrypi==0.8.0"
 ```
 
 The following screenshot shows the downloads by instruction and launching of our software on macOS:
@@ -356,54 +360,62 @@ The whole package is under construction and the documentation is progressively e
 
 ## Geochemistry π Mind Map
 
-[→ Click here for more details](https://docs.qq.com/mind/DZnhoa2NPamFYZHR6?u=40ac0718eb494b008b2f072197ea95db)
+[→ Click here for more details](https://docs.qq.com/mind/DZnhoa2NPamFYZHR6?u=40ac0718eb494b008b2f072197ea95db&subId=BB08J2&mode=mind)
 
-![Geochemistry π.png](https://github.com/ZJUEarthData/geochemistrypi/assets/97781484/e77b1f11-41ab-4354-9064-6d62cc1bf1e4)
+<p align="center">
+  <img src="https://github.com/ZJUEarthData/geochemistrypi/assets/97781484/e77b1f11-41ab-4354-9064-6d62cc1bf1e4" alt="Geochemistry π Mind Map" />
+</p>
 
-## Team Info
+---
 
-**Leaders:**
+## 👥 Team Info
 
-+ Can He (Sany, National University of Singapore, Singapore)
-  Duty: Be responsible for the overall development of the project.
-  Email: sanyhew1097618435@163.com
-+ Jianming Zhao (Jamie, Zhejiang University, China)
-  Duty: Head of the technical group.
-  Email: jmzhao29@gmail.com
-+ Yongkang Chan (Kill-virus, Lanzhou University, China)
-  Duty: Head of the product group.
-  Email: kk1361207571@163.com
-+ Yang Lyu (Daisy, Zhejiang University, China)
-  Duty: Be responsible for the cloud product.
-  Email: lyuyang1007@zju.edu.cn
-+ Jianhao Sun (Jin, Nanjing University, China)
-  Duty: Be responsible for the overall development of the project.
-  Email: sjh20171502@gmail.com
-+ Chufan Zhou (Yoko, Institute of Geochemistry, Chinese Academy of Sciences; University of Chinese Academy of Sciences, China)
-  Duty: Be responsible for the chemical modeling overall development.
-  Email: 1176733817@qq.com
+### Leaders
 
-**Technical Group:**
+| Name | Role | Contact |
+|------|------|---------|
+| [Prof. ZhangZhou (Zhejiang University, China)](https://person.zju.edu.cn/en/zhangzhou) | Project Manager | zhangzhou333@zju.edu.cn |
+| Can He (Sany, National University of Singapore, Singapore) | Project Lead | sanyhew1097618435@163.com |
+| Jianming Zhao (Jamie, Zhejiang University, China) | Technical Group Head | jmzhao29@gmail.com |
+| Yongkang Chan (Kill-virus, Lanzhou University, China) | Product Group Head | kk1361207571@163.com |
+| Yang Lyu (Daisy, Zhejiang University, China) | Cloud Product Lead | lyuyang1007@zju.edu.cn |
+| Jianhao Sun (Jin, Nanjing University, China) | Project Development Lead | sjh20171502@gmail.com |
+| Chufan Zhou (Yoko, Institute of Geochemistry, Chinese Academy of Sciences; University of Chinese Academy of Sciences, China) | Chemical Modeling Lead | 1176733817@qq.com |
+| Yunzhou Han (China University of Geosciences Beijing, China) | Multiple output functions Lead | 249308332@qq.com |
 
-+ Jianhao Sun (Jin, Nanjing University, China)
-+ Mengying Ye (Mary, Jilin University, China)
-+ Chengtu Li（Trenki, Henan Polytechnic University, Beijing, China）
-+ Panyan Weng (The University of Sydney, Australia)
-+ Haibin Lai (Michael, Southern University of Science and Technology, China)
-+ Siqi Yao (Clara, Dongguan University of Technology, China)
+### Technical Group
 
-**Product Group**:
+- [Prof. ZhangZhou (Zhejiang University, China)](https://person.zju.edu.cn/en/zhangzhou)
+- Jianhao Sun (Jin, Nanjing University, China)
+- Mengying Ye (Mary, Jilin University, China)
+- Chengtu Li (Trenki, Henan Polytechnic University, Beijing, China)
+- Panyan Weng (The University of Sydney, Australia)
+- Haibin Lai (Michael, Southern University of Science and Technology, China)
+- Siqi Yao (Clara, Dongguan University of Technology, China)
+- Yunzhou Han (China University of Geosciences Beijing, China)
+- Feiyu Shi (China University of Geosciences Beijing, China)
+- Wenxuan Xia (China University of Geosciences Beijing, China)
+- Hanbing Gao (China University of Geosciences, Wuhan, China)
+- Yuanhang Wang (Hangzhou Dianzi University, China)
+- Zhenghao Qu (Yunnan University, China)
 
-+ Zhelan Lin（Lan, Fuzhou University, China）
-+ ShuYi Li (Communication University Of China, Beijing, China)
-+ Junbo Wang (China University of Geosciences, Beijing, China)
-+ Haibin Wang（Watson, University of Sydney, Australia）
-+ Guoqiang Qiu（Elsen, Fuzhou University, China）
-+ Yating Dong (Yetta，Dongguan University of Technology，China)
-+ Bailun Jiang (EPSI / Lille University, France)
-+ Chufan Zhou (Yoko, Institute of Geochemistry, Chinese Academy of Sciences; University of Chinese Academy of Sciences, China)
+### Product Group
 
-## Join Us :)
+- [Prof. ZhangZhou (Zhejiang University, China)](https://person.zju.edu.cn/en/zhangzhou)
+- Zhelan Lin (Lan, Fuzhou University, China)
+- ShuYi Li (Communication University Of China, Beijing, China)
+- Junbo Wang (China University of Geosciences, Beijing, China)
+- Haibin Wang (Watson, University of Sydney, Australia)
+- Guoqiang Qiu (Elsen, Fuzhou University, China)
+- Yating Dong (Yetta, Dongguan University of Technology, China)
+- Bailun Jiang (EPSI / Lille University, France)
+- Chufan Zhou (Yoko, Institute of Geochemistry, Chinese Academy of Sciences; University of Chinese Academy of Sciences, China)
+- Lianfeng Zhou (Yangtze University,China)
+- Lingping Zhan (Chang'an University, China)
+- Zixuan Zhu (Institute of Geochemistry, Chinese Academy of Sciences; University of Chinese Academy of Sciences, China)
+---
+
+## 🤝 Join Us :)
 
 **The recruitment of research interns is ongoing !!!**
 
@@ -429,10 +441,13 @@ The whole package is under construction and the documentation is progressively e
 
 Even if you are not familiar with topics above, but if you are interested in and have plenty of time to do it. That's enough. We have a full-developed training system to help you, as a newbie of data mining or Python developer, learn steps by steps with seniors until you can make a significant contribution to our project.
 
-**More details about the project?**
-Please refer to:
-English Page: https://person.zju.edu.cn/en/zhangzhou
-Chinese Page: https://person.zju.edu.cn/zhangzhou#0
+**🔗 More details about the project and Prof.Zhangzhou?** Please refer to:
+- [**English Page**](https://person.zju.edu.cn/en/zhangzhou)
+- [**Chinese Page**](https://person.zju.edu.cn/zhangzhou#0)
+- [**ResearchGate**](https://www.researchgate.net/profile/J-Zhangzhou-2?ev=hdr_xprf)
+- [**Bilibili**](https://space.bilibili.com/616904352?spm_id_from=333.788.b_765f7570696e666f.2)
+- [**Youtube**](https://www.youtube.com/@zju_earth_data2668)
+- [![ORCID](https://img.shields.io/badge/ORCID-0000--0003--0107--0548-brightgreen?logo=orcid)](https://orcid.org/0000-0003-0107-0548)
 
 **Do you want to contribute to this open-source program?**
 Contact with your CV: sanyhew1097618435@163.com
