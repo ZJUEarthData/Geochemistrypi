@@ -335,6 +335,37 @@ def post_activity_coefficient(
     )
 
 
+def test_configured_cors_origin(tmp_path, monkeypatch):
+    monkeypatch.setenv(
+        "GEOCHEMISTRYPI_ALLOWED_ORIGINS",
+        "https://online.geochemistrypi.example",
+    )
+    client = TestClient(create_app(tmp_path / "runtime"))
+
+    response = client.options(
+        "/api/health",
+        headers={
+            "Origin": "https://online.geochemistrypi.example",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+
+    assert response.status_code == 200
+    assert (
+        response.headers["access-control-allow-origin"]
+        == "https://online.geochemistrypi.example"
+    )
+
+
+def test_api_docs_can_be_disabled(tmp_path, monkeypatch):
+    monkeypatch.setenv("GEOCHEMISTRYPI_ENABLE_API_DOCS", "false")
+    client = TestClient(create_app(tmp_path / "runtime"))
+
+    assert client.get("/docs").status_code == 404
+    assert client.get("/openapi.json").status_code == 404
+    assert client.get("/api/health").status_code == 200
+
+
 def test_health_and_catalog(tmp_path):
     client = TestClient(create_app(tmp_path / "runtime"))
 
@@ -1909,6 +1940,28 @@ def test_reject_malformed_regression_feature_list(tmp_path):
     )
     assert response.status_code == 422
     assert "valid JSON list" in response.json()["detail"]
+
+
+def test_reject_malformed_regression_hyperparameters(tmp_path):
+    client = TestClient(create_app(tmp_path / "runtime"))
+    response = client.post(
+        "/api/data-mining/regression",
+        data={
+            "target_column": "Target",
+            "feature_columns": json.dumps(["X1", "X2"]),
+            "hyperparameters": "not-json",
+            "test_size": "0.2",
+        },
+        files={
+            "dataset": (
+                "regression.csv",
+                make_linear_regression_csv(),
+                "text/csv",
+            )
+        },
+    )
+    assert response.status_code == 422
+    assert "valid JSON object" in response.json()["detail"]
 
 
 def test_logistic_classification_returns_metrics_confusion_and_downloads(tmp_path):

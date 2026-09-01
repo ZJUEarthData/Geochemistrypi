@@ -1,4 +1,7 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
+const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim()
+
+export const API_BASE_URL =
+  configuredApiBaseUrl ?? (import.meta.env.DEV ? 'http://127.0.0.1:8000' : '')
 export const DEFAULT_MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
 export const FRONTEND_IDENTITY = {

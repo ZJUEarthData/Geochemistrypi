@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
+import { authUiEnabled } from '@/config/features'
 import { locale, setLocale, t } from '@/i18n'
 
 const moreMenu = ref<HTMLDetailsElement | null>(null)
@@ -52,7 +53,7 @@ function closeMoreMenu() {
         {{ t('Docs', '文档') }}
       </a>
       <RouterLink to="/guide">{{ t('About us', '关于我们') }}</RouterLink>
-      <RouterLink class="account-link" to="/login">
+      <RouterLink v-if="authUiEnabled" class="account-link" to="/login">
         {{ t('Login / Register', '登录 / 注册') }}
       </RouterLink>
       <RouterLink class="icon-link" to="/" :aria-label="t('Search', '搜索')">
@@ -82,7 +83,12 @@ function closeMoreMenu() {
           >
             GitHub
           </a>
-          <RouterLink class="account-menu-link" to="/login" @click="closeMoreMenu">
+          <RouterLink
+            v-if="authUiEnabled"
+            class="account-menu-link"
+            to="/login"
+            @click="closeMoreMenu"
+          >
             {{ t('Login / Register', '登录 / 注册') }}
           </RouterLink>
         </div>

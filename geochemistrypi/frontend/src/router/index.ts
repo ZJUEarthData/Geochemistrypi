@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { authUiEnabled } from '../config/features'
 import HomeView from '../views/home/home-page.vue'
 
 const router = createRouter({
@@ -19,11 +20,20 @@ const router = createRouter({
       name: 'dataMining',
       component: () => import('../views/data-mining/data-mining-page.vue')
     },
-    {
-      path: '/login',
-      name: 'login',
-      component: () => import('../views/auth/auth-page.vue')
-    },
+    ...(authUiEnabled
+      ? [
+          {
+            path: '/login',
+            name: 'login',
+            component: () => import('../views/auth/auth-page.vue')
+          }
+        ]
+      : [
+          {
+            path: '/login',
+            redirect: '/online'
+          }
+        ]),
     {
       path: '/guide',
       name: 'guide',

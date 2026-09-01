@@ -234,10 +234,15 @@ def create_router(
             data_mining_service.validate_upload(dataset.filename, content)
             try:
                 parsed_features = json.loads(feature_columns)
+            except json.JSONDecodeError as exc:
+                raise InvalidDatasetError(
+                    "Feature columns must be a valid JSON list"
+                ) from exc
+            try:
                 parsed_hyperparameters = json.loads(hyperparameters)
             except json.JSONDecodeError as exc:
                 raise InvalidDatasetError(
-                    "Feature columns and hyperparameters must be valid JSON"
+                    "Hyperparameters must be a valid JSON object"
                 ) from exc
             return await run_calculation(
                 data_mining_service.run_regression,
@@ -293,10 +298,15 @@ def create_router(
             data_mining_service.validate_upload(dataset.filename, content)
             try:
                 parsed_features = json.loads(feature_columns)
+            except json.JSONDecodeError as exc:
+                raise InvalidDatasetError(
+                    "Feature columns must be a valid JSON list"
+                ) from exc
+            try:
                 parsed_hyperparameters = json.loads(hyperparameters)
             except json.JSONDecodeError as exc:
                 raise InvalidDatasetError(
-                    "Feature columns and hyperparameters must be valid JSON"
+                    "Hyperparameters must be a valid JSON object"
                 ) from exc
             return await run_calculation(
                 data_mining_service.run_classification,
