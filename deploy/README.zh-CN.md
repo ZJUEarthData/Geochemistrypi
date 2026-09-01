@@ -44,24 +44,36 @@ curl http://127.0.0.1/api/health
 bash deploy/bootstrap-alinux3.sh
 ```
 
+如果中国内地服务器无法访问 Docker Hub，在 Compose 命令中同时加入阿里云镜像覆盖文件：
+
+```bash
+-f docker-compose.alicloud.yml
+```
+
+该覆盖文件使用阿里云官方 Python 3.12 基础镜像和 OpenAnolis 的 Node.js / Anolis OS
+镜像，不依赖 Docker Hub。
+
 并在后续 Compose 命令中加入低内存覆盖文件：
 
 ```bash
 docker compose \
   --env-file .env.production \
   -f docker-compose.production.yml \
+  -f docker-compose.alicloud.yml \
   -f docker-compose.low-memory.yml \
   build backend
 
 docker compose \
   --env-file .env.production \
   -f docker-compose.production.yml \
+  -f docker-compose.alicloud.yml \
   -f docker-compose.low-memory.yml \
   build web
 
 docker compose \
   --env-file .env.production \
   -f docker-compose.production.yml \
+  -f docker-compose.alicloud.yml \
   -f docker-compose.low-memory.yml \
   up -d
 ```
