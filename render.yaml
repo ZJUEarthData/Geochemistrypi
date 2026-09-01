@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: geochemistrypi-online-wyh
+    runtime: docker
+    repo: https://github.com/ZJUEarthData/Geochemistrypi.git
+    branch: wyh
+    dockerfilePath: ./Dockerfile.render
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    plan: free
