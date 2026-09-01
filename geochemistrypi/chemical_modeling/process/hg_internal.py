@@ -59,7 +59,14 @@ def load_hg_data(path: str) -> pd.DataFrame:
 
     df.columns = df.columns.astype(str).str.strip()
     if "Label" in df.columns:
-        df["Label"] = df["Label"].astype(str).str.strip()
+        def normalize_label(value):
+            if isinstance(value, (int, float)) and not pd.isna(value):
+                numeric = float(value)
+                if numeric.is_integer():
+                    return str(int(numeric))
+            return str(value).strip()
+
+        df["Label"] = df["Label"].map(normalize_label)
     ensure_numeric(df, list(COL_MAP.keys()))
     return df
 

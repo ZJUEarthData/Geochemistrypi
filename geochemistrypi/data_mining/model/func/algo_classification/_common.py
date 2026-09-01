@@ -18,7 +18,7 @@ from ....constants import CALCULATION_METHOD_OPTION, SECTION
 from ....data.data_readiness import limit_num_input, num2option, num_input
 
 
-def score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> tuple[str, Dict]:
+def score(y_true: pd.DataFrame, y_predict: pd.DataFrame, average: str = None, interactive: bool = True) -> tuple[str, Dict]:
     """Calculate the scores of the classification model.
 
     Parameters
@@ -37,24 +37,30 @@ def score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> tuple[str, Dict]:
     scores : dict
         The scores of the classification model.
     """
-    average = "binary"
-    if int(y_true.nunique().values) > 2:
-        print("Please select calculation method:")
-        print("[bold green]Micro[/bold green]: Calculate metrics globally by counting the total true positives, false negatives and false positives.")
-        print("[bold green]Macro[/bold green]: Calculate metrics for each label, and find their unweighted mean. This does not take label imbalance into account.")
-        print("[bold green]Weighted[/bold green]: Calculate metrics for each label, and find their average weighted by support (the number of true instances for each label).")
-        num2option(CALCULATION_METHOD_OPTION)
-        average_num = limit_num_input(CALCULATION_METHOD_OPTION, SECTION[0], num_input)
-        if average_num == 1:
-            average = "micro"
-        elif average_num == 2:
-            average = "macro"
-        elif average_num == 3:
-            average = "weighted"
-    accuracy = accuracy_score(y_true, y_predict)
-    precision = precision_score(y_true, y_predict, average=average)
-    recall = recall_score(y_true, y_predict, average=average)
-    f1 = f1_score(y_true, y_predict, average=average)
+    y_true_series = pd.Series(np.ravel(y_true))
+    y_predict_series = pd.Series(np.ravel(y_predict))
+    class_count = y_true_series.nunique()
+    if average is None:
+        average = "binary" if class_count == 2 else "weighted"
+        if class_count > 2 and interactive:
+            print("Please select calculation method:")
+            print("[bold green]Micro[/bold green]: Calculate metrics globally by counting the total true positives, false negatives and false positives.")
+            print("[bold green]Macro[/bold green]: Calculate metrics for each label, and find their unweighted mean. This does not take label imbalance into account.")
+            print("[bold green]Weighted[/bold green]: Calculate metrics for each label, and find their average weighted by support (the number of true instances for each label).")
+            num2option(CALCULATION_METHOD_OPTION)
+            average_num = limit_num_input(CALCULATION_METHOD_OPTION, SECTION[0], num_input)
+            if average_num == 1:
+                average = "micro"
+            elif average_num == 2:
+                average = "macro"
+            elif average_num == 3:
+                average = "weighted"
+    if class_count > 2 and average == "binary":
+        raise ValueError("Binary average cannot be used for multiclass classification.")
+    accuracy = accuracy_score(y_true_series, y_predict_series)
+    precision = precision_score(y_true_series, y_predict_series, average=average, zero_division=0)
+    recall = recall_score(y_true_series, y_predict_series, average=average, zero_division=0)
+    f1 = f1_score(y_true_series, y_predict_series, average=average, zero_division=0)
     print("Accuracy: ", accuracy)
     print("Precision:", precision)
     print("Recall:", recall)
@@ -64,6 +70,7 @@ def score(y_true: pd.DataFrame, y_predict: pd.DataFrame) -> tuple[str, Dict]:
         "Precision": precision,
         "Recall": recall,
         "F1 Score": f1,
+        "Average Method": average,
     }
     return average, scores
 
@@ -87,10 +94,16 @@ def plot_confusion_matrix(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, tr
     cm : np.ndarray
         The confusion matrix.
     """
-    cm = confusion_matrix(y_test, y_test_predict)
+    y_test_series = pd.Series(np.ravel(y_test))
+    y_test_predict_series = pd.Series(np.ravel(y_test_predict))
+    labels = getattr(trained_model, "classes_", None)
+    if labels is None:
+        labels = pd.unique(pd.concat([y_test_series, y_test_predict_series], ignore_index=True))
+    labels = list(labels)
+    cm = confusion_matrix(y_test_series, y_test_predict_series, labels=labels)
     print(cm)
     plt.figure()
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=trained_model.classes_)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels)
     disp.plot()
     return cm
 
@@ -149,35 +162,44 @@ def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.D
     scores_result : dict
         The scores of cross-validation.
     """
+    y_train_series = pd.Series(np.ravel(y_train))
+    min_class_count = int(y_train_series.value_counts().min())
+    if min_class_count < 2:
+        message = "Cross validation skipped because at least one class has fewer than 2 training samples."
+        print(message)
+        return {"K-Fold": 0, "Warning": message}
+    cv_num = min(cv_num, min_class_count)
     if average == "binary":
         scoring = {
             "accuracy": make_scorer(accuracy_score),
-            "precision": make_scorer(precision_score, average="binary"),
-            "recall": make_scorer(recall_score, average="binary"),
-            "f1": make_scorer(f1_score, average="binary"),
+            "precision": make_scorer(precision_score, average="binary", zero_division=0),
+            "recall": make_scorer(recall_score, average="binary", zero_division=0),
+            "f1": make_scorer(f1_score, average="binary", zero_division=0),
         }
     elif average == "micro":
         scoring = {
             "accuracy": make_scorer(accuracy_score),
-            "precision": make_scorer(precision_score, average="micro"),
-            "recall": make_scorer(recall_score, average="micro"),
-            "f1": make_scorer(f1_score, average="micro"),
+            "precision": make_scorer(precision_score, average="micro", zero_division=0),
+            "recall": make_scorer(recall_score, average="micro", zero_division=0),
+            "f1": make_scorer(f1_score, average="micro", zero_division=0),
         }
     elif average == "macro":
         scoring = {
             "accuracy": make_scorer(accuracy_score),
-            "precision": make_scorer(precision_score, average="macro"),
-            "recall": make_scorer(recall_score, average="macro"),
-            "f1": make_scorer(f1_score, average="macro"),
+            "precision": make_scorer(precision_score, average="macro", zero_division=0),
+            "recall": make_scorer(recall_score, average="macro", zero_division=0),
+            "f1": make_scorer(f1_score, average="macro", zero_division=0),
         }
     elif average == "weighted":
         scoring = {
             "accuracy": make_scorer(accuracy_score),
-            "precision": make_scorer(precision_score, average="weighted"),
-            "recall": make_scorer(recall_score, average="weighted"),
-            "f1": make_scorer(f1_score, average="weighted"),
+            "precision": make_scorer(precision_score, average="weighted", zero_division=0),
+            "recall": make_scorer(recall_score, average="weighted", zero_division=0),
+            "f1": make_scorer(f1_score, average="weighted", zero_division=0),
         }
-    scores = cross_validate(trained_model, X_train, y_train, scoring=scoring, cv=cv_num)
+    else:
+        raise ValueError(f"Unsupported classification average method: {average}")
+    scores = cross_validate(trained_model, X_train, y_train_series, scoring=scoring, cv=cv_num)
     del scores["fit_time"]
     del scores["score_time"]
     # the keys follow the returns of cross_validate in scikit-learn

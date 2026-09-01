@@ -1,0 +1,9 @@
+# Use Alibaba Cloud and OpenAnolis base images when Docker Hub is unavailable.
+services:
+  backend:
+    build:
+      dockerfile: deploy/backend.alicloud.Dockerfile
+
+  web:
+    build:
+      dockerfile: deploy/frontend.alicloud.Dockerfile

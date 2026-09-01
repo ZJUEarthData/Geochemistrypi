@@ -33,6 +33,7 @@ __pycache__
 # Python Virtual Environment
 venv_geo/*
 venv_geo
+.venv-online/
 
 # Ignore text files for the report
 report.txt
@@ -59,9 +60,12 @@ docs/build
 
 # env
 .env
+.env.production
+deploy/certs/
 
 # mlflow
 mlruns
 geopi_tracking
 results/
+runtime/
 geochemistrypi/data_mining/data/dataset/Data_Time_Series.xlsx

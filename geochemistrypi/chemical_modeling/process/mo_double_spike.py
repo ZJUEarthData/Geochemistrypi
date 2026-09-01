@@ -3,6 +3,7 @@
 Process wrapper for Mo double-spike method: read constants from excel, solve equations,
 save results to results dir, save to GEOPI output (with fallback), and optionally log to MLflow.
 """
+import math
 import os
 from typing import Tuple
 
@@ -103,11 +104,30 @@ def run(input_path: str, out_dir: str, solver: str = "fsolve"):
     initial_guess = (0.5, 0.5, 2.0)
 
     if solver == "fsolve":
-        sol = fsolve(_equations, initial_guess, args=(R_sp, R_std, r_mix))
+        sol, info, ier, message = fsolve(
+            _equations,
+            initial_guess,
+            args=(R_sp, R_std, r_mix),
+            full_output=True,
+        )
+        if ier != 1:
+            raise ValueError(f"Mo double-spike solver did not converge: {message}")
         res = {"phi_ref": float(sol[0]), "beta_sple": float(sol[1]), "beta_mix": float(sol[2])}
-    else:
+    elif solver == "root":
         sol = root(_equations, initial_guess, args=(R_sp, R_std, r_mix), method="hybr")
+        if not sol.success:
+            raise ValueError(f"Mo double-spike solver did not converge: {sol.message}")
         res = {"phi_ref": float(sol.x[0]), "beta_sple": float(sol.x[1]), "beta_mix": float(sol.x[2])}
+    else:
+        raise ValueError("solver must be either 'fsolve' or 'root'")
+
+    if not all(math.isfinite(value) for value in res.values()):
+        raise ValueError("Mo double-spike solver returned non-finite parameters")
+    if not 0 <= res["phi_ref"] <= 1:
+        raise ValueError("Mo double-spike solution is non-physical: phi_ref must be between 0 and 1")
+    residual = max(abs(value) for value in _equations(tuple(res.values()), R_sp, R_std, r_mix))
+    if residual > 1e-8:
+        raise ValueError(f"Mo double-spike solution residual is too large: {residual:.3g}")
 
     # write canonical results to requested out_dir
     df = pd.DataFrame([{"method": solver, **res}])
