@@ -1,6 +1,7 @@
 import hashlib
 from pathlib import Path
 
+import geochemistrypi_mcp.data.inspector as inspector_module
 import pytest
 from geochemistrypi_mcp.api.schemas import DatasetInspectionRequest
 from geochemistrypi_mcp.config.settings import McpSettings
@@ -21,7 +22,10 @@ def test_csv_inspection_is_bounded_typed_and_read_only(tmp_path: Path) -> None:
     )
     before = dataset.read_bytes()
 
-    result = inspect_dataset(DatasetInspectionRequest(dataset_path=dataset, sample_rows=2), _settings(tmp_path))
+    result = inspect_dataset(
+        DatasetInspectionRequest(dataset_path=dataset, sample_rows=2, detail="full"),
+        _settings(tmp_path),
+    )
 
     assert result.format == "csv"
     assert result.row_count == 3
@@ -95,7 +99,11 @@ def test_xlsx_blank_header_matches_pandas_unnamed_column_and_is_read_only(
     before = path.read_bytes()
 
     result = inspect_dataset(
-        DatasetInspectionRequest(dataset_path=path.resolve(), sample_rows=1),
+        DatasetInspectionRequest(
+            dataset_path=path.resolve(),
+            sample_rows=1,
+            detail="full",
+        ),
         _settings(tmp_path),
     )
 
@@ -152,12 +160,28 @@ def test_unsafe_xlsx_headers_fail_deterministically(tmp_path: Path, headers, mes
         inspect_dataset(DatasetInspectionRequest(dataset_path=path.resolve()), _settings(tmp_path))
 
 
-def test_inspection_rejects_relative_unknown_oversized_and_extra_inputs(tmp_path: Path) -> None:
-    dataset = tmp_path / "rocks.csv"
+def test_inspection_resolves_contained_relative_paths_and_rejects_escape_unknown_oversized_and_extra_inputs(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    startup_root = tmp_path / "session"
+    startup_root.mkdir()
+    dataset = startup_root / "rocks.csv"
     dataset.write_text("A,B\n1,2\n", encoding="utf-8")
 
-    with pytest.raises(DatasetInspectionError, match="must be absolute"):
-        snapshot_dataset(Path("rocks.csv"), 100)
+    monkeypatch.setattr(
+        inspector_module,
+        "_MCP_STARTUP_WORKING_DIRECTORY",
+        startup_root.resolve(),
+    )
+    relative_snapshot = snapshot_dataset(Path("rocks.csv"), 100)
+    assert relative_snapshot.source_path == dataset.resolve()
+    assert relative_snapshot.resolved_path == dataset.resolve()
+
+    outside = tmp_path / "outside.csv"
+    outside.write_text("A,B\n1,2\n", encoding="utf-8")
+    with pytest.raises(DatasetInspectionError, match="must remain inside"):
+        snapshot_dataset(Path("../outside.csv"), 100)
     unknown = tmp_path / "rocks.json"
     unknown.write_text("{}", encoding="utf-8")
     with pytest.raises(DatasetInspectionError, match="Supported dataset formats"):

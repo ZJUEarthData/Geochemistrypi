@@ -2,6 +2,7 @@ import ast
 import json
 import os
 import sys
+import threading
 from pathlib import Path
 
 import geochemistrypi_mcp as cli_driver_package
@@ -25,6 +26,7 @@ from geochemistrypi_mcp import (
 )
 from geochemistrypi_mcp.api.schemas import BuiltInDatasetReference
 from geochemistrypi_mcp.planning.interaction_plan import _console_script_name
+from geochemistrypi_mcp.runtime.cli_driver import CliRunCancelledError
 from pydantic import ValidationError
 
 
@@ -491,6 +493,29 @@ print(f"SECOND={second}", flush=True)
     assert trace["status"] == "completed"
     assert trace["completed_step_ids"] == ["first", "second"]
     assert [event["response"] for event in trace["events"]] == ["alpha", "beta"]
+    assert isinstance(trace["cli_started_at"], str)
+    assert isinstance(trace["cli_finished_at"], str)
+    assert isinstance(trace["cli_execution_duration_seconds"], float)
+    assert trace["cli_execution_duration_seconds"] >= 0
+
+
+def test_driver_trace_has_null_cli_interval_when_no_child_was_created(tmp_path: Path) -> None:
+    cancellation = threading.Event()
+    cancellation.set()
+    plan = _plan(_fake_script(tmp_path, "raise AssertionError('must not execute')\n"), ())
+
+    with pytest.raises(CliRunCancelledError) as captured:
+        CliInteractionDriver(process_timeout_seconds=10).run(
+            plan,
+            workspace_parent=tmp_path / "runs",
+            cancellation_event=cancellation,
+        )
+
+    trace = json.loads((captured.value.capture_directory / "interaction-trace.json").read_text(encoding="utf-8"))
+    assert trace["returncode"] is None
+    assert trace["cli_started_at"] is None
+    assert trace["cli_finished_at"] is None
+    assert trace["cli_execution_duration_seconds"] is None
 
 
 def test_driver_uses_cli_automation_contract_without_prompt_matching(

@@ -115,6 +115,13 @@ def _prepare_overlay(
         missing_labels = sorted(coordinate_keys - label_keys)[:10]
         missing_coordinates = sorted(label_keys - coordinate_keys)[:10]
         raise ValueError("Coordinate and label identifier sets must match exactly; " f"missing_labels={missing_labels}, missing_coordinates={missing_coordinates}.")
+    if label_identifier_column == coordinate_identifier_column:
+        # The normalized join key already proves that both identifier columns
+        # contain the same one-to-one values.  Keep the coordinate table's
+        # requested identifier column as the single public output column;
+        # otherwise pandas would rename the two copies to *_coordinate and
+        # *_label and the requested identifier name would disappear.
+        label_table = label_table.drop(columns=[label_identifier_column])
     for column in (x_column, y_column):
         coordinate_table[column] = pd.to_numeric(
             coordinate_table[column],

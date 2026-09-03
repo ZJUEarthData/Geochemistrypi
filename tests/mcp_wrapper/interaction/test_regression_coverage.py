@@ -251,6 +251,71 @@ def test_regression_training_application_and_preprocessing_parity(tmp_path: Path
     assert any(step.id == "continue_after_inference" for step in plan.steps)
 
 
+def test_scientific_random_forest_plan_uses_shared_cli_train_only_preprocessing(
+    tmp_path: Path,
+) -> None:
+    training = tmp_path / "training-six-features.csv"
+    application = tmp_path / "application-six-features.csv"
+    header = "SampleID,Target,F1,F2,F3,F4,F5,F6"
+    training.write_text(
+        "\n".join([header] + [f"S-{index},{index * 0.75},{index},{index + 1},{index + 2}," f"{index + 3},{index + 4},{index + 5}" for index in range(1, 21)]) + "\n",
+        encoding="utf-8",
+    )
+    application.write_text(
+        "\n".join(["SampleID,F1,F2,F3,F4,F5,F6"] + [f"A-{index},{index},{index + 1},{index + 2},{index + 3}," f"{index + 4},{index + 5}" for index in range(1, 4)]) + "\n",
+        encoding="utf-8",
+    )
+    request = RegressionRequest(
+        task="regression",
+        training_dataset_path=training,
+        application_dataset_path=application,
+        experiment_name="Train-only preprocessing",
+        run_name="Random forest",
+        identifier_column="SampleID",
+        feature_columns=("F1", "F2", "F3", "F4", "F5", "F6"),
+        target_column="Target",
+        missing_values={"method": "error"},
+        scaling="standardization",
+        feature_selection={"method": "select_k_best", "retain_count": 4},
+        evaluation={
+            "mode": "holdout",
+            "split_strategy": "random_holdout",
+        },
+        reproducibility={"split_seed": 42, "model_seed": 42},
+        model={
+            "type": "random_forest",
+            "number_of_estimators": 100,
+            "maximum_depth": 4,
+            "minimum_samples_split": 2,
+            "minimum_samples_leaf": 1,
+            "maximum_features": 2,
+            "bootstrap": True,
+            "maximum_samples": 0.8,
+            "out_of_bag_score": True,
+        },
+    )
+
+    plan = AnalysisPlanCompiler().compile(
+        request,
+        cli_executable=Path(sys.executable),
+    )
+    responses = {step.id: step.response for step in plan.steps}
+    scientific_execution = json.loads(plan.scientific_execution_contract_json)
+
+    assert plan.public_command[:2] == (
+        str(Path(sys.executable).resolve()),
+        "data-mining",
+    )
+    assert plan.required_cli_capabilities == ("option:data-mining:--scientific-config",)
+    assert responses["standardization"] == "2"
+    assert responses["feature_selection_method"] == "2"
+    assert responses["feature_selection_retain_count"] == "4"
+    assert scientific_execution["method"] == "random_forest"
+    assert scientific_execution["split_seed"] == 42
+    assert scientific_execution["model_seed"] == 42
+    assert "Application Data Predicted.xlsx" in {Path(path).name for path in plan.expected_output_relative_paths}
+
+
 def test_external_labeled_regression_fits_the_complete_training_cohort(
     tmp_path: Path,
 ) -> None:

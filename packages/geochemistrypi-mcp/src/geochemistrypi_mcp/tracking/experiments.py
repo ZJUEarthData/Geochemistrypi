@@ -5,6 +5,8 @@ import os
 import subprocess
 from typing import Any
 
+from pydantic import ValidationError
+
 from ..api.schemas import GetExperimentRequest, GetExperimentResponse, ListExperimentsRequest, ListExperimentsResponse
 from ..config.constants import ISOLATED_CLI_ENVIRONMENT_VARIABLES
 from ..config.settings import McpSettings, resolve_cli_interpreter
@@ -26,7 +28,10 @@ class ExperimentManager:
         tracking_root = self.settings.tracking_root
         if tracking_root is None:
             raise ExperimentStoreError("The installer-owned MLflow tracking root is not configured.")
-        tracking_root.mkdir(parents=True, exist_ok=True)
+        try:
+            tracking_root.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            raise ExperimentStoreError("The persistent MLflow tracking root is unavailable or cannot be created.") from exc
         command = (
             str(interpreter),
             "-m",
@@ -58,7 +63,7 @@ class ExperimentManager:
             except (IndexError, AttributeError, json.JSONDecodeError):
                 message = ""
             raise ExperimentStoreError(message or "The MLflow tracking query failed in the CLI environment.")
-        if len(completed.stdout) > 2_000_000:
+        if len(completed.stdout.encode("utf-8")) > 2_000_000:
             raise ExperimentStoreError("The MLflow tracking response exceeded the 2 MB safety limit.")
         try:
             value = json.loads(completed.stdout)
@@ -70,7 +75,10 @@ class ExperimentManager:
 
     def list(self, request: ListExperimentsRequest) -> ListExperimentsResponse:
         value = self._invoke(("list", "--maximum-experiments", str(request.maximum_experiments)))
-        return ListExperimentsResponse.model_validate(value)
+        try:
+            return ListExperimentsResponse.model_validate(value)
+        except ValidationError as exc:
+            raise ExperimentStoreError("The CLI returned an MLflow experiment list that does not match the public response contract.") from exc
 
     def get(self, request: GetExperimentRequest) -> GetExperimentResponse:
         value = self._invoke(
@@ -82,7 +90,10 @@ class ExperimentManager:
                 str(request.maximum_runs),
             )
         )
-        return GetExperimentResponse.model_validate(value)
+        try:
+            return GetExperimentResponse.model_validate(value)
+        except ValidationError as exc:
+            raise ExperimentStoreError("The CLI returned MLflow experiment details that do not match the public response contract.") from exc
 
     def require_matching_name(self, experiment_id: str, expected_name: str) -> GetExperimentResponse:
         response = self.get(GetExperimentRequest(experiment_id=experiment_id, maximum_runs=0))

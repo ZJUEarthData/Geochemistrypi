@@ -363,6 +363,28 @@ On Jupyter Notebook / Google Colab:
 + Currently, `.xlsx` and `.csv` files are supported. Please specify the path your data file exists. For Google Colab, don't forget to upload your dataset first.
 + The generated output directory `geopi_output` and `geopi_tracking` will be on the directory where you run this command.
 
+### Versioned scientific execution controls
+
+The public `scientific-config` command discovers the complete strict contract
+used to bind seeds, evaluation semantics, and native estimator parameters. It
+is independent of prompt automation: a generated configuration can be passed
+to the normal interactive `data-mining` command, or combined with an
+automation plan when non-interactive answers are also required.
+
+```text
+geochemistrypi scientific-config --kind registry
+geochemistrypi scientific-config --kind schema
+geochemistrypi scientific-config --kind template --workflow-family anomaly_detection --workflow-mode outlier_detection --method isolation_forest --output /absolute/path/isolation-template.json
+geochemistrypi scientific-config --kind example --example isolation_forest --output /absolute/path/isolation-example.json
+geochemistrypi data-mining --data your_own_data_set.xlsx --scientific-config /absolute/path/isolation-example.json
+```
+
+The schema and registry include every workflow family, mode, method, field,
+allowed model-parameter name, enum, default, and necessary field description
+registered by the runtime contract. Generated templates contain every contract
+field and are validated before they are printed or written. Output paths must
+be absolute, and existing files are not replaced unless `--force` is explicit.
+
 ### Case 4: Implement model inference on application data
 
 On command line:

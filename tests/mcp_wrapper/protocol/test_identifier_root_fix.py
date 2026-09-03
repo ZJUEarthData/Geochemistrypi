@@ -291,6 +291,9 @@ class _RepositoryBuiltInCatalog:
             source="builtin",
         )
 
+    def resolve_many(self, requests):
+        return tuple(self.resolve(reference, task=task, role=role) for reference, task, role in requests)
+
 
 @pytest.mark.parametrize(
     ("analysis_request", "expected_rows"),

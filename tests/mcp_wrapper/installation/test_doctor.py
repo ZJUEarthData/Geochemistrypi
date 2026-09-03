@@ -150,6 +150,52 @@ def test_doctor_rejects_cli_without_scientific_config_option(tmp_path: Path) -> 
     assert "--scientific-config" in check.detail
 
 
+def test_doctor_rejects_missing_scientific_config_command_even_when_legacy_option_exists(
+    tmp_path: Path,
+) -> None:
+    paths = _prepared_paths(tmp_path)
+    observed_commands = []
+
+    def runner(command):
+        command = tuple(command)
+        observed_commands.append(command)
+        if command[-1] == "--version":
+            return subprocess.CompletedProcess(command, 0, f"Geochemistry Pi {CLI_VERSION}\n", "")
+        if command[1:] == ("data-mining", "--help"):
+            return subprocess.CompletedProcess(command, 0, "--scientific-config\n", "")
+        if command[1:] == ("scientific-config", "--help"):
+            return subprocess.CompletedProcess(
+                command,
+                2,
+                "",
+                "No such command 'scientific-config'.",
+            )
+        if command[-1] == "--help":
+            return subprocess.CompletedProcess(command, 0, "public command help\n", "")
+        if "scientific-runtime-ready" in command[-1]:
+            return subprocess.CompletedProcess(command, 0, "scientific-runtime-ready\n", "")
+        package = "geochemistrypi-mcp" if str(paths.mcp_python) == command[0] else "geochemistrypi"
+        python = [3, 11, 9] if package == "geochemistrypi-mcp" else [3, 9, 19]
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            json.dumps({"python": python, "package": SERVER_VERSION if package.endswith("-mcp") else CLI_VERSION}),
+            "",
+        )
+
+    report = run_doctor(
+        paths,
+        runner=runner,
+        protocol_probe=lambda _: (True, "13 tools discovered"),
+        inventory_probe=_inventory,
+    )
+
+    check = next(item for item in report.checks if item.name == "cli-command")
+    assert check.healthy is False
+    assert check.detail == "No such command 'scientific-config'."
+    assert (str(paths.cli_command), "scientific-config", "--help") in observed_commands
+
+
 def test_doctor_reports_version_and_protocol_failures_without_crashing(tmp_path: Path) -> None:
     paths = _prepared_paths(tmp_path)
 

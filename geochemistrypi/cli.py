@@ -103,7 +103,7 @@ def _run_cli_pipeline(
     existing_experiment_id: str = "",
 ) -> None:
     def execute() -> None:
-        # Keep scientific imports inside the automation boundary.  If a native
+        # Keep scientific imports inside the configured execution boundary. If a native
         # dependency is missing or incompatible, the CLI now emits a structured
         # failure document instead of leaving the MCP driver with only a missing
         # events-file symptom.
@@ -121,17 +121,22 @@ def _run_cli_pipeline(
             existing_experiment_id=existing_experiment_id or None,
         )
 
-    if automation_plan:
-        from .automation import automation_input_adapter
+    if scientific_config:
         from .scientific_execution import scientific_execution_context
 
-        if scientific_config:
-            with scientific_execution_context(Path(scientific_config)):
+        with scientific_execution_context(Path(scientific_config)):
+            if automation_plan:
+                from .automation import automation_input_adapter
+
                 with automation_input_adapter(Path(automation_plan), Path(automation_events)):
                     execute()
-        else:
-            with automation_input_adapter(Path(automation_plan), Path(automation_events)):
+            else:
                 execute()
+    elif automation_plan:
+        from .automation import automation_input_adapter
+
+        with automation_input_adapter(Path(automation_plan), Path(automation_events)):
+            execute()
     else:
         execute()
 
@@ -164,7 +169,7 @@ def data_mining(
     scientific_config: str = typer.Option(
         "",
         "--scientific-config",
-        help="Absolute path to versioned scientific execution controls for machine automation.",
+        help=("Absolute path to versioned scientific execution controls. It can be used " "with either the normal interactive CLI or machine automation."),
     ),
     world_map_config: str = typer.Option(
         "",
@@ -179,14 +184,12 @@ def data_mining(
 
     if bool(automation_plan) != bool(automation_events):
         raise typer.BadParameter("--automation-plan and --automation-events must be provided together.")
-    if scientific_config and not automation_plan:
-        raise typer.BadParameter("--scientific-config requires --automation-plan and --automation-events.")
     selected_sources = int(bool(data)) + int(bool(training)) + int(bool(desktop))
     if selected_sources > 1:
         raise typer.BadParameter("Use exactly one training source: --data, --training, or --desktop.")
     if application and not training:
         raise typer.BadParameter("--application requires --training.")
-    if mlflow and (data or training or application or desktop or automation_plan or world_map_config):
+    if mlflow and (data or training or application or desktop or automation_plan or scientific_config or world_map_config):
         raise typer.BadParameter("--mlflow cannot be combined with analysis or automation options.")
     if existing_experiment_id and not tracking_root:
         raise typer.BadParameter("--existing-experiment-id requires --tracking-root.")
@@ -314,19 +317,140 @@ def data_mining(
                 )
 
 
+@app.command("scientific-config")
+def scientific_config_command(
+    kind: str = typer.Option(
+        "schema",
+        "--kind",
+        help="Document to generate: schema, registry, template, or example.",
+    ),
+    workflow_family: str = typer.Option(
+        "",
+        "--workflow-family",
+        help="Registered workflow family for --kind template.",
+    ),
+    workflow_mode: str = typer.Option(
+        "",
+        "--workflow-mode",
+        help="Registered workflow mode for --kind template.",
+    ),
+    method: str = typer.Option(
+        "",
+        "--method",
+        help="Registered native estimator method for --kind template.",
+    ),
+    example: str = typer.Option(
+        "",
+        "--example",
+        help="Named complete example for --kind example; available: isolation_forest.",
+    ),
+    output: str = typer.Option(
+        "",
+        "--output",
+        help="Optional absolute .json output path; stdout is used when omitted.",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Replace an existing regular --output file intentionally.",
+        is_flag=True,
+    ),
+) -> None:
+    """Discover or generate versioned scientific execution controls."""
+
+    from .scientific_config import (
+        build_scientific_execution_template,
+        scientific_config_document_json,
+        scientific_config_registry_document,
+        scientific_execution_example,
+        scientific_execution_json_schema,
+        write_scientific_config_document,
+    )
+    from .scientific_execution import ScientificExecutionContractError
+
+    supported_kinds = {"schema", "registry", "template", "example"}
+    if kind not in supported_kinds:
+        raise typer.BadParameter("--kind must be one of: example, registry, schema, template.")
+    identity_values = (workflow_family, workflow_mode, method)
+    if kind in {"schema", "registry"} and (any(identity_values) or example):
+        raise typer.BadParameter(f"--kind {kind} does not accept workflow or example selectors.")
+    if kind == "template" and (not all(identity_values) or example):
+        raise typer.BadParameter("--kind template requires --workflow-family, --workflow-mode, and " "--method, and does not accept --example.")
+    if kind == "example" and (not example or any(identity_values)):
+        raise typer.BadParameter("--kind example requires --example and does not accept workflow selectors.")
+    if force and not output:
+        raise typer.BadParameter("--force requires --output.")
+
+    try:
+        if kind == "schema":
+            document = scientific_execution_json_schema()
+        elif kind == "registry":
+            document = scientific_config_registry_document()
+        elif kind == "template":
+            document = build_scientific_execution_template(
+                workflow_family,
+                workflow_mode,
+                method,
+            )
+        else:
+            document = scientific_execution_example(example)
+        if output:
+            written = write_scientific_config_document(
+                Path(output),
+                document,
+                overwrite=force,
+            )
+            typer.echo(str(written))
+        else:
+            typer.echo(scientific_config_document_json(document))
+    except ScientificExecutionContractError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+
 @app.command()
 def datasets(
     source: str = typer.Option("all", help="Dataset source to list: all, builtin, or desktop."),
     output: str = typer.Option("json", help="Machine-readable output format; currently json."),
+    detail: str = typer.Option(
+        "compact",
+        help=("Dataset detail: compact metadata, or full ordered columns, dtypes, " "missing/nonfinite counts, numeric bounds, and low-cardinality values."),
+    ),
+    inspect_column: Optional[List[str]] = typer.Option(
+        None,
+        "--inspect-column",
+        help=("For --detail full, calculate joint completeness for these exact " "columns; repeat the option to preserve task order."),
+    ),
+    dataset_id: Optional[List[str]] = typer.Option(
+        None,
+        "--dataset-id",
+        help="Return only these exact built-in dataset IDs; repeat the option for more than one.",
+    ),
+    file_name: Optional[List[str]] = typer.Option(
+        None,
+        "--file-name",
+        help="Return only these exact Desktop/geopi_input file names; repeat the option for more than one.",
+    ),
 ) -> None:
     """List built-in and Desktop datasets without creating, copying, or modifying files."""
     if source not in {"all", "builtin", "desktop"}:
         raise typer.BadParameter("--source must be one of: all, builtin, desktop.")
     if output != "json":
         raise typer.BadParameter("--output currently supports only json.")
+    if detail not in {"compact", "full"}:
+        raise typer.BadParameter("--detail must be one of: compact, full.")
+    if inspect_column and detail != "full":
+        raise typer.BadParameter("--inspect-column requires --detail full.")
     from .data_mining.datasets import dataset_catalog_json
 
-    typer.echo(dataset_catalog_json(source))
+    typer.echo(
+        dataset_catalog_json(
+            source,
+            dataset_ids=tuple(dataset_id or ()),
+            file_names=tuple(file_name or ()),
+            detail=detail,
+            inspection_columns=tuple(inspect_column or ()),
+        )
+    )
 
 
 @app.command("time-series")

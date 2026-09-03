@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 import os
+from functools import wraps
 from pathlib import Path
 from time import sleep
-from typing import Optional
+from typing import Callable, Optional, TypeVar
 
 import mlflow
 import pandas as pd
@@ -10,7 +11,7 @@ from rich import print
 from rich.console import Console
 from rich.prompt import Confirm, Prompt
 
-from ..scientific_execution import active_scientific_execution
+from ..scientific_execution import ScientificExecutionContractError, active_scientific_execution
 from .aggregate import child_result, safe_child_error, write_aggregate_manifest
 from .constants import (
     ANOMALYDETECTION_MODELS,
@@ -52,7 +53,7 @@ from .data.data_readiness import (
 )
 from .data.feature_engineering import FeatureConstructor
 from .data.imputation import imputer
-from .data.inference import PipelineConstrutor, build_transform_pipeline, model_inference, save_external_regression_evaluation
+from .data.inference import build_transform_pipeline, fit_training_transform_pipeline, model_inference, save_external_regression_evaluation, transform_feature_frame
 from .data.preprocessing import feature_scaler, feature_selector
 from .data.statistic import monte_carlo_simulator
 from .enum_ import DataSource
@@ -79,6 +80,120 @@ def semantic_mode_number(selected_number: int, visible_options: list) -> int:
         raise ValueError(f"Unknown mode label in visible menu: {selected_label!r}") from exc
 
 
+_SCIENTIFIC_WORKFLOW_BY_MODE = {
+    1: ("supervised_learning", "regression"),
+    2: ("supervised_learning", "classification"),
+    3: ("clustering", "clustering"),
+    4: ("dimension_reduction", "embedding"),
+    5: ("anomaly_detection", "outlier_detection"),
+}
+_SCIENTIFIC_METHOD_BY_MODE_AND_SELECTION = {
+    1: {
+        "Decision Tree": "decision_tree",
+        "Random Forest": "random_forest",
+        "Extra-Trees": "extra_trees",
+        "Gradient Boosting": "gradient_boosting",
+        "XGBoost": "xgboost",
+        "Multi-layer Perceptron": "multi_layer_perceptron",
+        "Lasso Regression": "lasso_regression",
+        "Elastic Net": "elastic_net",
+        "SGD Regression": "stochastic_gradient_descent",
+    },
+    2: {
+        "Logistic Regression": "logistic_regression",
+        "Support Vector Machine": "support_vector_machine",
+        "Decision Tree": "decision_tree",
+        "Random Forest": "random_forest",
+        "Extra-Trees": "extra_trees",
+        "XGBoost": "xgboost",
+        "Multi-layer Perceptron": "multi_layer_perceptron",
+        "Gradient Boosting": "gradient_boosting",
+        "K-Nearest Neighbors": "k_nearest_neighbors",
+        "Stochastic Gradient Descent": "stochastic_gradient_descent",
+        "AdaBoost": "adaboost",
+    },
+    3: {
+        "KMeans": "kmeans",
+        "AffinityPropagation": "affinity_propagation",
+    },
+    4: {"PCA": "pca", "T-SNE": "tsne", "MDS": "mds"},
+    5: {
+        "Isolation Forest": "isolation_forest",
+        "Local Outlier Factor": "local_outlier_factor",
+    },
+}
+
+
+def _validate_scientific_cli_selection(
+    mode_num: int,
+    model_name: Optional[str] = None,
+    *,
+    is_automl: bool = False,
+) -> None:
+    """Fail before model execution if the actual CLI choice evades the sidecar."""
+
+    contract = active_scientific_execution()
+    if contract is None:
+        return
+    if mode_num == 6:
+        raise ScientificExecutionContractError(
+            "The data-mining Time Series branch has no single estimator identity "
+            "that can be bound by --scientific-config; use the public time-series "
+            "command and its native configuration contract."
+        )
+    try:
+        workflow_family, workflow_mode = _SCIENTIFIC_WORKFLOW_BY_MODE[mode_num]
+    except KeyError as exc:
+        raise ScientificExecutionContractError(f"CLI mode {mode_num!r} has no scientific execution binding.") from exc
+    contract.validate_selected_workflow(workflow_family, workflow_mode)
+    if model_name is None:
+        return
+    if model_name == "all_models":
+        raise ScientificExecutionContractError("--scientific-config binds exactly one method and cannot be used with " "the all-models CLI selection.")
+    try:
+        method = _SCIENTIFIC_METHOD_BY_MODE_AND_SELECTION[mode_num][model_name]
+    except KeyError as exc:
+        raise ScientificExecutionContractError(f"CLI model selection {model_name!r} has no registered single-method " "scientific execution binding.") from exc
+    contract.validate_selected_workflow(
+        workflow_family,
+        workflow_mode,
+        method,
+    )
+    if is_automl:
+        raise ScientificExecutionContractError(
+            "--scientific-config binds one explicit estimator parameterization; " "classification/regression AutoML may replace it and is therefore " "not permitted in this execution path."
+        )
+
+
+_ReturnValue = TypeVar("_ReturnValue")
+
+
+def _close_mlflow_runs_started_by_cli(function: Callable[..., _ReturnValue]) -> Callable[..., _ReturnValue]:
+    """Restore the caller's MLflow run stack after every CLI terminal path."""
+
+    @wraps(function)
+    def wrapped(*args, **kwargs):
+        baseline_run = mlflow.active_run()
+        failed = False
+        try:
+            return function(*args, **kwargs)
+        except BaseException:
+            failed = True
+            raise
+        finally:
+            active_run = mlflow.active_run()
+            while active_run is not None and (baseline_run is None or active_run.info.run_id != baseline_run.info.run_id):
+                try:
+                    mlflow.end_run(status="FAILED" if failed else "FINISHED")
+                except Exception:
+                    if not failed:
+                        raise
+                active_run = mlflow.active_run()
+
+    return wrapped
+
+
+@_close_mlflow_runs_started_by_cli
 def cli_pipeline(
     training_data_path: str,
     application_data_path: Optional[str] = None,
@@ -560,6 +675,7 @@ def cli_pipeline(
         selected_mode_num = limit_num_input(MODE_OPTION, SECTION[2], num_input)
         mode_num = semantic_mode_number(selected_mode_num, MODE_OPTION)
     clear_output()
+    _validate_scientific_cli_selection(mode_num)
 
     if mode_num == 6:
         print("[bold green]-*-*- Time Series Configuration -*-*-[/bold green]")
@@ -607,6 +723,7 @@ def cli_pipeline(
     label_config = None
     metric_average = None
     scientific_transform_pipeline = None
+    scientific_transform_input_example = None
     scientific_execution = active_scientific_execution()
     if mode_num == 1 or mode_num == 2:
         # Supervised learning
@@ -708,10 +825,21 @@ def cli_pipeline(
             print("Which strategy do you want to apply?")
             num2option(FEATURE_SELECTION_STRATEGY)
             feature_selection_num = limit_num_input(FEATURE_SELECTION_STRATEGY, SECTION[1], num_input)
-            feature_selection_config, X = feature_selector(X, y, mode_num, FEATURE_SELECTION_STRATEGY, feature_selection_num - 1)
-            print("--Selected Features-")
-            show_data_columns(X.columns)
-            save_data(X, name_all, "X After Feature Selection", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+            feature_selection_config, X_selected = feature_selector(
+                X,
+                y,
+                mode_num,
+                FEATURE_SELECTION_STRATEGY,
+                feature_selection_num - 1,
+                fit=scientific_execution is None,
+            )
+            if X_selected is None:
+                print("Scientific execution: feature-selector fitting is deferred " "until the model-fitting cohort is defined.")
+            else:
+                X = X_selected
+                print("--Selected Features-")
+                show_data_columns(X.columns)
+                save_data(X, name_all, "X After Feature Selection", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
         else:
             feature_selection_config = {}
         clear_output()
@@ -773,35 +901,49 @@ def cli_pipeline(
         X_train, X_test = train_test_data["X Train"], train_test_data["X Test"]
         y_train, y_test = train_test_data["Y Train"], train_test_data["Y Test"]
         name_train, name_test = train_test_data["Name Train"], train_test_data["Name Test"]
-        if scientific_execution is not None and feature_scaling_config:
-            if feature_selection_config:
-                raise ValueError("Scientific execution cannot combine deferred scaling with pre-split feature selection.")
+        if scientific_execution is not None and (feature_scaling_config or feature_selection_config):
             scientific_transform_config = {
                 **imputation_config,
                 **feature_scaling_config,
+                **feature_selection_config,
             }
-            scientific_transform_pipeline = PipelineConstrutor().chain(scientific_transform_config)
-            scientific_transform_pipeline.fit(X_train, y_train)
-
-            def _scientific_transform(frame: pd.DataFrame) -> pd.DataFrame:
-                transformed = scientific_transform_pipeline.transform(frame)
-                return pd.DataFrame(
-                    transformed,
-                    columns=frame.columns,
-                    index=frame.index,
-                )
-
-            X_train = _scientific_transform(X_train)
-            if not X_test.empty:
-                X_test = _scientific_transform(X_test)
-            X = _scientific_transform(X)
-            save_data(
-                X,
-                name_all,
-                "X With Training-Fitted Scaling",
-                GEOPI_OUTPUT_ARTIFACTS_DATA_PATH,
-                MLFLOW_ARTIFACT_DATA_PATH,
+            scientific_transform_source = X
+            scientific_transform_input_example = X_train.iloc[[0]].copy()
+            scientific_transform_pipeline = fit_training_transform_pipeline(
+                scientific_transform_config,
+                X_train,
+                y_train,
             )
+            X_train = transform_feature_frame(scientific_transform_pipeline, X_train)
+            if not X_test.empty:
+                X_test = transform_feature_frame(scientific_transform_pipeline, X_test)
+            X = transform_feature_frame(scientific_transform_pipeline, X)
+            if feature_scaling_config:
+                scaled_X = (
+                    transform_feature_frame(
+                        scientific_transform_pipeline[:-1],
+                        scientific_transform_source,
+                    )
+                    if feature_selection_config
+                    else X
+                )
+                save_data(
+                    scaled_X,
+                    name_all,
+                    "X With Training-Fitted Scaling",
+                    GEOPI_OUTPUT_ARTIFACTS_DATA_PATH,
+                    MLFLOW_ARTIFACT_DATA_PATH,
+                )
+            if feature_selection_config:
+                print("--Selected Features-")
+                show_data_columns(X.columns)
+                save_data(
+                    X,
+                    name_all,
+                    "X After Feature Selection",
+                    GEOPI_OUTPUT_ARTIFACTS_DATA_PATH,
+                    MLFLOW_ARTIFACT_DATA_PATH,
+                )
         if scientific_execution is not None:
             split_membership = pd.DataFrame(
                 {
@@ -889,6 +1031,7 @@ def cli_pipeline(
     # AutoML hyper parameter tuning control
     is_automl = False
     model_name = MODELS[model_num - 1]
+    _validate_scientific_cli_selection(mode_num, model_name)
     # If the model is supervised learning, then allow the user to use AutoML.
     if mode_num == 1 or mode_num == 2:
         # If the model is not in the NON_AUTOML_MODELS, then ask the user whether to use AutoML.
@@ -899,6 +1042,11 @@ def cli_pipeline(
             if automl_num == 1:
                 is_automl = True
             clear_output()
+    _validate_scientific_cli_selection(
+        mode_num,
+        model_name,
+        is_automl=is_automl,
+    )
 
     # Model inference control
     is_inference = False
@@ -909,7 +1057,9 @@ def cli_pipeline(
     if mode_num == 1 or mode_num == 2:
         print("[bold green]-*-*- Feature Engineering on Application Data -*-*-[/bold green]")
         is_inference = True
-        selected_columns = X_train.columns
+        selected_columns = (
+            scientific_transform_pipeline.feature_names_in_ if scientific_transform_pipeline is not None and hasattr(scientific_transform_pipeline, "feature_names_in_") else X_train.columns
+        )
         if inference_data is not None:
             if feature_engineering_config:
                 # If inference_data is not None and feature_engineering_config is not {}, then apply feature engineering with the same operation to the input data.
@@ -970,6 +1120,7 @@ def cli_pipeline(
             X_train,
             y_train,
             prefitted_transform_pipeline=scientific_transform_pipeline,
+            pipeline_input_example=scientific_transform_input_example,
         )
         clear_output()
 

@@ -66,6 +66,8 @@ def _semantic_override(relative_path: str) -> tuple[str, str] | None:
     suffix = PurePosixPath(name).suffix.lower()
     if name == "y test.xlsx":
         return "evaluation_labels", "evaluation.true_labels"
+    if name == "target label mapping.xlsx":
+        return "target_label_mapping", "classification.target_label_mapping"
     if name == "roc curve - probabilities.xlsx":
         return "score_table", "evaluation.scores"
     if "normalized confusion matrix" in name:

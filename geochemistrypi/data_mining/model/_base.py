@@ -11,6 +11,7 @@ import pandas as pd
 from multipledispatch import dispatch
 from rich import print
 
+from ...scientific_execution import _json_safe
 from ..constants import SECTION
 from ..data.data_readiness import limit_num_input, num2option, num_input, show_data_columns
 from ..utils.base import save_data, save_fig, save_model, save_text
@@ -327,7 +328,11 @@ class WorkflowBase(metaclass=ABCMeta):
             The local path to save the hyper parameters.
         """
         # 1. Always save the full dictionary to local file (no length limit)
-        hyper_parameters_str = json.dumps(hyper_parameters_dict, indent=4)
+        hyper_parameters_str = json.dumps(
+            _json_safe(hyper_parameters_dict),
+            indent=4,
+            allow_nan=False,
+        )
         save_text(hyper_parameters_str, f"Hyper Parameters - {model_name}", local_path)
 
         # 2. Log to MLflow with length limit handling (500 characters per value)

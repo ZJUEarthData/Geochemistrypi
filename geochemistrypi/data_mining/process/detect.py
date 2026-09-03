@@ -48,11 +48,28 @@ class AnomalyDetectionModelSelection(ModelSelectionBase):
         if self.model_name == "Isolation Forest":
             hyper_parameters = IsolationForestAnomalyDetection.manual_hyper_parameters()
             self.ad_workflow = IsolationForestAnomalyDetection(
-                n_estimators=hyper_parameters["n_estimators"],
-                contamination=hyper_parameters["contamination"],
-                max_features=hyper_parameters["max_features"],
-                bootstrap=hyper_parameters["bootstrap"],
-                max_samples=hyper_parameters["max_samples"],
+                **(
+                    self.scientific_execution.constructor_parameters(
+                        "isolation_forest",
+                        {
+                            "n_estimators": hyper_parameters["n_estimators"],
+                            "contamination": hyper_parameters["contamination"],
+                            "max_features": hyper_parameters["max_features"],
+                            "bootstrap": hyper_parameters["bootstrap"],
+                            "max_samples": hyper_parameters["max_samples"],
+                        },
+                        workflow_family="anomaly_detection",
+                        workflow_mode="outlier_detection",
+                    )
+                    if self.scientific_execution is not None
+                    else {
+                        "n_estimators": hyper_parameters["n_estimators"],
+                        "contamination": hyper_parameters["contamination"],
+                        "max_features": hyper_parameters["max_features"],
+                        "bootstrap": hyper_parameters["bootstrap"],
+                        "max_samples": hyper_parameters["max_samples"],
+                    }
+                )
             )
 
         if self.model_name == "Local Outlier Factor":
@@ -68,6 +85,8 @@ class AnomalyDetectionModelSelection(ModelSelectionBase):
                             "n_jobs": hyper_parameters["n_jobs"],
                             "p": hyper_parameters["p"],
                         },
+                        workflow_family="anomaly_detection",
+                        workflow_mode="outlier_detection",
                     )
                     if self.scientific_execution is not None
                     else {

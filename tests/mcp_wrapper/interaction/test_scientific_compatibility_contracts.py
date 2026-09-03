@@ -12,6 +12,7 @@ from geochemistrypi_mcp.api.schemas import (
     DecompositionRequest,
     EvaluationContract,
     IsolationForestAnomalyDetectionSettings,
+    KNearestNeighborsSettings,
     LocalOutlierFactorAnomalyDetectionSettings,
     PCADecompositionSettings,
     RegressionRequest,
@@ -73,6 +74,16 @@ def _unsupervised_request(task: str, dataset: Path, model):
     )
 
 
+def test_native_unsupervised_processes_publish_hyper_parameter_records() -> None:
+    repository_root = Path(__file__).resolve().parents[3]
+    workflow_base = (repository_root / "geochemistrypi" / "data_mining" / "model" / "_base.py").read_text(encoding="utf-8")
+    assert 'save_text(hyper_parameters_str, f"Hyper Parameters - {model_name}"' in workflow_base
+
+    for process_name in ("cluster.py", "decompose.py", "detect.py"):
+        process_source = (repository_root / "geochemistrypi" / "data_mining" / "process" / process_name).read_text(encoding="utf-8")
+        assert ".save_hyper_parameters(" in process_source
+
+
 @pytest.mark.parametrize(
     ("case_id", "request_factory", "expected_family", "expected_method"),
     (
@@ -98,25 +109,25 @@ def _unsupervised_request(task: str, dataset: Path, model):
             "hierarchical-clustering",
             lambda learning, time_series: _unsupervised_request("clustering", learning, AgglomerativeClusteringSettings(number_of_clusters=2)),
             "clustering",
-            "hierarchical",
+            "agglomerative",
         ),
         (
             "density-clustering",
             lambda learning, time_series: _unsupervised_request("clustering", learning, DBSCANClusteringSettings(minimum_samples=3)),
             "clustering",
-            "DBSCAN",
+            "dbscan",
         ),
         (
             "principal-components",
             lambda learning, time_series: _unsupervised_request("decomposition", learning, PCADecompositionSettings(number_of_components=2)),
             "dimension_reduction",
-            "PCA",
+            "pca",
         ),
         (
             "stochastic-neighbor-embedding",
             lambda learning, time_series: _unsupervised_request("decomposition", learning, TSNEDecompositionSettings(perplexity=5)),
             "dimension_reduction",
-            "tSNE",
+            "tsne",
         ),
         (
             "isolation-anomaly-detection",
@@ -132,7 +143,7 @@ def _unsupervised_request(task: str, dataset: Path, model):
                 LocalOutlierFactorAnomalyDetectionSettings(number_of_neighbors=5),
             ),
             "anomaly_detection",
-            "LOF",
+            "local_outlier_factor",
         ),
         (
             "subaerial-proportion-time-series",
@@ -351,9 +362,68 @@ def test_structured_xgboost_controls_are_bound_and_attested(
     assert execution["model_seed"] == 0
     assert execution["cross_validation_folds"] == 5
     assert not any("Normalized Confusion Matrix (none)" in path for path in plan.expected_output_relative_paths)
-    assert plan.adapter_version == "2"
+    assert plan.adapter_version == "3"
     assert assessment.execution_ready is True
     assert "gamma" not in " ".join(assessment.blocking_issues)
+
+
+def test_knn_assertions_require_a_parameter_consumed_by_the_selected_cli_branch(
+    tmp_path: Path,
+) -> None:
+    dataset = _learning_dataset(tmp_path)
+    auto_request = ClassificationRequest(
+        training_dataset_path=dataset,
+        experiment_name="Compatibility",
+        run_name="KNN auto assertion",
+        identifier_column="SampleID",
+        feature_columns=("F1", "F2"),
+        target_column="Label",
+        model=KNearestNeighborsSettings(),
+        reproducibility={"model_parameter_assertions": {"leaf_size": 30}},
+    )
+
+    auto_plan = AnalysisPlanCompiler().compile(
+        auto_request,
+        cli_executable=Path(sys.executable),
+    )
+    auto_assessment = assess_scientific_compatibility(
+        auto_request,
+        auto_plan,
+        planned_artifact_requirements(auto_request, auto_plan),
+    )
+
+    assert "leaf_size" not in dict(auto_plan.requested_model_parameters)
+    assert "leaf_size" not in dict(auto_plan.effective_model_parameters)
+    assert not any(step.id == "leaf_size" for step in auto_plan.steps)
+    assert auto_assessment.execution_ready is False
+    assert "leaf_size" in " ".join(auto_assessment.blocking_issues)
+
+    tree_request = auto_request.model_copy(
+        update={
+            "run_name": "KNN tree assertion",
+            "model": KNearestNeighborsSettings(
+                algorithm="kd_tree",
+                leaf_size=99,
+                metric="euclidean",
+            ),
+            "reproducibility": auto_request.reproducibility.model_copy(update={"model_parameter_assertions": {"leaf_size": 99}}),
+        }
+    )
+    tree_plan = AnalysisPlanCompiler().compile(
+        tree_request,
+        cli_executable=Path(sys.executable),
+    )
+    tree_assessment = assess_scientific_compatibility(
+        tree_request,
+        tree_plan,
+        planned_artifact_requirements(tree_request, tree_plan),
+    )
+
+    assert dict(tree_plan.requested_model_parameters)["leaf_size"] == "99"
+    assert dict(tree_plan.effective_model_parameters)["leaf_size"] == "99"
+    assert "power" not in dict(tree_plan.effective_model_parameters)
+    assert any(step.id == "leaf_size" for step in tree_plan.steps)
+    assert tree_assessment.execution_ready is True
 
 
 def test_validation_returns_blocked_readiness_and_start_refuses_element_mean(

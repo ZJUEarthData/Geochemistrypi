@@ -19,6 +19,7 @@ from .row_identity import SourceRowIdentityError, SourceRowLineage, build_source
 from .source_rows import iter_cli_csv_rows, iter_cli_excel_rows
 
 _SUPPORTED_SUFFIXES = {".csv": "csv", ".xlsx": "xlsx"}
+_MCP_STARTUP_WORKING_DIRECTORY = Path.cwd().resolve()
 _TYPE_SAMPLE_ROWS = 50
 _MAX_CELL_TEXT = 120
 
@@ -67,14 +68,23 @@ def _count_source_rows(path: Path, data_format: str) -> int:
 
 
 def snapshot_dataset(path: Path, maximum_bytes: int) -> DatasetSnapshot:
-    """Validate and hash one absolute regular file without modifying it."""
+    """Validate and hash one absolute or startup-root-relative regular file."""
     source = Path(path).expanduser()
-    if not source.is_absolute():
-        raise DatasetInspectionError("dataset_path must be absolute.")
+    relative_to_startup = not source.is_absolute()
+    if relative_to_startup:
+        source = _MCP_STARTUP_WORKING_DIRECTORY / source
     try:
         resolved = source.resolve(strict=True)
-        metadata = resolved.stat()
     except (OSError, RuntimeError) as exc:
+        raise DatasetInspectionError(f"Dataset is unavailable: {source}") from exc
+    if relative_to_startup:
+        try:
+            resolved.relative_to(_MCP_STARTUP_WORKING_DIRECTORY)
+        except ValueError as exc:
+            raise DatasetInspectionError("A relative dataset_path must remain inside the MCP startup working directory.") from exc
+    try:
+        metadata = resolved.stat()
+    except OSError as exc:
         raise DatasetInspectionError(f"Dataset is unavailable: {source}") from exc
     if not stat.S_ISREG(metadata.st_mode):
         raise DatasetInspectionError("dataset_path must identify a regular file, not a directory or device.")

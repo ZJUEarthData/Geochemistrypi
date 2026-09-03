@@ -42,7 +42,12 @@ class RegressionModelSelection(ModelSelectionBase):
     def _constructor_parameters(self, method: str, legacy: Dict) -> Dict:
         if self.scientific_execution is None:
             return legacy
-        return self.scientific_execution.constructor_parameters(method, legacy)
+        return self.scientific_execution.constructor_parameters(
+            method,
+            legacy,
+            workflow_family="supervised_learning",
+            workflow_mode="regression",
+        )
 
     @dispatch(object, object, object, object, object, object, object, object, object)
     def activate(
@@ -90,11 +95,16 @@ class RegressionModelSelection(ModelSelectionBase):
         elif self.model_name == "Decision Tree":
             hyper_parameters = DecisionTreeRegression.manual_hyper_parameters()
             self.reg_workflow = DecisionTreeRegression(
-                criterion=hyper_parameters["criterion"],
-                max_depth=hyper_parameters["max_depth"],
-                min_samples_split=hyper_parameters["min_samples_split"],
-                min_samples_leaf=hyper_parameters["min_samples_leaf"],
-                max_features=hyper_parameters["max_features"],
+                **self._constructor_parameters(
+                    "decision_tree",
+                    {
+                        "criterion": hyper_parameters["criterion"],
+                        "max_depth": hyper_parameters["max_depth"],
+                        "min_samples_split": hyper_parameters["min_samples_split"],
+                        "min_samples_leaf": hyper_parameters["min_samples_leaf"],
+                        "max_features": hyper_parameters["max_features"],
+                    },
+                )
             )
         elif self.model_name == "Extra-Trees":
             hyper_parameters = ExtraTreesRegression.manual_hyper_parameters()
@@ -116,14 +126,19 @@ class RegressionModelSelection(ModelSelectionBase):
         elif self.model_name == "Random Forest":
             hyper_parameters = RandomForestRegression.manual_hyper_parameters()
             self.reg_workflow = RandomForestRegression(
-                n_estimators=hyper_parameters["n_estimators"],
-                max_depth=hyper_parameters["max_depth"],
-                min_samples_split=hyper_parameters["min_samples_split"],
-                min_samples_leaf=hyper_parameters["min_samples_leaf"],
-                max_features=hyper_parameters["max_features"],
-                bootstrap=hyper_parameters["bootstrap"],
-                oob_score=hyper_parameters["oob_score"],
-                max_samples=hyper_parameters["max_samples"],
+                **self._constructor_parameters(
+                    "random_forest",
+                    {
+                        "n_estimators": hyper_parameters["n_estimators"],
+                        "max_depth": hyper_parameters["max_depth"],
+                        "min_samples_split": hyper_parameters["min_samples_split"],
+                        "min_samples_leaf": hyper_parameters["min_samples_leaf"],
+                        "max_features": hyper_parameters["max_features"],
+                        "bootstrap": hyper_parameters["bootstrap"],
+                        "oob_score": hyper_parameters["oob_score"],
+                        "max_samples": hyper_parameters["max_samples"],
+                    },
+                )
             )
         elif self.model_name == "Support Vector Machine":
             hyper_parameters = SVMRegression.manual_hyper_parameters()
@@ -137,12 +152,17 @@ class RegressionModelSelection(ModelSelectionBase):
         elif self.model_name == "Multi-layer Perceptron":
             hyper_parameters = MLPRegression.manual_hyper_parameters()
             self.reg_workflow = MLPRegression(
-                hidden_layer_sizes=hyper_parameters["hidden_layer_sizes"],
-                activation=hyper_parameters["activation"],
-                solver=hyper_parameters["solver"],
-                alpha=hyper_parameters["alpha"],
-                learning_rate=hyper_parameters["learning_rate"],
-                max_iter=hyper_parameters["max_iter"],
+                **self._constructor_parameters(
+                    "multi_layer_perceptron",
+                    {
+                        "hidden_layer_sizes": hyper_parameters["hidden_layer_sizes"],
+                        "activation": hyper_parameters["activation"],
+                        "solver": hyper_parameters["solver"],
+                        "alpha": hyper_parameters["alpha"],
+                        "learning_rate": hyper_parameters["learning_rate"],
+                        "max_iter": hyper_parameters["max_iter"],
+                    },
+                )
             )
         elif self.model_name == "Linear Regression":
             hyper_parameters = ClassicalLinearRegression.manual_hyper_parameters()
@@ -160,48 +180,68 @@ class RegressionModelSelection(ModelSelectionBase):
         elif self.model_name == "Gradient Boosting":
             hyper_parameters = GradientBoostingRegression.manual_hyper_parameters()
             self.reg_workflow = GradientBoostingRegression(
-                n_estimators=hyper_parameters["n_estimators"],
-                learning_rate=hyper_parameters["learning_rate"],
-                max_depth=hyper_parameters["max_depth"],
-                min_samples_split=hyper_parameters["min_samples_split"],
-                min_samples_leaf=hyper_parameters["min_samples_leaf"],
-                max_features=hyper_parameters["max_features"],
-                subsample=hyper_parameters["subsample"],
-                loss=hyper_parameters["loss"],
+                **self._constructor_parameters(
+                    "gradient_boosting",
+                    {
+                        "n_estimators": hyper_parameters["n_estimators"],
+                        "learning_rate": hyper_parameters["learning_rate"],
+                        "max_depth": hyper_parameters["max_depth"],
+                        "min_samples_split": hyper_parameters["min_samples_split"],
+                        "min_samples_leaf": hyper_parameters["min_samples_leaf"],
+                        "max_features": hyper_parameters["max_features"],
+                        "subsample": hyper_parameters["subsample"],
+                        "loss": hyper_parameters["loss"],
+                    },
+                )
             )
         elif self.model_name == "Lasso Regression":
             hyper_parameters = LassoRegression.manual_hyper_parameters()
             self.reg_workflow = LassoRegression(
-                alpha=hyper_parameters["alpha"],
-                fit_intercept=hyper_parameters["fit_intercept"],
-                max_iter=hyper_parameters["max_iter"],
-                tol=hyper_parameters["tol"],
-                selection=hyper_parameters["selection"],
+                **self._constructor_parameters(
+                    "lasso_regression",
+                    {
+                        "alpha": hyper_parameters["alpha"],
+                        "fit_intercept": hyper_parameters["fit_intercept"],
+                        "max_iter": hyper_parameters["max_iter"],
+                        "tol": hyper_parameters["tol"],
+                        "selection": hyper_parameters["selection"],
+                    },
+                )
             )
         elif self.model_name == "Elastic Net":
             hyper_parameters = ElasticNetRegression.manual_hyper_parameters()
             self.reg_workflow = ElasticNetRegression(
-                alpha=hyper_parameters["alpha"],
-                l1_ratio=hyper_parameters["l1_ratio"],
-                fit_intercept=hyper_parameters["fit_intercept"],
-                max_iter=hyper_parameters["max_iter"],
-                tol=hyper_parameters["tol"],
-                selection=hyper_parameters["selection"],
+                **self._constructor_parameters(
+                    "elastic_net",
+                    {
+                        "alpha": hyper_parameters["alpha"],
+                        "l1_ratio": hyper_parameters["l1_ratio"],
+                        "fit_intercept": hyper_parameters["fit_intercept"],
+                        "max_iter": hyper_parameters["max_iter"],
+                        "tol": hyper_parameters["tol"],
+                        "selection": hyper_parameters["selection"],
+                    },
+                )
             )
         elif self.model_name == "SGD Regression":
             hyper_parameters = SGDRegression.manual_hyper_parameters()
             self.reg_workflow = SGDRegression(
-                loss=hyper_parameters["loss"],
-                penalty=hyper_parameters["penalty"],
-                alpha=hyper_parameters["alpha"],
-                l1_ratio=hyper_parameters["l1_ratio"],
-                fit_intercept=hyper_parameters["fit_intercept"],
-                max_iter=hyper_parameters["max_iter"],
-                tol=hyper_parameters["tol"],
-                shuffle=hyper_parameters["shuffle"],
-                learning_rate=hyper_parameters["learning_rate"],
-                eta0=hyper_parameters["eta0"],
-                power_t=hyper_parameters["power_t"],
+                **self._constructor_parameters(
+                    "stochastic_gradient_descent",
+                    {
+                        "loss": hyper_parameters["loss"],
+                        "penalty": hyper_parameters["penalty"],
+                        "alpha": hyper_parameters["alpha"],
+                        "l1_ratio": hyper_parameters["l1_ratio"],
+                        "fit_intercept": hyper_parameters["fit_intercept"],
+                        "max_iter": hyper_parameters["max_iter"],
+                        "tol": hyper_parameters["tol"],
+                        "shuffle": hyper_parameters["shuffle"],
+                        "learning_rate": hyper_parameters["learning_rate"],
+                        "eta0": hyper_parameters["eta0"],
+                        "power_t": hyper_parameters["power_t"],
+                    },
+                )
             )
         elif self.model_name == "BayesianRidge Regression":
             hyper_parameters = BayesianRidgeRegression.manual_hyper_parameters()

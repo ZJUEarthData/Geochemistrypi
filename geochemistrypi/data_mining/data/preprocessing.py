@@ -137,7 +137,15 @@ def feature_scaler(
     return feature_scaling_config, X_scaled
 
 
-def feature_selector(X: pd.DataFrame, y: pd.DataFrame, feature_selection_task: int, method: List[str], method_idx: int) -> tuple[dict, pd.DataFrame]:
+def feature_selector(
+    X: pd.DataFrame,
+    y: pd.DataFrame,
+    feature_selection_task: int,
+    method: List[str],
+    method_idx: int,
+    *,
+    fit: bool = True,
+) -> tuple[dict, Optional[pd.DataFrame]]:
     """Apply feature selection methods.
 
     Parameters
@@ -157,13 +165,19 @@ def feature_selector(X: pd.DataFrame, y: pd.DataFrame, feature_selection_task: i
     method_idx : int
         The index of methods.
 
+    fit : bool, default=True
+        Fit and apply the selected method immediately. Scientific supervised
+        execution sets this to ``False`` so fitting can occur after the
+        train/test split.
+
     Returns
     -------
     feature_selection_config : dict
         The feature selection configuration.
 
-    X_selected : pd.DataFrame
-        The feature dataset after selecting.
+    X_selected : pd.DataFrame or None
+        The feature dataset after selecting, or ``None`` when fitting is
+        deferred.
     """
     print("-- Original Features --")
     show_data_columns(X.columns)
@@ -182,6 +196,10 @@ def feature_selector(X: pd.DataFrame, y: pd.DataFrame, feature_selection_task: i
     elif method[method_idx] == "Select K Best":
         selector = SelectKBest(score_func=score_func, k=features_retain_num)
 
+    feature_selection_config = {type(selector).__name__: selector.get_params()}
+    if not fit:
+        return feature_selection_config, None
+
     try:
         selector.fit(X, y)
         features_selected = selector.get_feature_names_out()
@@ -190,5 +208,4 @@ def feature_selector(X: pd.DataFrame, y: pd.DataFrame, feature_selection_task: i
         print("The selected feature selection method is not applicable to the dataset!")
         print("Please check the dataset to find the reason.")
 
-    feature_selection_config = {type(selector).__name__: selector.get_params()}
     return feature_selection_config, X

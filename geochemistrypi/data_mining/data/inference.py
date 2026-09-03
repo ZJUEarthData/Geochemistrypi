@@ -10,7 +10,7 @@ from imblearn.under_sampling import RandomUnderSampler
 from sklearn.feature_selection import GenericUnivariateSelect, SelectKBest
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import MinMaxScaler, PolynomialFeatures, StandardScaler
+from sklearn.preprocessing import FunctionTransformer, MinMaxScaler, PolynomialFeatures, StandardScaler
 
 from ..constants import MLFLOW_ARTIFACT_DATA_PATH
 from ..utils.base import save_data, save_fig, save_model, save_text
@@ -55,6 +55,38 @@ class PipelineConstrutor:
         return make_pipeline(*transformers)
 
 
+def fit_training_transform_pipeline(
+    transformer_config: Dict,
+    X_train: pd.DataFrame,
+    y_train: pd.DataFrame,
+) -> object:
+    """Fit learned supervised preprocessing on the training partition only."""
+
+    transform_pipeline = PipelineConstrutor().chain(transformer_config)
+    transform_pipeline.fit(X_train, y_train)
+    return transform_pipeline
+
+
+def transform_feature_frame(
+    transform_pipeline: object,
+    frame: pd.DataFrame,
+) -> pd.DataFrame:
+    """Transform a feature frame while preserving index and feature identity."""
+
+    transformed = transform_pipeline.transform(frame)
+    try:
+        columns = list(transform_pipeline.get_feature_names_out(frame.columns))
+    except (AttributeError, TypeError, ValueError):
+        if transformed.shape[1] != frame.shape[1]:
+            raise ValueError("The fitted preprocessing pipeline changed the feature count " "without exposing transformed feature names.")
+        columns = list(frame.columns)
+    return pd.DataFrame(
+        transformed,
+        columns=columns,
+        index=frame.index,
+    )
+
+
 def build_transform_pipeline(
     imputation_config: Dict,
     feature_scaling_config: Dict,
@@ -63,6 +95,7 @@ def build_transform_pipeline(
     X_train: pd.DataFrame,
     y_train: Optional[pd.DataFrame],
     prefitted_transform_pipeline: Optional[object] = None,
+    pipeline_input_example: Optional[pd.DataFrame] = None,
 ) -> Tuple[Dict, object]:
     """Build the transform pipeline.
 
@@ -85,6 +118,13 @@ def build_transform_pipeline(
 
     y_train : pd.DataFrame, optional
         The target data. Unsupervised workflows pass ``None``.
+
+    prefitted_transform_pipeline : object, optional
+        A transform pipeline already fitted on the training partition.
+
+    pipeline_input_example : pd.DataFrame, optional
+        Rows in the pipeline's original input schema. Use this when
+        ``X_train`` has already been transformed by a prefitted pipeline.
 
     Returns
     -------
@@ -123,18 +163,21 @@ def build_transform_pipeline(
     GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
     save_text(transformer_config_str, "Transform Pipeline Configuration", GEOPI_OUTPUT_ARTIFACTS_PATH, "root")
 
-    # If transformer_config is not empty, build and fit the transform pipeline
-    if transformer_config:
+    # Supervised runs persist a replayable pipeline even when no preprocessing
+    # was requested.  The identity transformer leaves the scientific data path
+    # unchanged while keeping the fitted training/inference contract portable.
+    if transformer_config or y_train is not None:
         # Create the transform pipeline
         transform_pipeline = prefitted_transform_pipeline
         if transform_pipeline is None:
-            transform_pipeline = PipelineConstrutor().chain(transformer_config)
+            transform_pipeline = PipelineConstrutor().chain(transformer_config) if transformer_config else make_pipeline(FunctionTransformer())
             # Fit the transform pipeline with the training data
             transform_pipeline.fit(X_train, y_train)
 
         # Save the transform pipeline
         GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH")
-        save_model(transform_pipeline, "Transform Pipeline", X_train.iloc[[0]], GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH)
+        input_example = X_train.iloc[[0]] if pipeline_input_example is None else pipeline_input_example
+        save_model(transform_pipeline, "Transform Pipeline", input_example, GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH)
     else:
         transform_pipeline = None
 

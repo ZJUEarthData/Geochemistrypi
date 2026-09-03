@@ -313,7 +313,7 @@ class IsolationForestAnomalyDetection(AnomalyDetectionWorkflowBase):
         self.verbose = verbose
         self.warm_start = warm_start
 
-        if random_state:
+        if random_state is not None:
             self.random_state = random_state
 
         # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'

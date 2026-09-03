@@ -3,6 +3,11 @@ from pathlib import Path
 import pytest
 from geochemistrypi_mcp import AnalysisPlanCompiler
 from geochemistrypi_mcp.api.schemas import AnomalyDetectionRequest, ClassificationRequest, ClusteringRequest, DecompositionRequest, RegressionRequest
+from geochemistrypi_mcp.contracts.anomaly_detection import MODEL_ORDER as ANOMALY_MODEL_ORDER
+from geochemistrypi_mcp.contracts.classification import MODEL_ORDER as CLASSIFICATION_MODEL_ORDER
+from geochemistrypi_mcp.contracts.clustering import MODEL_ORDER as CLUSTERING_MODEL_ORDER
+from geochemistrypi_mcp.contracts.decomposition import MODEL_ORDER as DECOMPOSITION_MODEL_ORDER
+from geochemistrypi_mcp.contracts.regression import MODEL_ORDER as REGRESSION_MODEL_ORDER
 from pydantic import ValidationError
 
 
@@ -63,6 +68,17 @@ def test_all_five_task_families_compile_complete_unique_child_plans(tmp_path: Pa
         for step_id in ids
     )
     assert plan.expected_output_relative_paths[0].endswith("summary/Aggregate Model Results.json")
+    output_names = [Path(path).name for path in plan.expected_output_relative_paths]
+    if request.task == "classification":
+        assert output_names.count("Target Label Mapping.xlsx") == len(CLASSIFICATION_MODEL_ORDER)
+    else:
+        expected_hyper_parameter_count = {
+            "regression": len(REGRESSION_MODEL_ORDER),
+            "clustering": len(CLUSTERING_MODEL_ORDER),
+            "decomposition": len(DECOMPOSITION_MODEL_ORDER),
+            "anomaly_detection": len(ANOMALY_MODEL_ORDER),
+        }[request.task]
+        assert sum(name.startswith("Hyper Parameters - ") for name in output_names) == expected_hyper_parameter_count
 
 
 def test_regression_all_models_preserves_multi_target_selection_across_children(tmp_path: Path) -> None:

@@ -297,7 +297,8 @@ def _source_fingerprint(sources: SourceLayout) -> str:
     digest = hashlib.sha256()
     included = [sources.repository_root / "pyproject.toml", sources.mcp_package_root / "pyproject.toml"]
     included.extend(sorted((sources.repository_root / "geochemistrypi").rglob("*.py")))
-    included.extend(sorted((sources.mcp_package_root / "src" / "geochemistrypi_mcp").glob("*.py")))
+    mcp_source_root = sources.mcp_package_root / "src" / "geochemistrypi_mcp"
+    included.extend(sorted(path for path in mcp_source_root.rglob("*") if path.is_file() and "__pycache__" not in path.parts and path.suffix.casefold() not in {".pyc", ".pyo"}))
     for path in included:
         digest.update(path.relative_to(sources.repository_root).as_posix().encode("utf-8"))
         digest.update(path.read_bytes())

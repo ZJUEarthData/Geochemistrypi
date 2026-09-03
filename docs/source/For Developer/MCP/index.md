@@ -116,6 +116,95 @@ and managed MLflow UI control. Its analysis schemas cover:
 The versioned capability manifest is the machine-readable source of truth for
 supported tasks, models, modes, and known restrictions. Request schemas reject
 unknown fields and invalid combinations before a CLI process starts.
+The underlying scientific sidecar is also a normal public CLI contract, not an
+MCP-only input. `geochemistrypi scientific-config` publishes its versioned JSON
+Schema and complete registry, generates validated templates for every
+registered workflow family/mode/method, and provides a directly usable
+Isolation Forest example. `geochemistrypi data-mining --scientific-config`
+activates the contract in either the interactive CLI or the existing
+automation adapter; automation remains responsible only for prompt responses.
+All 13 tools remain registered for every task scope. Unscoped analysis
+validation advertises a small task-routing envelope rather than replaying six
+complete workflow schemas on every continuation. `get_capabilities(task=...)`
+delivers the selected task's exact, hash-bound request schema, including all
+scientific descriptions, defaults, examples, enums, constraints, discriminator
+mapping, and semantic definition names. Runtime validation still uses the
+complete strict six-task union and rejects unknown, misplaced, or incompatible
+fields before process creation. An explicitly task-scoped server continues to
+advertise that task's complete schema directly.
+
+Protocol delivery is compact only where a complete immutable source record is
+already preserved. Capability responses support compact, task-filtered, full,
+and SHA-conditional views. A task-filtered response includes the exact
+task-level `validate_analysis` JSON Schema plus machine-readable dataset,
+model-discriminator, and reproducibility field locations, all generated from
+the runtime Pydantic model. This preserves the full scientific contract while
+removing repeated six-branch schema probing. A projection identity binds the
+requested detail and task, while the separate snapshot identity covers the complete inventory, so a
+cached task cannot suppress another task's view. Names-only dataset inspection
+labels source and prepared-view hashes separately. Compact validation retains all execution
+readiness decisions, hashes, data/row identities, roles, seeds, resolved model
+parameters, requested/effective evaluation and preprocessing decisions,
+application and parameter-binding roles, exact artifact paths, output roles and
+cardinalities, and environment identity; the full preparation, mapping,
+environment, and interaction-plan records stay in wrapper state and continue to
+govern execution.
+
+Explicit dataset paths may be absolute or relative to the MCP server's fixed
+startup working directory. Relative real paths must remain within that root;
+parent-directory and symbolic-link escapes fail before content is read. The
+same regular-file, format, size, hashing, lineage, and TOCTOU checks apply to
+both path forms.
+
+Dataset and MLflow directories are projected only at the public tool boundary;
+internal catalog resolution still receives the complete canonical directory.
+`list_datasets`, `list_experiments`, and `get_experiment` default to a sorted
+16-record compact page and expose offset, effective limit, total/returned
+counts, continuation offset, and a hash bound to the exact selector, detail,
+and page. Compact directory JSON is limited to 64 KiB and omits only redundant
+locations or historical payloads described by its response schema. Explicit
+full detail preserves every legacy field and uses a separate 2,100,000-byte
+UTF-8 JSON ceiling so any single record accepted by the existing 2 MB tracking
+bridge remains losslessly retrievable. Oversized multi-record pages shrink
+without gaps; an oversized single record fails with guidance to use compact
+detail or reduce source metadata rather than silently dropping fields.
+The compact validation JSON is hard-limited to 64 KiB. Large role lists,
+artifact requirements, diagnostics, and nested decision collections use typed
+prefix/count/truncation/full-sequence-hash views, including hashes for truncated
+individual diagnostics. The immutable full validation receipt is unchanged.
+Each compact response carries an exact `full_detail_request`. The same
+`validate_analysis` tool accepts that validation ID and request hash with
+`detail="full"`, verifies the stored receipt and full-detail HMAC, and returns
+the complete blocker, warning, and artifact-requirement sequences without a
+second dataset inspection or plan compilation. Their canonical hashes must
+match the compact prefix receipts.
+The response adds `truncated_sections` and
+`start_relevant_content_complete`. Truncation confined to
+`column_roles.columns` is supplemental because selected roles and all start/stop
+decisions remain complete; other truncated receipts require one stored full
+read before start. Artifact media types and required JSON keys use one
+sequence-level count/truncation/SHA receipt rather than repeating a SHA wrapper
+around every short string.
+Every tool's exact successful-response union plus public structured-error
+envelope is still generated and retained from the Pydantic serialization
+models. `tools/list` publishes its canonical SHA-256 and UTF-8 byte count in a
+small hash-addressed output envelope instead of retransmitting 13 large unions
+on every continuation. The envelope identifies the existing
+`get_capabilities(output_contract_sha256=...)` lookup, which returns the exact
+schema, byte count, and SHA-256 through the public MCP protocol. Tests exercise
+that public lookup and validate both success and error payloads against the
+resolved contracts. This is a transport deduplication only: public response
+fields and runtime validation are unchanged.
+Structured public errors use the same bounded-prefix integrity pattern and a
+64 KiB ceiling; model-facing error text remains bounded separately.
+Server guidance treats an explicit run or execute instruction as authorization;
+otherwise it asks once. Dataset inspection is requested only when exact columns,
+shape, hashes, values, or types are still needed, so validation does not inherit
+a redundant ritual inspection call.
+`get_run_result` defaults to one bounded 300-second wait and returns early on a
+terminal state. Callers can still request a shorter wait for interactive
+progress, but the normal execution path does not require a zero-second pending
+read or a separate status poll.
 
 Scientific reproduction adds four linked contracts without moving scientific
 computation into MCP:
@@ -148,6 +237,14 @@ computation into MCP:
    mapping rather than inferred from a related file. The final manifest stores
    producer, SHA-256, matched requirement IDs, and any missing evidence.
 
+Model-seed binding is estimator-aware. Manual random and conditionally random
+models receive the seed through the scientific sidecar and attest the fitted
+estimator parameter, including zero; deterministic models mark it not
+applicable. PCA `auto`, all-model execution, and AutoML remain explicitly
+unbound for model/tuning seeds until the effective runtime solver or child
+contracts can be attested. They never expose the CLI's internal 42 as a bound
+request seed, and fixed-seed requirements block before execution.
+
 Configuration-only YAML profiles are compiled through
 `geochemistrypi_mcp.planning.profiles` into ordinary strict analysis requests.
 Paper identity is metadata; profile dispatch uses only the generic workflow.
@@ -163,6 +260,16 @@ ordered selected-data range, missing-row policy, and explicit absence of
 feature engineering. The noninteractive CLI performs that preparation before
 calling the shared Liu et al. computation and records row counts and the final
 preprocessing configuration with the scientific parameters.
+
+Classification binds typed metric semantics end to end. Explicit binary
+averaging requires a semantic `positive_label`; numeric and textual labels are
+distinct. After native label customization, the CLI resolves that class for
+binary holdout and cross-validation metrics. Micro, macro, and weighted
+aggregate metrics reject a user positive class. Two-class precision-recall,
+threshold, and ROC outputs separately bind a curve-positive class to the
+matching `estimator.classes_` probability column instead of assuming column 1.
+The v4 execution contract and v2 attestation independently verify both
+aggregate and curve consumers for all 11 manual classification estimators.
 
 Regression keeps `target_column` as the backward-compatible single-target
 request field and adds `target_columns` for one or more numeric outcomes. A
@@ -199,14 +306,72 @@ configuration without deleting scientific results.
   answer scripts are not public inputs.
 - Dataset paths, output paths, resource limits, process timeouts, pending-run
   limits, and artifact counts are bounded before use.
+- Validation receipts bind independent SHA-256 identities for training,
+  application/evaluation, and optional Time Series event datasets. Each is
+  reverified before execution, and active inputs are checked again before a
+  result can be published.
 - Managed state uses private application directories and atomic writes.
 - Cancellation terminates the CLI process tree and records a durable terminal
   state.
+- Failed and cancelled runs publish an immutable bounded terminal receipt before
+  terminal status. It binds only allowlisted wrapper traces/logs and explicitly
+  reports scientific validity as not established, artifact validation as not
+  evaluated, and zero verified artifacts.
+- Successful/partial and failed/cancelled terminal schemas expose the same
+  `cli_started_at`, `cli_finished_at`, and
+  `cli_execution_duration_seconds` fields. They come only from the immutable
+  interaction trace for the actual CLI child, never from the managed-run
+  interval. A successful or partial scientific result requires the complete
+  non-null interval. A failed/cancelled receipt uses three nulls when no child
+  was created or when a malformed trace prevents trustworthy recovery of the
+  complete interval; it never publishes a partial or managed-run substitute.
 - Result metadata refers to artifacts inside the managed run directory. Every
   indexed artifact includes a content SHA-256 and optional requirement binding.
+- Terminal result delivery defaults to compact canonical artifact receipts.
+  Only proven flat same-scope `summary/<basename>` mirrors are omitted from that
+  response view; nested and requirement-bound outputs remain visible, and the
+  complete immutable index and provenance manifest retain every CLI file.
+  Compact pages contain at most 32 receipts, and the complete compact response
+  has a 64 KiB hard limit. Compact metrics have an 8 KiB JSON budget;
+  requirement bindings, missing IDs, child summaries, and limitations use
+  bounded prefixes with complete counts, truncation flags, and sequence hashes;
+  preparation provenance is represented by hashes, row counts, and bounded
+  decisions. Explicit full delivery retains every complete structure.
+- The first successful terminal core includes `required_tabular_observations`
+  for requirement-bound canonical CSV/XLSX/JSON/TXT outputs. These records are
+  bound to the immutable artifact index and verified file SHA-256 identities;
+  they report true output worksheet, row, column, and column-name metadata.
+  Complete rows are returned only for whole small tables within a 512-cell and
+  16 KiB global budget. Large tables remain metadata-only, summary mirrors are
+  not repeated, and input-validation row counts are never used as output
+  counts. Pure observation size/parse limits produce bounded omission
+  count/reason/hash receipts without changing scientific success, while path,
+  symlink, index, or file-hash mismatches still fail closed.
+- A bounded result wait that ends while durable state remains `queued` or
+  `running` returns a schema-valid, non-error `pending` receipt. It contains
+  progress and later-wait guidance but no scientific-result fields, so normal
+  continuing work does not become a failed call or recovery turn.
+- The first compact terminal page retains the complete compact scientific core.
+  A compact continuation with `artifact_offset > 0` is additive and returns
+  only immutable run/result/index identities, view counts, page metadata,
+  compact artifact identities, and a page SHA-256. It does not replay dataset
+  preparation, metrics, contract details, child summaries, or limitations;
+  explicit full delivery is unchanged.
+- A missing required artifact sets the result and durable status to
+  `partial_failure`, marks the artifact contract `incomplete`, and returns the
+  bounded missing requirement IDs.
+- Result and artifact-index paths are returned with SHA-256 identities. Clients
+  use `if_result_sha256` for a short `not_modified` confirmation instead of
+  replaying an unchanged successful, partial, failed, or cancelled terminal
+  receipt. Conditional checks cannot request a different page or full/all view.
+- A successful `result.json` is published once without replacement and its path
+  and SHA-256 are bound into terminal status. Failed/cancelled receipts use the
+  separate immutable `terminal-result.json`, so crash recovery cannot reinterpret
+  a partially published success record as a failure receipt.
 - Each completed run publishes `scientific-run-manifest.json` in wrapper state,
-  binding request, validation, run, adapter/plan, input, runtime, artifact
-  hashes, and required-artifact completeness.
+  binding request, validation, run, adapter/plan,
+  training/application/event inputs, runtime, artifact hashes, and
+  required-artifact completeness.
 - The production wheels must not contain repository tests.
 - A capability is not considered complete without direct-CLI versus wrapper
   parity evidence.

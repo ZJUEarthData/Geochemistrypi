@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional
 import pandas as pd
 from multipledispatch import dispatch
 
-from ...scientific_execution import active_scientific_execution, save_scientific_execution_attestation
+from ...scientific_execution import active_scientific_execution, resolve_classification_metric_configuration, save_scientific_execution_attestation
 from ..constants import MLFLOW_ARTIFACT_DATA_PATH
 from ..model.classification import (
     AdaBoostClassification,
@@ -56,12 +56,25 @@ class ClassificationModelSelection(ModelSelectionBase):
         return self.scientific_execution.constructor_parameters(
             method,
             legacy,
+            workflow_family="supervised_learning",
+            workflow_mode="classification",
             class_count=class_count,
         )
 
     def _attach_label_config(self) -> None:
+        requested_average = self.metric_average or "auto"
+        requested_positive_label = None
+        if self.scientific_execution is not None:
+            requested_average = self.scientific_execution.classification_metric_average
+            requested_positive_label = self.scientific_execution.classification_positive_label
+        self.metric_configuration = resolve_classification_metric_configuration(
+            self.label_config or {},
+            requested_average=requested_average,
+            requested_positive_label=requested_positive_label,
+        )
         self.clf_workflow.label_config = self.label_config
-        self.clf_workflow.metric_average = self.metric_average
+        self.clf_workflow.metric_average = self.metric_configuration["effective_average"]
+        self.clf_workflow.metric_configuration = self.metric_configuration
 
     @dispatch(object, object, object, object, object, object, object, object, object)
     def activate(
@@ -105,32 +118,47 @@ class ClassificationModelSelection(ModelSelectionBase):
         if self.model_name == "Support Vector Machine":
             hyper_parameters = SVMClassification.manual_hyper_parameters()
             self.clf_workflow = SVMClassification(
-                kernel=hyper_parameters["kernel"],
-                degree=hyper_parameters["degree"],
-                gamma=hyper_parameters["gamma"],
-                C=hyper_parameters["C"],
-                shrinking=hyper_parameters["shrinking"],
+                **self._constructor_parameters(
+                    "support_vector_machine",
+                    {
+                        "kernel": hyper_parameters["kernel"],
+                        "degree": hyper_parameters["degree"],
+                        "gamma": hyper_parameters["gamma"],
+                        "C": hyper_parameters["C"],
+                        "shrinking": hyper_parameters["shrinking"],
+                    },
+                )
             )
         elif self.model_name == "Decision Tree":
             hyper_parameters = DecisionTreeClassification.manual_hyper_parameters()
             self.clf_workflow = DecisionTreeClassification(
-                criterion=hyper_parameters["criterion"],
-                max_depth=hyper_parameters["max_depth"],
-                min_samples_split=hyper_parameters["min_samples_split"],
-                min_samples_leaf=hyper_parameters["min_samples_leaf"],
-                max_features=hyper_parameters["max_features"],
+                **self._constructor_parameters(
+                    "decision_tree",
+                    {
+                        "criterion": hyper_parameters["criterion"],
+                        "max_depth": hyper_parameters["max_depth"],
+                        "min_samples_split": hyper_parameters["min_samples_split"],
+                        "min_samples_leaf": hyper_parameters["min_samples_leaf"],
+                        "max_features": hyper_parameters["max_features"],
+                    },
+                )
             )
         elif self.model_name == "Random Forest":
             hyper_parameters = RandomForestClassification.manual_hyper_parameters()
             self.clf_workflow = RandomForestClassification(
-                n_estimators=hyper_parameters["n_estimators"],
-                max_depth=hyper_parameters["max_depth"],
-                min_samples_split=hyper_parameters["min_samples_split"],
-                min_samples_leaf=hyper_parameters["min_samples_leaf"],
-                max_features=hyper_parameters["max_features"],
-                bootstrap=hyper_parameters["bootstrap"],
-                oob_score=hyper_parameters["oob_score"],
-                max_samples=hyper_parameters["max_samples"],
+                **self._constructor_parameters(
+                    "random_forest",
+                    {
+                        "n_estimators": hyper_parameters["n_estimators"],
+                        "max_depth": hyper_parameters["max_depth"],
+                        "min_samples_split": hyper_parameters["min_samples_split"],
+                        "min_samples_leaf": hyper_parameters["min_samples_leaf"],
+                        "max_features": hyper_parameters["max_features"],
+                        "bootstrap": hyper_parameters["bootstrap"],
+                        "oob_score": hyper_parameters["oob_score"],
+                        "max_samples": hyper_parameters["max_samples"],
+                    },
+                )
             )
         elif self.model_name == "XGBoost":
             hyper_parameters = XGBoostClassification.manual_hyper_parameters()
@@ -152,90 +180,121 @@ class ClassificationModelSelection(ModelSelectionBase):
         elif self.model_name == "Logistic Regression":
             hyper_parameters = LogisticRegressionClassification.manual_hyper_parameters()
             self.clf_workflow = LogisticRegressionClassification(
-                penalty=hyper_parameters["penalty"],
-                C=hyper_parameters["C"],
-                solver=hyper_parameters["solver"],
-                max_iter=hyper_parameters["max_iter"],
-                class_weight=hyper_parameters["class_weight"],
-                l1_ratio=hyper_parameters["l1_ratio"],
+                **self._constructor_parameters(
+                    "logistic_regression",
+                    {
+                        "penalty": hyper_parameters["penalty"],
+                        "C": hyper_parameters["C"],
+                        "solver": hyper_parameters["solver"],
+                        "max_iter": hyper_parameters["max_iter"],
+                        "class_weight": hyper_parameters["class_weight"],
+                        "l1_ratio": hyper_parameters["l1_ratio"],
+                    },
+                )
             )
         elif self.model_name == "Multi-layer Perceptron":
             hyper_parameters = MLPClassification.manual_hyper_parameters()
             self.clf_workflow = MLPClassification(
-                hidden_layer_sizes=hyper_parameters["hidden_layer_sizes"],
-                activation=hyper_parameters["activation"],
-                solver=hyper_parameters["solver"],
-                alpha=hyper_parameters["alpha"],
-                learning_rate=hyper_parameters["learning_rate"],
-                max_iter=hyper_parameters["max_iter"],
+                **self._constructor_parameters(
+                    "multi_layer_perceptron",
+                    {
+                        "hidden_layer_sizes": hyper_parameters["hidden_layer_sizes"],
+                        "activation": hyper_parameters["activation"],
+                        "solver": hyper_parameters["solver"],
+                        "alpha": hyper_parameters["alpha"],
+                        "learning_rate": hyper_parameters["learning_rate"],
+                        "max_iter": hyper_parameters["max_iter"],
+                    },
+                )
             )
         elif self.model_name == "Extra-Trees":
             hyper_parameters = ExtraTreesClassification.manual_hyper_parameters()
             self.clf_workflow = ExtraTreesClassification(
-                n_estimators=hyper_parameters["n_estimators"],
-                max_depth=hyper_parameters["max_depth"],
-                min_samples_split=hyper_parameters["min_samples_split"],
-                min_samples_leaf=hyper_parameters["min_samples_leaf"],
-                max_features=hyper_parameters["max_features"],
-                bootstrap=hyper_parameters["bootstrap"],
-                oob_score=hyper_parameters["oob_score"],
-                max_samples=hyper_parameters["max_samples"],
+                **self._constructor_parameters(
+                    "extra_trees",
+                    {
+                        "n_estimators": hyper_parameters["n_estimators"],
+                        "max_depth": hyper_parameters["max_depth"],
+                        "min_samples_split": hyper_parameters["min_samples_split"],
+                        "min_samples_leaf": hyper_parameters["min_samples_leaf"],
+                        "max_features": hyper_parameters["max_features"],
+                        "bootstrap": hyper_parameters["bootstrap"],
+                        "oob_score": hyper_parameters["oob_score"],
+                        "max_samples": hyper_parameters["max_samples"],
+                    },
+                )
             )
         elif self.model_name == "Gradient Boosting":
             hyper_parameters = GradientBoostingClassification.manual_hyper_parameters()
             self.clf_workflow = GradientBoostingClassification(
-                n_estimators=hyper_parameters["n_estimators"],
-                learning_rate=hyper_parameters["learning_rate"],
-                max_depth=hyper_parameters["max_depth"],
-                min_samples_split=hyper_parameters["min_samples_split"],
-                min_samples_leaf=hyper_parameters["min_samples_leaf"],
-                max_features=hyper_parameters["max_features"],
-                subsample=hyper_parameters["subsample"],
-                loss=hyper_parameters["loss"],
+                **self._constructor_parameters(
+                    "gradient_boosting",
+                    {
+                        "n_estimators": hyper_parameters["n_estimators"],
+                        "learning_rate": hyper_parameters["learning_rate"],
+                        "max_depth": hyper_parameters["max_depth"],
+                        "min_samples_split": hyper_parameters["min_samples_split"],
+                        "min_samples_leaf": hyper_parameters["min_samples_leaf"],
+                        "max_features": hyper_parameters["max_features"],
+                        "subsample": hyper_parameters["subsample"],
+                        "loss": hyper_parameters["loss"],
+                    },
+                )
             )
         elif self.model_name == "AdaBoost":
             hyper_parameters = AdaBoostClassification.manual_hyper_parameters()
             self.clf_workflow = AdaBoostClassification(
-                n_estimators=hyper_parameters["n_estimators"],
-                learning_rate=hyper_parameters["learning_rate"],
-                max_depth=hyper_parameters["max_depth"],
+                **self._constructor_parameters(
+                    "adaboost",
+                    {
+                        "n_estimators": hyper_parameters["n_estimators"],
+                        "learning_rate": hyper_parameters["learning_rate"],
+                        "max_depth": hyper_parameters["max_depth"],
+                    },
+                )
             )
         elif self.model_name == "K-Nearest Neighbors":
             hyper_parameters = KNNClassification.manual_hyper_parameters()
             self.clf_workflow = KNNClassification(
-                n_neighbors=hyper_parameters["n_neighbors"],
-                weights=hyper_parameters["weights"],
-                algorithm=hyper_parameters["algorithm"],
-                leaf_size=hyper_parameters["leaf_size"],
-                p=hyper_parameters["p"],
-                metric=hyper_parameters["metric"],
+                **self._constructor_parameters(
+                    "k_nearest_neighbors",
+                    {
+                        "n_neighbors": hyper_parameters["n_neighbors"],
+                        "weights": hyper_parameters["weights"],
+                        "algorithm": hyper_parameters["algorithm"],
+                        "leaf_size": hyper_parameters["leaf_size"],
+                        "p": hyper_parameters["p"],
+                        "metric": hyper_parameters["metric"],
+                    },
+                )
             )
         elif self.model_name == "Stochastic Gradient Descent":
             hyper_parameters = SGDClassification.manual_hyper_parameters()
             self.clf_workflow = SGDClassification(
-                loss=hyper_parameters["loss"],
-                penalty=hyper_parameters["penalty"],
-                alpha=hyper_parameters["alpha"],
-                l1_ratio=hyper_parameters["l1_ratio"],
-                fit_intercept=hyper_parameters["fit_intercept"],
-                max_iter=hyper_parameters["max_iter"],
-                tol=hyper_parameters["tol"],
-                shuffle=hyper_parameters["shuffle"],
-                learning_rate=hyper_parameters["learning_rate"],
-                eta0=hyper_parameters["eta0"],
-                power_t=hyper_parameters["power_t"],
-                early_stopping=hyper_parameters["early_stopping"],
-                validation_fraction=hyper_parameters["validation_fraction"],
-                n_iter_no_change=hyper_parameters["n_iter_no_change"],
+                **self._constructor_parameters(
+                    "stochastic_gradient_descent",
+                    {
+                        "loss": hyper_parameters["loss"],
+                        "penalty": hyper_parameters["penalty"],
+                        "alpha": hyper_parameters["alpha"],
+                        "l1_ratio": hyper_parameters["l1_ratio"],
+                        "fit_intercept": hyper_parameters["fit_intercept"],
+                        "max_iter": hyper_parameters["max_iter"],
+                        "tol": hyper_parameters["tol"],
+                        "shuffle": hyper_parameters["shuffle"],
+                        "learning_rate": hyper_parameters["learning_rate"],
+                        "eta0": hyper_parameters["eta0"],
+                        "power_t": hyper_parameters["power_t"],
+                        "early_stopping": hyper_parameters["early_stopping"],
+                        "validation_fraction": hyper_parameters["validation_fraction"],
+                        "n_iter_no_change": hyper_parameters["n_iter_no_change"],
+                    },
+                )
             )
 
         self._attach_label_config()
         self.clf_workflow.show_info()
         self.clf_workflow.fit(X_train, y_train)
-        save_scientific_execution_attestation(
-            self.clf_workflow.model,
-            os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"),
-        )
         y_train_predict = self.clf_workflow.predict(X_train)
         y_train_predict = self.clf_workflow.np2pd(y_train_predict, y_train.columns)
         y_train_predict = y_train_predict.dropna()
@@ -257,9 +316,20 @@ class ClassificationModelSelection(ModelSelectionBase):
             save_param_path,
         )
 
-        save_target_transform_configuration(self.label_config, self.metric_average, local_path, mlflow_path)
+        save_target_transform_configuration(
+            self.label_config,
+            self.metric_average,
+            local_path,
+            mlflow_path,
+            self.metric_configuration,
+        )
         save_class_counts(y_train, y_test, local_path, mlflow_path)
         self.clf_workflow.common_components()
+        save_scientific_execution_attestation(
+            self.clf_workflow.model,
+            os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"),
+            self.metric_configuration,
+        )
         self.clf_workflow.special_components()
         self.clf_workflow.data_save(y_train_predict, name_train, "Y Train Predict", local_path, mlflow_path, "Model Train Prediction")
         self.clf_workflow.data_save(y_test_predict, name_test, "Y Test Predict", local_path, mlflow_path, "Model Test Prediction")
@@ -355,7 +425,13 @@ class ClassificationModelSelection(ModelSelectionBase):
         else:
             self.clf_workflow.save_hyper_parameters(self.clf_workflow.automl.best_config, self.model_name, save_param_path)
 
-        save_target_transform_configuration(self.label_config, self.metric_average, local_path, mlflow_path)
+        save_target_transform_configuration(
+            self.label_config,
+            self.metric_average,
+            local_path,
+            mlflow_path,
+            self.metric_configuration,
+        )
         save_class_counts(y_train, y_test, local_path, mlflow_path)
         self.clf_workflow.common_components(is_automl)
         self.clf_workflow.special_components(is_automl)

@@ -41,11 +41,36 @@ def test_overlay_joins_by_identifier_without_reordering_coordinates() -> None:
     )
 
     assert joined["overlay_identifier"].tolist() == ["c", "a", "b"]
+    assert joined["sample id"].tolist() == ["c", "a", "b"]
+    assert joined["record id"].tolist() == ["c", "a", "b"]
     assert joined["is_anomaly"].tolist() == [False, True, True]
     assert counts["row_count"] == 3
     assert counts["anomaly_count"] == 2
     assert counts["non_anomaly_count"] == 1
     assert len(counts["ordered_join_identity_sha256"]) == 64
+
+
+def test_overlay_preserves_one_requested_identifier_column_when_names_match() -> None:
+    coordinates = _coordinates().rename(columns={"sample id": "Name"})
+    labels = _labels().rename(columns={"record id": "Name"})
+
+    joined, counts = _prepare_overlay(
+        coordinates,
+        labels,
+        coordinate_identifier_column="Name",
+        label_identifier_column="Name",
+        x_column="PC 1",
+        y_column="PC 2",
+        label_column="anomaly label",
+        positive_label_values=("-1",),
+    )
+
+    assert joined["Name"].tolist() == ["c", "a", "b"]
+    assert joined.columns.tolist().count("Name") == 1
+    assert "Name_coordinate" not in joined.columns
+    assert "Name_label" not in joined.columns
+    assert joined["anomaly label"].tolist() == [1, -1, -1]
+    assert counts["row_count"] == 3
 
 
 @pytest.mark.parametrize(
@@ -55,6 +80,11 @@ def test_overlay_joins_by_identifier_without_reordering_coordinates() -> None:
             pd.concat([_coordinates(), _coordinates().iloc[[0]]], ignore_index=True),
             _labels(),
             "Coordinate identifiers must be unique",
+        ),
+        (
+            _coordinates(),
+            pd.concat([_labels(), _labels().iloc[[0]]], ignore_index=True),
+            "Label identifiers must be unique",
         ),
         (
             _coordinates(),
@@ -84,8 +114,8 @@ def test_overlay_rejects_duplicate_or_incomplete_identifier_pairing(
 def test_overlay_writes_native_evidence_package(tmp_path: Path) -> None:
     coordinate_path = tmp_path / "coordinates.csv"
     label_path = tmp_path / "labels.csv"
-    _coordinates().to_csv(coordinate_path, index=False)
-    _labels().to_csv(label_path, index=False)
+    _coordinates().rename(columns={"sample id": "Name"}).to_csv(coordinate_path, index=False)
+    _labels().rename(columns={"record id": "Name"}).to_csv(label_path, index=False)
 
     output = run_embedding_label_overlay(
         coordinate_path=coordinate_path,
@@ -95,8 +125,8 @@ def test_overlay_writes_native_evidence_package(tmp_path: Path) -> None:
         run_name="Overlay",
         coordinate_sheet="0",
         label_sheet="0",
-        coordinate_identifier_column="sample id",
-        label_identifier_column="record id",
+        coordinate_identifier_column="Name",
+        label_identifier_column="Name",
         x_column="PC 1",
         y_column="PC 2",
         label_column="anomaly label",
@@ -113,6 +143,11 @@ def test_overlay_writes_native_evidence_package(tmp_path: Path) -> None:
         output / "summary" / "Embedding Label Overlay Manifest.json",
     )
     assert all(path.is_file() and path.stat().st_size > 0 for path in expected)
+    joined = pd.read_csv(expected[0])
+    assert joined["Name"].tolist() == ["c", "a", "b"]
+    assert joined.columns.tolist().count("Name") == 1
+    assert "Name_coordinate" not in joined.columns
+    assert "Name_label" not in joined.columns
     counts = json.loads(expected[3].read_text(encoding="utf-8"))
     assert counts["row_count"] == 3
     assert counts["anomaly_count"] == 2

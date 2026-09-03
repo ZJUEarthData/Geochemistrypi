@@ -14,6 +14,7 @@ from pydantic import ValidationError
 from ..api.schemas import ArtifactReference, ArtifactRequirement, PreprocessingSummary
 from ..planning.artifact_mapping import AdapterArtifactMapping
 from ..planning.scientific_contract import artifact_requirement_matches, describe_scientific_output
+from .result_views import partition_artifact_views
 
 _REQUIRED_OUTPUT_DIRECTORIES = ("artifacts", "metrics", "parameters", "summary")
 _MAX_INDEXED_ARTIFACTS = 10_000
@@ -24,6 +25,36 @@ _MAX_PARAMETERS_FILE_BYTES = 1024 * 1024
 _MAX_PNG_PIXELS = 50_000_000
 _MAX_PNG_COMPRESSED_BYTES = 64 * 1024 * 1024
 _TIME_SERIES_PARAMETERS_RELATIVE_PATH = "parameters/Time Series Parameters.json"
+_SHA256_HEX_LENGTH = 64
+SCIENTIFIC_ESTIMATOR_IDENTITIES = {
+    ("classification", "logistic_regression"): ("sklearn", "LogisticRegression"),
+    ("classification", "support_vector_machine"): ("sklearn", "SVC"),
+    ("classification", "decision_tree"): ("sklearn", "DecisionTreeClassifier"),
+    ("classification", "random_forest"): ("sklearn", "RandomForestClassifier"),
+    ("classification", "extra_trees"): ("sklearn", "ExtraTreesClassifier"),
+    ("classification", "xgboost"): ("xgboost", "XGBClassifier"),
+    ("classification", "multi_layer_perceptron"): ("sklearn", "MLPClassifier"),
+    ("classification", "gradient_boosting"): ("sklearn", "GradientBoostingClassifier"),
+    ("classification", "k_nearest_neighbors"): ("sklearn", "KNeighborsClassifier"),
+    ("classification", "stochastic_gradient_descent"): ("sklearn", "SGDClassifier"),
+    ("classification", "adaboost"): ("sklearn", "AdaBoostClassifier"),
+    ("regression", "decision_tree"): ("sklearn", "DecisionTreeRegressor"),
+    ("regression", "random_forest"): ("sklearn", "RandomForestRegressor"),
+    ("regression", "extra_trees"): ("sklearn", "ExtraTreesRegressor"),
+    ("regression", "gradient_boosting"): ("sklearn", "GradientBoostingRegressor"),
+    ("regression", "xgboost"): ("xgboost", "XGBRegressor"),
+    ("regression", "multi_layer_perceptron"): ("sklearn", "MLPRegressor"),
+    ("regression", "lasso_regression"): ("sklearn", "Lasso"),
+    ("regression", "elastic_net"): ("sklearn", "ElasticNet"),
+    ("regression", "stochastic_gradient_descent"): ("sklearn", "SGDRegressor"),
+    ("clustering", "kmeans"): ("sklearn", "KMeans"),
+    ("clustering", "affinity_propagation"): ("sklearn", "AffinityPropagation"),
+    ("embedding", "pca"): ("sklearn", "PCA"),
+    ("embedding", "tsne"): ("sklearn", "TSNE"),
+    ("embedding", "mds"): ("sklearn", "MDS"),
+    ("outlier_detection", "isolation_forest"): ("sklearn", "IsolationForest"),
+    ("outlier_detection", "local_outlier_factor"): ("sklearn", "LocalOutlierFactor"),
+}
 
 
 class ArtifactDiscoveryError(RuntimeError):
@@ -113,6 +144,254 @@ def _has_required_json_keys(path: Path, keys: tuple[str, ...]) -> bool:
                 return False
             value = value[part]
     return True
+
+
+def _is_sha256(value: Any) -> bool:
+    return isinstance(value, str) and len(value) == _SHA256_HEX_LENGTH and all(character in "0123456789abcdef" for character in value)
+
+
+def _canonical_json_sha256(value: Any) -> str:
+    return hashlib.sha256(_canonical_json(value).encode("utf-8")).hexdigest()
+
+
+def _canonical_json(value: Any) -> str:
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def _classification_metric_semantics_failure(
+    value: Any,
+    contract: dict[str, Any],
+) -> str | None:
+    workflow_mode = contract.get("workflow_mode")
+    if workflow_mode != "classification":
+        return None if value is None else "non-classification attestation contains classification metric semantics"
+    if not isinstance(value, dict):
+        return "classification attestation is missing metric semantics"
+    fields = {
+        "schema_version",
+        "requested_average",
+        "effective_average",
+        "requested_positive_label",
+        "aggregate_semantic_positive_label",
+        "aggregate_encoded_positive_label",
+        "curve_semantic_positive_label",
+        "curve_encoded_positive_label",
+        "curve_probability_column_index",
+        "consumers",
+    }
+    if set(value) != fields or value["schema_version"] != 2 or isinstance(value["schema_version"], bool):
+        return "classification metric semantics have an invalid schema"
+    requested_average = contract.get("classification_metric_average")
+    requested_positive = contract.get("classification_positive_label")
+    if value["requested_average"] != requested_average or _canonical_json(value["requested_positive_label"]) != _canonical_json(requested_positive):
+        return "classification metric semantics do not match the requested average and positive label"
+    effective_average = value["effective_average"]
+    if requested_average == "auto":
+        if effective_average not in {"binary", "weighted"}:
+            return "classification metric semantics contain an invalid effective average"
+    elif effective_average != requested_average:
+        return "classification metric semantics contain an invalid effective average"
+
+    aggregate_semantic = value["aggregate_semantic_positive_label"]
+    aggregate_encoded = value["aggregate_encoded_positive_label"]
+    curve_semantic = value["curve_semantic_positive_label"]
+    curve_encoded = value["curve_encoded_positive_label"]
+    probability_index = value["curve_probability_column_index"]
+    if effective_average == "binary":
+        if (
+            aggregate_semantic is None
+            or isinstance(aggregate_encoded, bool)
+            or not isinstance(aggregate_encoded, int)
+            or _canonical_json(aggregate_semantic) != _canonical_json(curve_semantic)
+            or aggregate_encoded != curve_encoded
+            or isinstance(probability_index, bool)
+            or not isinstance(probability_index, int)
+            or probability_index < 0
+        ):
+            return "binary classification metric semantics use inconsistent positive classes"
+        if requested_positive is not None and _canonical_json(aggregate_semantic) != _canonical_json(requested_positive):
+            return "binary classification metric semantics do not consume the requested positive label"
+    elif aggregate_semantic is not None or aggregate_encoded is not None:
+        return "non-binary aggregate metric semantics contain a positive class"
+
+    curve_values = (curve_semantic, curve_encoded, probability_index)
+    curve_is_present = any(item is not None for item in curve_values)
+    if curve_is_present and (
+        curve_semantic is None
+        or isinstance(curve_encoded, bool)
+        or not isinstance(curve_encoded, int)
+        or isinstance(probability_index, bool)
+        or not isinstance(probability_index, int)
+        or probability_index < 0
+    ):
+        return "classification curve metric semantics are incomplete"
+
+    consumers = value["consumers"]
+    required_consumers = {"holdout_score", "cross_validation"}
+    if curve_is_present:
+        required_consumers.update({"precision_recall", "precision_recall_threshold", "roc"})
+    if not isinstance(consumers, dict) or not required_consumers.issubset(consumers):
+        return "classification metric semantics are missing required consumers"
+    for name in ("holdout_score", "cross_validation"):
+        consumer = consumers[name]
+        if (
+            not isinstance(consumer, dict)
+            or consumer.get("consumer_kind") != "aggregate_metric"
+            or consumer.get("effective_average") != effective_average
+            or _canonical_json(consumer.get("aggregate_encoded_positive_label")) != _canonical_json(aggregate_encoded)
+        ):
+            return f"classification aggregate consumer {name} is inconsistent"
+    for name in ("precision_recall", "precision_recall_threshold", "roc"):
+        if name not in required_consumers:
+            continue
+        consumer = consumers[name]
+        if (
+            not isinstance(consumer, dict)
+            or consumer.get("consumer_kind") != "binary_curve"
+            or _canonical_json(consumer.get("curve_encoded_positive_label")) != _canonical_json(curve_encoded)
+            or _canonical_json(consumer.get("probability_column_index")) != _canonical_json(probability_index)
+        ):
+            return f"classification curve consumer {name} is inconsistent"
+    return None
+
+
+def _parameter_attestation_failure(
+    path: Path,
+    *,
+    expected_source_sha256: str | None,
+    expected_source_contract: dict[str, Any] | None,
+) -> str | None:
+    """Validate the CLI attestation semantically and bind it to this run's sidecar."""
+
+    if path.suffix.lower() not in {".json", ".txt"} or path.stat().st_size > _MAX_PARAMETERS_FILE_BYTES:
+        return "scientific execution attestation is not a bounded JSON artifact"
+    try:
+        record = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return "scientific execution attestation is not valid JSON"
+    if not isinstance(record, dict):
+        return "scientific execution attestation must be a JSON object"
+    required_fields = {
+        "schema_version",
+        "contract",
+        "effective_model_parameters",
+        "verified_parameter_names",
+        "estimator_identity",
+        "classification_metric_semantics",
+        "verification_status",
+        "attestation_sha256",
+    }
+    if set(record) != required_fields:
+        return "scientific execution attestation has an invalid field contract"
+    if record["schema_version"] != 2 or isinstance(record["schema_version"], bool):
+        return "scientific execution attestation schema_version is not 2"
+    if record["verification_status"] != "matched":
+        return "scientific execution attestation verification_status is not matched"
+    attestation_sha256 = record["attestation_sha256"]
+    if not _is_sha256(attestation_sha256):
+        return "scientific execution attestation has an invalid attestation_sha256"
+    unhashed_record = dict(record)
+    unhashed_record.pop("attestation_sha256")
+    if _canonical_json_sha256(unhashed_record) != attestation_sha256:
+        return "scientific execution attestation self-hash does not match its canonical content"
+
+    contract = record["contract"]
+    if not isinstance(contract, dict):
+        return "scientific execution attestation contract must be a JSON object"
+    source_sha256 = contract.get("source_sha256")
+    if not _is_sha256(source_sha256):
+        return "scientific execution attestation contract.source_sha256 is invalid"
+    if not _is_sha256(expected_source_sha256) or expected_source_contract is None:
+        return "scientific execution attestation source identity is unavailable"
+    if source_sha256 != expected_source_sha256:
+        return "scientific execution attestation source hash does not match this run's scientific execution sidecar"
+    attested_source_contract = dict(contract)
+    attested_source_contract.pop("source_sha256")
+    if _canonical_json(attested_source_contract) != _canonical_json(expected_source_contract):
+        return "scientific execution attestation contract does not match this run's scientific execution sidecar"
+
+    effective_parameters = record["effective_model_parameters"]
+    verified_names = record["verified_parameter_names"]
+    if not isinstance(effective_parameters, dict) or not effective_parameters:
+        return "scientific execution attestation effective_model_parameters must be a non-empty JSON object"
+    model_parameters = contract.get("model_parameters")
+    if not isinstance(model_parameters, dict):
+        return "scientific execution attestation contract.model_parameters must be a JSON object"
+    expected_parameter_names = set(model_parameters)
+    for name, expected_value in model_parameters.items():
+        if name not in effective_parameters:
+            return f"scientific execution attestation is missing effective parameter {name!r}"
+        observed_value = effective_parameters[name]
+        if contract.get("workflow_mode") == "classification" and contract.get("method") == "xgboost" and name == "objective" and expected_value == "auto":
+            if observed_value not in {"binary:logistic", "multi:softprob"}:
+                return "scientific execution attestation resolved an invalid XGBoost objective"
+        elif _canonical_json(observed_value) != _canonical_json(expected_value):
+            return f"scientific execution attestation effective parameter {name!r} does not match its source contract"
+    model_seed = contract.get("model_seed")
+    if model_seed is not None:
+        expected_parameter_names.add("random_state")
+        if "random_state" not in effective_parameters or _canonical_json(effective_parameters["random_state"]) != _canonical_json(model_seed):
+            return "scientific execution attestation random_state does not match model_seed"
+    if contract.get("method") == "local_outlier_factor":
+        expected_parameter_names.add("novelty")
+        expected_novelty = contract.get("evaluation_mode") == "novelty_detection"
+        if effective_parameters.get("novelty") is not expected_novelty:
+            return "scientific execution attestation novelty does not match evaluation_mode"
+    if not isinstance(verified_names, list) or any(not isinstance(name, str) or not name for name in verified_names) or verified_names != sorted(expected_parameter_names):
+        return "scientific execution attestation verified_parameter_names do not exactly cover the source contract"
+
+    identity = record["estimator_identity"]
+    if not isinstance(identity, dict) or set(identity) != {"expected", "observed"}:
+        return "scientific execution attestation estimator_identity has an invalid field contract"
+    expected = identity["expected"]
+    observed = identity["observed"]
+    if not isinstance(expected, dict) or set(expected) != {"module_root", "class_name"} or not all(isinstance(expected.get(key), str) and expected[key] for key in ("module_root", "class_name")):
+        return "scientific execution attestation expected estimator identity is invalid"
+    trusted_identity = SCIENTIFIC_ESTIMATOR_IDENTITIES.get((contract.get("workflow_mode"), contract.get("method")))
+    if trusted_identity is None:
+        return "scientific execution attestation method has no trusted estimator identity"
+    if expected != {
+        "module_root": trusted_identity[0],
+        "class_name": trusted_identity[1],
+    }:
+        return "scientific execution attestation expected estimator identity does not match the trusted method registry"
+    if (
+        not isinstance(observed, dict)
+        or not {"module", "qualname"}.issubset(observed)
+        or set(observed) - {"module", "qualname", "wrapper"}
+        or not all(isinstance(observed.get(key), str) and observed[key] for key in ("module", "qualname"))
+    ):
+        return "scientific execution attestation observed estimator identity is invalid"
+    if observed["module"].split(".", 1)[0] != expected["module_root"] or observed["qualname"].rsplit(".", 1)[-1] != expected["class_name"]:
+        return "scientific execution attestation expected and observed estimator identities do not match"
+    wrapper = observed.get("wrapper")
+    if wrapper is not None and (
+        not isinstance(wrapper, dict)
+        or set(wrapper) != {"module", "qualname", "fitted_estimator_count"}
+        or contract.get("workflow_mode") != "regression"
+        or not isinstance(wrapper.get("module"), str)
+        or not wrapper["module"]
+        or not isinstance(wrapper.get("qualname"), str)
+        or not wrapper["qualname"]
+        or wrapper["module"].split(".", 1)[0] != "sklearn"
+        or wrapper["qualname"].rsplit(".", 1)[-1] != "MultiOutputRegressor"
+        or isinstance(wrapper.get("fitted_estimator_count"), bool)
+        or not isinstance(wrapper.get("fitted_estimator_count"), int)
+        or wrapper["fitted_estimator_count"] < 1
+    ):
+        return "scientific execution attestation multi-output wrapper identity is invalid"
+    metric_failure = _classification_metric_semantics_failure(
+        record["classification_metric_semantics"],
+        contract,
+    )
+    if metric_failure is not None:
+        return metric_failure
+    return None
 
 
 def _paeth_predictor(left: int, above: int, upper_left: int) -> int:
@@ -226,7 +505,18 @@ def _png_has_visible_plot_data(path: Path) -> bool:
 def _requirement_content_failure(
     path: Path,
     requirement: ArtifactRequirement,
+    *,
+    expected_attestation_source_sha256: str | None = None,
+    expected_attestation_source_contract: dict[str, Any] | None = None,
 ) -> str | None:
+    if requirement.scientific_type == "parameter_attestation":
+        semantic_failure = _parameter_attestation_failure(
+            path,
+            expected_source_sha256=expected_attestation_source_sha256,
+            expected_source_contract=expected_attestation_source_contract,
+        )
+        if semantic_failure is not None:
+            return semantic_failure
     if not _has_required_json_keys(path, requirement.required_json_keys):
         return "matched artifact is missing required JSON keys"
     if requirement.scientific_type == "observed_predicted_figure":
@@ -336,6 +626,8 @@ def discover_artifacts(
     requirements: tuple[ArtifactRequirement, ...] = (),
     workflow_family: str | None = None,
     artifact_mappings: tuple[AdapterArtifactMapping, ...] = (),
+    expected_attestation_source_sha256: str | None = None,
+    expected_attestation_source_contract: dict[str, Any] | None = None,
 ) -> ArtifactDiscovery:
     """Index existing files under the four original CLI output directories."""
     output_directory = Path(output_directory).resolve()
@@ -359,7 +651,6 @@ def discover_artifacts(
     if len(files) > _MAX_INDEXED_ARTIFACTS:
         raise ArtifactDiscoveryError(f"CLI produced {len(files)} files; the safety limit is {_MAX_INDEXED_ARTIFACTS}.")
     references = []
-    index_entries = []
     requirement_paths: dict[str, list[str]] = {requirement.requirement_id: [] for requirement in requirements}
     requirement_content_hashes: dict[str, set[str]] = {requirement.requirement_id: set() for requirement in requirements}
     requirement_failures: dict[str, str] = {}
@@ -367,7 +658,15 @@ def discover_artifacts(
         relative = path.relative_to(output_directory).as_posix()
         content_sha256 = _sha256(path)
         matched_requirements = _matched_requirement(relative, requirements, workflow_family, artifact_mappings)
-        content_failures = {requirement.requirement_id: _requirement_content_failure(path, requirement) for requirement in matched_requirements}
+        content_failures = {
+            requirement.requirement_id: _requirement_content_failure(
+                path,
+                requirement,
+                expected_attestation_source_sha256=expected_attestation_source_sha256,
+                expected_attestation_source_contract=expected_attestation_source_contract,
+            )
+            for requirement in matched_requirements
+        }
         satisfied_requirements = tuple(requirement for requirement in matched_requirements if content_failures[requirement.requirement_id] is None)
         for requirement in matched_requirements:
             if requirement in satisfied_requirements:
@@ -396,9 +695,25 @@ def discover_artifacts(
                 "adapter_mapping_ids": [item["mapping_id"] for item in descriptors if item.get("mapping_id") is not None],
             },
         )
-        index_entries.append(reference.model_dump(mode="json"))
-        if len(references) < maximum_response_references:
-            references.append(reference)
+        references.append(reference)
+    artifact_views = partition_artifact_views(tuple(references))
+    mirror_sources = dict(artifact_views.summary_mirror_sources)
+    annotated_references = tuple(
+        reference.model_copy(
+            update={
+                "metadata": {
+                    **reference.metadata,
+                    "summary_mirror": True,
+                    "mirror_of_artifact_id": mirror_sources[reference.artifact_id],
+                }
+            }
+        )
+        if reference.artifact_id in mirror_sources
+        else reference
+        for reference in references
+    )
+    response_references = annotated_references[: max(0, maximum_response_references)]
+    index_entries = tuple(reference.model_dump(mode="json") for reference in annotated_references)
     missing_requirement_ids = []
     for requirement in requirements:
         count = len(requirement_content_hashes[requirement.requirement_id])
@@ -411,9 +726,9 @@ def discover_artifacts(
             missing_requirement_ids.append(requirement.requirement_id)
             requirement_failures[requirement.requirement_id] = f"produced {count} artifact(s), more than maximum_count={maximum_count}"
     return ArtifactDiscovery(
-        response_references=tuple(references),
-        all_index_entries=tuple(index_entries),
-        truncated=len(files) > len(references),
+        response_references=response_references,
+        all_index_entries=index_entries,
+        truncated=len(files) > len(response_references),
         reported_metrics=_reported_metrics(output_directory),
         requirement_matches={key: tuple(value) for key, value in requirement_paths.items()},
         missing_requirement_ids=tuple(dict.fromkeys(missing_requirement_ids)),

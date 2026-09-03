@@ -49,11 +49,14 @@ from ..contracts.regression import MODELS_SUPPORTING_MISSING_VALUES as REGRESSIO
 from ..contracts.regression import MODELS_WITH_FEATURE_IMPORTANCE as REGRESSION_MODELS_WITH_FEATURE_IMPORTANCE
 from ..contracts.regression import MODELS_WITH_INTERACTIVE_PLOT_SELECTION as REGRESSION_MODELS_WITH_INTERACTIVE_PLOT_SELECTION
 from ..contracts.regression import MODELS_WITHOUT_AUTOML as REGRESSION_MODELS_WITHOUT_AUTOML
+from ..contracts.scientific_execution import SCIENTIFIC_EXECUTION_METHODS_BY_TASK
 from ..data.headers import HeaderValidationError, normalize_dataset_header, source_allows_pandas_duplicate_mangling
 from ..data.source_rows import iter_cli_csv_rows, iter_cli_excel_rows
 from .artifact_mapping import AdapterArtifactMapping, build_adapter_artifact_mappings
 
 _CLI_FIXED_RANDOM_SEED = 42
+
+ModelSeedPolicy = Literal["bound", "not_applicable", "unbound"]
 
 
 class PlanCompilationError(ValueError):
@@ -71,6 +74,25 @@ def _canonical_sha256(value: Any) -> str:
 
 def _parameter_entries(value: dict[str, Any]) -> Tuple[Tuple[str, str], ...]:
     return tuple((name, json.dumps(parameter, ensure_ascii=False, sort_keys=True, separators=(",", ":"))) for name, parameter in sorted(value.items()))
+
+
+def _applicable_model_parameters(request: Any) -> dict[str, Any]:
+    """Return only controls that the selected public CLI branch consumes."""
+    parameters = request.model.model_dump(mode="json")
+    model = request.model
+    if model.type == "k_nearest_neighbors":
+        if model.algorithm not in {"ball_tree", "kd_tree"}:
+            parameters.pop("leaf_size", None)
+        if model.metric != "minkowski":
+            parameters.pop("power", None)
+    elif model.type == "support_vector_machine":
+        if model.kernel != "poly":
+            parameters.pop("degree", None)
+        if model.kernel == "linear":
+            parameters.pop("gamma", None)
+    elif model.type == "stochastic_gradient_descent" and model.penalty != "elasticnet":
+        parameters.pop("l1_ratio", None)
+    return parameters
 
 
 def _request_model_parameters(request: Any) -> dict[str, Any]:
@@ -124,7 +146,7 @@ def _request_model_parameters(request: Any) -> dict[str, Any]:
     tuning = request.model_selection.tuning if all_models else getattr(request, "tuning", "manual")
     if all_models or tuning == "automl":
         return {}
-    return request.model.model_dump(mode="json")
+    return _applicable_model_parameters(request)
 
 
 def _resolved_model_parameters(request: Any) -> dict[str, Any]:
@@ -134,15 +156,92 @@ def _resolved_model_parameters(request: Any) -> dict[str, Any]:
     tuning = request.model_selection.tuning if all_models else getattr(request, "tuning", "manual")
     if all_models or tuning == "automl":
         return {}
-    return request.model.model_dump(mode="json")
+    return _applicable_model_parameters(request)
+
+
+def _manual_model_seed_policy(request: Any) -> ModelSeedPolicy:
+    """Describe whether the selected manual estimator can consume model_seed.
+
+    This policy is deliberately about the primary estimator only.  Split,
+    tuning, imputation, and diagnostic seeds are separate scientific roles and
+    must not be used to make a deterministic estimator look model-seeded.
+    """
+
+    if request.model_selection.mode == "all" or getattr(request, "tuning", "manual") != "manual":
+        return "unbound"
+
+    model = request.model
+    model_type = model.type
+    if request.task == "classification":
+        if model_type == "logistic_regression":
+            return "bound" if model.solver in {"liblinear", "sag", "saga"} else "not_applicable"
+        if model_type == "stochastic_gradient_descent":
+            return "bound" if model.shuffle or model.early_stopping else "not_applicable"
+        if model_type == "k_nearest_neighbors":
+            return "not_applicable"
+        if model_type in {
+            "support_vector_machine",
+            "decision_tree",
+            "random_forest",
+            "extra_trees",
+            "xgboost",
+            "multi_layer_perceptron",
+            "gradient_boosting",
+            "adaboost",
+        }:
+            return "bound"
+        return "unbound"
+    if request.task == "regression":
+        if model_type in {
+            "linear_regression",
+            "polynomial_regression",
+            "k_nearest_neighbors",
+            "support_vector_machine",
+            "bayesian_ridge",
+            "ridge_regression",
+        }:
+            return "not_applicable"
+        if model_type in {"lasso_regression", "elastic_net"}:
+            return "bound" if model.selection == "random" else "not_applicable"
+        if model_type == "stochastic_gradient_descent":
+            return "bound" if model.shuffle else "not_applicable"
+        if model_type in {
+            "decision_tree",
+            "random_forest",
+            "extra_trees",
+            "gradient_boosting",
+            "xgboost",
+            "multi_layer_perceptron",
+        }:
+            return "bound"
+        return "unbound"
+    if request.task == "clustering":
+        return "bound" if model_type in {"kmeans", "affinity_propagation"} else "not_applicable"
+    if request.task == "decomposition":
+        if model_type in {"tsne", "mds"}:
+            return "bound"
+        if model_type == "pca":
+            if model.svd_solver in {"arpack", "randomized"}:
+                return "bound"
+            if model.svd_solver == "full":
+                return "not_applicable"
+            # PCA(auto) resolves to full or randomized only after the validated
+            # matrix shape is known.  Do not preregister an effective model seed.
+            return "unbound"
+        return "not_applicable"
+    if request.task == "anomaly_detection":
+        return "bound" if model_type == "isolation_forest" else "not_applicable"
+    return "not_applicable"
 
 
 def _native_scientific_model_parameters(request: Any) -> dict[str, Any] | None:
     model_type = request.model.type
     supported = {
         ("classification", "xgboost"),
+        ("classification", "extra_trees"),
         ("regression", "xgboost"),
         ("regression", "extra_trees"),
+        ("anomaly_detection", "isolation_forest"),
         ("anomaly_detection", "local_outlier_factor"),
     }
     if (request.task, model_type) not in supported:
@@ -170,6 +269,11 @@ def _native_scientific_model_parameters(request: Any) -> dict[str, Any] | None:
             "maximum_samples": "max_samples",
             "out_of_bag_score": "oob_score",
         },
+        "isolation_forest": {
+            "number_of_estimators": "n_estimators",
+            "maximum_features": "max_features",
+            "maximum_samples": "max_samples",
+        },
         "local_outlier_factor": {
             "number_of_neighbors": "n_neighbors",
             "number_of_jobs": "n_jobs",
@@ -178,6 +282,23 @@ def _native_scientific_model_parameters(request: Any) -> dict[str, Any] | None:
     }[model_type]
     ignored = {"type", "detection_mode"}
     return {mappings.get(name, name): value for name, value in parameters.items() if name not in ignored}
+
+
+def _scientific_execution_model_parameters(request: Any) -> dict[str, Any] | None:
+    """Return parameters exactly when this request receives a CLI execution contract."""
+    if request.model_selection.mode == "all" or getattr(request, "tuning", "manual") != "manual":
+        return None
+    if request.model.type not in SCIENTIFIC_EXECUTION_METHODS_BY_TASK.get(request.task, ()):
+        return None
+    native_parameters = _native_scientific_model_parameters(request)
+    if native_parameters is not None:
+        return native_parameters
+    # Registered manual methods without native constructor bindings still
+    # receive the complete v4 workflow/evaluation contract.  Their prompt-bound
+    # parameters remain authoritative and the fitted estimator identity is
+    # attested by the CLI.  A non-applicable model seed is represented by null;
+    # it must never discard the rest of the scientific sidecar.
+    return {}
 
 
 def _effective_scientific_model_parameters(
@@ -199,21 +320,31 @@ def _scientific_execution_contract_json(
     workflow_family: str,
     workflow_mode: str,
 ) -> tuple[str, Tuple[Tuple[str, int], ...]] | None:
-    if request.model_selection.mode == "all" or getattr(request, "tuning", "manual") != "manual":
-        return None
-    native_parameters = _native_scientific_model_parameters(request)
+    native_parameters = _scientific_execution_model_parameters(request)
     if native_parameters is None:
         return None
     model_type = request.model.type
     supervised = request.task in {"classification", "regression"}
     external_labeled_training = request.task == "regression" and request.evaluation.mode == "external_labeled"
     split_seed = (request.reproducibility.split_seed if request.reproducibility.split_seed is not None else _CLI_FIXED_RANDOM_SEED) if supervised and not external_labeled_training else None
-    seeded_model = model_type in {"xgboost", "extra_trees"}
+    seeded_model = _manual_model_seed_policy(request) == "bound"
     model_seed = (request.reproducibility.model_seed if request.reproducibility.model_seed is not None else _CLI_FIXED_RANDOM_SEED) if seeded_model else None
     folds = request.evaluation.folds if request.evaluation.folds is not None else 10
-    evaluation_mode = request.model.detection_mode if model_type == "local_outlier_factor" else "external_labeled" if request.evaluation.mode == "external_labeled" else "internal_holdout"
+    evaluation_mode = (
+        request.model.detection_mode
+        if model_type == "local_outlier_factor"
+        else "training_outlier"
+        if request.task == "anomaly_detection"
+        else "training_clustering"
+        if request.task == "clustering"
+        else "fit_transform"
+        if request.task == "decomposition"
+        else "external_labeled"
+        if request.evaluation.mode == "external_labeled"
+        else "internal_holdout"
+    )
     payload = {
-        "schema_version": 3,
+        "schema_version": 4,
         "workflow_family": workflow_family,
         "workflow_mode": workflow_mode,
         "method": model_type,
@@ -237,6 +368,8 @@ def _scientific_execution_contract_json(
                 {},
             ).items()
         },
+        "classification_metric_average": (request.metric_average if request.task == "classification" else None),
+        "classification_positive_label": (_semantic_label_identity(request.positive_label) if request.task == "classification" and request.positive_label is not None else None),
         "model_parameters": native_parameters,
     }
     effective_seeds = tuple((role, value) for role, value in (("split", split_seed), ("model", model_seed)) if value is not None)
@@ -384,7 +517,7 @@ class InteractionPlan:
     blocking_issues: Tuple[str, ...] = ()
     effective_seeds: Tuple[Tuple[str, int], ...] = ()
     requested_seeds: Tuple[Tuple[str, int], ...] = ()
-    seed_binding: Literal["cli_fixed", "request_parameter", "mixed", "not_applicable"] = "not_applicable"
+    seed_binding: Literal["cli_fixed", "request_parameter", "mixed", "not_applicable", "unbound"] = "not_applicable"
     requested_model_parameters: Tuple[Tuple[str, str], ...] = ()
     effective_model_parameters: Tuple[Tuple[str, str], ...] = ()
     requested_preprocessing_parameters: Tuple[Tuple[str, str], ...] = ()
@@ -426,6 +559,7 @@ class InteractionPlan:
 class _DatasetProfile:
     row_count: int
     class_counts: Counter[str]
+    class_labels: tuple[dict[str, Any], ...]
     missing_columns: frozenset[str]
     unresolved_missing_columns: frozenset[str]
 
@@ -717,6 +851,46 @@ def _quantile_counts(values: list[float], number_of_classes: int, labels: tuple[
     return Counter(final_labels[bisect.bisect_left(cuts, value)] for value in values)
 
 
+def _semantic_label_identity(value: Any) -> dict[str, Any]:
+    """Return a JSON-safe identity that never conflates numeric and string labels."""
+    if hasattr(value, "item"):
+        try:
+            value = value.item()
+        except (TypeError, ValueError):
+            pass
+    if isinstance(value, bool):
+        return {"type": "boolean", "value": value}
+    if isinstance(value, int):
+        return {"type": "integer", "value": value}
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise PlanCompilationError("Classification semantic labels must be finite JSON scalars.")
+        return {"type": "number", "value": value}
+    if isinstance(value, str):
+        return {"type": "string", "value": value}
+    raise PlanCompilationError(f"Unsupported classification semantic label type: {type(value).__name__}")
+
+
+def _semantic_label_key(value: Any) -> str:
+    return json.dumps(_semantic_label_identity(value), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def _coerce_cli_csv_semantic_labels(labels: list[Any]) -> list[Any]:
+    """Mirror pandas CSV whole-column inference for post-load label semantics."""
+    if not labels or not all(isinstance(label, str) for label in labels):
+        return labels
+    normalized = [label.strip() for label in labels]
+    if all(value in {"True", "False"} for value in normalized):
+        return [value == "True" for value in normalized]
+    if all(re.fullmatch(r"[+-]?\d+", value) is not None for value in normalized):
+        return [int(value) for value in normalized]
+    try:
+        numeric = [float(value) for value in normalized]
+    except ValueError:
+        return labels
+    return numeric if all(math.isfinite(value) for value in numeric) else labels
+
+
 def _scan_training_dataset(path: Path, columns: tuple[str, ...], request: ClassificationRequest) -> _DatasetProfile:
     selected_names = tuple(column for column in columns if column == request.target_column or column in request.feature_columns)
     scan_names = selected_names
@@ -728,7 +902,7 @@ def _scan_training_dataset(path: Path, columns: tuple[str, ...], request: Classi
 
     missing_columns: set[str] = set()
     unresolved_missing: set[str] = set()
-    labels: list[str] = []
+    labels: list[Any] = []
     numeric_targets: list[float] = []
     kept_rows = 0
     label_strategy = request.label_customization.strategy
@@ -752,7 +926,7 @@ def _scan_training_dataset(path: Path, columns: tuple[str, ...], request: Classi
                 _numeric(values[feature], feature, row_number)
         kept_rows += 1
         if label_strategy == "encode_original":
-            labels.append(str(target))
+            labels.append(target)
         elif label_strategy == "map":
             key = str(target)
             if key not in mapping:
@@ -799,7 +973,13 @@ def _scan_training_dataset(path: Path, columns: tuple[str, ...], request: Classi
                 request.label_customization.labels,
             ).elements()
         )
-    class_counts = Counter(labels)
+    elif label_strategy == "encode_original" and path.suffix.lower() == ".csv":
+        labels = _coerce_cli_csv_semantic_labels(labels)
+    class_counts = Counter(_semantic_label_key(label) for label in labels)
+    class_labels_by_key: dict[str, dict[str, Any]] = {}
+    for label in labels:
+        key = _semantic_label_key(label)
+        class_labels_by_key.setdefault(key, _semantic_label_identity(label))
     if len(class_counts) < 2:
         raise PlanCompilationError("Classification requires at least two final classes after label customization.")
     too_small = {label: count for label, count in class_counts.items() if count < 2}
@@ -818,6 +998,7 @@ def _scan_training_dataset(path: Path, columns: tuple[str, ...], request: Classi
     return _DatasetProfile(
         kept_rows,
         class_counts,
+        tuple(class_labels_by_key.values()),
         frozenset(missing_columns),
         frozenset(unresolved_missing),
     )
@@ -1743,7 +1924,14 @@ def _anomaly_detection_model_steps(
         add("maximum_features", "Max Features:", model.maximum_features)
         add("bootstrap", "Bootstrap:", "1" if model.bootstrap else "2")
         if model.bootstrap:
-            add("maximum_samples", "Max Samples:", model.maximum_samples)
+            # The legacy prompt accepts only an integer. The v4 sidecar remains
+            # authoritative and restores the exact requested value before the
+            # estimator is constructed.
+            add(
+                "maximum_samples",
+                "Max Samples:",
+                256 if model.maximum_samples == "auto" else model.maximum_samples,
+            )
     else:
         add("number_of_neighbors", "N neighbors:", model.number_of_neighbors)
         add("leaf_size", "Leaf size:", model.leaf_size)
@@ -1810,6 +1998,15 @@ class ClassificationPlanCompiler:
         selected_names = tuple(column for column in columns if column == request.target_column or column in request.feature_columns)
         engineered = _compile_engineered_features(request, selected_names)
         profile = _scan_training_dataset(data_path, columns, request)
+        if request.metric_average == "binary" and len(profile.class_counts) != 2:
+            raise PlanCompilationError("metric_average='binary' requires exactly two final classes after label customization.")
+        if request.positive_label is not None:
+            if len(profile.class_counts) != 2:
+                raise PlanCompilationError("positive_label is defined only for a two-class final target.")
+            requested_positive = _semantic_label_key(request.positive_label)
+            observed_labels = {json.dumps(label, ensure_ascii=False, sort_keys=True, separators=(",", ":")) for label in profile.class_labels}
+            if requested_positive not in observed_labels:
+                raise PlanCompilationError("positive_label does not exactly match any post-customization semantic label; " "numeric and string labels are distinct.")
         final_feature_names = (
             *request.feature_columns,
             *(name for name, _ in engineered),
@@ -1994,6 +2191,7 @@ class ClassificationPlanCompiler:
                 str(Path("geopi_output") / request.experiment_name / request.run_name / "metrics" / f"Classification Report - {model_display}.txt"),
                 str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "image" / "model_output" / f"Confusion Matrix - {model_display}.png"),
                 str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "image" / "model_output" / f"Confusion Matrix - {model_display}.xlsx"),
+                str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "data" / "Target Label Mapping.xlsx"),
                 str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "data" / "Y Test.xlsx"),
                 str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "data" / "Y Test Predict Decoded.xlsx"),
                 str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "image" / "model_output" / "ROC Curve - Probabilities.xlsx"),
@@ -2283,7 +2481,10 @@ class ClassificationPlanCompiler:
                         "Please select calculation method for multiclass metrics",
                         "(Model) ➜ @Number:",
                     ),
-                    _choice(request.metric_average, ("micro", "macro", "weighted")),
+                    _choice(
+                        "weighted" if request.metric_average == "auto" else request.metric_average,
+                        ("micro", "macro", "weighted"),
+                    ),
                 )
             )
         steps.append(InteractionStep("continue_after_target", ("contiguous integer codes", enter_prompt), ""))
@@ -2318,9 +2519,7 @@ class ClassificationPlanCompiler:
                     ),
                 ]
             )
-        scientific_execution_active = (
-            getattr(request.model_selection, "mode", "single") != "all" and getattr(request, "tuning", "manual") == "manual" and _native_scientific_model_parameters(request) is not None
-        )
+        scientific_execution_active = _scientific_execution_model_parameters(request) is not None
         scaling_anchor = (
             "Scientific execution: scaler fitting is deferred until the model-fitting cohort is defined."
             if request.scaling != "none" and scientific_execution_active
@@ -2937,6 +3136,7 @@ class ClusteringPlanCompiler:
             str(base / "artifacts" / "model" / f"{model_display}.joblib"),
             str(base / "artifacts" / "data" / f"Cluster Labels - {model_display}.xlsx"),
             str(base / "metrics" / f"Model Score - {model_display}.txt"),
+            str(base / "parameters" / f"Hyper Parameters - {model_display}.txt"),
             str(base / "artifacts" / "image" / "model_output" / f"Cluster Two-Dimensional Diagram - {model_display}.png"),
             str(base / "artifacts" / "Transform Pipeline Configuration.txt"),
         ]
@@ -3268,6 +3468,7 @@ class DecompositionPlanCompiler:
         expected_outputs = [
             str(base / "artifacts" / "model" / f"{model_display}.joblib"),
             str(base / "artifacts" / "data" / "X Reduced.xlsx"),
+            str(base / "parameters" / f"Hyper Parameters - {model_display}.txt"),
             str(base / "artifacts" / "image" / "model_output" / f"Decomposition Two-Dimensional Diagram - {model_display}.png"),
             str(base / "artifacts" / "image" / "model_output" / f"Decomposition Heatmap - {model_display}.png"),
             str(base / "artifacts" / "image" / "model_output" / f"Dimensionality Reduction Contour Plot - {model_display}.png"),
@@ -3334,7 +3535,7 @@ class AnomalyDetectionPlanCompiler:
         if request.model.type == "isolation_forest":
             if request.model.maximum_features > final_feature_count:
                 raise PlanCompilationError(f"maximum_features={request.model.maximum_features} exceeds " f"the {final_feature_count} final features.")
-            if request.model.maximum_samples is not None and request.model.maximum_samples > profile.row_count:
+            if isinstance(request.model.maximum_samples, int) and request.model.maximum_samples > profile.row_count:
                 raise PlanCompilationError(f"maximum_samples={request.model.maximum_samples} exceeds " f"the {profile.row_count} retained rows.")
         elif request.model.number_of_neighbors >= profile.row_count:
             raise PlanCompilationError(f"number_of_neighbors={request.model.number_of_neighbors} must be " f"less than the {profile.row_count} retained rows.")
@@ -3540,6 +3741,7 @@ class AnomalyDetectionPlanCompiler:
             str(base / "artifacts" / "data" / "X Abnormal Detection.xlsx"),
             str(base / "artifacts" / "data" / "X Normal.xlsx"),
             str(base / "artifacts" / "data" / "X Abnormal.xlsx"),
+            str(base / "parameters" / f"Hyper Parameters - {model_display}.txt"),
             str(model_output / f"Anomaly Detection Density Estimation - {model_display}.png"),
             str(model_output / f"Anomaly Detection Density Estimation - {model_display}.xlsx"),
             str(base / "artifacts" / "Transform Pipeline Configuration.txt"),
@@ -4111,27 +4313,20 @@ class AnalysisPlanCompiler:
         elif request.task == "decomposition":
             family = "dimension_reduction"
             mode = "embedding"
-            method = {
-                "pca": "PCA",
-                "tsne": "tSNE",
-            }.get(model_type, model_type)
+            method = model_type
         elif request.task == "clustering":
             family = "clustering"
             mode = "clustering"
-            method = {
-                "agglomerative": "hierarchical",
-                "dbscan": "DBSCAN",
-            }.get(model_type, model_type)
+            method = model_type
         else:
             family = "anomaly_detection"
             mode = "outlier_detection"
-            method = {
-                "local_outlier_factor": "LOF",
-            }.get(model_type, model_type)
+            method = model_type
         selected_tuning = request.model_selection.tuning if all_models else getattr(request, "tuning", "manual")
         scientific_execution = _scientific_execution_contract_json(request, family, mode)
         if scientific_execution is not None:
             scientific_execution_json, effective_seeds = scientific_execution
+            model_seed_policy = _manual_model_seed_policy(request)
             requested_seed_roles = {
                 role
                 for role, value in (
@@ -4142,7 +4337,12 @@ class AnalysisPlanCompiler:
                 if value is not None
             }
             effective_seed_roles = {role for role, _ in effective_seeds}
-            if not effective_seed_roles:
+            if model_seed_policy == "unbound":
+                # A v4 sidecar still binds workflow/evaluation identity when a
+                # data-dependent estimator branch (currently PCA(auto)) cannot
+                # truthfully bind its effective model seed before execution.
+                seed_binding = "unbound"
+            elif not effective_seed_roles:
                 seed_binding = "not_applicable"
             elif not requested_seed_roles:
                 seed_binding = "cli_fixed"
@@ -4152,14 +4352,20 @@ class AnalysisPlanCompiler:
                 seed_binding = "mixed"
         else:
             scientific_execution_json = None
-            effective_seeds = (
-                (("split", _CLI_FIXED_RANDOM_SEED), ("model", _CLI_FIXED_RANDOM_SEED), ("tuning", _CLI_FIXED_RANDOM_SEED))
-                if request.task in {"classification", "regression"} and selected_tuning == "automl"
-                else (("split", _CLI_FIXED_RANDOM_SEED), ("model", _CLI_FIXED_RANDOM_SEED))
-                if request.task in {"classification", "regression"}
-                else (("model", _CLI_FIXED_RANDOM_SEED),)
-            )
-            seed_binding = "cli_fixed"
+            model_seed_policy = _manual_model_seed_policy(request)
+            # A no-sidecar supervised run still uses the CLI's fixed holdout
+            # split.  Never turn that split seed into evidence that the primary
+            # estimator or an AutoML search was model/tuning seeded.
+            effective_seeds = (("split", _CLI_FIXED_RANDOM_SEED),) if request.task in {"classification", "regression"} else ()
+            if all_models or selected_tuning == "automl" or model_seed_policy == "unbound":
+                seed_binding = "unbound"
+            elif model_seed_policy == "not_applicable":
+                seed_binding = "cli_fixed" if effective_seeds else "not_applicable"
+            else:
+                # Every bound manual model is expected to receive a native or
+                # seed-only scientific sidecar.  Fail transparent if the two
+                # registries ever drift apart.
+                seed_binding = "unbound"
         expected_output_relative_paths = plan.expected_output_relative_paths
         if scientific_execution is not None:
             output_root = Path("geopi_output") / request.experiment_name / request.run_name
@@ -4217,9 +4423,9 @@ class AnalysisPlanCompiler:
             workflow_family=family,
             workflow_mode=mode,
             method=method,
-            scientific_contract_id=f"scientific-contract-v{'3' if scientific_execution is not None else '2'}/{family}/{mode}/{method}",
+            scientific_contract_id=f"scientific-contract-v{'4' if scientific_execution is not None else '2'}/{family}/{mode}/{method}",
             adapter_id=f"geochemistrypi-cli.data-mining.{request.task}.{model_type}",
-            adapter_version="2" if scientific_execution is not None else "1",
+            adapter_version="3" if scientific_execution is not None else "1",
             seed_binding=seed_binding,
             scientific_execution_contract_json=scientific_execution_json,
             expected_output_relative_paths=expected_output_relative_paths,

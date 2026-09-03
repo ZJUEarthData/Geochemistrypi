@@ -4,6 +4,7 @@ import struct
 import sys
 import zlib
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from geochemistrypi_mcp.api.schemas import (
@@ -13,6 +14,7 @@ from geochemistrypi_mcp.api.schemas import (
     DatasetPreparationContract,
     EnvironmentProfileContract,
     ExplicitDatasetReference,
+    LogisticRegressionSettings,
     ReproducibilityContract,
     SourceRowIdentityContract,
     XGBoostSettings,
@@ -26,6 +28,7 @@ from geochemistrypi_mcp.planning.interaction_plan import AnalysisPlanCompiler
 from geochemistrypi_mcp.planning.profiles import attest_profile_plan, load_benchmark_profile
 from geochemistrypi_mcp.planning.scientific_contract import assess_scientific_compatibility, planned_artifact_requirements
 from geochemistrypi_mcp.runtime.artifacts import discover_artifacts
+from geochemistrypi_mcp.runtime.cli_capabilities import CliCapabilityProbe
 from geochemistrypi_mcp.runtime.environment import EnvironmentSnapshot
 from geochemistrypi_mcp.runtime.runs import InputIntegrityError, RunManager
 from openpyxl import Workbook
@@ -40,7 +43,14 @@ def _workbook(path: Path, rows: int = 40) -> Path:
     data.append(["provenance note", None, None, None])
     data.append(["SampleID", "F1", "F2", "Label"])
     for index in range(rows):
-        data.append([f"S{index:03d}", float(index + 1), float((index % 7) + 0.5), "A" if index % 2 == 0 else "B"])
+        data.append(
+            [
+                f"S{index:03d}",
+                float(index + 1),
+                float((index % 7) + 0.5),
+                "A" if index % 2 == 0 else "B",
+            ]
+        )
     workbook.save(path)
     return path
 
@@ -48,7 +58,10 @@ def _workbook(path: Path, rows: int = 40) -> Path:
 def _environment() -> EnvironmentSnapshot:
     record = {
         "schema_version": 1,
-        "cli_executable": {"path": str(Path(sys.executable).resolve()), "sha256": "1" * 64},
+        "cli_executable": {
+            "path": str(Path(sys.executable).resolve()),
+            "sha256": "1" * 64,
+        },
         "python": {
             "executable": str(Path(sys.executable).resolve()),
             "executable_sha256": "2" * 64,
@@ -88,7 +101,9 @@ def _classification_request(dataset: Path, preparation: DatasetPreparationContra
     return request.model_copy(update=updates)
 
 
-def test_excel_view_is_deterministic_and_preserves_source_lineage(tmp_path: Path) -> None:
+def test_excel_view_is_deterministic_and_preserves_source_lineage(
+    tmp_path: Path,
+) -> None:
     source = _workbook(tmp_path / "raw.xlsx", rows=3)
     source_mapping = tmp_path / "source-mapping.json"
     source_mapping.write_text('{"S000":1,"S001":2,"S002":3}', encoding="utf-8")
@@ -127,7 +142,9 @@ def test_excel_view_is_deterministic_and_preserves_source_lineage(tmp_path: Path
     assert first.record["provenance"]["preparation_hash"] == first.record["contract_hash"]
 
 
-def test_not_null_filter_materializes_a_deterministic_hashed_dataset_view(tmp_path: Path) -> None:
+def test_not_null_filter_materializes_a_deterministic_hashed_dataset_view(
+    tmp_path: Path,
+) -> None:
     source = _workbook(tmp_path / "raw.xlsx", rows=4)
     workbook = Workbook()
     data = workbook.active
@@ -162,7 +179,105 @@ def test_not_null_filter_materializes_a_deterministic_hashed_dataset_view(tmp_pa
     assert "filter_rows" in first.record["executed_view_operations"]
 
 
-def test_dataset_view_rejects_wrong_row_identity_and_records_external_lineage(tmp_path: Path) -> None:
+def test_run_manager_stages_all_47_single_table_columns_for_native_cli_outputs(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "major_oxides.xlsx"
+    selected = ("SAMPLE NAME", "SIO2(WT%)", "TIO2(WT%)", "AL2O3(WT%)")
+    header = (*selected, *(f"EXTRA_{index:02d}" for index in range(43)))
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.append(header)
+    worksheet.append(("A", 50.0, 1.0, 15.0, *(float(index) for index in range(43))))
+    worksheet.append(("B", 51.0, 1.1, 16.0, *(float(index + 1) for index in range(43))))
+    workbook.save(source)
+
+    reference = ExplicitDatasetReference(
+        path=source,
+        preparation=DatasetPreparationContract(selected_columns=selected),
+    )
+    request = SimpleNamespace(
+        task="anomaly_detection",
+        training_dataset=reference,
+        sheet="0",
+    )
+    manager = object.__new__(RunManager)
+    manager.settings = SimpleNamespace(
+        service_state_root=tmp_path / "state",
+        maximum_dataset_bytes=10 * 1024 * 1024,
+        maximum_columns=256,
+    )
+
+    prepared = manager._prepare_dataset(
+        request,
+        "training",
+        SimpleNamespace(source="path"),
+        snapshot_dataset(source, 10 * 1024 * 1024),
+    )
+
+    staged_header = prepared.snapshot.resolved_path.read_text(encoding="utf-8").splitlines()[0].split(",")
+    assert len(header) == 47
+    assert staged_header == list(header)
+    assert prepared.record["contract"]["selected_columns"] == list(selected)
+    assert prepared.record["table"]["selected_columns"] == list(header)
+    assert prepared.record["table"]["cli_staging_preserves_source_columns"] is True
+    assert "select_columns" not in prepared.record["executed_view_operations"]
+
+
+def test_application_staging_filters_rows_without_dropping_unselected_columns(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "application.xlsx"
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.append(["SampleID", "F1", "F2", "Label", "Audit Metadata"])
+    worksheet.append(["A", 1.0, 2.0, "X", "keep-a"])
+    worksheet.append(["B", None, 3.0, "Y", "drop-b"])
+    worksheet.append(["C", 4.0, 5.0, "X", "keep-c"])
+    workbook.save(source)
+
+    reference = ExplicitDatasetReference(
+        path=source,
+        preparation=DatasetPreparationContract(
+            selected_columns=("SampleID", "F1", "F2", "Label"),
+            filters=(DatasetFilterRule(column="F1", operator="not_null"),),
+        ),
+    )
+    request = SimpleNamespace(
+        task="classification",
+        application_dataset=reference,
+        sheet="0",
+    )
+    manager = object.__new__(RunManager)
+    manager.settings = SimpleNamespace(
+        service_state_root=tmp_path / "state",
+        maximum_dataset_bytes=10 * 1024 * 1024,
+        maximum_columns=256,
+    )
+
+    prepared = manager._prepare_dataset(
+        request,
+        "application",
+        SimpleNamespace(source="path"),
+        snapshot_dataset(source, 10 * 1024 * 1024),
+    )
+    rows = prepared.snapshot.resolved_path.read_text(encoding="utf-8").splitlines()
+
+    assert rows == [
+        "SampleID,F1,F2,Label,Audit Metadata",
+        "A,1,2,X,keep-a",
+        "C,4,5,X,keep-c",
+    ]
+    assert prepared.record["table"]["input_row_count"] == 3
+    assert prepared.record["table"]["source_row_count"] == 2
+    assert prepared.record["table"]["filtered_row_count"] == 1
+    assert "filter_rows" in prepared.record["executed_view_operations"]
+    assert "select_columns" not in prepared.record["executed_view_operations"]
+
+
+def test_dataset_view_rejects_wrong_row_identity_and_records_external_lineage(
+    tmp_path: Path,
+) -> None:
     source = _workbook(tmp_path / "raw.xlsx", rows=3)
     snapshot = snapshot_dataset(source, 10 * 1024 * 1024)
     wrong_identity = DatasetPreparationContract(
@@ -180,13 +295,21 @@ def test_dataset_view_rejects_wrong_row_identity_and_records_external_lineage(tm
     with pytest.raises(DatasetPreparationError, match="expected_ordered_sha256"):
         prepare_dataset_view(snapshot, wrong_identity, tmp_path / "state", 10 * 1024 * 1024, 256)
     with pytest.raises(DatasetPreparationError, match="worksheet must be selected explicitly"):
-        prepare_dataset_view(snapshot, DatasetPreparationContract(), tmp_path / "state", 10 * 1024 * 1024, 256)
+        prepare_dataset_view(
+            snapshot,
+            DatasetPreparationContract(),
+            tmp_path / "state",
+            10 * 1024 * 1024,
+            256,
+        )
     prepared = prepare_dataset_view(snapshot, external_lineage, tmp_path / "state", 10 * 1024 * 1024, 256)
     assert prepared.record["declared_operations"] == ["filtering"]
     assert prepared.record["executed_view_operations"] == ["select_worksheet"]
 
 
-def test_run_validation_compiles_the_prepared_view_and_reports_both_hashes(tmp_path: Path) -> None:
+def test_run_validation_compiles_the_prepared_view_and_reports_both_hashes(
+    tmp_path: Path,
+) -> None:
     source = _workbook(tmp_path / "raw.xlsx")
     preparation = DatasetPreparationContract(
         worksheet="Analysis Data",
@@ -202,6 +325,7 @@ def test_run_validation_compiles_the_prepared_view_and_reports_both_hashes(tmp_p
             maximum_dataset_bytes=10 * 1024 * 1024,
         ),
         cli_resolver=lambda: (Path(sys.executable), CLI_VERSION),
+        capability_resolver=lambda _executable, requirements: CliCapabilityProbe(tuple(requirements), ()),
         environment_resolver=lambda _: _environment(),
     )
     try:
@@ -218,17 +342,23 @@ def test_run_validation_compiles_the_prepared_view_and_reports_both_hashes(tmp_p
     assert preview.dataset_preparation["table"]["worksheet"] == "Analysis Data"
     assert preview.environment_identity_sha256 == "a" * 64
     assert preview.environment_status == "UNSPECIFIED"
-    assert preview.effective_seeds == {"split": 42, "model": 42}
+    assert preview.effective_seeds == {"split": 42}
 
 
-def test_effective_seeds_environment_and_model_parameters_are_bound_before_execution(tmp_path: Path) -> None:
+def test_effective_seeds_environment_and_model_parameters_are_bound_before_execution(
+    tmp_path: Path,
+) -> None:
     source = _workbook(tmp_path / "raw.xlsx")
     preparation = DatasetPreparationContract(
         worksheet="Analysis Data",
         header_row_index=1,
         selected_columns=("SampleID", "F1", "F2", "Label"),
     )
-    base = _classification_request(source, preparation)
+    base = _classification_request(
+        source,
+        preparation,
+        model=LogisticRegressionSettings(solver="saga"),
+    )
     prepared = prepare_dataset_view(
         snapshot_dataset(source, 10 * 1024 * 1024),
         preparation,
@@ -240,7 +370,12 @@ def test_effective_seeds_environment_and_model_parameters_are_bound_before_execu
 
     def compile_request(request: ClassificationRequest):
         return AnalysisPlanCompiler().compile(
-            request.model_copy(update={"training_dataset_path": prepared.snapshot.resolved_path, "training_dataset": None}),
+            request.model_copy(
+                update={
+                    "training_dataset_path": prepared.snapshot.resolved_path,
+                    "training_dataset": None,
+                }
+            ),
             cli_executable=Path(sys.executable),
         )
 
@@ -260,12 +395,12 @@ def test_effective_seeds_environment_and_model_parameters_are_bound_before_execu
     requirements = planned_artifact_requirements(exact, plan)
     accepted = assess_scientific_compatibility(exact, plan, requirements, environment)
 
-    wrong_seed = exact.model_copy(update={"reproducibility": exact.reproducibility.model_copy(update={"split_seed": 800})})
-    wrong_seed_plan = compile_request(wrong_seed)
-    rejected = assess_scientific_compatibility(
-        wrong_seed,
-        wrong_seed_plan,
-        planned_artifact_requirements(wrong_seed, wrong_seed_plan),
+    alternate_seed = exact.model_copy(update={"reproducibility": exact.reproducibility.model_copy(update={"split_seed": 800})})
+    alternate_seed_plan = compile_request(alternate_seed)
+    alternate_seed_assessment = assess_scientific_compatibility(
+        alternate_seed,
+        alternate_seed_plan,
+        planned_artifact_requirements(alternate_seed, alternate_seed_plan),
         environment,
     )
     wrong_dependency = exact.model_copy(update={"reproducibility": exact.reproducibility.model_copy(update={"dependency_constraints": {"xgboost": "==9.9.9"}})})
@@ -280,19 +415,23 @@ def test_effective_seeds_environment_and_model_parameters_are_bound_before_execu
     assert accepted.execution_ready is True
     assert accepted.environment_status == "READY"
     assert {name: json.loads(value) for name, value in plan.effective_model_parameters}["maximum_iterations"] == 200
-    assert dict(plan.requested_model_parameters) == dict(plan.effective_model_parameters)
+    requested_model_parameters = dict(plan.requested_model_parameters)
+    effective_model_parameters = dict(plan.effective_model_parameters)
+    assert requested_model_parameters.items() <= effective_model_parameters.items()
+    assert json.loads(effective_model_parameters["random_state"]) == 42
     assert dict(plan.requested_preprocessing_parameters) == dict(plan.effective_preprocessing_parameters)
     assert plan.preprocessing_parameter_binding == "interaction_plan"
-    assert rejected.execution_ready is False
-    assert rejected.environment_status == "READY"
-    assert dict(wrong_seed_plan.requested_seeds)["split"] == 800
-    assert dict(wrong_seed_plan.effective_seeds)["split"] == 42
-    assert "effective value 42" in " ".join(rejected.blocking_issues)
+    assert alternate_seed_assessment.execution_ready is True
+    assert alternate_seed_assessment.environment_status == "READY"
+    assert dict(alternate_seed_plan.requested_seeds)["split"] == 800
+    assert dict(alternate_seed_plan.effective_seeds)["split"] == 800
     assert dependency_rejected.environment_status == "MISMATCH"
     assert dependency_rejected.execution_ready is False
 
 
-def test_named_environment_profile_matches_or_blocks_before_execution(tmp_path: Path) -> None:
+def test_named_environment_profile_matches_or_blocks_before_execution(
+    tmp_path: Path,
+) -> None:
     source = _workbook(tmp_path / "raw.xlsx")
     preparation = DatasetPreparationContract(
         worksheet="Analysis Data",
@@ -311,7 +450,12 @@ def test_named_environment_profile_matches_or_blocks_before_execution(tmp_path: 
     def assess(profile: EnvironmentProfileContract):
         request = base.model_copy(update={"environment_profile": profile})
         plan = AnalysisPlanCompiler().compile(
-            request.model_copy(update={"training_dataset_path": prepared.snapshot.resolved_path, "training_dataset": None}),
+            request.model_copy(
+                update={
+                    "training_dataset_path": prepared.snapshot.resolved_path,
+                    "training_dataset": None,
+                }
+            ),
             cli_executable=Path(sys.executable),
         )
         result = assess_scientific_compatibility(
@@ -326,10 +470,20 @@ def test_named_environment_profile_matches_or_blocks_before_execution(tmp_path: 
         profile_id="classification-py311-xgb133",
         python="3.11.0",
         package_versions={"xgboost": "1.3.3"},
-        runtime_constraints={"python_implementation": "CPython", "platform": "test-platform"},
+        runtime_constraints={
+            "python_implementation": "CPython",
+            "platform": "test-platform",
+        },
     )
     matching_plan, accepted = assess(matching)
-    _, rejected = assess(matching.model_copy(update={"profile_id": "classification-py311-xgb999", "package_versions": {"xgboost": "9.9.9"}}))
+    _, rejected = assess(
+        matching.model_copy(
+            update={
+                "profile_id": "classification-py311-xgb999",
+                "package_versions": {"xgboost": "9.9.9"},
+            }
+        )
+    )
 
     assert accepted.execution_ready is True
     assert accepted.environment_status == "READY"
@@ -339,7 +493,9 @@ def test_named_environment_profile_matches_or_blocks_before_execution(tmp_path: 
     assert rejected.environment_status == "MISMATCH"
 
 
-def test_classification_adapter_maps_real_cli_outputs_and_rejects_unavailable_normalization(tmp_path: Path) -> None:
+def test_classification_adapter_maps_real_cli_outputs_and_rejects_unavailable_normalization(
+    tmp_path: Path,
+) -> None:
     source = _workbook(tmp_path / "raw.xlsx")
     preparation = DatasetPreparationContract(
         worksheet="Analysis Data",
@@ -355,7 +511,12 @@ def test_classification_adapter_maps_real_cli_outputs_and_rejects_unavailable_no
         256,
     )
     plan = AnalysisPlanCompiler().compile(
-        request.model_copy(update={"training_dataset_path": prepared.snapshot.resolved_path, "training_dataset": None}),
+        request.model_copy(
+            update={
+                "training_dataset_path": prepared.snapshot.resolved_path,
+                "training_dataset": None,
+            }
+        ),
         cli_executable=Path(sys.executable),
     )
     available = tuple(mapping for mapping in plan.artifact_mappings if mapping.availability == "available")
@@ -369,13 +530,19 @@ def test_classification_adapter_maps_real_cli_outputs_and_rejects_unavailable_no
     blocked = assess_scientific_compatibility(request, plan, (normalized_requirement,), _environment())
 
     assert declared_paths <= mapped_paths
-    assert {"evaluation.scores", "evaluation.predictions", "model.feature_importance"} <= {mapping.output_role for mapping in available}
+    assert {
+        "evaluation.scores",
+        "evaluation.predictions",
+        "model.feature_importance",
+    } <= {mapping.output_role for mapping in available}
     assert blocked.execution_ready is False
     assert blocked.artifact_status == "requirements_unmet"
     assert "raw confusion matrix only" in " ".join(blocked.blocking_issues)
 
 
-def test_validation_receipt_reports_matching_and_mismatched_environments(tmp_path: Path) -> None:
+def test_validation_receipt_reports_matching_and_mismatched_environments(
+    tmp_path: Path,
+) -> None:
     source = _workbook(tmp_path / "raw.xlsx")
     preparation = DatasetPreparationContract(
         worksheet="Analysis Data",
@@ -391,6 +558,7 @@ def test_validation_receipt_reports_matching_and_mismatched_environments(tmp_pat
     manager = RunManager(
         settings,
         cli_resolver=lambda: (Path(sys.executable), CLI_VERSION),
+        capability_resolver=lambda _executable, requirements: CliCapabilityProbe(tuple(requirements), ()),
         environment_resolver=lambda _: _environment(),
     )
     try:
@@ -413,7 +581,10 @@ def test_validation_receipt_reports_matching_and_mismatched_environments(tmp_pat
             )
         )
         tampered = base.model_copy(update={"training_dataset": base.training_dataset.model_copy(update={"expected_sha256": "0" * 64})})
-        with pytest.raises(InputIntegrityError, match="changed between source resolution and validation"):
+        with pytest.raises(
+            InputIntegrityError,
+            match="changed between source resolution and validation",
+        ):
             manager.validate(tampered)
     finally:
         manager.close()
@@ -425,7 +596,9 @@ def test_validation_receipt_reports_matching_and_mismatched_environments(tmp_pat
     assert not list((tmp_path / "runs").glob("run-[0-9a-f]*"))
 
 
-def test_configuration_only_benchmark_profile_compiles_and_attests_generic_workflow(tmp_path: Path) -> None:
+def test_configuration_only_benchmark_profile_compiles_and_attests_generic_workflow(
+    tmp_path: Path,
+) -> None:
     dataset = tmp_path / "rocks.csv"
     dataset.write_text(
         "SampleID,F1,F2,Label\n" "S1,1,2,A\nS2,2,3,B\nS3,3,4,A\nS4,4,5,B\nS5,5,6,A\n" "S6,6,7,B\nS7,7,8,A\nS8,8,9,B\nS9,9,10,A\nS10,10,11,B\n",
@@ -477,7 +650,9 @@ acceptance_rules:
         load_benchmark_profile(profile_path, "0" * 64)
 
 
-def test_workflow_aware_artifact_contract_checks_role_cardinality_and_content(tmp_path: Path) -> None:
+def test_workflow_aware_artifact_contract_checks_role_cardinality_and_content(
+    tmp_path: Path,
+) -> None:
     output = tmp_path / "output"
     for directory in ("artifacts", "metrics", "parameters", "summary"):
         (output / directory).mkdir(parents=True)
@@ -494,7 +669,12 @@ def test_workflow_aware_artifact_contract_checks_role_cardinality_and_content(tm
     )
 
     complete = discover_artifacts(output, 20, (requirement,))
-    missing_key = requirement.model_copy(update={"requirement_id": "evaluation.recall", "required_json_keys": ("recall",)})
+    missing_key = requirement.model_copy(
+        update={
+            "requirement_id": "evaluation.recall",
+            "required_json_keys": ("recall",),
+        }
+    )
     incomplete = discover_artifacts(output, 20, (missing_key,))
 
     assert complete.missing_requirement_ids == ()
@@ -504,7 +684,9 @@ def test_workflow_aware_artifact_contract_checks_role_cardinality_and_content(tm
     assert "missing required JSON keys" in incomplete.requirement_failures["evaluation.recall"]
 
 
-def test_observed_predicted_figure_contract_rejects_a_plot_without_visible_data(tmp_path: Path) -> None:
+def test_observed_predicted_figure_contract_rejects_a_plot_without_visible_data(
+    tmp_path: Path,
+) -> None:
     output = tmp_path / "output"
     for directory in ("artifacts", "metrics", "parameters", "summary"):
         (output / directory).mkdir(parents=True)

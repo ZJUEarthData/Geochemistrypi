@@ -335,7 +335,7 @@ class KMeansClustering(ClusteringWorkflowBase):
         self.copy_x = copy_x
         self.algorithm = algorithm
 
-        if random_state:
+        if random_state is not None:
             self.random_state = random_state
 
         # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
@@ -738,7 +738,7 @@ class AffinityPropagationClustering(ClusteringWorkflowBase):
         self.preference = preference
         self.affinity = affinity
 
-        if random_state:
+        if random_state is not None:
             self.random_state = random_state
 
         # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'

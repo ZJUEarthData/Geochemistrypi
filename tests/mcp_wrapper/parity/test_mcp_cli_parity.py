@@ -76,12 +76,131 @@ def _all_files(run_directory: Path) -> list[str]:
     return sorted(path.relative_to(run_directory).as_posix() for path in run_directory.rglob("*") if path.is_file())
 
 
+def _assert_native_outputs_plus_scientific_evidence(
+    direct_run: Path,
+    wrapped_run: Path,
+    *,
+    scientific_execution_evidence: bool = True,
+    supervised: bool = False,
+    training_fitted_scaling: bool = False,
+) -> tuple[list[str], list[str]]:
+    """Keep native CLI parity strict while allowing only declared MCP evidence."""
+    direct_files = _all_files(direct_run)
+    wrapped_files = _all_files(wrapped_run)
+    expected_additions = (
+        {
+            "parameters/Scientific Execution Attestation.json",
+            "summary/Scientific Execution Attestation.json",
+        }
+        if scientific_execution_evidence
+        else set()
+    )
+    if supervised:
+        expected_additions.update(
+            {
+                "artifacts/data/Split Membership.xlsx",
+                "summary/Split Membership.xlsx",
+            }
+        )
+    expected_wrapped_files = set(direct_files) | expected_additions
+    if training_fitted_scaling:
+        direct_scaling_paths = {
+            "artifacts/data/X With Scaling.xlsx",
+            "summary/X With Scaling.xlsx",
+        }
+        wrapped_scaling_paths = {
+            "artifacts/data/X With Training-Fitted Scaling.xlsx",
+            "summary/X With Training-Fitted Scaling.xlsx",
+        }
+        assert direct_scaling_paths <= set(direct_files)
+        expected_wrapped_files = (expected_wrapped_files - direct_scaling_paths) | wrapped_scaling_paths
+        _assert_training_fitted_scaling(direct_run, wrapped_run)
+    assert set(wrapped_files) == expected_wrapped_files
+    return direct_files, wrapped_files
+
+
 def _worksheet_values(path: Path) -> list[tuple[Any, ...]]:
     workbook = load_workbook(path, read_only=True, data_only=True)
     try:
         return list(workbook.active.iter_rows(values_only=True))
     finally:
         workbook.close()
+
+
+def _assert_training_fitted_scaling(direct_run: Path, wrapped_run: Path) -> None:
+    """Verify the scientific adapter replaces global-fit scaling without leakage."""
+    direct_values = _worksheet_values(direct_run / "artifacts" / "data" / "X With Scaling.xlsx")
+    wrapped_values = _worksheet_values(wrapped_run / "artifacts" / "data" / "X With Training-Fitted Scaling.xlsx")
+    assert direct_values[0] == wrapped_values[0]
+    assert [row[0] for row in direct_values[1:]] == [row[0] for row in wrapped_values[1:]]
+    assert direct_values != wrapped_values
+
+    split_values = _worksheet_values(wrapped_run / "artifacts" / "data" / "Split Membership.xlsx")
+    split_header = split_values[0]
+    split_column = split_header.index("Split")
+    membership = {row[0]: row[split_column] for row in split_values[1:]}
+    assert len(membership) == len(wrapped_values) - 1
+    assert set(membership) == {row[0] for row in wrapped_values[1:]}
+    assert set(membership.values()) == {"train", "test"}
+
+    training_rows = [row for row in wrapped_values[1:] if membership[row[0]] == "train"]
+    for column_index in range(1, len(wrapped_values[0])):
+        values = [float(row[column_index]) for row in training_rows]
+        mean = sum(values) / len(values)
+        population_variance = sum((value - mean) ** 2 for value in values) / len(values)
+        assert mean == pytest.approx(0.0, abs=1e-10)
+        assert population_variance**0.5 == pytest.approx(1.0, abs=1e-10)
+
+
+def _assert_application_prediction_replays(
+    wrapped_run: Path,
+    *,
+    selected_data_name: str,
+    model_name: str,
+) -> None:
+    """Replay a saved transform/model pair against the archived application rows."""
+    prediction_values = _worksheet_values(wrapped_run / "artifacts" / "data" / "Application Data Predicted.xlsx")
+    cli_executable = Path(os.environ["GEOCHEMISTRYPI_CLI_EXECUTABLE"]).resolve()
+    cli_environment = os.environ.copy()
+    for inherited_name in ISOLATED_CLI_ENVIRONMENT_VARIABLES:
+        cli_environment.pop(inherited_name, None)
+    replay = subprocess.run(
+        (
+            str(resolve_cli_interpreter(cli_executable)),
+            "-c",
+            "import json,joblib,pandas as pd,sys; "
+            "selected=pd.read_excel(sys.argv[1]); "
+            "pipeline=joblib.load(sys.argv[2]); model=joblib.load(sys.argv[3]); "
+            "predicted=model.predict(pipeline.transform(selected.iloc[:,1:])); "
+            "print(json.dumps({'identifiers':selected.iloc[:,0].tolist(),"
+            "'predictions':predicted.tolist()}))",
+            str(wrapped_run / "artifacts" / "data" / selected_data_name),
+            str(wrapped_run / "artifacts" / "model" / "Transform Pipeline.joblib"),
+            str(wrapped_run / "artifacts" / "model" / model_name),
+        ),
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        env=cli_environment,
+    )
+    assert replay.returncode == 0, replay.stdout + replay.stderr
+    replayed = json.loads(replay.stdout.strip().splitlines()[-1])
+    assert replayed["identifiers"] == [row[0] for row in prediction_values[1:]]
+    assert replayed["predictions"] == [row[1] for row in prediction_values[1:]]
+
+
+def _assert_hyper_parameter_extension(
+    direct_path: Path,
+    wrapped_path: Path,
+    expected_additions: dict[str, Any],
+) -> None:
+    """Require exact native parameters plus an exact declared audit extension."""
+    direct_parameters = _load_json(direct_path)
+    wrapped_parameters = _load_json(wrapped_path)
+    assert {key: wrapped_parameters[key] for key in direct_parameters} == direct_parameters
+    assert {key: wrapped_parameters[key] for key in wrapped_parameters.keys() - direct_parameters.keys()} == expected_additions
 
 
 def _with_tracking_root(plan: Any, tracking_root: Path):
@@ -365,7 +484,7 @@ async def test_stdio_mcp_embedding_label_overlay_matches_direct_public_cli(
         )
         assert validation_call.is_error is False, validation_call.content[0].text
         validation = validation_call.structured_content
-        assert validation["execution_ready"] is True
+        assert validation["readiness"]["execution_ready"] is True
         assert validation["workflow_family"] == "artifact_composition"
         started = await client.call_tool(
             "start_analysis",
@@ -534,8 +653,10 @@ async def test_stdio_mcp_lists_and_inspects_every_installed_builtin_dataset(
             assert inspected.is_error is False, inspected.content[0].text
             inspections.append(inspected.structured_content)
 
-    assert {item["sha256"] for item in inspections} == {item["sha256"] for item in datasets}
-    time_series = next(item for item in inspections if item["source_path"].endswith("Data_Time_Series.xlsx"))
+    expected_hashes = {item["sha256"] for item in datasets}
+    assert {item["source_sha256"] for item in inspections} == expected_hashes
+    assert {item["prepared_view_sha256"] for item in inspections} == expected_hashes
+    time_series = next(inspection for dataset, inspection in zip(datasets, inspections, strict=True) if dataset["dataset_id"] == "builtin:time_series")
     assert any("FEOT.1" in warning for warning in time_series["header_warnings"])
 
 
@@ -654,13 +775,27 @@ async def test_stdio_mcp_classification_application_feature_engineering_matches_
         assert result["model"] == "logistic_regression"
         assert result["application_input_sha256"] == _sha256(application_path)
         assert result["application_input_hash_verified"] is True
-        assert _all_files(direct_run) == _all_files(wrapped_run)
+        _assert_native_outputs_plus_scientific_evidence(
+            direct_run,
+            wrapped_run,
+            supervised=True,
+            training_fitted_scaling=True,
+        )
         for artifact_name in (
             "Application Data Feature-Engineering.xlsx",
             "Application Data Feature-Engineering Selected.xlsx",
-            "Application Data Predicted.xlsx",
         ):
             assert _worksheet_values(direct_data / artifact_name) == _worksheet_values(wrapped_data / artifact_name)
+        direct_predictions = _worksheet_values(direct_data / "Application Data Predicted.xlsx")
+        wrapped_predictions = _worksheet_values(wrapped_data / "Application Data Predicted.xlsx")
+        assert direct_predictions[0] == wrapped_predictions[0]
+        assert [row[0] for row in direct_predictions[1:]] == [row[0] for row in wrapped_predictions[1:]]
+        assert {row[1] for row in wrapped_predictions[1:]} <= {0, 1}
+        _assert_application_prediction_replays(
+            wrapped_run,
+            selected_data_name="Application Data Feature-Engineering Selected.xlsx",
+            model_name="Logistic Regression.joblib",
+        )
         assert len(_worksheet_values(wrapped_data / "Application Data Predicted.xlsx")) == len(rows) + 1
         assert result["artifact_count"] == len(_all_files(wrapped_run))
     assert _sha256(DATASET_PATH) == fixture_hash_before
@@ -748,6 +883,12 @@ async def test_stdio_mcp_matches_direct_public_cli_and_preserves_protocol() -> N
             result_call = await client.call_tool("get_run_result", {"run_id": run_id})
             assert result_call.is_error is False
             result = result_call.structured_content
+            full_result_call = await client.call_tool(
+                "get_run_result",
+                {"run_id": run_id, "detail": "full"},
+            )
+            assert full_result_call.is_error is False
+            full_result = full_result_call.structured_content
             protocol_still_healthy = await client.call_tool("get_capabilities", {})
             assert protocol_still_healthy.is_error is False
 
@@ -756,20 +897,39 @@ async def test_stdio_mcp_matches_direct_public_cli_and_preserves_protocol() -> N
         expected_files = _expected_output_files(manifest)
         assert _sha256(DATASET_PATH) == fixture_hash_before == result["input_sha256"]
         assert result["input_hash_verified"] is True
-        assert _all_files(direct_run) == expected_files
-        assert _all_files(wrapped_run) == expected_files
+        direct_files, wrapped_files = _assert_native_outputs_plus_scientific_evidence(
+            direct_run,
+            wrapped_run,
+            supervised=True,
+            training_fitted_scaling=True,
+        )
+        assert direct_files == expected_files
         for directory in ("artifacts", "metrics", "parameters", "summary"):
             assert (wrapped_run / directory).is_dir()
         assert _load_json(direct_run / "metrics" / "Model Score - Logistic Regression.txt") == _load_json(wrapped_run / "metrics" / "Model Score - Logistic Regression.txt")
         assert _load_json(direct_run / "metrics" / "Cross Validation - Logistic Regression.txt") == _load_json(wrapped_run / "metrics" / "Cross Validation - Logistic Regression.txt")
-        assert _load_json(direct_run / "parameters" / "Hyper Parameters - Logistic Regression.txt") == _load_json(wrapped_run / "parameters" / "Hyper Parameters - Logistic Regression.txt")
+        _assert_hyper_parameter_extension(
+            direct_run / "parameters" / "Hyper Parameters - Logistic Regression.txt",
+            wrapped_run / "parameters" / "Hyper Parameters - Logistic Regression.txt",
+            {
+                "dual": False,
+                "fit_intercept": True,
+                "intercept_scaling": 1,
+                "multi_class": "auto",
+                "n_jobs": None,
+                "random_state": 42,
+                "tol": 0.0001,
+                "verbose": 0,
+                "warm_start": False,
+            },
+        )
         assert _worksheet_values(direct_run / "artifacts" / "data" / "Y Test.xlsx") == _worksheet_values(wrapped_run / "artifacts" / "data" / "Y Test.xlsx")
         assert _worksheet_values(direct_run / "artifacts" / "data" / "Y Test Predict Decoded.xlsx") == _worksheet_values(wrapped_run / "artifacts" / "data" / "Y Test Predict Decoded.xlsx")
-        assert result["artifact_count"] == len(expected_files)
-        assert Path(result["interaction_trace"]).is_file()
-        assert Path(result["cli_stdout_log"]).is_file()
-        assert Path(result["cli_stderr_log"]).is_file()
-        assert _load_json(Path(result["interaction_trace"]))["metadata"] == {
+        assert result["artifact_count"] == len(wrapped_files)
+        assert Path(full_result["interaction_trace"]).is_file()
+        assert Path(full_result["cli_stdout_log"]).is_file()
+        assert Path(full_result["cli_stderr_log"]).is_file()
+        assert _load_json(Path(full_result["interaction_trace"]))["metadata"] == {
             "geochemistrypi_mcp_version": SERVER_VERSION,
             "geochemistrypi_cli_version": CLI_VERSION,
         }
@@ -876,7 +1036,12 @@ async def test_stdio_mcp_regression_matches_direct_cli_with_application_data() -
         assert result["task"] == "regression"
         assert result["model"] == "linear_regression"
         assert result["application_input_hash_verified"] is True
-        assert _all_files(direct_run) == _all_files(wrapped_run)
+        assert plan.scientific_execution_contract_json is None
+        _assert_native_outputs_plus_scientific_evidence(
+            direct_run,
+            wrapped_run,
+            scientific_execution_evidence=False,
+        )
         direct_metrics = _load_json(direct_run / "metrics" / "Model Score - Linear Regression.txt")
         wrapped_metrics = _load_json(wrapped_run / "metrics" / "Model Score - Linear Regression.txt")
         assert direct_metrics == wrapped_metrics
@@ -981,7 +1146,7 @@ async def test_stdio_mcp_clustering_matches_direct_public_cli() -> None:
         assert result["model"] == "kmeans"
         assert result["tuning"] == "not_applicable"
         assert result["application_input_sha256"] is None
-        assert _all_files(direct_run) == _all_files(wrapped_run)
+        _assert_native_outputs_plus_scientific_evidence(direct_run, wrapped_run)
         assert _load_json(direct_run / "metrics" / "Model Score - KMeans.txt") == _load_json(wrapped_run / "metrics" / "Model Score - KMeans.txt")
         direct_silhouette_scores = _load_json(direct_run / "metrics" / "KMeans - Silhouette Scores.txt")
         wrapped_silhouette_scores = _load_json(wrapped_run / "metrics" / "KMeans - Silhouette Scores.txt")
@@ -1087,8 +1252,20 @@ async def test_stdio_mcp_decomposition_matches_direct_public_cli() -> None:
         assert result["tuning"] == "not_applicable"
         assert result["application_input_sha256"] is None
         assert result["reported_metrics"] == {}
-        assert _all_files(direct_run) == _all_files(wrapped_run)
-        assert _load_json(direct_run / "parameters" / "Hyper Parameters - PCA.txt") == _load_json(wrapped_run / "parameters" / "Hyper Parameters - PCA.txt")
+        _assert_native_outputs_plus_scientific_evidence(direct_run, wrapped_run)
+        _assert_hyper_parameter_extension(
+            direct_run / "parameters" / "Hyper Parameters - PCA.txt",
+            wrapped_run / "parameters" / "Hyper Parameters - PCA.txt",
+            {
+                "copy": True,
+                "iterated_power": "auto",
+                "n_oversamples": 10,
+                "power_iteration_normalizer": "auto",
+                "random_state": 42,
+                "tol": 0.0,
+                "whiten": False,
+            },
+        )
         assert _worksheet_values(direct_run / "artifacts" / "data" / "X Reduced.xlsx") == _worksheet_values(wrapped_run / "artifacts" / "data" / "X Reduced.xlsx")
         assert _worksheet_values(direct_run / "artifacts" / "image" / "model_output" / "Compositional Bi-plot - PC Data.xlsx") == _worksheet_values(
             wrapped_run / "artifacts" / "image" / "model_output" / "Compositional Bi-plot - PC Data.xlsx"
@@ -1202,8 +1379,17 @@ async def test_stdio_mcp_anomaly_detection_matches_direct_public_cli() -> None:
         assert result["tuning"] == "not_applicable"
         assert result["application_input_sha256"] is None
         assert result["reported_metrics"] == {}
-        assert _all_files(direct_run) == _all_files(wrapped_run)
-        assert _load_json(direct_run / "parameters" / "Hyper Parameters - Isolation Forest.txt") == _load_json(wrapped_run / "parameters" / "Hyper Parameters - Isolation Forest.txt")
+        _assert_native_outputs_plus_scientific_evidence(direct_run, wrapped_run)
+        _assert_hyper_parameter_extension(
+            direct_run / "parameters" / "Hyper Parameters - Isolation Forest.txt",
+            wrapped_run / "parameters" / "Hyper Parameters - Isolation Forest.txt",
+            {
+                "n_jobs": None,
+                "random_state": 42,
+                "verbose": 0,
+                "warm_start": False,
+            },
+        )
         assert _worksheet_values(direct_run / "artifacts" / "data" / "X Abnormal Detection.xlsx") == _worksheet_values(wrapped_run / "artifacts" / "data" / "X Abnormal Detection.xlsx")
         assert _worksheet_values(direct_run / "artifacts" / "data" / "X Abnormal.xlsx") == _worksheet_values(wrapped_run / "artifacts" / "data" / "X Abnormal.xlsx")
         for artifact_name in (

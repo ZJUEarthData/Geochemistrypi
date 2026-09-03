@@ -88,6 +88,45 @@ def test_experiment_manager_sanitizes_cli_failures(tmp_path: Path, monkeypatch) 
         ExperimentManager(settings).get(GetExperimentRequest(experiment_id="404"))
 
 
+def test_experiment_manager_applies_bridge_limit_to_utf8_bytes(tmp_path: Path, monkeypatch) -> None:
+    settings = _settings(tmp_path)
+    monkeypatch.setattr(McpSettings, "require_supported_cli", lambda self: (self.cli_executable, CLI_VERSION))
+    multibyte_output = "界" * 700_000
+    assert len(multibyte_output) < 2_000_000
+    assert len(multibyte_output.encode("utf-8")) > 2_000_000
+    monkeypatch.setattr(
+        "geochemistrypi_mcp.tracking.experiments.subprocess.run",
+        lambda command, **kwargs: subprocess.CompletedProcess(command, 0, multibyte_output, ""),
+    )
+
+    with pytest.raises(ExperimentStoreError, match="exceeded the 2 MB safety limit"):
+        ExperimentManager(settings).list(ListExperimentsRequest())
+
+
+def test_experiment_manager_owns_cli_response_schema_failures(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings = _settings(tmp_path)
+    monkeypatch.setattr(
+        McpSettings,
+        "require_supported_cli",
+        lambda self: (self.cli_executable, CLI_VERSION),
+    )
+    monkeypatch.setattr(
+        "geochemistrypi_mcp.tracking.experiments.subprocess.run",
+        lambda command, **kwargs: subprocess.CompletedProcess(
+            command,
+            0,
+            json.dumps({"schema_version": 1, "experiments": "not-an-array"}),
+            "",
+        ),
+    )
+
+    with pytest.raises(ExperimentStoreError, match="public response contract"):
+        ExperimentManager(settings).list(ListExperimentsRequest(maximum_experiments=4))
+
+
 def test_existing_experiment_name_mismatch_fails_before_dataset_or_cli_execution(tmp_path: Path) -> None:
     class MismatchStore:
         def require_matching_name(self, experiment_id: str, expected_name: str):

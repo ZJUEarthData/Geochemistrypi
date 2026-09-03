@@ -1636,7 +1636,7 @@ class RandomForestRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         self.ccp_alpha = ccp_alpha
         self.max_samples = max_samples
 
-        if random_state:
+        if random_state is not None:
             self.random_state = random_state
 
         # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
@@ -2095,7 +2095,7 @@ class MLPRegression(RegressionWorkflowBase):
         self.epsilon = epsilon
         self.n_iter_no_change = n_iter_no_change
 
-        if random_state:
+        if random_state is not None:
             self.random_state = random_state
 
         # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
@@ -2764,7 +2764,7 @@ class GradientBoostingRegression(TreeWorkflowMixin, RegressionWorkflowBase):
         self.tol = tol
         self.ccp_alpha = ccp_alpha
 
-        if random_state:
+        if random_state is not None:
             self.random_state = random_state
 
         # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
@@ -2985,7 +2985,7 @@ class LassoRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         self.positive = positive
         self.selection = selection
 
-        if random_state:
+        if random_state is not None:
             self.random_state = random_state
 
         # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
@@ -3348,7 +3348,7 @@ class ElasticNetRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         self.positive = positive
         self.selection = selection
 
-        if random_state:
+        if random_state is not None:
             self.random_state = random_state
 
         # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
@@ -3803,7 +3803,7 @@ class SGDRegression(LinearWorkflowMixin, RegressionWorkflowBase):
         self.warm_start = warm_start
         self.average = average
 
-        if random_state:
+        if random_state is not None:
             self.random_state = random_state
 
         # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'

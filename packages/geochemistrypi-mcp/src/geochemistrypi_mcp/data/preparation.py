@@ -495,6 +495,7 @@ def _materialize(
     destination: Path,
     maximum_columns: int,
     allow_pandas_duplicate_mangling: bool,
+    preserve_source_columns_for_cli: bool = False,
 ) -> dict[str, Any]:
     if contract.worksheets:
         return _materialize_worksheet_union(
@@ -504,10 +505,13 @@ def _materialize(
             maximum_columns,
             allow_pandas_duplicate_mangling,
         )
-    raw_header, rows, worksheet, first_data_row_number = _open_table(source, contract)
-    output_header = tuple(contract.selected_columns)
-    source_row_column = contract.source_row_column
-    source_contract = contract
+    materialization_contract = contract
+    if preserve_source_columns_for_cli:
+        materialization_contract = contract.model_copy(update={"selected_columns": (), "excluded_columns": ()})
+    raw_header, rows, worksheet, first_data_row_number = _open_table(source, materialization_contract)
+    output_header = tuple(materialization_contract.selected_columns)
+    source_row_column = materialization_contract.source_row_column
+    source_contract = materialization_contract
     if source_row_column is not None:
         source_columns = tuple(column for column in output_header if column != source_row_column)
         if not source_columns:
@@ -593,6 +597,7 @@ def _materialize(
         "empty_header_policy": contract.empty_header_policy,
         "duplicate_header_policy": contract.duplicate_header_policy,
         "selected_columns": list(selected_header),
+        "cli_staging_preserves_source_columns": preserve_source_columns_for_cli,
         "input_row_count": input_row_count,
         "source_row_count": row_count,
         "filtered_row_count": input_row_count - row_count,
@@ -632,6 +637,7 @@ def prepare_dataset_view(
     maximum_columns: int,
     *,
     allow_pandas_duplicate_mangling: bool = False,
+    preserve_source_columns_for_cli: bool = False,
 ) -> PreparedDataset:
     """Create or reuse a deterministic CSV view without changing the source file."""
     contract_value = contract.model_dump(mode="json")
@@ -709,6 +715,7 @@ def prepare_dataset_view(
         "source_sha256": source_snapshot.sha256,
         "source_format": source_snapshot.format,
         "contract": contract_value,
+        "preserve_source_columns_for_cli": preserve_source_columns_for_cli,
     }
     contract_hash = _canonical_sha256(identity)
     cache_root = Path(state_root).resolve() / "prepared-datasets"
@@ -725,6 +732,7 @@ def prepare_dataset_view(
         destination,
         maximum_columns,
         allow_pandas_duplicate_mangling,
+        preserve_source_columns_for_cli,
     )
     prepared_snapshot = snapshot_dataset(destination, maximum_bytes)
     record = {
@@ -753,8 +761,14 @@ def prepare_dataset_view(
                 (bool(contract.worksheets), "union_worksheets_by_rows"),
                 (contract.header_row_index != 0, "select_header_row"),
                 (bool(contract.header_row_indices), "compose_header_rows"),
-                (bool(contract.selected_columns), "select_columns"),
-                (bool(contract.excluded_columns), "exclude_columns"),
+                (
+                    bool(contract.selected_columns) and not preserve_source_columns_for_cli,
+                    "select_columns",
+                ),
+                (
+                    bool(contract.excluded_columns) and not preserve_source_columns_for_cli,
+                    "exclude_columns",
+                ),
                 (bool(contract.filters), "filter_rows"),
                 (contract.source_row_column is not None, "generate_source_row_column"),
                 (contract.row_identity.strategy != "source_row", "verify_row_identity"),

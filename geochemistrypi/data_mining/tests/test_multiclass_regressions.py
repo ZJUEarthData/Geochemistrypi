@@ -6,6 +6,7 @@ from contextlib import ExitStack
 from unittest.mock import patch
 
 import matplotlib
+import mlflow
 import numpy as np
 import pandas as pd
 import pytest
@@ -22,14 +23,277 @@ from sklearn.tree import DecisionTreeClassifier
 from geochemistrypi.cli import app
 from geochemistrypi.data_mining.data.data_readiness import create_sub_data_set, data_split
 from geochemistrypi.data_mining.model._base import TreeWorkflowMixin
-from geochemistrypi.data_mining.model.classification import ClassificationWorkflowBase, LogisticRegressionClassification, MLPClassification, SGDClassification, XGBoostClassification
+from geochemistrypi.data_mining.model.classification import (
+    ClassificationWorkflowBase,
+    ExtraTreesClassification,
+    LogisticRegressionClassification,
+    MLPClassification,
+    SGDClassification,
+    XGBoostClassification,
+)
 from geochemistrypi.data_mining.model.func._common_supervised import plot_decision_tree
-from geochemistrypi.data_mining.model.func.algo_classification._common import score
+from geochemistrypi.data_mining.model.func.algo_classification._common import cross_validation, plot_precision_recall, plot_precision_recall_threshold, plot_ROC, score
 from geochemistrypi.data_mining.model.func.algo_classification._logistic_regression import plot_logistic_importance
 from geochemistrypi.data_mining.model.func.algo_regression._common import display_cross_validation_scores
 from geochemistrypi.data_mining.model.regression import MLPRegression, RidgeRegression
+from geochemistrypi.data_mining.process import classify as classification_process
+from geochemistrypi.data_mining.process.classify import ClassificationModelSelection
+from geochemistrypi.scientific_execution import resolve_classification_metric_configuration
 
 matplotlib.use("Agg")
+
+
+def test_typed_positive_label_resolves_numeric_one_separately_from_string_one() -> None:
+    label_config = {
+        "typed_label_records": [
+            {"semantic_label": {"type": "integer", "value": 1}, "encoded_label": 0},
+            {"semantic_label": {"type": "string", "value": "1"}, "encoded_label": 1},
+        ]
+    }
+
+    numeric = resolve_classification_metric_configuration(
+        label_config,
+        "binary",
+        {"type": "integer", "value": 1},
+    )
+    textual = resolve_classification_metric_configuration(
+        label_config,
+        "binary",
+        {"type": "string", "value": "1"},
+    )
+
+    assert numeric["aggregate_encoded_positive_label"] == 0
+    assert numeric["curve_encoded_positive_label"] == 0
+    assert textual["aggregate_encoded_positive_label"] == 1
+    assert textual["curve_encoded_positive_label"] == 1
+
+
+def test_binary_metric_consumers_use_resolved_encoded_zero_and_probability_column_zero() -> None:
+    configuration = {
+        "schema_version": 2,
+        "requested_average": "binary",
+        "effective_average": "binary",
+        "requested_positive_label": {"type": "integer", "value": 10},
+        "aggregate_semantic_positive_label": {"type": "integer", "value": 10},
+        "aggregate_encoded_positive_label": 0,
+        "curve_semantic_positive_label": {"type": "integer", "value": 10},
+        "curve_encoded_positive_label": 0,
+        "curve_probability_column_index": None,
+        "consumers": {},
+    }
+    y_true = pd.DataFrame({"Label": [0, 0, 1, 1]})
+    y_predict = pd.DataFrame({"Label": [0, 1, 1, 1]})
+
+    _, observed = score(y_true, y_predict, average="binary", interactive=False, metric_configuration=configuration)
+
+    assert observed["Precision"] == pytest.approx(1.0)
+    assert observed["Recall"] == pytest.approx(0.5)
+    assert configuration["consumers"]["holdout_score"]["aggregate_encoded_positive_label"] == 0
+
+    class _ProbabilityModel:
+        classes_ = np.array([0, 1])
+
+        @staticmethod
+        def predict_proba(X):
+            return np.array([[0.8, 0.2], [0.3, 0.7], [0.6, 0.4], [0.1, 0.9]])
+
+    probabilities, *_ = plot_ROC(
+        pd.DataFrame({"x": [1, 2, 3, 4]}),
+        y_true,
+        _ProbabilityModel(),
+        "ROC",
+        "Test",
+        metric_configuration=configuration,
+    )
+
+    assert probabilities.tolist() == pytest.approx([0.8, 0.3, 0.6, 0.1])
+    assert configuration["curve_probability_column_index"] == 0
+    assert configuration["consumers"]["roc"]["curve_encoded_positive_label"] == 0
+
+
+def test_cross_validation_uses_resolved_binary_positive_label() -> None:
+    assert mlflow.active_run() is None
+    configuration = {
+        "schema_version": 2,
+        "requested_average": "binary",
+        "effective_average": "binary",
+        "requested_positive_label": {"type": "integer", "value": 10},
+        "aggregate_semantic_positive_label": {"type": "integer", "value": 10},
+        "aggregate_encoded_positive_label": 0,
+        "curve_semantic_positive_label": {"type": "integer", "value": 10},
+        "curve_encoded_positive_label": 0,
+        "curve_probability_column_index": None,
+        "consumers": {},
+    }
+    X = pd.DataFrame({"x": [-4, -3, -2, -1, 1, 2, 3, 4], "z": [0, 1, 0, 1, 0, 1, 0, 1]})
+    y = pd.DataFrame({"Label": [0, 0, 0, 0, 1, 1, 1, 1]})
+
+    observed = cross_validation(
+        LogisticRegression(random_state=0),
+        X,
+        y,
+        average="binary",
+        cv_num=2,
+        metric_configuration=configuration,
+    )
+
+    assert observed["Positive Label"] == 0
+    assert configuration["consumers"]["cross_validation"]["aggregate_encoded_positive_label"] == 0
+    assert mlflow.active_run() is None
+
+
+def test_extra_trees_selection_routes_manual_values_through_constructor_contract(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    class _StopBeforeFit(RuntimeError):
+        pass
+
+    constructor_call = {}
+    estimator_arguments = {}
+
+    class _ScientificExecution:
+        classification_metric_average = "auto"
+        classification_positive_label = None
+
+        @staticmethod
+        def constructor_parameters(
+            method,
+            legacy,
+            *,
+            workflow_family,
+            workflow_mode,
+            class_count=None,
+        ):
+            constructor_call.update(
+                {
+                    "method": method,
+                    "legacy": dict(legacy),
+                    "workflow_family": workflow_family,
+                    "workflow_mode": workflow_mode,
+                    "class_count": class_count,
+                }
+            )
+            return {**legacy, "n_estimators": 321, "max_depth": 9, "random_state": 2025}
+
+    class _ExtraTreesWorkflow:
+        @staticmethod
+        def manual_hyper_parameters():
+            return {
+                "n_estimators": 100,
+                "max_depth": 4,
+                "min_samples_split": 2,
+                "min_samples_leaf": 1,
+                "max_features": 2,
+                "bootstrap": True,
+                "oob_score": True,
+                "max_samples": 0.8,
+            }
+
+        def __init__(self, **parameters):
+            estimator_arguments.update(parameters)
+
+        @staticmethod
+        def show_info():
+            raise _StopBeforeFit
+
+    monkeypatch.setattr(classification_process, "ExtraTreesClassification", _ExtraTreesWorkflow)
+    monkeypatch.setenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH", str(tmp_path / "data"))
+    selection = ClassificationModelSelection(
+        "Extra-Trees",
+        label_config={
+            "typed_label_records": [
+                {"semantic_label": {"type": "string", "value": "a"}, "encoded_label": 0},
+                {"semantic_label": {"type": "string", "value": "b"}, "encoded_label": 1},
+            ]
+        },
+        labels_already_customized=True,
+    )
+    selection.scientific_execution = _ScientificExecution()
+    X = pd.DataFrame({"x": [1.0, 2.0], "z": [3.0, 4.0]})
+    y = pd.DataFrame({"Label": [0, 1]})
+    names = pd.Series(["S-1", "S-2"])
+
+    with pytest.raises(_StopBeforeFit):
+        selection.activate(X, y, X, X, y, y, names, names, names)
+
+    assert constructor_call == {
+        "method": "extra_trees",
+        "legacy": {
+            "n_estimators": 100,
+            "max_depth": 4,
+            "min_samples_split": 2,
+            "min_samples_leaf": 1,
+            "max_features": 2,
+            "bootstrap": True,
+            "oob_score": True,
+            "max_samples": 0.8,
+        },
+        "workflow_family": "supervised_learning",
+        "workflow_mode": "classification",
+        "class_count": None,
+    }
+    assert estimator_arguments["n_estimators"] == 321
+    assert estimator_arguments["max_depth"] == 9
+    assert estimator_arguments["random_state"] == 2025
+
+
+def test_extra_trees_preserves_zero_as_an_explicit_model_seed() -> None:
+    workflow = ExtraTreesClassification(random_state=0)
+
+    assert workflow.model.get_params(deep=False)["random_state"] == 0
+
+
+@pytest.mark.parametrize("average", ["micro", "macro", "weighted"])
+def test_non_binary_aggregate_metrics_keep_binary_curve_positive_class_separate(average: str) -> None:
+    configuration = resolve_classification_metric_configuration(
+        {
+            "typed_label_records": [
+                {"semantic_label": {"type": "string", "value": "first"}, "encoded_label": 0},
+                {"semantic_label": {"type": "string", "value": "second"}, "encoded_label": 1},
+            ]
+        },
+        requested_average=average,
+    )
+    y_true = pd.DataFrame({"Label": [0, 0, 1, 1]})
+    y_predict = pd.DataFrame({"Label": [0, 1, 1, 1]})
+
+    class _ProbabilityModel:
+        classes_ = np.array([0, 1])
+
+        @staticmethod
+        def predict_proba(X):
+            return np.array([[0.8, 0.2], [0.3, 0.7], [0.6, 0.4], [0.1, 0.9]])
+
+    _, observed = score(
+        y_true,
+        y_predict,
+        average=average,
+        interactive=False,
+        metric_configuration=configuration,
+    )
+    for curve in (plot_precision_recall, plot_precision_recall_threshold, plot_ROC):
+        probabilities, *_ = curve(
+            pd.DataFrame({"x": [1, 2, 3, 4]}),
+            y_true,
+            _ProbabilityModel(),
+            "Curve",
+            "Test",
+            metric_configuration=configuration,
+        )
+        assert probabilities.tolist() == pytest.approx([0.2, 0.7, 0.4, 0.9])
+
+    assert observed["Average Method"] == average
+    assert observed["Positive Label"] is None
+    assert configuration["aggregate_encoded_positive_label"] is None
+    assert configuration["curve_encoded_positive_label"] == 1
+    assert configuration["curve_probability_column_index"] == 1
+    assert configuration["consumers"]["holdout_score"] == {
+        "consumer_kind": "aggregate_metric",
+        "effective_average": average,
+        "aggregate_encoded_positive_label": None,
+    }
+    assert {configuration["consumers"][name]["consumer_kind"] for name in ("precision_recall", "precision_recall_threshold", "roc")} == {"binary_curve"}
 
 
 def test_typer_app_can_build_command() -> None:
@@ -145,6 +409,22 @@ def test_customize_label_returns_encoded_train_test_without_mapping() -> None:
     assert sorted(y_train_encoded["Target"].unique().tolist()) == [0, 1, 2]
     assert sorted(y_test_encoded["Target"].unique().tolist()) == [0, 1, 2]
     assert config["code_to_custom_label"] == {"0": "10", "1": "20", "2": "30"}
+
+
+def test_customize_label_preserves_typed_numeric_and_string_label_identities() -> None:
+    y = pd.DataFrame({"Target": pd.Series([1, "1", 1, "1"], dtype=object)})
+
+    y_encoded, config = ClassificationWorkflowBase.customize_label(
+        y,
+        interactive=False,
+        return_config=True,
+    )
+
+    assert y_encoded["Target"].tolist() == [0, 1, 0, 1]
+    assert config["typed_label_records"] == [
+        {"semantic_label": {"type": "integer", "value": 1}, "encoded_label": 0, "count": 2},
+        {"semantic_label": {"type": "string", "value": "1"}, "encoded_label": 1, "count": 2},
+    ]
 
 
 def test_interval_label_encoding_follows_user_label_order() -> None:
@@ -593,6 +873,7 @@ def test_cli_dependency_check_does_not_install_map_packages_at_runtime() -> None
         stack.enter_context(patch.object(cli_module.Confirm, "ask", side_effect=stop_after_dependency_check))
         with pytest.raises(StopAfterDependencyCheck):
             cli_module.cli_pipeline("", "", DataSource.ANY_PATH)
+    assert cli_module.mlflow.active_run() is None
 
 
 def test_plot_decision_tree_accepts_default_none_node_ids() -> None:

@@ -85,8 +85,9 @@ def display_cross_validation_scores(scores: np.ndarray, score_name: str) -> Dict
     print("Scores:", cv_scores["Fold Scores"])
     print("Mean:", cv_scores["Mean"])
     print("Standard deviation:", cv_scores["Standard Deviation"])
-    mlflow.log_metric(f"CV - {score_name} - Mean", cv_scores["Mean"])
-    mlflow.log_metric(f"CV - {score_name} - Standard Deviation", cv_scores["Standard Deviation"])
+    if mlflow.active_run() is not None:
+        mlflow.log_metric(f"CV - {score_name} - Mean", cv_scores["Mean"])
+        mlflow.log_metric(f"CV - {score_name} - Standard Deviation", cv_scores["Standard Deviation"])
     return cv_scores
 
 

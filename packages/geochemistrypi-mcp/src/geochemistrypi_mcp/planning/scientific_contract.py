@@ -24,6 +24,22 @@ def _decoded_parameter_entries(entries: tuple[tuple[str, str], ...]) -> dict[str
     return {name: json.loads(value) for name, value in entries}
 
 
+def _semantic_label_identity(value: Any) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        kind = "boolean"
+    elif isinstance(value, int):
+        kind = "integer"
+    elif isinstance(value, float):
+        kind = "number"
+    elif isinstance(value, str):
+        kind = "string"
+    else:
+        raise TypeError(f"Unsupported semantic label type: {type(value).__name__}")
+    return {"type": kind, "value": value}
+
+
 def resolved_environment_profile(request: Any) -> dict[str, Any]:
     """Normalize the named profile or legacy inline environment without merging them."""
     profile = getattr(request, "environment_profile", None)
@@ -194,12 +210,16 @@ def _parameters(request: Any) -> dict[str, Any]:
             "join_policy": "exact_identifier_set_one_to_one",
             "positive_label_values": list(request.positive_label_values),
         }
-    return {
+    parameters = {
         "model_selection": request.model_selection.model_dump(mode="json"),
         "model": request.model.model_dump(mode="json"),
         "test_ratio": getattr(request, "test_ratio", None),
         "tuning": getattr(request, "tuning", "not_applicable"),
     }
+    if request.task == "classification":
+        parameters["metric_average"] = request.metric_average
+        parameters["positive_label"] = _semantic_label_identity(request.positive_label)
+    return parameters
 
 
 def _artifact_category(relative_path: str) -> str | None:
@@ -277,6 +297,12 @@ def describe_scientific_output(relative_path: str, workflow_family: str | None =
         elif "metric configuration" in name:
             scientific_type = "evaluation_configuration"
             output_role = "evaluation.configuration"
+    elif "scientific execution attestation" in name:
+        scientific_type = "parameter_attestation"
+        output_role = "provenance.parameters.attested"
+    elif name == "target label mapping.xlsx":
+        scientific_type = "target_label_mapping"
+        output_role = "classification.target_label_mapping"
     elif category == "parameters":
         scientific_type = "parameter_record"
         output_role = "provenance.parameters"
@@ -409,8 +435,6 @@ def artifact_requirement_matches(requirement: ArtifactRequirement, descriptor: d
 
 def planned_artifact_requirements(request: Any, plan: InteractionPlan) -> tuple[ArtifactRequirement, ...]:
     """Bind explicit requirements or derive stable requirements from the CLI plan."""
-    if request.artifact_requirements:
-        return tuple(request.artifact_requirements)
     requirements = []
     for descriptor in adapter_output_descriptors(plan):
         identity = {
@@ -418,6 +442,22 @@ def planned_artifact_requirements(request: Any, plan: InteractionPlan) -> tuple[
             "scientific_type": descriptor["scientific_type"],
             "output_role": descriptor["output_role"],
         }
+        required_json_keys = (
+            (
+                "schema_version",
+                "contract.source_sha256",
+                "effective_model_parameters",
+                "verified_parameter_names",
+                "estimator_identity.expected.module_root",
+                "estimator_identity.expected.class_name",
+                "estimator_identity.observed.module",
+                "estimator_identity.observed.qualname",
+                "verification_status",
+                "attestation_sha256",
+            )
+            if descriptor["scientific_type"] == "parameter_attestation"
+            else ()
+        )
         requirements.append(
             ArtifactRequirement(
                 requirement_id=f"planned.{canonical_sha256(identity)[:16]}",
@@ -426,9 +466,24 @@ def planned_artifact_requirements(request: Any, plan: InteractionPlan) -> tuple[
                 category=descriptor["category"],
                 media_types=(descriptor["media_type"],),
                 expected_relative_path=descriptor["relative_path"],
+                required_json_keys=required_json_keys,
             )
         )
-    return tuple(requirements)
+    derived = tuple(requirements)
+    if not request.artifact_requirements:
+        return derived
+    combined = list(request.artifact_requirements)
+    system_requirements = tuple(requirement for requirement in derived if plan.scientific_execution_contract_json is not None and requirement.scientific_type == "parameter_attestation")
+    for system_requirement in system_requirements:
+        collision = next(
+            (requirement for requirement in combined if requirement.requirement_id == system_requirement.requirement_id),
+            None,
+        )
+        if collision is None:
+            combined.append(system_requirement)
+        elif collision != system_requirement:
+            raise ValueError("A caller-declared artifact requirement conflicts with the immutable " "scientific execution attestation requirement.")
+    return tuple(combined)
 
 
 def canonical_scientific_contract(request: Any, plan: InteractionPlan) -> dict[str, Any]:
@@ -547,6 +602,20 @@ def assess_scientific_compatibility(
         if evaluation.split_strategy not in {"cli_default", effective_split}:
             blockers.append(f"Requested split strategy {evaluation.split_strategy!r} does not match the CLI adapter's " f"effective {effective_split!r} strategy.")
             scientific_unmet = True
+    if request.task == "classification":
+        configured_execution = json.loads(plan.scientific_execution_contract_json) if plan.scientific_execution_contract_json is not None else {}
+        configured_average = configured_execution.get("classification_metric_average")
+        configured_positive = configured_execution.get("classification_positive_label")
+        expected_positive = _semantic_label_identity(request.positive_label)
+        if plan.scientific_execution_contract_json is not None and (configured_average != request.metric_average or configured_positive != expected_positive):
+            blockers.append("Classification metric averaging and positive-label semantics were not preserved in the scientific execution contract.")
+            scientific_unmet = True
+        interaction_binds_average = any(step.id == "metric_average" for step in plan.steps)
+        if plan.scientific_execution_contract_json is None and (
+            request.positive_label is not None or request.metric_average == "binary" or (request.metric_average != "auto" and not interaction_binds_average)
+        ):
+            blockers.append("The selected CLI adapter cannot bind the requested classification metric/positive-label contract.")
+            scientific_unmet = True
     has_metric_output = any(_artifact_category(relative_path) == "metrics" for relative_path in plan.expected_output_relative_paths)
     evaluation_metrics = getattr(evaluation, "metrics", ())
     comparison_is_post_run = evaluation.mode == "reference_comparison"
@@ -586,6 +655,10 @@ def assess_scientific_compatibility(
         elif effective_seeds[role] != requested:
             blockers.append(f"Requested {role} seed {requested} does not match the CLI adapter's effective value {effective_seeds[role]}.")
             scientific_unmet = True
+    deterministic_policy = getattr(reproducibility, "deterministic_policy", "adapter_default")
+    if deterministic_policy in {"fixed_seed_required", "fixed_seed_and_dependency_required"} and plan.seed_binding == "unbound":
+        blockers.append(f"{deterministic_policy} cannot be satisfied because one or more stochastic CLI stages do not expose an effective seed for attestation.")
+        scientific_unmet = True
 
     requested_model = _decoded_parameter_entries(plan.requested_model_parameters)
     effective_model = _decoded_parameter_entries(plan.effective_model_parameters)
@@ -672,7 +745,7 @@ def assess_scientific_compatibility(
             blockers.append(f"Dependency {package!r} does not match the requested exact version {exact!r}.")
             scientific_unmet = True
             environment_mismatch = True
-    if getattr(reproducibility, "deterministic_policy", "adapter_default") == "fixed_seed_and_dependency_required" and environment["expected_identity_sha256"] is None:
+    if deterministic_policy == "fixed_seed_and_dependency_required" and environment["expected_identity_sha256"] is None:
         blockers.append("fixed_seed_and_dependency_required needs an expected CLI environment identity.")
         scientific_unmet = True
         environment_mismatch = True

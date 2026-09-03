@@ -68,6 +68,7 @@ def test_every_public_decomposition_family_compiles(model_name: str) -> None:
     assert not supervised_steps.intersection(responses)
     assert any(Path(path).name == f"{MODEL_DISPLAY_NAMES[model_name]}.joblib" for path in plan.expected_output_relative_paths)
     assert any(Path(path).name == "X Reduced.xlsx" for path in plan.expected_output_relative_paths)
+    assert any(Path(path).name == f"Hyper Parameters - {MODEL_DISPLAY_NAMES[model_name]}.txt" for path in plan.expected_output_relative_paths)
 
 
 @pytest.mark.parametrize(
@@ -152,7 +153,9 @@ def test_pca_component_selection_branches_match_public_cli() -> None:
     } <= four_ids
 
 
-def test_decomposition_rejects_invalid_data_and_model_dimensions(tmp_path: Path) -> None:
+def test_decomposition_rejects_invalid_data_and_model_dimensions(
+    tmp_path: Path,
+) -> None:
     with pytest.raises(PlanCompilationError, match="exceeds min"):
         DecompositionPlanCompiler().compile(
             _request(model={"type": "pca", "number_of_components": 4}),
@@ -206,8 +209,9 @@ def test_decomposition_schema_rejects_supervised_and_unavailable_inputs() -> Non
         with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
             _request(**{field: value})
 
-    with pytest.raises(ValidationError, match="no decomposition models"):
+    with pytest.raises(ValidationError) as exc_info:
         _request(missing_values={"method": "keep"})
+    assert {error["type"] for error in exc_info.value.errors()} == {"union_tag_invalid"}
     with pytest.raises(ValidationError, match="union_tag_invalid"):
         _request(model={"type": "umap"})
 

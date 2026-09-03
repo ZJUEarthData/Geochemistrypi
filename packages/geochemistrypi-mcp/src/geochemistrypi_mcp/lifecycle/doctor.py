@@ -393,6 +393,10 @@ def _cli_contract_check(paths: SetupPaths, runner: CommandRunner) -> DoctorCheck
             "--scientific-config",
         ),
         (
+            (str(paths.cli_command), "scientific-config", "--help"),
+            None,
+        ),
+        (
             (str(paths.cli_command), "reference-anomaly-time-series", "--help"),
             None,
         ),
