@@ -73,6 +73,7 @@ def test_every_public_cli_clustering_family_compiles_a_plan(
         f"{MODEL_DISPLAY_NAMES[model_name]}.joblib",
     )
     assert any(Path(path).name == f"Cluster Labels - {MODEL_DISPLAY_NAMES[model_name]}.xlsx" for path in plan.expected_output_relative_paths)
+    assert any(Path(path).name == f"Hyper Parameters - {MODEL_DISPLAY_NAMES[model_name]}.txt" for path in plan.expected_output_relative_paths)
 
 
 @pytest.mark.parametrize(
@@ -218,8 +219,9 @@ def test_clustering_schema_rejects_supervised_and_internal_only_inputs() -> None
         with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
             _request(**{field: value})
 
-    with pytest.raises(ValidationError, match="no clustering models"):
+    with pytest.raises(ValidationError) as exc_info:
         _request(missing_values={"method": "keep"})
+    assert {error["type"] for error in exc_info.value.errors()} == {"union_tag_invalid"}
     with pytest.raises(ValidationError, match="union_tag_invalid"):
         _request(model={"type": "optics"})
 

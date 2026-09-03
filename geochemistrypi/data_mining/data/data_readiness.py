@@ -326,7 +326,14 @@ def create_sub_data_set(data: pd.DataFrame, allow_empty_columns: bool = False, r
     return sub_data_set
 
 
-def data_split(X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], names: pd.DataFrame, test_size: float = 0.2, stratify: Optional[Union[pd.DataFrame, pd.Series]] = None) -> Dict:
+def data_split(
+    X: pd.DataFrame,
+    y: Union[pd.DataFrame, pd.Series],
+    names: pd.DataFrame,
+    test_size: float = 0.2,
+    stratify: Optional[Union[pd.DataFrame, pd.Series]] = None,
+    random_state: int = 42,
+) -> Dict:
     """Split arrays or matrices into random train and test subsets.
 
     Parameters
@@ -363,7 +370,7 @@ def data_split(X: pd.DataFrame, y: Union[pd.DataFrame, pd.Series], names: pd.Dat
         y,
         names,
         test_size=test_size,
-        random_state=42,
+        random_state=random_state,
         stratify=stratify_values,
     )
     return {"X Train": X_train, "X Test": X_test, "Y Train": y_train, "Y Test": y_test, "Name Train": name_train, "Name Test": name_test}
@@ -407,6 +414,25 @@ def num_input(prefix: Optional[str] = None, slogan: Optional[str] = "@Number: ")
         else:
             print("Caution: The input is not a positive integer number. Please input the right number again!")
     return option
+
+
+def optional_num_input(
+    prefix: Optional[str] = None,
+    slogan: Optional[str] = "@Number (blank for None): ",
+) -> Optional[int]:
+    """Read a positive integer or an explicit blank ``None`` value.
+
+    Tree estimators use ``None`` to mean that nodes may expand without a
+    configured maximum depth.  Keeping that value typed at the CLI boundary
+    prevents automation from substituting an arbitrary numeric sentinel.
+    """
+    while True:
+        raw_value = input(f"({prefix}) ➜ {slogan}").strip()
+        if raw_value == "":
+            return None
+        if raw_value.isdigit() and int(raw_value) > 0:
+            return int(raw_value)
+        print("Caution: enter a positive integer, or leave the value blank for None.")
 
 
 def np2pd(array: np.ndarray, columns_name: List[str]) -> pd.DataFrame:

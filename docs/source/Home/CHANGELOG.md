@@ -16,6 +16,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.8.2] - 2026-09-03
+
+### Added
+
++ Added a paper-agnostic continuous Time Series CLI/MCP producer with
+  spatiotemporal weighted bootstrap uncertainty, age bounds, numeric filters,
+  deterministic seeds, and indexed CSV/PNG/PDF outputs.
++ Added generic scientific reproduction controls, reference-anomaly time-series
+  composition, embedding-label overlays, multi-target regression handling, and
+  structured dataset and artifact inspection through the CLI/MCP boundary.
++ Added compact validation, result, directory, experiment, and tabular response
+  views for reliable bounded Agent interactions.
+
+### Fixed
+
++ Preserved nullable forest depth, classification split strategy, XGBoost
+  objective/importance semantics, validation-to-run plan identity, and
+  workflow-specific Time Series artifact finalization across CLI and MCP.
++ Hardened atomic artifact and run-status publication on Windows and corrected
+  external regression figure generation.
++ Fixed automatic GitHub Release creation after protected PyPI publication by
+  explicitly addressing the repository from the non-checkout publication job.
++ Made installed-wheel release validation carry its declared test dependencies
+  while preserving the Python 3.9 CLI/Python 3.11 MCP isolation boundary.
++ Kept CLI help option names stable in narrow and non-interactive terminals, and
+  preserved the managed virtual-environment interpreter path during MCP runtime
+  attestation on Linux and macOS.
+
+---
+
 ## [0.8.1] — 2026-08-07
 
 ### Fixed

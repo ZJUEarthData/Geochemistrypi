@@ -383,6 +383,54 @@ def _validate_cli_scientific_runtime(output: str) -> str:
     return "Scientific CLI modules and their native dependencies import successfully."
 
 
+def _cli_contract_check(paths: SetupPaths, runner: CommandRunner) -> DoctorCheck:
+    """Keep the existing CLI check count while verifying required public entries."""
+
+    commands = (
+        ((str(paths.cli_command), "--version"), None),
+        (
+            (str(paths.cli_command), "data-mining", "--help"),
+            "--scientific-config",
+        ),
+        (
+            (str(paths.cli_command), "scientific-config", "--help"),
+            None,
+        ),
+        (
+            (str(paths.cli_command), "reference-anomaly-time-series", "--help"),
+            None,
+        ),
+        (
+            (str(paths.cli_command), "embedding-label-overlay", "--help"),
+            None,
+        ),
+    )
+    for command, required_text in commands:
+        try:
+            completed = runner(command)
+        except (OSError, subprocess.SubprocessError) as exc:
+            return DoctorCheck("cli-command", False, f"Could not start process: {exc}")
+        if completed.returncode != 0:
+            detail = " ".join((completed.stderr or completed.stdout).split())[:500]
+            return DoctorCheck(
+                "cli-command",
+                False,
+                detail or f"Public CLI contract probe exited with {completed.returncode}.",
+            )
+        output = "\n".join((completed.stdout, completed.stderr))
+        if required_text is not None and required_text not in output:
+            return DoctorCheck(
+                "cli-command",
+                False,
+                f"Public CLI contract is missing required option {required_text}.",
+            )
+    return DoctorCheck(
+        "cli-command",
+        True,
+        "Version, scientific configuration, reference series, and embedding-label overlay entries are available.",
+    )
+
+
 async def _probe_protocol(paths: SetupPaths) -> tuple[bool, str]:
     parameters = StdioServerParameters(
         command=str(paths.server_command),
@@ -461,14 +509,7 @@ def run_doctor(
                 _validate_cli_scientific_runtime,
             )
         )
-    checks.append(
-        _command_result(
-            runner,
-            (str(resolved_paths.cli_command), "--version"),
-            "cli-command",
-            lambda output: output or "CLI version command completed.",
-        )
-    )
+    checks.append(_cli_contract_check(resolved_paths, runner))
     try:
         protocol_healthy, protocol_detail = protocol_probe(resolved_paths)
     except Exception as exc:  # A doctor report should diagnose rather than crash.

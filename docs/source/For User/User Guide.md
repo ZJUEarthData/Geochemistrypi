@@ -117,6 +117,27 @@ $ geochemistrypi data-mining --data your_own_data_set.xlsx
 
 **Note**: Currently, only `.xlsx` file is supported. Please specify the path your data file exists. The only element to change is ***your_own_data_set.xlsx***.
 
+### Versioned scientific execution controls
+
+Use the public `scientific-config` command to discover the strict contract for
+seeds, evaluation semantics, and native estimator parameters. The contract is
+independent of prompt automation, so it works with the normal interactive
+`data-mining` command and can also be combined with an automation plan.
+
+```text
+geochemistrypi scientific-config --kind registry
+geochemistrypi scientific-config --kind schema
+geochemistrypi scientific-config --kind template --workflow-family anomaly_detection --workflow-mode outlier_detection --method isolation_forest --output /absolute/path/isolation-template.json
+geochemistrypi scientific-config --kind example --example isolation_forest --output /absolute/path/isolation-example.json
+geochemistrypi data-mining --data your_own_data_set.xlsx --scientific-config /absolute/path/isolation-example.json
+```
+
+The schema and registry retain every registered workflow family, mode, method,
+contract field, allowed model-parameter name, enum, default, and necessary
+description. Generated templates contain every contract field and are
+validated before output. Output paths must be absolute; existing files are not
+replaced unless `--force` is explicit.
+
  If you run the command above, it means the command is executed under the directory your data file exists. Related processed results will be in the same directory.
 
 **Other Commands:**
@@ -177,7 +198,7 @@ The following are four built-in data set in our software stored on Google Drive,
 When you type geochemistrypi data-mining or geochemistrypi data-mining --data your_own_data_set.xlsx command,there are four algorithmic modes you can use,which are Regression,Classification,Clustering and Dimensional Reduction.
 
 ~~~
-Geochemistry Py v.0.8.1
+Geochemistry Py v.0.8.2
 ....... Initializing .......
 -*-*- Data Loading -*-*-
 Built-in Data Option:

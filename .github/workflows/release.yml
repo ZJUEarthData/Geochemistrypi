@@ -405,6 +405,7 @@ jobs:
         run: >-
           gh release create "${GITHUB_REF_NAME}"
           "geochemistrypi-${GITHUB_REF_NAME}.zip"
+          --repo "${GITHUB_REPOSITORY}"
           --verify-tag
           --title "GeochemistryPi ${GITHUB_REF_NAME}"
           --notes "Signed GeochemistryPi MCP bundle. Download and extract the ZIP, then ask a supported Agent to install it. The bundled CLI is the exact wheel published to PyPI by this workflow."

@@ -33,7 +33,7 @@ jobs:
       - name: Install build and quality tools
         run: |
           python -m pip install --upgrade pip
-          python -m pip install build pre-commit pytest
+          python -m pip install build pre-commit "jsonschema>=4.23,<5" pytest
 
       - name: Run pre-commit hooks
         run: pre-commit run --all-files

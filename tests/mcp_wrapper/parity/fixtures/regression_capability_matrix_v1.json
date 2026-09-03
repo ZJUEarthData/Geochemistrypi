@@ -19,7 +19,7 @@
     {"id": "bayesian_ridge", "cli_name": "BayesianRidge Regression", "automl": true},
     {"id": "ridge_regression", "cli_name": "Ridge Regression", "automl": true}
   ],
-  "target_contract": "single_numeric",
+  "target_contract": "one_or_more_numeric",
   "common_model_outputs": [
     "Model Score",
     "Cross Validation",
@@ -31,5 +31,5 @@
     "model joblib",
     "Transform Pipeline.joblib"
   ],
-  "unsupported": ["all_models", "multiple_targets", "previous_experiment"]
+  "unsupported": ["multiple_targets_with_feature_selection"]
 }

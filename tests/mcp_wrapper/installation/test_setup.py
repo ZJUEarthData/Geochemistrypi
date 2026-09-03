@@ -139,6 +139,30 @@ def test_source_change_refreshes_private_environments(tmp_path: Path) -> None:
     assert preparations == [False, False]
 
 
+def test_nested_mcp_source_change_refreshes_private_environments(tmp_path: Path) -> None:
+    manager, _, preparations = _manager(tmp_path)
+    manager.install(("standard",))
+    source_file = manager.sources.mcp_package_root / "src" / "geochemistrypi_mcp" / "api" / "module.py"
+    source_file.parent.mkdir(parents=True)
+    source_file.write_text("VALUE = 2\n", encoding="utf-8")
+
+    manager.install(("standard",))
+
+    assert preparations == [False, False]
+
+
+def test_nested_mcp_package_data_change_refreshes_private_environments(tmp_path: Path) -> None:
+    manager, _, preparations = _manager(tmp_path)
+    manager.install(("standard",))
+    source_file = manager.sources.mcp_package_root / "src" / "geochemistrypi_mcp" / "contracts" / "capabilities.json"
+    source_file.parent.mkdir(parents=True)
+    source_file.write_text('{"version": 2}\n', encoding="utf-8")
+
+    manager.install(("standard",))
+
+    assert preparations == [False, False]
+
+
 def test_legacy_manifest_refreshes_runtime_for_current_compatibility_policy(tmp_path: Path) -> None:
     manager, paths, preparations = _manager(tmp_path)
     manager.install(("standard",))

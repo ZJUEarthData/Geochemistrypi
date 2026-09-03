@@ -2,15 +2,18 @@ import ast
 import json
 import os
 import sys
+import threading
 from pathlib import Path
 
 import geochemistrypi_mcp as cli_driver_package
 import pytest
 from geochemistrypi_mcp import (
+    AnalysisPlanCompiler,
     ClassificationPlanCompiler,
     ClassificationRequest,
     CliInteractionDriver,
     CliProcessError,
+    DatasetCompilationContext,
     InteractionPlan,
     InteractionStep,
     PlanCompilationError,
@@ -23,6 +26,7 @@ from geochemistrypi_mcp import (
 )
 from geochemistrypi_mcp.api.schemas import BuiltInDatasetReference
 from geochemistrypi_mcp.planning.interaction_plan import _console_script_name
+from geochemistrypi_mcp.runtime.cli_driver import CliRunCancelledError
 from pydantic import ValidationError
 
 
@@ -80,6 +84,31 @@ def test_semantic_request_rejects_unknown_fields_and_conflicting_columns(tmp_pat
         _request(data_path, feature_columns=("Label", "SIO2(WT%)"))
     with pytest.raises(ValidationError, match="unsafe in an output directory name"):
         _request(data_path, run_name="unsafe/name")
+
+
+def test_time_series_missing_value_schema_keeps_strict_variants(tmp_path: Path) -> None:
+    data_path = tmp_path / "time-series.csv"
+
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        TimeSeriesRequest(
+            training_dataset_path=data_path,
+            bin_width=100,
+            missing_values={"method": "error", "columns": []},
+        )
+
+    reject_request = TimeSeriesRequest(
+        training_dataset_path=data_path,
+        bin_width=100,
+        missing_values={"method": "error"},
+    )
+    drop_request = TimeSeriesRequest(
+        training_dataset_path=data_path,
+        bin_width=100,
+        missing_values={"method": "drop_rows", "columns": []},
+    )
+
+    assert reject_request.missing_values.model_dump(mode="json") == {"method": "error"}
+    assert drop_request.missing_values.model_dump(mode="json") == {"method": "drop_rows", "columns": []}
 
 
 def test_semantic_request_accepts_one_dataset_source_and_rejects_ambiguity(
@@ -225,10 +254,86 @@ def test_time_series_plan_is_noninteractive_and_semantically_validated(
     assert "Time Series Metrics.json" in plan.expected_output_relative_paths[2]
 
 
+def test_continuous_time_series_plan_binds_generic_scientific_parameters(
+    tmp_path: Path,
+) -> None:
+    data_path = tmp_path / "continuous-time-series.csv"
+    data_path.write_text(
+        "AGE,MIN AGE,MAX AGE,MGO,SIO2,LATITUDE,LONGITUDE\n" "10,8,12,8.0,43,-20,100\n" "20,18,22,9.0,51,5,110\n" "115,110,120,6.0,48,30,120\n" "130,125,135,7.0,60,45,130\n",
+        encoding="utf-8",
+    )
+    request = TimeSeriesRequest(
+        training_dataset_path=data_path,
+        mode="continuous",
+        age_column="AGE",
+        minimum_age_column="MIN AGE",
+        maximum_age_column="MAX AGE",
+        value_column="MGO",
+        filter_column="SIO2",
+        filter_minimum=43,
+        filter_maximum=51,
+        bin_width=100,
+        iterations=100,
+        seed=2025,
+        relative_value_two_sigma=0.04,
+        fit_curve=False,
+        compact_y_axis=True,
+    )
+
+    plan = TimeSeriesPlanCompiler().compile(request, cli_executable=Path(sys.executable))
+
+    assert plan.execution_ready is True
+    assert plan.name == "time-series-continuous-v1"
+    assert plan.method == "spatiotemporal_weighted_continuous_bootstrap"
+    assert plan.adapter_id == "geochemistrypi-cli.time-series.continuous"
+    assert plan.public_command[plan.public_command.index("--analysis-mode") + 1] == "continuous"
+    assert plan.public_command[plan.public_command.index("--relative-value-two-sigma") + 1] == "0.04"
+    assert plan.public_command[plan.public_command.index("--filter-minimum") + 1] == "43"
+    assert plan.public_command[-2:] == ("--no-fit-curve", "--compact-y-axis")
+    assert plan.expected_output_relative_paths == (
+        "Time Series/Subaerial Proportion/artifacts/data/Continuous Time Series.csv",
+        "Time Series/Subaerial Proportion/artifacts/image/model_output/Continuous Time Series.pdf",
+        "Time Series/Subaerial Proportion/artifacts/image/model_output/Continuous Time Series.png",
+        "Time Series/Subaerial Proportion/metrics/Time Series Metrics.json",
+        "Time Series/Subaerial Proportion/parameters/Time Series Parameters.json",
+    )
+
+    bound_plan = AnalysisPlanCompiler().compile(request, cli_executable=Path(sys.executable))
+    assert bound_plan.method == "spatiotemporal_weighted_continuous_bootstrap"
+    assert bound_plan.seed_binding == "request_parameter"
+    assert bound_plan.effective_seeds == (("model", 2025),)
+
+
+def test_time_series_allows_unrelated_duplicate_headers_but_not_ambiguous_roles(
+    tmp_path: Path,
+) -> None:
+    data_path = tmp_path / "duplicate-unrelated.csv"
+    data_path.write_text(
+        "ID,ID,R_AGE,R_MAX_AGE,SBAP,LATITUDE,LONGITUDE\n" "A,B,10,12,0.9,-20,100\n" "C,D,20,25,0.1,5,110\n",
+        encoding="utf-8",
+    )
+
+    plan = TimeSeriesPlanCompiler().compile(
+        TimeSeriesRequest(training_dataset_path=data_path, bin_width=10),
+        cli_executable=Path(sys.executable),
+    )
+    assert plan.execution_ready is True
+
+    with pytest.raises(PlanCompilationError, match="ambiguous"):
+        TimeSeriesPlanCompiler().compile(
+            TimeSeriesRequest(
+                training_dataset_path=data_path,
+                bin_width=10,
+                identifier_column="ID",
+            ),
+            cli_executable=Path(sys.executable),
+        )
+
+
 def test_time_series_plan_rejects_invalid_rows_before_cli(tmp_path: Path) -> None:
     data_path = tmp_path / "invalid-time-series.csv"
     data_path.write_text(
-        "R_AGE,R_MAX_AGE,SBAP,LATITUDE,LONGITUDE\n" "20,10,1.2,95,181\n",
+        "R_AGE,R_MAX_AGE,SBAP,LATITUDE,LONGITUDE\n" "20,-10,0.5,45,120\n",
         encoding="utf-8",
     )
     request = TimeSeriesRequest(
@@ -236,8 +341,74 @@ def test_time_series_plan_rejects_invalid_rows_before_cli(tmp_path: Path) -> Non
         bin_width=10,
     )
 
-    with pytest.raises(PlanCompilationError, match="maximum age"):
+    with pytest.raises(PlanCompilationError, match="comparison ages"):
         TimeSeriesPlanCompiler().compile(request, cli_executable=Path(sys.executable))
+
+
+def test_time_series_plan_accepts_unsigned_age_uncertainty_and_drops_on_all_selected_columns(tmp_path: Path) -> None:
+    data_path = tmp_path / "prepared-time-series.csv"
+    data_path.write_text(
+        "ROCK NAME,LATITUDE,LONGITUDE,MIN_AGE,AGE,MAX_AGE,R_MIN_AGE,R_AGE,R_MAX_AGE,SBAP\n" "A,10,20,,9,11,8,10,8,0.6\n" "B,11,21,19,20,21,18,20,25,0.4\n",
+        encoding="utf-8",
+    )
+    selected_columns = (
+        "LATITUDE",
+        "LONGITUDE",
+        "MIN_AGE",
+        "AGE",
+        "MAX_AGE",
+        "R_MIN_AGE",
+        "R_AGE",
+        "R_MAX_AGE",
+        "SBAP",
+    )
+    request = TimeSeriesRequest(
+        training_dataset_path=data_path,
+        identifier_column="ROCK NAME",
+        selected_columns=selected_columns,
+        missing_values={"method": "drop_rows", "columns": []},
+        bin_width=10,
+    )
+
+    plan = TimeSeriesPlanCompiler().compile(request, cli_executable=Path(sys.executable))
+
+    assert plan.public_command.count("--selected-column") == len(selected_columns)
+    assert ("--missing-values", "drop_rows") == tuple(plan.public_command[plan.public_command.index("--missing-values") : plan.public_command.index("--missing-values") + 2])
+
+
+def test_real_builtin_time_series_compiles_the_liu_workflow_configuration() -> None:
+    dataset = Path(__file__).resolve().parents[3] / "geochemistrypi" / "data_mining" / "data" / "dataset" / "Data_Time_Series.xlsx"
+    selected_columns = (
+        "LATITUDE",
+        "LONGITUDE",
+        "MIN_AGE",
+        "AGE",
+        "MAX_AGE",
+        "R_MIN_AGE",
+        "R_AGE",
+        "R_MAX_AGE",
+        "Estimated Proportion of Subaerial Basalts",
+    )
+    request = TimeSeriesRequest(
+        training_dataset_path=dataset,
+        identifier_column="ROCK NAME",
+        selected_columns=selected_columns,
+        missing_values={"method": "drop_rows", "columns": []},
+        probability_column="Estimated Proportion of Subaerial Basalts",
+        bin_width=100,
+        iterations=100,
+        age_unit="Ma",
+        fit_curve=False,
+    )
+
+    plan = TimeSeriesPlanCompiler().compile(
+        request,
+        cli_executable=Path(sys.executable),
+        dataset_context=DatasetCompilationContext(training_source="builtin"),
+    )
+
+    assert plan.public_command.count("--selected-column") == 9
+    assert plan.public_command[-1] == "--no-fit-curve"
 
 
 @pytest.mark.parametrize(("os_name", "expected"), [("nt", "geochemistrypi.exe"), ("posix", "geochemistrypi")])
@@ -322,6 +493,29 @@ print(f"SECOND={second}", flush=True)
     assert trace["status"] == "completed"
     assert trace["completed_step_ids"] == ["first", "second"]
     assert [event["response"] for event in trace["events"]] == ["alpha", "beta"]
+    assert isinstance(trace["cli_started_at"], str)
+    assert isinstance(trace["cli_finished_at"], str)
+    assert isinstance(trace["cli_execution_duration_seconds"], float)
+    assert trace["cli_execution_duration_seconds"] >= 0
+
+
+def test_driver_trace_has_null_cli_interval_when_no_child_was_created(tmp_path: Path) -> None:
+    cancellation = threading.Event()
+    cancellation.set()
+    plan = _plan(_fake_script(tmp_path, "raise AssertionError('must not execute')\n"), ())
+
+    with pytest.raises(CliRunCancelledError) as captured:
+        CliInteractionDriver(process_timeout_seconds=10).run(
+            plan,
+            workspace_parent=tmp_path / "runs",
+            cancellation_event=cancellation,
+        )
+
+    trace = json.loads((captured.value.capture_directory / "interaction-trace.json").read_text(encoding="utf-8"))
+    assert trace["returncode"] is None
+    assert trace["cli_started_at"] is None
+    assert trace["cli_finished_at"] is None
+    assert trace["cli_execution_duration_seconds"] is None
 
 
 def test_driver_uses_cli_automation_contract_without_prompt_matching(

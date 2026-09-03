@@ -355,7 +355,13 @@ class CliInteractionDriver:
         trace_path = capture_path / "interaction-trace.json"
         automation_plan_path = capture_path / "automation-plan.json"
         automation_events_path = capture_path / "automation-events.json"
+        scientific_config_path = capture_path / "scientific-execution.json"
         executed_command = list(plan.public_command)
+        if plan.scientific_execution_contract_json is not None and not self.automation_mode:
+            raise CliProcessError(
+                "Scientific execution controls require the versioned CLI automation transport.",
+                workspace_path,
+            )
         if self.automation_mode:
             _write_json_atomically(
                 automation_plan_path,
@@ -373,6 +379,15 @@ class CliInteractionDriver:
                     str(automation_events_path),
                 )
             )
+            if plan.scientific_execution_contract_json is not None:
+                scientific_execution = json.loads(plan.scientific_execution_contract_json)
+                _write_json_atomically(scientific_config_path, scientific_execution)
+                executed_command.extend(
+                    (
+                        "--scientific-config",
+                        str(scientific_config_path),
+                    )
+                )
         process_environment = os.environ.copy()
         if environment:
             process_environment.update({str(key): str(value) for key, value in environment.items()})
@@ -396,6 +411,10 @@ class CliInteractionDriver:
 
         started_at = _utc_now()
         started_monotonic = time.monotonic()
+        cli_started_at: Optional[str] = None
+        cli_finished_at: Optional[str] = None
+        cli_started_monotonic: Optional[float] = None
+        cli_execution_duration_seconds: Optional[float] = None
         last_stdout_at = started_monotonic
         process: Optional[subprocess.Popen] = None
         process_create_time: Optional[float] = None
@@ -428,6 +447,8 @@ class CliInteractionDriver:
                 bufsize=0,
                 **creation_options,
             )
+            cli_started_at = _utc_now()
+            cli_started_monotonic = time.monotonic()
             process_create_time = psutil.Process(process.pid).create_time()
             if process_started is not None:
                 process_started(process.pid, process_create_time)
@@ -516,6 +537,9 @@ class CliInteractionDriver:
                         raise UnexpectedPromptError(f"Observed an additional known prompt after all responses were consumed: {unexpected.id!r}.", workspace_path)
 
             returncode = process.wait()
+            cli_finished_at = _utc_now()
+            assert cli_started_monotonic is not None
+            cli_execution_duration_seconds = max(0.0, time.monotonic() - cli_started_monotonic)
             if self.automation_mode:
                 if automation_events_path.is_file():
                     completed_step_ids, interaction_events = _load_automation_events(automation_events_path, plan, workspace_path)
@@ -551,6 +575,10 @@ class CliInteractionDriver:
             if process is not None:
                 _terminate_process_tree(process, process_create_time)
                 returncode = process.returncode
+                if cli_started_at is not None and cli_finished_at is None:
+                    cli_finished_at = _utc_now()
+                    assert cli_started_monotonic is not None
+                    cli_execution_duration_seconds = max(0.0, time.monotonic() - cli_started_monotonic)
             if isinstance(exc, (KeyboardInterrupt, SystemExit)):
                 raise
             if isinstance(exc, CliDriverError):
@@ -571,6 +599,9 @@ class CliInteractionDriver:
                 "workspace": str(workspace_path),
                 "started_at": started_at,
                 "finished_at": _utc_now(),
+                "cli_started_at": cli_started_at,
+                "cli_finished_at": cli_finished_at,
+                "cli_execution_duration_seconds": cli_execution_duration_seconds,
                 "returncode": returncode,
                 "status": "cancelled" if isinstance(error, CliRunCancelledError) else "failed" if error else "completed",
                 "completed_step_ids": completed_step_ids,

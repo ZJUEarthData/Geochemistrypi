@@ -10,11 +10,19 @@ class HeaderValidationError(ValueError):
     """Raised when a dataset header would be ambiguous or unsafe to address."""
 
 
+def source_allows_pandas_duplicate_mangling(source: str) -> bool:
+    """Return the single trusted-source exception to strict header identity."""
+
+    return source == "builtin"
+
+
 def normalize_dataset_header(
     raw_header: Sequence[Any],
     maximum_columns: int,
     *,
     allow_pandas_duplicate_mangling: bool = False,
+    strip_whitespace: bool = False,
+    strip_bom: bool = False,
 ) -> tuple[str, ...]:
     """Apply pandas-compatible blank names, then reject ambiguous headers.
 
@@ -29,10 +37,14 @@ def normalize_dataset_header(
     columns = []
     for index, value in enumerate(raw_header):
         column = f"Unnamed: {index}" if value is None or value == "" else str(value)
+        if strip_bom:
+            column = column.lstrip("\ufeff")
         if not column.strip():
             raise HeaderValidationError(f"Dataset column {index + 1} contains only whitespace.")
         if column != column.strip():
-            raise HeaderValidationError(f"Dataset column {index + 1} has leading or trailing whitespace: {column!r}.")
+            if not strip_whitespace:
+                raise HeaderValidationError(f"Dataset column {index + 1} has leading or trailing whitespace: {column!r}.")
+            column = column.strip()
         if len(column) > 128:
             raise HeaderValidationError(f"Dataset column {index + 1} name must not exceed 128 characters.")
         if _CONTROL_CHARACTER.search(column):

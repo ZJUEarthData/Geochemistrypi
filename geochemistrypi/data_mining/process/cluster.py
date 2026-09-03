@@ -4,6 +4,7 @@ from typing import Optional
 
 import pandas as pd
 
+from ...scientific_execution import active_scientific_execution, save_scientific_execution_attestation
 from ..model.clustering import AffinityPropagationClustering, Agglomerative, ClusteringWorkflowBase, DBSCANClustering, KMeansClustering, MeanShiftClustering, OPTICSClustering
 from ._base import ModelSelectionBase
 
@@ -15,6 +16,17 @@ class ClusteringModelSelection(ModelSelectionBase):
         self.model_name = model_name
         self.clt_workflow = ClusteringWorkflowBase()
         self.transformer_config = {}
+        self.scientific_execution = active_scientific_execution()
+
+    def _constructor_parameters(self, method: str, legacy: dict) -> dict:
+        if self.scientific_execution is None:
+            return legacy
+        return self.scientific_execution.constructor_parameters(
+            method,
+            legacy,
+            workflow_family="clustering",
+            workflow_mode="clustering",
+        )
 
     def activate(
         self,
@@ -35,11 +47,16 @@ class ClusteringModelSelection(ModelSelectionBase):
         if self.model_name == "KMeans":
             hyper_parameters = KMeansClustering.manual_hyper_parameters()
             self.clt_workflow = KMeansClustering(
-                n_clusters=hyper_parameters["n_clusters"],
-                init=hyper_parameters["init"],
-                max_iter=hyper_parameters["max_iter"],
-                tol=hyper_parameters["tol"],
-                algorithm=hyper_parameters["algorithm"],
+                **self._constructor_parameters(
+                    "kmeans",
+                    {
+                        "n_clusters": hyper_parameters["n_clusters"],
+                        "init": hyper_parameters["init"],
+                        "max_iter": hyper_parameters["max_iter"],
+                        "tol": hyper_parameters["tol"],
+                        "algorithm": hyper_parameters["algorithm"],
+                    },
+                )
             )
         elif self.model_name == "DBSCAN":
             hyper_parameters = DBSCANClustering.manual_hyper_parameters()
@@ -60,10 +77,15 @@ class ClusteringModelSelection(ModelSelectionBase):
         elif self.model_name == "AffinityPropagation":
             hyper_parameters = AffinityPropagationClustering.manual_hyper_parameters()
             self.clt_workflow = AffinityPropagationClustering(
-                damping=hyper_parameters["damping"],
-                max_iter=hyper_parameters["max_iter"],
-                convergence_iter=hyper_parameters["convergence_iter"],
-                affinity=hyper_parameters["affinity"],
+                **self._constructor_parameters(
+                    "affinity_propagation",
+                    {
+                        "damping": hyper_parameters["damping"],
+                        "max_iter": hyper_parameters["max_iter"],
+                        "convergence_iter": hyper_parameters["convergence_iter"],
+                        "affinity": hyper_parameters["affinity"],
+                    },
+                )
             )
         elif self.model_name == "MeanShift":
             hyper_parameters = MeanShiftClustering.manual_hyper_parameters()
@@ -97,9 +119,18 @@ class ClusteringModelSelection(ModelSelectionBase):
 
         # Use Scikit-learn style API to process input data
         self.clt_workflow.fit(X)
+        save_scientific_execution_attestation(
+            self.clt_workflow.model,
+            os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"),
+        )
 
         # Save the model hyper-parameters
-        self.clt_workflow.save_hyper_parameters(hyper_parameters, self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
+        effective_hyper_parameters = self.clt_workflow.model.get_params(deep=False) if self.scientific_execution is not None else hyper_parameters
+        self.clt_workflow.save_hyper_parameters(
+            effective_hyper_parameters,
+            self.model_name,
+            os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"),
+        )
 
         # Common components for every clustering algorithm
         self.clt_workflow.common_components()

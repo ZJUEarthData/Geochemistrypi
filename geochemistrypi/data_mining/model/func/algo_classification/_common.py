@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import re
-from typing import Dict, List
+from typing import Any, Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import mlflow
@@ -18,7 +18,46 @@ from ....constants import CALCULATION_METHOD_OPTION, SECTION
 from ....data.data_readiness import limit_num_input, num2option, num_input
 
 
-def score(y_true: pd.DataFrame, y_predict: pd.DataFrame, average: str = None, interactive: bool = True) -> tuple[str, Dict]:
+def _record_metric_consumption(configuration: Optional[Dict[str, Any]], consumer: str, probability_column_index: Optional[int] = None) -> None:
+    if configuration is None:
+        return
+    if probability_column_index is not None:
+        existing = configuration.get("curve_probability_column_index")
+        if existing is not None and existing != probability_column_index:
+            raise ValueError("Classification metric consumers selected inconsistent probability columns.")
+        configuration["curve_probability_column_index"] = probability_column_index
+        consumption = {
+            "consumer_kind": "binary_curve",
+            "curve_encoded_positive_label": configuration.get("curve_encoded_positive_label"),
+            "probability_column_index": probability_column_index,
+        }
+    else:
+        consumption = {
+            "consumer_kind": "aggregate_metric",
+            "effective_average": configuration["effective_average"],
+            "aggregate_encoded_positive_label": configuration.get("aggregate_encoded_positive_label"),
+        }
+    configuration.setdefault("consumers", {})[consumer] = consumption
+
+
+def _positive_probability_column(trained_model: object, configuration: Optional[Dict[str, Any]], consumer: str) -> int:
+    positive_label = 1 if configuration is None else configuration.get("curve_encoded_positive_label")
+    classes = [label.item() if hasattr(label, "item") else label for label in getattr(trained_model, "classes_", ())]
+    indexes = [index for index, label in enumerate(classes) if type(label) is type(positive_label) and label == positive_label]
+    if len(indexes) != 1:
+        raise ValueError("The resolved positive label does not identify exactly one estimator probability column.")
+    index = indexes[0]
+    _record_metric_consumption(configuration, consumer, index)
+    return index
+
+
+def score(
+    y_true: pd.DataFrame,
+    y_predict: pd.DataFrame,
+    average: str = None,
+    interactive: bool = True,
+    metric_configuration: Optional[Dict[str, Any]] = None,
+) -> tuple[str, Dict]:
     """Calculate the scores of the classification model.
 
     Parameters
@@ -40,7 +79,9 @@ def score(y_true: pd.DataFrame, y_predict: pd.DataFrame, average: str = None, in
     y_true_series = pd.Series(np.ravel(y_true))
     y_predict_series = pd.Series(np.ravel(y_predict))
     class_count = y_true_series.nunique()
-    if average is None:
+    if metric_configuration is not None:
+        average = metric_configuration["effective_average"]
+    if average is None or average == "auto":
         average = "binary" if class_count == 2 else "weighted"
         if class_count > 2 and interactive:
             print("Please select calculation method:")
@@ -58,9 +99,12 @@ def score(y_true: pd.DataFrame, y_predict: pd.DataFrame, average: str = None, in
     if class_count > 2 and average == "binary":
         raise ValueError("Binary average cannot be used for multiclass classification.")
     accuracy = accuracy_score(y_true_series, y_predict_series)
-    precision = precision_score(y_true_series, y_predict_series, average=average, zero_division=0)
-    recall = recall_score(y_true_series, y_predict_series, average=average, zero_division=0)
-    f1 = f1_score(y_true_series, y_predict_series, average=average, zero_division=0)
+    metric_kwargs = {"average": average, "zero_division": 0}
+    if average == "binary" and metric_configuration is not None:
+        metric_kwargs["pos_label"] = metric_configuration["aggregate_encoded_positive_label"]
+    precision = precision_score(y_true_series, y_predict_series, **metric_kwargs)
+    recall = recall_score(y_true_series, y_predict_series, **metric_kwargs)
+    f1 = f1_score(y_true_series, y_predict_series, **metric_kwargs)
     print("Accuracy: ", accuracy)
     print("Precision:", precision)
     print("Recall:", recall)
@@ -71,7 +115,9 @@ def score(y_true: pd.DataFrame, y_predict: pd.DataFrame, average: str = None, in
         "Recall": recall,
         "F1 Score": f1,
         "Average Method": average,
+        "Positive Label": metric_configuration.get("aggregate_encoded_positive_label") if metric_configuration is not None else (1 if average == "binary" else None),
     }
+    _record_metric_consumption(metric_configuration, "holdout_score")
     return average, scores
 
 
@@ -108,6 +154,34 @@ def plot_confusion_matrix(y_test: pd.DataFrame, y_test_predict: pd.DataFrame, tr
     return cm
 
 
+def plot_normalized_confusion_matrix(
+    y_test: pd.DataFrame,
+    y_test_predict: pd.DataFrame,
+    trained_model: object,
+    normalization: str,
+) -> np.ndarray:
+    """Plot a confusion matrix with one explicit sklearn normalization rule."""
+
+    sklearn_normalization = "pred" if normalization == "predicted" else normalization
+    y_test_series = pd.Series(np.ravel(y_test))
+    y_test_predict_series = pd.Series(np.ravel(y_test_predict))
+    labels = getattr(trained_model, "classes_", None)
+    if labels is None:
+        labels = pd.unique(pd.concat([y_test_series, y_test_predict_series], ignore_index=True))
+    labels = list(labels)
+    matrix = confusion_matrix(
+        y_test_series,
+        y_test_predict_series,
+        labels=labels,
+        normalize=sklearn_normalization,
+    )
+    print(matrix)
+    plt.figure()
+    display = ConfusionMatrixDisplay(confusion_matrix=matrix, display_labels=labels)
+    display.plot(values_format=".3f")
+    return matrix
+
+
 def display_cross_validation_scores(scores: np.ndarray, score_name: str) -> Dict:
     """Display the scores of cross-validation.
 
@@ -132,12 +206,20 @@ def display_cross_validation_scores(scores: np.ndarray, score_name: str) -> Dict
     print("Scores:", cv_scores["Fold Scores"])
     print("Mean:", cv_scores["Mean"])
     print("Standard deviation:", cv_scores["Standard Deviation"])
-    mlflow.log_metric(f"CV - {score_name} - Mean", cv_scores["Mean"])
-    mlflow.log_metric(f"CV - {score_name} - Standard Deviation", cv_scores["Standard Deviation"])
+    if mlflow.active_run() is not None:
+        mlflow.log_metric(f"CV - {score_name} - Mean", cv_scores["Mean"])
+        mlflow.log_metric(f"CV - {score_name} - Standard Deviation", cv_scores["Standard Deviation"])
     return cv_scores
 
 
-def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, average: str, cv_num: int = 10) -> Dict:
+def cross_validation(
+    trained_model: object,
+    X_train: pd.DataFrame,
+    y_train: pd.DataFrame,
+    average: str,
+    cv_num: int = 10,
+    metric_configuration: Optional[Dict[str, Any]] = None,
+) -> Dict:
     """Evaluate metric(s) by cross-validation and also record fit/score times.
 
     Parameters
@@ -170,11 +252,12 @@ def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.D
         return {"K-Fold": 0, "Warning": message}
     cv_num = min(cv_num, min_class_count)
     if average == "binary":
+        positive_label = 1 if metric_configuration is None else metric_configuration["aggregate_encoded_positive_label"]
         scoring = {
             "accuracy": make_scorer(accuracy_score),
-            "precision": make_scorer(precision_score, average="binary", zero_division=0),
-            "recall": make_scorer(recall_score, average="binary", zero_division=0),
-            "f1": make_scorer(f1_score, average="binary", zero_division=0),
+            "precision": make_scorer(precision_score, average="binary", pos_label=positive_label, zero_division=0),
+            "recall": make_scorer(recall_score, average="binary", pos_label=positive_label, zero_division=0),
+            "f1": make_scorer(f1_score, average="binary", pos_label=positive_label, zero_division=0),
         }
     elif average == "micro":
         scoring = {
@@ -215,10 +298,20 @@ def cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.D
         cv_scores = display_cross_validation_scores(values, scores2display[key])
         scores_result[scores2display[key]] = cv_scores
         print("-------------")
+    scores_result["Average Method"] = average
+    scores_result["Positive Label"] = metric_configuration.get("aggregate_encoded_positive_label") if metric_configuration is not None else (1 if average == "binary" else None)
+    _record_metric_consumption(metric_configuration, "cross_validation")
     return scores_result
 
 
-def plot_precision_recall(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, graph_name: str, algorithm_name: str) -> tuple:
+def plot_precision_recall(
+    X_test: pd.DataFrame,
+    y_test: pd.DataFrame,
+    trained_model: object,
+    graph_name: str,
+    algorithm_name: str,
+    metric_configuration: Optional[Dict[str, Any]] = None,
+) -> tuple:
     """Plot the precision vs. recall diagram.
 
     Parameters
@@ -253,8 +346,10 @@ def plot_precision_recall(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_mo
         The thresholds of the model.
     """
     #  Predict probabilities for the positive class
-    y_probs = trained_model.predict_proba(X_test)[:, 1]
-    precisions, recalls, thresholds = precision_recall_curve(y_test, y_probs)
+    probability_index = _positive_probability_column(trained_model, metric_configuration, "precision_recall")
+    positive_label = 1 if metric_configuration is None else metric_configuration["curve_encoded_positive_label"]
+    y_probs = trained_model.predict_proba(X_test)[:, probability_index]
+    precisions, recalls, thresholds = precision_recall_curve(np.ravel(y_test), y_probs, pos_label=positive_label)
     plt.figure()
     plt.plot(recalls, precisions, "b-")
     plt.xlabel("Recall")
@@ -263,7 +358,14 @@ def plot_precision_recall(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_mo
     return y_probs, precisions, recalls, thresholds
 
 
-def plot_precision_recall_threshold(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, graph_name: str, algorithm_name: str) -> tuple:
+def plot_precision_recall_threshold(
+    X_test: pd.DataFrame,
+    y_test: pd.DataFrame,
+    trained_model: object,
+    graph_name: str,
+    algorithm_name: str,
+    metric_configuration: Optional[Dict[str, Any]] = None,
+) -> tuple:
     """Plot the precision-recall vs. threshold diagram.
 
     Parameters
@@ -298,8 +400,10 @@ def plot_precision_recall_threshold(X_test: pd.DataFrame, y_test: pd.DataFrame, 
         The thresholds of the model.
     """
     #  Predict probabilities for the positive class
-    y_probs = trained_model.predict_proba(X_test)[:, 1]
-    precisions, recalls, thresholds = precision_recall_curve(y_test, y_probs)
+    probability_index = _positive_probability_column(trained_model, metric_configuration, "precision_recall_threshold")
+    positive_label = 1 if metric_configuration is None else metric_configuration["curve_encoded_positive_label"]
+    y_probs = trained_model.predict_proba(X_test)[:, probability_index]
+    precisions, recalls, thresholds = precision_recall_curve(np.ravel(y_test), y_probs, pos_label=positive_label)
     plt.figure()
     plt.plot(thresholds, precisions[:-1], "b--", label="Precision")
     plt.plot(thresholds, recalls[:-1], "g-", label="Recall")
@@ -308,7 +412,14 @@ def plot_precision_recall_threshold(X_test: pd.DataFrame, y_test: pd.DataFrame, 
     return y_probs, precisions, recalls, thresholds
 
 
-def plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, graph_name: str, algorithm_name: str) -> tuple:
+def plot_ROC(
+    X_test: pd.DataFrame,
+    y_test: pd.DataFrame,
+    trained_model: object,
+    graph_name: str,
+    algorithm_name: str,
+    metric_configuration: Optional[Dict[str, Any]] = None,
+) -> tuple:
     """Plot the ROC curve.
 
     Parameters
@@ -339,8 +450,10 @@ def plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, trained_model: object, 
     thresholds : np.ndarray
         The thresholds of the model.
     """
-    y_probs = trained_model.predict_proba(X_test)[:, 1]
-    fpr, tpr, thresholds = roc_curve(y_test, y_probs)
+    probability_index = _positive_probability_column(trained_model, metric_configuration, "roc")
+    positive_label = 1 if metric_configuration is None else metric_configuration["curve_encoded_positive_label"]
+    y_probs = trained_model.predict_proba(X_test)[:, probability_index]
+    fpr, tpr, thresholds = roc_curve(np.ravel(y_test), y_probs, pos_label=positive_label)
     plt.figure()
     plt.plot(fpr, tpr, linewidth=2)
     plt.plot([0, 1], [0, 1], "r--")

@@ -15,8 +15,11 @@ from openpyxl import load_workbook
 from ..api.schemas import DatasetColumnSummary, DatasetInspectionRequest, DatasetInspectionResponse
 from ..config.settings import McpSettings
 from .headers import HeaderValidationError, header_normalization_warnings, normalize_dataset_header
+from .row_identity import SourceRowIdentityError, SourceRowLineage, build_source_row_lineage
+from .source_rows import iter_cli_csv_rows, iter_cli_excel_rows
 
 _SUPPORTED_SUFFIXES = {".csv": "csv", ".xlsx": "xlsx"}
+_MCP_STARTUP_WORKING_DIRECTORY = Path.cwd().resolve()
 _TYPE_SAMPLE_ROWS = 50
 _MAX_CELL_TEXT = 120
 
@@ -34,6 +37,7 @@ class DatasetSnapshot:
     size_bytes: int
     sha256: str
     format: str
+    row_lineage: SourceRowLineage
 
 
 def _hash_stream(stream: BinaryIO) -> str:
@@ -43,15 +47,44 @@ def _hash_stream(stream: BinaryIO) -> str:
     return digest.hexdigest()
 
 
+def _count_source_rows(path: Path, data_format: str) -> int:
+    """Count physical data rows using the same CSV/XLSX boundaries as planning."""
+    try:
+        if data_format == "csv":
+            with path.open("r", encoding="utf-8-sig", newline="") as stream:
+                rows = csv.reader(stream)
+                next(rows)
+                return sum(1 for _ in iter_cli_csv_rows(rows))
+        with path.open("rb") as stream:
+            workbook = load_workbook(stream, read_only=True, data_only=True)
+            try:
+                rows = workbook.active.iter_rows(values_only=True)
+                next(rows)
+                return sum(1 for _ in iter_cli_excel_rows(rows))
+            finally:
+                workbook.close()
+    except (OSError, StopIteration, UnicodeError, csv.Error, ValueError) as exc:
+        raise DatasetInspectionError(f"Unable to establish source-row lineage: {exc}") from exc
+
+
 def snapshot_dataset(path: Path, maximum_bytes: int) -> DatasetSnapshot:
-    """Validate and hash one absolute regular file without modifying it."""
+    """Validate and hash one absolute or startup-root-relative regular file."""
     source = Path(path).expanduser()
-    if not source.is_absolute():
-        raise DatasetInspectionError("dataset_path must be absolute.")
+    relative_to_startup = not source.is_absolute()
+    if relative_to_startup:
+        source = _MCP_STARTUP_WORKING_DIRECTORY / source
     try:
         resolved = source.resolve(strict=True)
-        metadata = resolved.stat()
     except (OSError, RuntimeError) as exc:
+        raise DatasetInspectionError(f"Dataset is unavailable: {source}") from exc
+    if relative_to_startup:
+        try:
+            resolved.relative_to(_MCP_STARTUP_WORKING_DIRECTORY)
+        except ValueError as exc:
+            raise DatasetInspectionError("A relative dataset_path must remain inside the MCP startup working directory.") from exc
+    try:
+        metadata = resolved.stat()
+    except OSError as exc:
         raise DatasetInspectionError(f"Dataset is unavailable: {source}") from exc
     if not stat.S_ISREG(metadata.st_mode):
         raise DatasetInspectionError("dataset_path must identify a regular file, not a directory or device.")
@@ -72,7 +105,14 @@ def snapshot_dataset(path: Path, maximum_bytes: int) -> DatasetSnapshot:
                 raise DatasetInspectionError("Dataset size changed while it was being hashed; retry after writes have stopped.")
     except OSError as exc:
         raise DatasetInspectionError(f"Dataset cannot be read: {resolved}") from exc
-    return DatasetSnapshot(source, resolved, opened_metadata.st_size, digest, data_format)
+    row_count = _count_source_rows(resolved, data_format)
+    if sha256_file(resolved) != digest:
+        raise DatasetInspectionError("Dataset changed while source-row lineage was being established; retry after writes have stopped.")
+    try:
+        row_lineage = build_source_row_lineage(digest, row_count)
+    except SourceRowIdentityError as exc:
+        raise DatasetInspectionError(str(exc)) from exc
+    return DatasetSnapshot(source, resolved, opened_metadata.st_size, digest, data_format, row_lineage)
 
 
 def sha256_file(path: Path) -> str:
@@ -177,11 +217,12 @@ def _inspect_csv(
             )
             returned_rows: list[list[Any]] = []
             type_rows: list[list[Any]] = []
+            type_sample_rows = _TYPE_SAMPLE_ROWS if request.detail == "full" else 0
             row_count = 0
-            for row in reader:
+            for row in iter_cli_csv_rows(reader):
                 row_count += 1
                 normalized = list(row[: len(columns)]) + [None] * max(0, len(columns) - len(row))
-                if len(type_rows) < _TYPE_SAMPLE_ROWS:
+                if len(type_rows) < type_sample_rows:
                     type_rows.append(normalized)
                 if len(returned_rows) < request.sample_rows:
                     returned_rows.append(normalized)
@@ -209,20 +250,21 @@ def _inspect_xlsx(
                 )
                 returned_rows: list[list[Any]] = []
                 type_rows: list[list[Any]] = []
-                for row in rows:
+                type_sample_rows = _TYPE_SAMPLE_ROWS if request.detail == "full" else 0
+                for row in iter_cli_excel_rows(rows):
                     normalized = list(row[: len(columns)]) + [None] * max(0, len(columns) - len(row))
-                    if len(type_rows) < _TYPE_SAMPLE_ROWS:
+                    if len(type_rows) < type_sample_rows:
                         type_rows.append(normalized)
                     if len(returned_rows) < request.sample_rows:
                         returned_rows.append(normalized)
-                    if len(type_rows) >= _TYPE_SAMPLE_ROWS and len(returned_rows) >= request.sample_rows:
+                    if len(type_rows) >= type_sample_rows and len(returned_rows) >= request.sample_rows:
                         break
-                row_count = max(worksheet.max_row - 1, 0)
+                row_count = snapshot.row_lineage.source_row_count
             finally:
                 workbook.close()
     except (OSError, StopIteration, ValueError) as exc:
         raise DatasetInspectionError(f"Unable to inspect Excel dataset: {exc}") from exc
-    return columns, header_warnings, row_count, False, returned_rows, type_rows
+    return columns, header_warnings, row_count, True, returned_rows, type_rows
 
 
 def inspect_dataset(
@@ -259,7 +301,9 @@ def inspect_dataset(
         row_count=row_count,
         row_count_exact=exact,
         column_count=len(columns),
-        columns=_column_summaries(columns, type_rows),
+        detail=request.detail,
+        columns=_column_summaries(columns, type_rows) if request.detail == "full" else (),
+        column_names=columns if request.detail == "names" else (),
         header_warnings=header_warnings,
         sample_rows=sample,
         sample_truncated=row_count > len(sample),

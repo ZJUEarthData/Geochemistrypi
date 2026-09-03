@@ -21,9 +21,11 @@
     "openpyxl": "3.0.10"
   },
   "cli_entry_files": {
-    "geochemistrypi/cli.py": "9e98bdda3bf3da085d851f7ccb581dab981315cdb20706cc2a7959ec5df4c36b",
-    "geochemistrypi/data_mining/cli_pipeline.py": "089680b189048038bdd89e033e5683e4e9894f9b01f2dca5388542a88c39e894"
+    "geochemistrypi/cli.py": "a1ef91b536b716c8f1cfd94ec15648a477700532965b313b57da1a80f00e41f0",
+    "geochemistrypi/data_mining/cli_pipeline.py": "a7f6950d99d6c53220e0576aa47087a098b821897fbd622ea5c4a0d3967555ec"
   },
+  "cli_entry_baseline_reason": "Intentional 0.8.2 public CLI contract update: add discoverable scientific-config generation, allow the strict scientific contract in normal interactive data-mining runs as well as automation, close only MLflow runs started by the CLI on every terminal path, and keep every public option discoverable in narrow or non-interactive terminals.",
+  "cli_entry_baseline_generation": "SHA-256 of reviewed UTF-8 release-candidate source after normalizing line endings to LF; model outputs, fixture data, seeds, dependencies, and tolerances were not regenerated.",
   "model": {
     "name": "Logistic Regression",
     "feature_scaling": "Standardization",

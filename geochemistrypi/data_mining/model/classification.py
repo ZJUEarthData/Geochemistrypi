@@ -18,13 +18,24 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 
+from ...scientific_execution import active_scientific_execution, semantic_label_identity
 from ..constants import CUSTOMIZE_LABEL_STRATEGY, MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH, OPTION, RAY_FLAML, SAMPLE_BALANCE_STRATEGY, SECTION
 from ..data.data_readiness import limit_num_input, num2option, num_input
 from ..plot.statistic_plot import basic_statistic
 from ..utils.base import clear_output, save_data, save_data_without_data_identifier, save_fig, save_text
 from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
 from .func.algo_classification._adaboost import adaboost_manual_hyper_parameters
-from .func.algo_classification._common import cross_validation, plot_2d_decision_boundary, plot_confusion_matrix, plot_precision_recall, plot_precision_recall_threshold, plot_ROC, resampler, score
+from .func.algo_classification._common import (
+    cross_validation,
+    plot_2d_decision_boundary,
+    plot_confusion_matrix,
+    plot_normalized_confusion_matrix,
+    plot_precision_recall,
+    plot_precision_recall_threshold,
+    plot_ROC,
+    resampler,
+    score,
+)
 from .func.algo_classification._decision_tree import decision_tree_manual_hyper_parameters
 from .func.algo_classification._enum import (
     AdaBoostSpecialFunction,
@@ -48,6 +59,11 @@ from .func.algo_classification._sgd_classification import sgd_classificaiton_man
 from .func.algo_classification._svc import svc_manual_hyper_parameters
 from .func.algo_classification._traceability import save_metric_configuration, save_skipped_binary_plot_notice
 from .func.algo_classification._xgboost import xgboost_manual_hyper_parameters
+
+
+def _configured_cross_validation_folds() -> int:
+    contract = active_scientific_execution()
+    return contract.cross_validation_folds if contract is not None else 10
 
 
 class ClassificationWorkflowBase(WorkflowBase):
@@ -154,10 +170,25 @@ class ClassificationWorkflowBase(WorkflowBase):
         return dict()
 
     @staticmethod
-    def _score(y_true: pd.DataFrame, y_predict: pd.DataFrame, algorithm_name: str, store_path: str, func_name: str, average: Optional[str] = None, interactive: bool = True) -> str:
+    def _score(
+        y_true: pd.DataFrame,
+        y_predict: pd.DataFrame,
+        algorithm_name: str,
+        store_path: str,
+        func_name: str,
+        average: Optional[str] = None,
+        interactive: bool = True,
+        metric_configuration: Optional[Dict[str, Any]] = None,
+    ) -> str:
         """Print the classification score report of the model."""
         print(f"-----* {func_name} *-----")
-        average, scores = score(y_true, y_predict, average=average, interactive=interactive)
+        average, scores = score(
+            y_true,
+            y_predict,
+            average=average,
+            interactive=interactive,
+            metric_configuration=metric_configuration,
+        )
         scores_str = json.dumps(scores, indent=4)
         save_text(scores_str, f"{func_name} - {algorithm_name}", store_path)
         mlflow.log_metrics({key: value for key, value in scores.items() if isinstance(value, (int, float))})
@@ -174,11 +205,28 @@ class ClassificationWorkflowBase(WorkflowBase):
         mlflow.log_artifact(os.path.join(store_path, f"{func_name} - {algorithm_name}.txt"))
 
     @staticmethod
-    def _cross_validation(trained_model: object, X_train: pd.DataFrame, y_train: pd.DataFrame, graph_name: str, average: str, cv_num: int, algorithm_name: str, store_path: str) -> None:
+    def _cross_validation(
+        trained_model: object,
+        X_train: pd.DataFrame,
+        y_train: pd.DataFrame,
+        graph_name: str,
+        average: str,
+        cv_num: int,
+        algorithm_name: str,
+        store_path: str,
+        metric_configuration: Optional[Dict[str, Any]] = None,
+    ) -> None:
         """Perform cross validation on the model."""
         print(f"-----* {graph_name} *-----")
         print(f"K-Folds: {cv_num}")
-        scores = cross_validation(trained_model, X_train, y_train, average=average, cv_num=cv_num)
+        scores = cross_validation(
+            trained_model,
+            X_train,
+            y_train,
+            average=average,
+            cv_num=cv_num,
+            metric_configuration=metric_configuration,
+        )
         scores_str = json.dumps(scores, indent=4)
         save_text(scores_str, f"{graph_name} - {algorithm_name}", store_path)
 
@@ -201,6 +249,50 @@ class ClassificationWorkflowBase(WorkflowBase):
         save_data(data, name_column, f"{graph_name} - {algorithm_name}", local_path, mlflow_path, True)
 
     @staticmethod
+    def _plot_normalized_confusion_matrix(
+        y_test: pd.DataFrame,
+        y_test_predict: pd.DataFrame,
+        name_column: str,
+        trained_model: object,
+        algorithm_name: str,
+        local_path: str,
+        mlflow_path: str,
+        normalization: str,
+    ) -> None:
+        graph_name = f"Normalized Confusion Matrix ({normalization})"
+        print(f"-----* {graph_name} *-----")
+        data = plot_normalized_confusion_matrix(
+            y_test,
+            y_test_predict,
+            trained_model,
+            normalization,
+        )
+        save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
+        labels = getattr(trained_model, "classes_", None)
+        if labels is None or len(labels) != data.shape[0]:
+            labels = pd.unique(
+                pd.concat(
+                    [pd.Series(np.ravel(y_test)), pd.Series(np.ravel(y_test_predict))],
+                    ignore_index=True,
+                )
+            )
+        if len(labels) != data.shape[0]:
+            labels = range(data.shape[0])
+        normalized = pd.DataFrame(
+            data,
+            columns=[f"pred_{label}" for label in labels],
+            index=[f"true_{label}" for label in labels],
+        )
+        save_data(
+            normalized,
+            name_column,
+            f"{graph_name} - {algorithm_name}",
+            local_path,
+            mlflow_path,
+            True,
+        )
+
+    @staticmethod
     def _count_unique_labels(y_values: Optional[pd.DataFrame]) -> Optional[int]:
         if y_values is None:
             return None
@@ -220,9 +312,26 @@ class ClassificationWorkflowBase(WorkflowBase):
         return 0
 
     @staticmethod
-    def _plot_precision_recall(X_test: pd.DataFrame, y_test: pd.DataFrame, name_column: str, trained_model: object, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_precision_recall(
+        X_test: pd.DataFrame,
+        y_test: pd.DataFrame,
+        name_column: str,
+        trained_model: object,
+        graph_name: str,
+        algorithm_name: str,
+        local_path: str,
+        mlflow_path: str,
+        metric_configuration: Optional[Dict[str, Any]] = None,
+    ) -> None:
         print(f"-----* {graph_name} *-----")
-        y_probs, precisions, recalls, thresholds = plot_precision_recall(X_test, y_test, trained_model, graph_name, algorithm_name)
+        y_probs, precisions, recalls, thresholds = plot_precision_recall(
+            X_test,
+            y_test,
+            trained_model,
+            graph_name,
+            algorithm_name,
+            metric_configuration=metric_configuration,
+        )
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
         y_probs = pd.DataFrame(y_probs, columns=["Probabilities"])
         precisions = pd.DataFrame(precisions, columns=["Precisions"])
@@ -233,10 +342,25 @@ class ClassificationWorkflowBase(WorkflowBase):
 
     @staticmethod
     def _plot_precision_recall_threshold(
-        X_test: pd.DataFrame, y_test: pd.DataFrame, name_column: str, trained_model: object, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str
+        X_test: pd.DataFrame,
+        y_test: pd.DataFrame,
+        name_column: str,
+        trained_model: object,
+        graph_name: str,
+        algorithm_name: str,
+        local_path: str,
+        mlflow_path: str,
+        metric_configuration: Optional[Dict[str, Any]] = None,
     ) -> None:
         print(f"-----* {graph_name} *-----")
-        y_probs, precisions, recalls, thresholds = plot_precision_recall_threshold(X_test, y_test, trained_model, graph_name, algorithm_name)
+        y_probs, precisions, recalls, thresholds = plot_precision_recall_threshold(
+            X_test,
+            y_test,
+            trained_model,
+            graph_name,
+            algorithm_name,
+            metric_configuration=metric_configuration,
+        )
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
         y_probs = pd.DataFrame(y_probs, columns=["Probabilities"])
         precisions = pd.DataFrame(precisions, columns=["Precisions"])
@@ -248,9 +372,26 @@ class ClassificationWorkflowBase(WorkflowBase):
         save_data(thresholds, name_column, f"{graph_name} - Thresholds", local_path, mlflow_path)
 
     @staticmethod
-    def _plot_ROC(X_test: pd.DataFrame, y_test: pd.DataFrame, name_column: str, graph_name: str, trained_model: object, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
+    def _plot_ROC(
+        X_test: pd.DataFrame,
+        y_test: pd.DataFrame,
+        name_column: str,
+        graph_name: str,
+        trained_model: object,
+        algorithm_name: str,
+        local_path: str,
+        mlflow_path: str,
+        metric_configuration: Optional[Dict[str, Any]] = None,
+    ) -> None:
         print(f"-----* {graph_name} *-----")
-        y_probs, fpr, tpr, thresholds = plot_ROC(X_test, y_test, trained_model, graph_name, algorithm_name)
+        y_probs, fpr, tpr, thresholds = plot_ROC(
+            X_test,
+            y_test,
+            trained_model,
+            graph_name,
+            algorithm_name,
+            metric_configuration=metric_configuration,
+        )
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
         y_probs = pd.DataFrame(y_probs, columns=["Probabilities"])
         fpr = pd.DataFrame(fpr, columns=["False Positive Rate"])
@@ -360,7 +501,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             custom_label_to_code = {label: idx for idx, label in enumerate(custom_labels)}
             class_counts = y_custom[target_column].value_counts(sort=False).to_dict()
             config = {
-                "target_transform_version": 1,
+                "target_transform_version": 2,
                 "strategy": strategy,
                 "target_column": target_column,
                 "num_classes": len(custom_labels),
@@ -368,6 +509,14 @@ class ClassificationWorkflowBase(WorkflowBase):
                 "custom_label_to_code": {str(label): code for label, code in custom_label_to_code.items()},
                 "code_to_custom_label": {str(code): str(label) for label, code in custom_label_to_code.items()},
                 "class_counts": {str(label): int(count) for label, count in class_counts.items()},
+                "typed_label_records": [
+                    {
+                        "semantic_label": semantic_label_identity(label),
+                        "encoded_label": code,
+                        "count": int(class_counts[label]),
+                    }
+                    for label, code in custom_label_to_code.items()
+                ],
             }
             if extra:
                 config.update(extra)
@@ -377,9 +526,25 @@ class ClassificationWorkflowBase(WorkflowBase):
             if not local_path:
                 return
             os.makedirs(local_path, exist_ok=True)
-            mapping_rows = [{"custom_label": label, "encoded_label": code} for label, code in config["custom_label_to_code"].items()]
+            mapping_rows = [
+                {
+                    "semantic_label_type": record["semantic_label"]["type"],
+                    "custom_label": record["semantic_label"]["value"],
+                    "encoded_label": record["encoded_label"],
+                }
+                for record in config["typed_label_records"]
+            ]
             mapping_df = pd.DataFrame(mapping_rows)
-            counts_df = pd.DataFrame(list(config["class_counts"].items()), columns=["custom_label", "count"])
+            counts_df = pd.DataFrame(
+                [
+                    {
+                        "semantic_label_type": record["semantic_label"]["type"],
+                        "custom_label": record["semantic_label"]["value"],
+                        "count": record["count"],
+                    }
+                    for record in config["typed_label_records"]
+                ]
+            )
             save_data(y_original, name_column1, "Y Raw Before Customizing Label", local_path, mlflow_path)
             save_data(y_custom, name_column1, "Y Human-Readable After Customizing Label", local_path, mlflow_path)
             save_data(y_encoded, name_column1, "Y Encoded After Customizing Label", local_path, mlflow_path)
@@ -536,6 +701,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             store_path=GEOPI_OUTPUT_METRICS_PATH,
             average=getattr(self, "metric_average", None),
             interactive=getattr(self, "metric_average", None) is None,
+            metric_configuration=getattr(self, "metric_configuration", None),
         )
         self._classification_report(
             y_true=ClassificationWorkflowBase.y_test,
@@ -544,16 +710,16 @@ class ClassificationWorkflowBase(WorkflowBase):
             algorithm_name=self.naming,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
-        save_metric_configuration(self.naming, average, GEOPI_OUTPUT_METRICS_PATH)
         self._cross_validation(
             trained_model=self.model,
             X_train=ClassificationWorkflowBase.X_train,
             y_train=ClassificationWorkflowBase.y_train,
             graph_name=ClassificationCommonFunction.CROSS_VALIDATION.value,
             average=average,
-            cv_num=10,
+            cv_num=_configured_cross_validation_folds(),
             algorithm_name=self.naming,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
+            metric_configuration=getattr(self, "metric_configuration", None),
         )
         self._plot_confusion_matrix(
             y_test=ClassificationWorkflowBase.y_test,
@@ -565,6 +731,18 @@ class ClassificationWorkflowBase(WorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
+        scientific_execution = active_scientific_execution()
+        if scientific_execution is not None and scientific_execution.confusion_matrix_normalization is not None:
+            self._plot_normalized_confusion_matrix(
+                y_test=ClassificationWorkflowBase.y_test,
+                y_test_predict=ClassificationWorkflowBase.y_test_predict,
+                name_column=ClassificationWorkflowBase.name_test,
+                trained_model=self.model,
+                algorithm_name=self.naming,
+                local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
+                mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+                normalization=scientific_execution.confusion_matrix_normalization,
+            )
         class_count = self._get_total_class_count(getattr(self, "label_config", None))
         if class_count == 2:
             self._plot_precision_recall(
@@ -576,6 +754,7 @@ class ClassificationWorkflowBase(WorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+                metric_configuration=getattr(self, "metric_configuration", None),
             )
             self._plot_precision_recall_threshold(
                 X_test=ClassificationWorkflowBase.X_test,
@@ -586,6 +765,7 @@ class ClassificationWorkflowBase(WorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+                metric_configuration=getattr(self, "metric_configuration", None),
             )
             self._plot_ROC(
                 X_test=ClassificationWorkflowBase.X_test,
@@ -596,9 +776,16 @@ class ClassificationWorkflowBase(WorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+                metric_configuration=getattr(self, "metric_configuration", None),
             )
         else:
             save_skipped_binary_plot_notice(self.naming, class_count, GEOPI_OUTPUT_METRICS_PATH)
+        save_metric_configuration(
+            self.naming,
+            average,
+            GEOPI_OUTPUT_METRICS_PATH,
+            metric_configuration=getattr(self, "metric_configuration", None),
+        )
         self._plot_permutation_importance(
             X_test=ClassificationWorkflowBase.X_test,
             y_test=ClassificationWorkflowBase.y_test,
@@ -637,6 +824,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             store_path=GEOPI_OUTPUT_METRICS_PATH,
             average=getattr(self, "metric_average", None),
             interactive=getattr(self, "metric_average", None) is None,
+            metric_configuration=getattr(self, "metric_configuration", None),
         )
         self._classification_report(
             y_true=ClassificationWorkflowBase.y_test,
@@ -645,16 +833,16 @@ class ClassificationWorkflowBase(WorkflowBase):
             func_name=ClassificationCommonFunction.CLASSIFICATION_REPORT.value,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
-        save_metric_configuration(self.naming, average, GEOPI_OUTPUT_METRICS_PATH)
         self._cross_validation(
             trained_model=self.auto_model,
             X_train=ClassificationWorkflowBase.X_train,
             y_train=ClassificationWorkflowBase.y_train,
             graph_name=ClassificationCommonFunction.CROSS_VALIDATION.value,
             average=average,
-            cv_num=10,
+            cv_num=_configured_cross_validation_folds(),
             algorithm_name=self.naming,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
+            metric_configuration=getattr(self, "metric_configuration", None),
         )
         self._plot_confusion_matrix(
             y_test=ClassificationWorkflowBase.y_test,
@@ -677,6 +865,7 @@ class ClassificationWorkflowBase(WorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+                metric_configuration=getattr(self, "metric_configuration", None),
             )
             self._plot_precision_recall_threshold(
                 X_test=ClassificationWorkflowBase.X_test,
@@ -687,6 +876,7 @@ class ClassificationWorkflowBase(WorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+                metric_configuration=getattr(self, "metric_configuration", None),
             )
             self._plot_ROC(
                 X_test=ClassificationWorkflowBase.X_test,
@@ -697,9 +887,16 @@ class ClassificationWorkflowBase(WorkflowBase):
                 algorithm_name=self.naming,
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
+                metric_configuration=getattr(self, "metric_configuration", None),
             )
         else:
             save_skipped_binary_plot_notice(self.naming, class_count, GEOPI_OUTPUT_METRICS_PATH)
+        save_metric_configuration(
+            self.naming,
+            average,
+            GEOPI_OUTPUT_METRICS_PATH,
+            metric_configuration=getattr(self, "metric_configuration", None),
+        )
         self._plot_permutation_importance(
             X_test=ClassificationWorkflowBase.X_test,
             y_test=ClassificationWorkflowBase.y_test,
@@ -870,7 +1067,7 @@ class SVMClassification(ClassificationWorkflowBase):
         self.decision_function_shape = decision_function_shape
         self.break_ties = break_ties
 
-        if random_state:
+        if random_state is not None:
             self.random_state = random_state
 
         # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
@@ -1125,7 +1322,7 @@ class DecisionTreeClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         self.class_weight = class_weight
         self.ccp_alpha = ccp_alpha
 
-        if random_state:
+        if random_state is not None:
             self.random_state = random_state
 
         # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
@@ -1475,7 +1672,7 @@ class RandomForestClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         self.ccp_alpha = ccp_alpha
         self.max_samples = max_samples
 
-        if random_state:
+        if random_state is not None:
             self.random_state = random_state
 
         # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
@@ -1823,7 +2020,7 @@ class XGBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         if kwargs:
             self.kwargs = kwargs
 
-        if random_state:
+        if random_state is not None:
             self.random_state = random_state
 
         # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
@@ -2147,7 +2344,7 @@ class LogisticRegressionClassification(LinearWorkflowMixin, ClassificationWorkfl
         self.class_weight = class_weight
         self.l1_ratio = l1_ratio
 
-        if random_state:
+        if random_state is not None:
             self.random_state = random_state
 
         # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
@@ -2459,7 +2656,7 @@ class MLPClassification(ClassificationWorkflowBase):
         self.n_iter_no_change = (n_iter_no_change,)
         self.max_fun = (max_fun,)
 
-        if random_state:
+        if random_state is not None:
             self.random_state = (random_state,)
         else:
             self.random_state = (self.random_state,)
@@ -2764,7 +2961,7 @@ class ExtraTreesClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         self.ccp_alpha = ccp_alpha
         self.max_samples = max_samples
 
-        if random_state:
+        if random_state is not None:
             self.random_state = random_state
 
         # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
@@ -3097,7 +3294,7 @@ class GradientBoostingClassification(TreeWorkflowMixin, ClassificationWorkflowBa
         self.tol = (tol,)
         self.ccp_alpha = (ccp_alpha,)
 
-        if random_state:
+        if random_state is not None:
             self.random_state = (random_state,)
         else:
             self.random_state = (self.random_state,)
@@ -3289,7 +3486,7 @@ class AdaBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         self.max_depth = max_depth
 
         # if 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'
-        if random_state:
+        if random_state is not None:
             self.random_state = (random_state,)
         else:
             self.random_state = (self.random_state,)
@@ -3786,7 +3983,7 @@ class SGDClassification(LinearWorkflowMixin, ClassificationWorkflowBase):
         self.warm_start = warm_start
         self.average = average
 
-        if random_state:
+        if random_state is not None:
             self.random_state = random_state
 
         # If 'random_state' is None, 'self.random_state' comes from the parent class 'WorkflowBase'

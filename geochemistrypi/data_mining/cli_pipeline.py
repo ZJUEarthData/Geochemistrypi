@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 import os
+from functools import wraps
 from pathlib import Path
 from time import sleep
-from typing import Optional
+from typing import Callable, Optional, TypeVar
 
 import mlflow
 import pandas as pd
@@ -10,6 +11,7 @@ from rich import print
 from rich.console import Console
 from rich.prompt import Confirm, Prompt
 
+from ..scientific_execution import ScientificExecutionContractError, active_scientific_execution
 from .aggregate import child_result, safe_child_error, write_aggregate_manifest
 from .constants import (
     ANOMALYDETECTION_MODELS,
@@ -51,7 +53,7 @@ from .data.data_readiness import (
 )
 from .data.feature_engineering import FeatureConstructor
 from .data.imputation import imputer
-from .data.inference import build_transform_pipeline, model_inference
+from .data.inference import build_transform_pipeline, fit_training_transform_pipeline, model_inference, save_external_regression_evaluation, transform_feature_frame
 from .data.preprocessing import feature_scaler, feature_selector
 from .data.statistic import monte_carlo_simulator
 from .enum_ import DataSource
@@ -78,6 +80,120 @@ def semantic_mode_number(selected_number: int, visible_options: list) -> int:
         raise ValueError(f"Unknown mode label in visible menu: {selected_label!r}") from exc
 
 
+_SCIENTIFIC_WORKFLOW_BY_MODE = {
+    1: ("supervised_learning", "regression"),
+    2: ("supervised_learning", "classification"),
+    3: ("clustering", "clustering"),
+    4: ("dimension_reduction", "embedding"),
+    5: ("anomaly_detection", "outlier_detection"),
+}
+_SCIENTIFIC_METHOD_BY_MODE_AND_SELECTION = {
+    1: {
+        "Decision Tree": "decision_tree",
+        "Random Forest": "random_forest",
+        "Extra-Trees": "extra_trees",
+        "Gradient Boosting": "gradient_boosting",
+        "XGBoost": "xgboost",
+        "Multi-layer Perceptron": "multi_layer_perceptron",
+        "Lasso Regression": "lasso_regression",
+        "Elastic Net": "elastic_net",
+        "SGD Regression": "stochastic_gradient_descent",
+    },
+    2: {
+        "Logistic Regression": "logistic_regression",
+        "Support Vector Machine": "support_vector_machine",
+        "Decision Tree": "decision_tree",
+        "Random Forest": "random_forest",
+        "Extra-Trees": "extra_trees",
+        "XGBoost": "xgboost",
+        "Multi-layer Perceptron": "multi_layer_perceptron",
+        "Gradient Boosting": "gradient_boosting",
+        "K-Nearest Neighbors": "k_nearest_neighbors",
+        "Stochastic Gradient Descent": "stochastic_gradient_descent",
+        "AdaBoost": "adaboost",
+    },
+    3: {
+        "KMeans": "kmeans",
+        "AffinityPropagation": "affinity_propagation",
+    },
+    4: {"PCA": "pca", "T-SNE": "tsne", "MDS": "mds"},
+    5: {
+        "Isolation Forest": "isolation_forest",
+        "Local Outlier Factor": "local_outlier_factor",
+    },
+}
+
+
+def _validate_scientific_cli_selection(
+    mode_num: int,
+    model_name: Optional[str] = None,
+    *,
+    is_automl: bool = False,
+) -> None:
+    """Fail before model execution if the actual CLI choice evades the sidecar."""
+
+    contract = active_scientific_execution()
+    if contract is None:
+        return
+    if mode_num == 6:
+        raise ScientificExecutionContractError(
+            "The data-mining Time Series branch has no single estimator identity "
+            "that can be bound by --scientific-config; use the public time-series "
+            "command and its native configuration contract."
+        )
+    try:
+        workflow_family, workflow_mode = _SCIENTIFIC_WORKFLOW_BY_MODE[mode_num]
+    except KeyError as exc:
+        raise ScientificExecutionContractError(f"CLI mode {mode_num!r} has no scientific execution binding.") from exc
+    contract.validate_selected_workflow(workflow_family, workflow_mode)
+    if model_name is None:
+        return
+    if model_name == "all_models":
+        raise ScientificExecutionContractError("--scientific-config binds exactly one method and cannot be used with " "the all-models CLI selection.")
+    try:
+        method = _SCIENTIFIC_METHOD_BY_MODE_AND_SELECTION[mode_num][model_name]
+    except KeyError as exc:
+        raise ScientificExecutionContractError(f"CLI model selection {model_name!r} has no registered single-method " "scientific execution binding.") from exc
+    contract.validate_selected_workflow(
+        workflow_family,
+        workflow_mode,
+        method,
+    )
+    if is_automl:
+        raise ScientificExecutionContractError(
+            "--scientific-config binds one explicit estimator parameterization; " "classification/regression AutoML may replace it and is therefore " "not permitted in this execution path."
+        )
+
+
+_ReturnValue = TypeVar("_ReturnValue")
+
+
+def _close_mlflow_runs_started_by_cli(function: Callable[..., _ReturnValue]) -> Callable[..., _ReturnValue]:
+    """Restore the caller's MLflow run stack after every CLI terminal path."""
+
+    @wraps(function)
+    def wrapped(*args, **kwargs):
+        baseline_run = mlflow.active_run()
+        failed = False
+        try:
+            return function(*args, **kwargs)
+        except BaseException:
+            failed = True
+            raise
+        finally:
+            active_run = mlflow.active_run()
+            while active_run is not None and (baseline_run is None or active_run.info.run_id != baseline_run.info.run_id):
+                try:
+                    mlflow.end_run(status="FAILED" if failed else "FINISHED")
+                except Exception:
+                    if not failed:
+                        raise
+                active_run = mlflow.active_run()
+
+    return wrapped
+
+
+@_close_mlflow_runs_started_by_cli
 def cli_pipeline(
     training_data_path: str,
     application_data_path: Optional[str] = None,
@@ -559,6 +675,7 @@ def cli_pipeline(
         selected_mode_num = limit_num_input(MODE_OPTION, SECTION[2], num_input)
         mode_num = semantic_mode_number(selected_mode_num, MODE_OPTION)
     clear_output()
+    _validate_scientific_cli_selection(mode_num)
 
     if mode_num == 6:
         print("[bold green]-*-*- Time Series Configuration -*-*-[/bold green]")
@@ -605,6 +722,9 @@ def cli_pipeline(
     name_all = process_name_column
     label_config = None
     metric_average = None
+    scientific_transform_pipeline = None
+    scientific_transform_input_example = None
+    scientific_execution = active_scientific_execution()
     if mode_num == 1 or mode_num == 2:
         # Supervised learning
         print("[bold green]-*-*- Data Segmentation - X Set and Y Set -*-*-[/bold green]")
@@ -630,6 +750,15 @@ def cli_pipeline(
         print("Notice: Normally, please choose only one column to be tag column Y, not multiple columns.")
         print("Notice: For classification model training, the selected Y column can be existing class labels or a numeric value to be converted into user-defined classes.")
         y = create_sub_data_set(data_selected_imputed_fe, allow_empty_columns=False, require_numeric=mode_num != 2)
+        if scientific_execution is not None and scientific_execution.target_transformation_entries:
+            save_data(
+                y.copy(),
+                name_all.copy(),
+                "Y Original Target",
+                GEOPI_OUTPUT_ARTIFACTS_DATA_PATH,
+                MLFLOW_ARTIFACT_DATA_PATH,
+            )
+            y = scientific_execution.transform_targets(y)
         print("Successfully create Y data set.")
         print("The Selected Data Set:")
         print(y)
@@ -668,14 +797,22 @@ def cli_pipeline(
             print("Which strategy do you want to apply?")
             num2option(FEATURE_SCALING_STRATEGY)
             feature_scaling_num = limit_num_input(FEATURE_SCALING_STRATEGY, SECTION[1], num_input)
-            feature_scaling_config, X_scaled_np = feature_scaler(X, FEATURE_SCALING_STRATEGY, feature_scaling_num - 1)
-            X = np2pd(X_scaled_np, X.columns)
-            del X_scaled_np
-            print("Data Set After Scaling:")
-            print(X)
-            print("Basic Statistical Information: ")
-            basic_statistic(X)
-            save_data(X, name_all, "X With Scaling", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+            feature_scaling_config, X_scaled_np = feature_scaler(
+                X,
+                FEATURE_SCALING_STRATEGY,
+                feature_scaling_num - 1,
+                fit=scientific_execution is None,
+            )
+            if X_scaled_np is not None:
+                X = np2pd(X_scaled_np, X.columns)
+                del X_scaled_np
+                print("Data Set After Scaling:")
+                print(X)
+                print("Basic Statistical Information: ")
+                basic_statistic(X)
+                save_data(X, name_all, "X With Scaling", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+            else:
+                print("Scientific execution: scaler fitting is deferred until " "the model-fitting cohort is defined.")
         else:
             feature_scaling_config = {}
         clear_output()
@@ -688,28 +825,68 @@ def cli_pipeline(
             print("Which strategy do you want to apply?")
             num2option(FEATURE_SELECTION_STRATEGY)
             feature_selection_num = limit_num_input(FEATURE_SELECTION_STRATEGY, SECTION[1], num_input)
-            feature_selection_config, X = feature_selector(X, y, mode_num, FEATURE_SELECTION_STRATEGY, feature_selection_num - 1)
-            print("--Selected Features-")
-            show_data_columns(X.columns)
-            save_data(X, name_all, "X After Feature Selection", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
+            feature_selection_config, X_selected = feature_selector(
+                X,
+                y,
+                mode_num,
+                FEATURE_SELECTION_STRATEGY,
+                feature_selection_num - 1,
+                fit=scientific_execution is None,
+            )
+            if X_selected is None:
+                print("Scientific execution: feature-selector fitting is deferred " "until the model-fitting cohort is defined.")
+            else:
+                X = X_selected
+                print("--Selected Features-")
+                show_data_columns(X.columns)
+                save_data(X, name_all, "X After Feature Selection", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
         else:
             feature_selection_config = {}
         clear_output()
 
-        # Create training data and testing data
+        # External labeled regression evaluates a model fitted on the complete
+        # prepared training cohort.  It must not silently reserve an internal
+        # holdout because that changes the declared training population.
+        external_labeled_training = mode_num == 1 and scientific_execution is not None and scientific_execution.evaluation_mode == "external_labeled"
         print("[bold green]-*-*- Data Split - Train Set and Test Set -*-*-[/bold green]")
-        print("Notice: Normally, set 20% of the dataset aside as test set, such as 0.2.")
-        test_ratio = float_input(default=0.2, prefix=SECTION[1], slogan="@Test Ratio: ")
-        stratify_target = None
-        if mode_num == 2:
-            class_counts = y.iloc[:, 0].value_counts().sort_index()
-            if (class_counts < 2).any():
-                too_small = class_counts[class_counts < 2].to_dict()
-                raise ValueError(f"Each classification class must have at least 2 samples for stratified splitting. Too-small classes: {too_small}")
-            stratify_target = y.iloc[:, 0]
-        train_test_data = data_split(X, y, process_name_column, test_ratio, stratify=stratify_target)
+        if external_labeled_training:
+            print("External labeled evaluation uses every prepared training row " "for model fitting.")
+            split_seed = None
+            train_test_data = {
+                "X Train": X.copy(),
+                "X Test": X.iloc[0:0].copy(),
+                "Y Train": y.copy(),
+                "Y Test": y.iloc[0:0].copy(),
+                "Name Train": process_name_column.copy(),
+                "Name Test": process_name_column.iloc[0:0].copy(),
+            }
+        else:
+            print("Notice: Normally, set 20% of the dataset aside as test set, such as 0.2.")
+            test_ratio = float_input(default=0.2, prefix=SECTION[1], slogan="@Test Ratio: ")
+            stratify_target = None
+            if mode_num == 2:
+                split_strategy = scientific_execution.split_strategy if scientific_execution is not None else "stratified_holdout"
+                if split_strategy == "stratified_holdout":
+                    class_counts = y.iloc[:, 0].value_counts().sort_index()
+                    if (class_counts < 2).any():
+                        too_small = class_counts[class_counts < 2].to_dict()
+                        raise ValueError(f"Each classification class must have at least 2 samples for stratified splitting. Too-small classes: {too_small}")
+                    stratify_target = y.iloc[:, 0]
+                elif split_strategy != "random_holdout":
+                    raise ValueError(f"Unsupported classification split strategy: {split_strategy!r}")
+            split_seed = scientific_execution.split_seed if scientific_execution is not None and scientific_execution.split_seed is not None else 42
+            train_test_data = data_split(
+                X,
+                y,
+                process_name_column,
+                test_ratio,
+                stratify=stratify_target,
+                random_state=split_seed,
+            )
         for key, value in train_test_data.items():
             if key in ["Name Train", "Name Test"]:
+                continue
+            if external_labeled_training and key in ["X Test", "Y Test"]:
                 continue
             print("-" * 25)
             print(f"The Selected Data Set: {key}")
@@ -724,6 +901,67 @@ def cli_pipeline(
         X_train, X_test = train_test_data["X Train"], train_test_data["X Test"]
         y_train, y_test = train_test_data["Y Train"], train_test_data["Y Test"]
         name_train, name_test = train_test_data["Name Train"], train_test_data["Name Test"]
+        if scientific_execution is not None and (feature_scaling_config or feature_selection_config):
+            scientific_transform_config = {
+                **imputation_config,
+                **feature_scaling_config,
+                **feature_selection_config,
+            }
+            scientific_transform_source = X
+            scientific_transform_input_example = X_train.iloc[[0]].copy()
+            scientific_transform_pipeline = fit_training_transform_pipeline(
+                scientific_transform_config,
+                X_train,
+                y_train,
+            )
+            X_train = transform_feature_frame(scientific_transform_pipeline, X_train)
+            if not X_test.empty:
+                X_test = transform_feature_frame(scientific_transform_pipeline, X_test)
+            X = transform_feature_frame(scientific_transform_pipeline, X)
+            if feature_scaling_config:
+                scaled_X = (
+                    transform_feature_frame(
+                        scientific_transform_pipeline[:-1],
+                        scientific_transform_source,
+                    )
+                    if feature_selection_config
+                    else X
+                )
+                save_data(
+                    scaled_X,
+                    name_all,
+                    "X With Training-Fitted Scaling",
+                    GEOPI_OUTPUT_ARTIFACTS_DATA_PATH,
+                    MLFLOW_ARTIFACT_DATA_PATH,
+                )
+            if feature_selection_config:
+                print("--Selected Features-")
+                show_data_columns(X.columns)
+                save_data(
+                    X,
+                    name_all,
+                    "X After Feature Selection",
+                    GEOPI_OUTPUT_ARTIFACTS_DATA_PATH,
+                    MLFLOW_ARTIFACT_DATA_PATH,
+                )
+        if scientific_execution is not None:
+            split_membership = pd.DataFrame(
+                {
+                    "Split": ["train"] * len(name_train) + ["test"] * len(name_test),
+                    "Split Seed": [split_seed] * (len(name_train) + len(name_test)),
+                }
+            )
+            split_names = pd.concat(
+                [name_train.reset_index(drop=True), name_test.reset_index(drop=True)],
+                ignore_index=True,
+            )
+            save_data(
+                split_membership,
+                split_names,
+                "Split Membership",
+                GEOPI_OUTPUT_ARTIFACTS_DATA_PATH,
+                MLFLOW_ARTIFACT_DATA_PATH,
+            )
         del data_selected_imputed_fe
         clear_output()
     else:
@@ -793,6 +1031,7 @@ def cli_pipeline(
     # AutoML hyper parameter tuning control
     is_automl = False
     model_name = MODELS[model_num - 1]
+    _validate_scientific_cli_selection(mode_num, model_name)
     # If the model is supervised learning, then allow the user to use AutoML.
     if mode_num == 1 or mode_num == 2:
         # If the model is not in the NON_AUTOML_MODELS, then ask the user whether to use AutoML.
@@ -803,14 +1042,24 @@ def cli_pipeline(
             if automl_num == 1:
                 is_automl = True
             clear_output()
+    _validate_scientific_cli_selection(
+        mode_num,
+        model_name,
+        is_automl=is_automl,
+    )
 
     # Model inference control
     is_inference = False
+    application_identifier_column = NAME
+    if scientific_execution is not None and scientific_execution.evaluation_mode == "external_labeled" and scientific_execution.external_evaluation_identifier_column is not None:
+        application_identifier_column = scientific_execution.external_evaluation_identifier_column
     # If the model is supervised learning, then allow the user to use model inference.
     if mode_num == 1 or mode_num == 2:
         print("[bold green]-*-*- Feature Engineering on Application Data -*-*-[/bold green]")
         is_inference = True
-        selected_columns = X_train.columns
+        selected_columns = (
+            scientific_transform_pipeline.feature_names_in_ if scientific_transform_pipeline is not None and hasattr(scientific_transform_pipeline, "feature_names_in_") else X_train.columns
+        )
         if inference_data is not None:
             if feature_engineering_config:
                 # If inference_data is not None and feature_engineering_config is not {}, then apply feature engineering with the same operation to the input data.
@@ -818,7 +1067,7 @@ def cli_pipeline(
                 new_feature_builder = FeatureConstructor(inference_data, name_column_origin)
                 inference_data_fe = new_feature_builder.batch_build(feature_engineering_config)
                 inference_data_fe_selected = inference_data_fe[selected_columns]
-                inference_name_column = inference_data[NAME]
+                inference_name_column = inference_data[application_identifier_column]
                 save_data(inference_data, name_column_origin, "Application Data Original", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
                 save_data(inference_data_fe, name_column_origin, "Application Data Feature-Engineering", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
                 save_data(inference_data_fe_selected, inference_name_column, "Application Data Feature-Engineering Selected", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
@@ -826,7 +1075,7 @@ def cli_pipeline(
                 print("You have not applied feature engineering to the training data.")
                 print("Hence, no feature engineering operation will be applied to the inference data.")
                 inference_data_fe_selected = inference_data[selected_columns]
-                inference_name_column = inference_data[NAME]
+                inference_name_column = inference_data[application_identifier_column]
                 save_data(inference_data, name_column_origin, "Application Data Original", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
                 save_data(inference_data_fe_selected, inference_name_column, "Application Data Selected", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)
         else:
@@ -863,7 +1112,16 @@ def cli_pipeline(
         # Construct the transform pipeline using sklearn.pipeline.make_pipeline method.
         logger.debug("Transform Pipeline")
         print("[bold green]-*-*- Transform Pipeline Construction -*-*-[/bold green]")
-        transformer_config, transform_pipeline = build_transform_pipeline(imputation_config, feature_scaling_config, feature_selection_config, run, X_train, y_train)
+        transformer_config, transform_pipeline = build_transform_pipeline(
+            imputation_config,
+            feature_scaling_config,
+            feature_selection_config,
+            run,
+            X_train,
+            y_train,
+            prefitted_transform_pipeline=scientific_transform_pipeline,
+            pipeline_input_example=scientific_transform_input_example,
+        )
         clear_output()
 
         # <--- Model Inference --->
@@ -872,13 +1130,26 @@ def cli_pipeline(
         logger.debug("Model Inference")
         if inference_data_fe_selected is not None:
             print("[bold green]-*-*- Model Inference -*-*-[/bold green]")
+            inference_predictions = None
+            evaluation_features = inference_data_fe_selected
+            evaluation_identifiers = inference_data[application_identifier_column]
             if drop_rows_with_missing_value_flag:
-                inference_name_column = inference_data[NAME]
+                inference_name_column = inference_data[application_identifier_column]
                 inference_data_name = pd.concat([inference_name_column, inference_data_fe_selected], axis=1)
                 inference_data_fe_selected_dropped = inference_data_fe_selected.dropna()
                 inference_data_fe_selected_dropped_name = inference_data_name.dropna()
-                inference_name_column_drop = inference_data_fe_selected_dropped_name[NAME]
-                model_inference(inference_data_fe_selected_dropped, inference_name_column_drop, is_inference, run, transformer_config, transform_pipeline)
+                inference_name_column_drop = inference_data_fe_selected_dropped_name[application_identifier_column]
+                inference_predictions = model_inference(
+                    inference_data_fe_selected_dropped,
+                    inference_name_column_drop,
+                    is_inference,
+                    run,
+                    transformer_config,
+                    transform_pipeline,
+                    y_columns=list(y.columns) if y.shape[1] > 1 else None,
+                )
+                evaluation_features = inference_data_fe_selected_dropped
+                evaluation_identifiers = inference_name_column_drop
                 save_data(
                     inference_data_fe_selected_dropped,
                     inference_name_column_drop,
@@ -887,8 +1158,34 @@ def cli_pipeline(
                     MLFLOW_ARTIFACT_DATA_PATH,
                 )
             else:
-                inference_name_column = inference_data[NAME]
-                model_inference(inference_data_fe_selected, inference_name_column, is_inference, run, transformer_config, transform_pipeline)
+                inference_name_column = inference_data[application_identifier_column]
+                inference_predictions = model_inference(
+                    inference_data_fe_selected,
+                    inference_name_column,
+                    is_inference,
+                    run,
+                    transformer_config,
+                    transform_pipeline,
+                    y_columns=list(y.columns) if y.shape[1] > 1 else None,
+                )
+            if scientific_execution is not None and scientific_execution.evaluation_mode == "external_labeled":
+                if inference_predictions is None:
+                    raise ValueError("External labeled evaluation did not produce predictions.")
+                target_columns = list(scientific_execution.external_evaluation_target_columns)
+                missing_evaluation_targets = sorted(set(target_columns) - set(inference_data.columns))
+                if missing_evaluation_targets:
+                    raise ValueError("External evaluation data is missing target columns: " f"{missing_evaluation_targets}")
+                external_actual = inference_data.loc[
+                    evaluation_features.index,
+                    target_columns,
+                ]
+                external_actual = scientific_execution.transform_targets(external_actual)
+                save_external_regression_evaluation(
+                    external_actual,
+                    inference_predictions,
+                    evaluation_identifiers,
+                    model_name,
+                )
             clear_output()
 
         # <--- Data Dumping --->
@@ -964,7 +1261,7 @@ def cli_pipeline(
                     if inference_data_fe_selected is not None:
                         print("[bold green]-*-*- Model Inference -*-*-[/bold green]")
                         if drop_rows_with_missing_value_flag:
-                            inference_name_column = inference_data[NAME]
+                            inference_name_column = inference_data[application_identifier_column]
                             inference_data_name = pd.concat(
                                 [inference_name_column, inference_data_fe_selected],
                                 axis=1,
@@ -979,6 +1276,7 @@ def cli_pipeline(
                                 run,
                                 transformer_config,
                                 transform_pipeline,
+                                y_columns=list(y.columns) if y.shape[1] > 1 else None,
                             )
                             save_data(
                                 inference_data_fe_selected_dropped,
@@ -988,7 +1286,7 @@ def cli_pipeline(
                                 MLFLOW_ARTIFACT_DATA_PATH,
                             )
                         else:
-                            inference_name_column = inference_data[NAME]
+                            inference_name_column = inference_data[application_identifier_column]
                             model_inference(
                                 inference_data_fe_selected,
                                 inference_name_column,
@@ -996,6 +1294,7 @@ def cli_pipeline(
                                 run,
                                 transformer_config,
                                 transform_pipeline,
+                                y_columns=list(y.columns) if y.shape[1] > 1 else None,
                             )
                         clear_output()
 

@@ -219,7 +219,8 @@ def _install_candidate_environments(work: Path, cli_wheel: Path, mcp_wheel: Path
     mcp_root = work / "mcp-installed"
     cli_python = _create_environment(cli_root, "3.9")
     mcp_python = _create_environment(mcp_root, "3.11")
-    _run(("uv", "pip", "install", "--python", cli_python, "pytest", cli_wheel))
+    cli_requirement = f"geochemistrypi[test] @ {cli_wheel.as_uri()}"
+    _run(("uv", "pip", "install", "--python", cli_python, cli_requirement))
     mcp_requirement = f"geochemistrypi-mcp[test] @ {mcp_wheel.as_uri()}"
     _run(("uv", "pip", "install", "--python", mcp_python, mcp_requirement))
     cli_command = _venv_command(cli_root, "geochemistrypi")

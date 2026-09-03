@@ -3,6 +3,7 @@
 import ast
 import bisect
 import csv
+import hashlib
 import json
 import math
 import os
@@ -11,8 +12,9 @@ import shutil
 import sysconfig
 from collections import Counter
 from dataclasses import dataclass
+from dataclasses import replace as dataclass_replace
 from pathlib import Path
-from typing import Any, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Iterable, List, Literal, Optional, Sequence, Tuple
 
 from pydantic import TypeAdapter
 
@@ -44,13 +46,429 @@ from ..contracts.regression import MODEL_DISPLAY_NAMES as REGRESSION_MODEL_DISPL
 from ..contracts.regression import MODEL_NUMBERS as REGRESSION_MODEL_NUMBERS
 from ..contracts.regression import MODEL_ORDER as REGRESSION_MODEL_ORDER
 from ..contracts.regression import MODELS_SUPPORTING_MISSING_VALUES as REGRESSION_MODELS_SUPPORTING_MISSING_VALUES
+from ..contracts.regression import MODELS_WITH_FEATURE_IMPORTANCE as REGRESSION_MODELS_WITH_FEATURE_IMPORTANCE
 from ..contracts.regression import MODELS_WITH_INTERACTIVE_PLOT_SELECTION as REGRESSION_MODELS_WITH_INTERACTIVE_PLOT_SELECTION
 from ..contracts.regression import MODELS_WITHOUT_AUTOML as REGRESSION_MODELS_WITHOUT_AUTOML
-from ..data.headers import HeaderValidationError, normalize_dataset_header
+from ..contracts.scientific_execution import SCIENTIFIC_EXECUTION_METHODS_BY_TASK
+from ..data.headers import HeaderValidationError, normalize_dataset_header, source_allows_pandas_duplicate_mangling
+from ..data.source_rows import iter_cli_csv_rows, iter_cli_excel_rows
+from .artifact_mapping import AdapterArtifactMapping, build_adapter_artifact_mappings
+
+_CLI_FIXED_RANDOM_SEED = 42
+
+ModelSeedPolicy = Literal["bound", "not_applicable", "unbound"]
 
 
 class PlanCompilationError(ValueError):
     """Raised when a semantic request cannot be represented by this driver."""
+
+
+DatasetSource = Literal["path", "builtin", "desktop"]
+DatasetRole = Literal["training", "application"]
+
+
+def _canonical_sha256(value: Any) -> str:
+    serialized = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def _parameter_entries(value: dict[str, Any]) -> Tuple[Tuple[str, str], ...]:
+    return tuple((name, json.dumps(parameter, ensure_ascii=False, sort_keys=True, separators=(",", ":"))) for name, parameter in sorted(value.items()))
+
+
+def _applicable_model_parameters(request: Any) -> dict[str, Any]:
+    """Return only controls that the selected public CLI branch consumes."""
+    parameters = request.model.model_dump(mode="json")
+    model = request.model
+    if model.type == "k_nearest_neighbors":
+        if model.algorithm not in {"ball_tree", "kd_tree"}:
+            parameters.pop("leaf_size", None)
+        if model.metric != "minkowski":
+            parameters.pop("power", None)
+    elif model.type == "support_vector_machine":
+        if model.kernel != "poly":
+            parameters.pop("degree", None)
+        if model.kernel == "linear":
+            parameters.pop("gamma", None)
+    elif model.type == "stochastic_gradient_descent" and model.penalty != "elasticnet":
+        parameters.pop("l1_ratio", None)
+    return parameters
+
+
+def _request_model_parameters(request: Any) -> dict[str, Any]:
+    if request.task == "time_series":
+        if request.mode == "reference_anomaly_series":
+            return {
+                "mode": request.mode,
+                "reference_label_provenance": request.reference_label_provenance,
+                "comparison_label_provenance": (request.comparison_label_provenance if request.comparison_label_column is not None else None),
+                "association_window_days": request.association_window_days,
+                "association_direction": request.association_direction,
+            }
+        return {
+            "mode": request.mode,
+            "bin_width": request.bin_width,
+            **(
+                {
+                    "iterations": request.iterations,
+                    "seed": request.seed,
+                    "age_unit": request.age_unit,
+                    "fit_curve": request.fit_curve,
+                }
+                if request.mode in {"subaerial_proportion", "continuous"}
+                else {
+                    "aggregation": request.aggregation,
+                    "uncertainty": request.uncertainty,
+                    "minimum_samples_per_bin": request.minimum_samples_per_bin,
+                    "filter_minimum": request.filter_minimum,
+                    "filter_maximum": request.filter_maximum,
+                }
+            ),
+            **(
+                {
+                    "relative_value_two_sigma": request.relative_value_two_sigma,
+                    "minimum_samples_per_bin": request.minimum_samples_per_bin,
+                    "filter_minimum": request.filter_minimum,
+                    "filter_maximum": request.filter_maximum,
+                    "compact_y_axis": request.compact_y_axis,
+                }
+                if request.mode == "continuous"
+                else {}
+            ),
+        }
+    if request.task == "decomposition" and request.mode == "embedding_label_overlay":
+        return {
+            "mode": request.mode,
+            "join_policy": "exact_identifier_set_one_to_one",
+            "positive_label_values": list(request.positive_label_values),
+        }
+    all_models = request.model_selection.mode == "all"
+    tuning = request.model_selection.tuning if all_models else getattr(request, "tuning", "manual")
+    if all_models or tuning == "automl":
+        return {}
+    return _applicable_model_parameters(request)
+
+
+def _resolved_model_parameters(request: Any) -> dict[str, Any]:
+    if request.task == "time_series":
+        return _request_model_parameters(request)
+    all_models = request.model_selection.mode == "all"
+    tuning = request.model_selection.tuning if all_models else getattr(request, "tuning", "manual")
+    if all_models or tuning == "automl":
+        return {}
+    return _applicable_model_parameters(request)
+
+
+def _manual_model_seed_policy(request: Any) -> ModelSeedPolicy:
+    """Describe whether the selected manual estimator can consume model_seed.
+
+    This policy is deliberately about the primary estimator only.  Split,
+    tuning, imputation, and diagnostic seeds are separate scientific roles and
+    must not be used to make a deterministic estimator look model-seeded.
+    """
+
+    if request.model_selection.mode == "all" or getattr(request, "tuning", "manual") != "manual":
+        return "unbound"
+
+    model = request.model
+    model_type = model.type
+    if request.task == "classification":
+        if model_type == "logistic_regression":
+            return "bound" if model.solver in {"liblinear", "sag", "saga"} else "not_applicable"
+        if model_type == "stochastic_gradient_descent":
+            return "bound" if model.shuffle or model.early_stopping else "not_applicable"
+        if model_type == "k_nearest_neighbors":
+            return "not_applicable"
+        if model_type in {
+            "support_vector_machine",
+            "decision_tree",
+            "random_forest",
+            "extra_trees",
+            "xgboost",
+            "multi_layer_perceptron",
+            "gradient_boosting",
+            "adaboost",
+        }:
+            return "bound"
+        return "unbound"
+    if request.task == "regression":
+        if model_type in {
+            "linear_regression",
+            "polynomial_regression",
+            "k_nearest_neighbors",
+            "support_vector_machine",
+            "bayesian_ridge",
+            "ridge_regression",
+        }:
+            return "not_applicable"
+        if model_type in {"lasso_regression", "elastic_net"}:
+            return "bound" if model.selection == "random" else "not_applicable"
+        if model_type == "stochastic_gradient_descent":
+            return "bound" if model.shuffle else "not_applicable"
+        if model_type in {
+            "decision_tree",
+            "random_forest",
+            "extra_trees",
+            "gradient_boosting",
+            "xgboost",
+            "multi_layer_perceptron",
+        }:
+            return "bound"
+        return "unbound"
+    if request.task == "clustering":
+        return "bound" if model_type in {"kmeans", "affinity_propagation"} else "not_applicable"
+    if request.task == "decomposition":
+        if model_type in {"tsne", "mds"}:
+            return "bound"
+        if model_type == "pca":
+            if model.svd_solver in {"arpack", "randomized"}:
+                return "bound"
+            if model.svd_solver == "full":
+                return "not_applicable"
+            # PCA(auto) resolves to full or randomized only after the validated
+            # matrix shape is known.  Do not preregister an effective model seed.
+            return "unbound"
+        return "not_applicable"
+    if request.task == "anomaly_detection":
+        return "bound" if model_type == "isolation_forest" else "not_applicable"
+    return "not_applicable"
+
+
+def _native_scientific_model_parameters(request: Any) -> dict[str, Any] | None:
+    model_type = request.model.type
+    supported = {
+        ("classification", "xgboost"),
+        ("classification", "extra_trees"),
+        ("regression", "xgboost"),
+        ("regression", "extra_trees"),
+        ("anomaly_detection", "isolation_forest"),
+        ("anomaly_detection", "local_outlier_factor"),
+    }
+    if (request.task, model_type) not in supported:
+        return None
+    parameters = _resolved_model_parameters(request)
+    mappings = {
+        "xgboost": {
+            "number_of_estimators": "n_estimators",
+            "maximum_depth": "max_depth",
+            "column_subsample": "colsample_bytree",
+            "column_subsample_by_level": "colsample_bylevel",
+            "column_subsample_by_node": "colsample_bynode",
+            "l1_regularization": "reg_alpha",
+            "l2_regularization": "reg_lambda",
+            "minimum_child_weight": "min_child_weight",
+            "maximum_delta_step": "max_delta_step",
+            "number_of_jobs": "n_jobs",
+        },
+        "extra_trees": {
+            "number_of_estimators": "n_estimators",
+            "maximum_depth": "max_depth",
+            "minimum_samples_split": "min_samples_split",
+            "minimum_samples_leaf": "min_samples_leaf",
+            "maximum_features": "max_features",
+            "maximum_samples": "max_samples",
+            "out_of_bag_score": "oob_score",
+        },
+        "isolation_forest": {
+            "number_of_estimators": "n_estimators",
+            "maximum_features": "max_features",
+            "maximum_samples": "max_samples",
+        },
+        "local_outlier_factor": {
+            "number_of_neighbors": "n_neighbors",
+            "number_of_jobs": "n_jobs",
+            "power": "p",
+        },
+    }[model_type]
+    ignored = {"type", "detection_mode"}
+    return {mappings.get(name, name): value for name, value in parameters.items() if name not in ignored}
+
+
+def _scientific_execution_model_parameters(request: Any) -> dict[str, Any] | None:
+    """Return parameters exactly when this request receives a CLI execution contract."""
+    if request.model_selection.mode == "all" or getattr(request, "tuning", "manual") != "manual":
+        return None
+    if request.model.type not in SCIENTIFIC_EXECUTION_METHODS_BY_TASK.get(request.task, ()):
+        return None
+    native_parameters = _native_scientific_model_parameters(request)
+    if native_parameters is not None:
+        return native_parameters
+    # Registered manual methods without native constructor bindings still
+    # receive the complete v4 workflow/evaluation contract.  Their prompt-bound
+    # parameters remain authoritative and the fitted estimator identity is
+    # attested by the CLI.  A non-applicable model seed is represented by null;
+    # it must never discard the rest of the scientific sidecar.
+    return {}
+
+
+def _effective_scientific_model_parameters(
+    request: Any,
+    effective_seeds: Tuple[Tuple[str, int], ...],
+) -> dict[str, Any]:
+    """Expose public controls plus constructor values injected by the adapter."""
+    parameters = _resolved_model_parameters(request)
+    model_seed = dict(effective_seeds).get("model")
+    if model_seed is not None:
+        parameters["random_state"] = model_seed
+    if request.model.type == "local_outlier_factor":
+        parameters["novelty"] = request.model.detection_mode == "novelty_detection"
+    return parameters
+
+
+def _scientific_execution_contract_json(
+    request: Any,
+    workflow_family: str,
+    workflow_mode: str,
+) -> tuple[str, Tuple[Tuple[str, int], ...]] | None:
+    native_parameters = _scientific_execution_model_parameters(request)
+    if native_parameters is None:
+        return None
+    model_type = request.model.type
+    supervised = request.task in {"classification", "regression"}
+    external_labeled_training = request.task == "regression" and request.evaluation.mode == "external_labeled"
+    split_seed = (request.reproducibility.split_seed if request.reproducibility.split_seed is not None else _CLI_FIXED_RANDOM_SEED) if supervised and not external_labeled_training else None
+    seeded_model = _manual_model_seed_policy(request) == "bound"
+    model_seed = (request.reproducibility.model_seed if request.reproducibility.model_seed is not None else _CLI_FIXED_RANDOM_SEED) if seeded_model else None
+    folds = request.evaluation.folds if request.evaluation.folds is not None else 10
+    evaluation_mode = (
+        request.model.detection_mode
+        if model_type == "local_outlier_factor"
+        else "training_outlier"
+        if request.task == "anomaly_detection"
+        else "training_clustering"
+        if request.task == "clustering"
+        else "fit_transform"
+        if request.task == "decomposition"
+        else "external_labeled"
+        if request.evaluation.mode == "external_labeled"
+        else "internal_holdout"
+    )
+    payload = {
+        "schema_version": 4,
+        "workflow_family": workflow_family,
+        "workflow_mode": workflow_mode,
+        "method": model_type,
+        "split_seed": split_seed,
+        "split_strategy": (
+            None
+            if external_labeled_training or not supervised
+            else (request.evaluation.split_strategy if request.evaluation.split_strategy != "cli_default" else "stratified_holdout" if request.task == "classification" else "random_holdout")
+        ),
+        "model_seed": model_seed,
+        "cross_validation_folds": folds,
+        "evaluation_mode": evaluation_mode,
+        "confusion_matrix_normalization": (None if request.evaluation.confusion_matrix_normalization in {None, "none"} else request.evaluation.confusion_matrix_normalization),
+        "external_evaluation_identifier_column": (request.evaluation.external_identifier_column if evaluation_mode == "external_labeled" else None),
+        "external_evaluation_target_columns": (list(request.resolved_target_columns) if evaluation_mode == "external_labeled" else []),
+        "target_transformations": {
+            column: transformation.model_dump(mode="json")
+            for column, transformation in getattr(
+                request,
+                "target_transformations",
+                {},
+            ).items()
+        },
+        "classification_metric_average": (request.metric_average if request.task == "classification" else None),
+        "classification_positive_label": (_semantic_label_identity(request.positive_label) if request.task == "classification" and request.positive_label is not None else None),
+        "model_parameters": native_parameters,
+    }
+    effective_seeds = tuple((role, value) for role, value in (("split", split_seed), ("model", model_seed)) if value is not None)
+    return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")), effective_seeds
+
+
+def _request_preprocessing_parameters(request: Any) -> dict[str, Any]:
+    parameters = {
+        "missing_values": request.missing_values.model_dump(mode="json"),
+        "engineered_features": [item.model_dump(mode="json") for item in getattr(request, "engineered_features", ())],
+        "selected_columns": list(getattr(request, "resolved_selected_columns", ())),
+        "scaling": getattr(request, "scaling", "none"),
+    }
+    if hasattr(request, "feature_selection"):
+        parameters["feature_selection"] = request.feature_selection.model_dump(mode="json")
+    if hasattr(request, "label_customization"):
+        parameters["label_customization"] = request.label_customization.model_dump(mode="json")
+    if hasattr(request, "target_transformations"):
+        parameters["target_transformations"] = {column: transformation.model_dump(mode="json") for column, transformation in request.target_transformations.items()}
+    if request.task == "time_series":
+        parameters["feature_engineering"] = request.feature_engineering
+    return parameters
+
+
+def _environment_profile_binding(request: Any) -> tuple[str, str | None, str | None]:
+    profile = getattr(request, "environment_profile", None)
+    if profile is not None:
+        value = profile.model_dump(mode="json")
+        return "request.environment_profile", profile.profile_id, _canonical_sha256(value)
+    environment = request.reproducibility.environment.model_dump(mode="json")
+    specified = any(value not in (None, {}, (), []) for value in environment.values())
+    if not specified:
+        return "request.reproducibility.environment", None, None
+    profile_id = getattr(request.reproducibility, "dependency_profile", None) or "legacy-inline-environment"
+    return "request.reproducibility.environment", profile_id, _canonical_sha256(environment)
+
+
+def _scientific_binding_fields(
+    request: Any,
+    workflow_family: str,
+    workflow_mode: str,
+    method: str,
+    paths: Tuple[str, ...],
+    effective_seeds: Tuple[Tuple[str, int], ...],
+    effective_model_parameters_override: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    environment_pointer, environment_profile_id, environment_identity = _environment_profile_binding(request)
+    if request.task == "time_series":
+        requested_seeds = (("model", request.seed),) if request.mode in {"subaerial_proportion", "continuous"} else ()
+    else:
+        reproducibility = request.reproducibility
+        requested_seeds = tuple(
+            (role, value)
+            for role, value in (
+                ("split", reproducibility.split_seed),
+                ("model", reproducibility.model_seed),
+                ("tuning", reproducibility.tuning_seed),
+            )
+            if value is not None
+        )
+    model_parameters = _request_model_parameters(request)
+    effective_model_parameters = dict(effective_model_parameters_override) if effective_model_parameters_override is not None else dict(model_parameters)
+    preprocessing_parameters = _request_preprocessing_parameters(request)
+    return {
+        "environment_profile": environment_pointer,
+        "environment_profile_id": environment_profile_id,
+        "environment_profile_identity_sha256": environment_identity,
+        "artifact_contract": paths,
+        "artifact_mappings": build_adapter_artifact_mappings(
+            workflow_family,
+            workflow_mode,
+            paths,
+            method,
+        ),
+        "effective_seeds": effective_seeds,
+        "requested_seeds": requested_seeds,
+        "requested_model_parameters": _parameter_entries(model_parameters),
+        "effective_model_parameters": _parameter_entries(effective_model_parameters),
+        "requested_preprocessing_parameters": _parameter_entries(preprocessing_parameters),
+        "effective_preprocessing_parameters": _parameter_entries(preprocessing_parameters),
+        "model_parameter_binding": "interaction_plan" if model_parameters else "runtime_selected",
+        "preprocessing_parameter_binding": "interaction_plan",
+    }
+
+
+@dataclass(frozen=True)
+class DatasetCompilationContext:
+    """Preserve resolved dataset provenance after references become local paths."""
+
+    training_source: DatasetSource = "path"
+    application_source: DatasetSource | None = None
+
+    def source_for(self, role: DatasetRole) -> DatasetSource:
+        if role == "training":
+            return self.training_source
+        return self.application_source or "path"
+
+    def allows_pandas_duplicate_mangling(self, role: DatasetRole) -> bool:
+        return source_allows_pandas_duplicate_mangling(self.source_for(role))
 
 
 @dataclass(frozen=True)
@@ -82,21 +500,66 @@ class InteractionPlan:
     public_command: Tuple[str, ...]
     steps: Tuple[InteractionStep, ...]
     expected_output_relative_paths: Tuple[str, ...] = ()
+    requires_source_row_pairing: bool = False
+    workflow_family: str = "legacy"
+    workflow_mode: str = "legacy"
+    method: str = "legacy"
+    scientific_contract_id: str = "scientific-contract-v1/legacy"
+    adapter_id: str | None = "geochemistrypi-cli.public"
+    adapter_version: str | None = "1"
+    environment_profile: str = "request.reproducibility.environment"
+    environment_profile_id: str | None = None
+    environment_profile_identity_sha256: str | None = None
+    artifact_contract: Tuple[str, ...] = ()
+    artifact_mappings: Tuple[AdapterArtifactMapping, ...] = ()
+    adapter_status: Literal["available", "unavailable", "requirements_unmet"] = "available"
+    execution_ready: bool = True
+    blocking_issues: Tuple[str, ...] = ()
+    effective_seeds: Tuple[Tuple[str, int], ...] = ()
+    requested_seeds: Tuple[Tuple[str, int], ...] = ()
+    seed_binding: Literal["cli_fixed", "request_parameter", "mixed", "not_applicable", "unbound"] = "not_applicable"
+    requested_model_parameters: Tuple[Tuple[str, str], ...] = ()
+    effective_model_parameters: Tuple[Tuple[str, str], ...] = ()
+    requested_preprocessing_parameters: Tuple[Tuple[str, str], ...] = ()
+    effective_preprocessing_parameters: Tuple[Tuple[str, str], ...] = ()
+    model_parameter_binding: Literal["interaction_plan", "runtime_selected", "not_applicable"] = "not_applicable"
+    preprocessing_parameter_binding: Literal["interaction_plan", "not_applicable"] = "not_applicable"
+    scientific_execution_contract_json: str | None = None
+    required_cli_capabilities: Tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if self.schema_version < 1:
             raise ValueError("Interaction plan schema_version must be positive.")
-        if not self.name or not self.public_command:
-            raise ValueError("Interaction plan name and command are required.")
+        if not self.name:
+            raise ValueError("Interaction plan name is required.")
+        if self.execution_ready and (not self.public_command or self.adapter_status != "available" or self.adapter_id is None):
+            raise ValueError("An execution-ready interaction plan requires an available adapter and command.")
+        if not self.execution_ready and not self.blocking_issues:
+            raise ValueError("A blocked interaction plan must explain why it cannot execute.")
         step_ids = [step.id for step in self.steps]
         if len(step_ids) != len(set(step_ids)):
             raise ValueError("Interaction plan step ids must be unique.")
+        mapping_ids = [mapping.mapping_id for mapping in self.artifact_mappings]
+        if len(mapping_ids) != len(set(mapping_ids)):
+            raise ValueError("Interaction plan artifact mapping ids must be unique.")
+        if any(not requirement for requirement in self.required_cli_capabilities):
+            raise ValueError("Required CLI capabilities must not contain blank values.")
+        if len(self.required_cli_capabilities) != len(set(self.required_cli_capabilities)):
+            raise ValueError("Required CLI capabilities must be unique.")
+        if self.scientific_execution_contract_json is not None:
+            try:
+                scientific_execution = json.loads(self.scientific_execution_contract_json)
+            except json.JSONDecodeError as exc:
+                raise ValueError("Scientific execution contract must be valid canonical JSON.") from exc
+            if not isinstance(scientific_execution, dict):
+                raise ValueError("Scientific execution contract must be a JSON object.")
 
 
 @dataclass(frozen=True)
 class _DatasetProfile:
     row_count: int
     class_counts: Counter[str]
+    class_labels: tuple[dict[str, Any], ...]
     missing_columns: frozenset[str]
     unresolved_missing_columns: frozenset[str]
 
@@ -145,7 +608,13 @@ def resolve_public_cli_executable() -> Path:
     raise PlanCompilationError("The public 'geochemistrypi' command is unavailable. Install the GeochemistryPi package in the current Python environment.")
 
 
-def _read_dataset_columns(path: Path) -> Tuple[str, ...]:
+def _read_dataset_columns(
+    path: Path,
+    *,
+    source: DatasetSource = "path",
+    sheet: str = "0",
+    requested_columns: Sequence[str] = (),
+) -> Tuple[str, ...]:
     suffix = path.suffix.lower()
     if suffix == ".csv":
         try:
@@ -160,15 +629,33 @@ def _read_dataset_columns(path: Path) -> Tuple[str, ...]:
             with path.open("rb") as stream:
                 workbook = load_workbook(stream, read_only=True, data_only=True)
                 try:
-                    row = list(next(workbook.active.iter_rows(max_row=1, values_only=True)))
+                    if str(sheet).isdigit():
+                        index = int(sheet)
+                        if index >= len(workbook.worksheets):
+                            raise ValueError(f"Excel sheet index {index} is out of range.")
+                        worksheet = workbook.worksheets[index]
+                    else:
+                        if sheet not in workbook.sheetnames:
+                            raise ValueError(f"Excel sheet {sheet!r} does not exist.")
+                        worksheet = workbook[sheet]
+                    row = [value.lstrip("\ufeff") if isinstance(value, str) else value for value in next(worksheet.iter_rows(max_row=1, values_only=True))]
                 finally:
                     workbook.close()
         except (OSError, StopIteration, ValueError) as exc:
             raise PlanCompilationError(f"Unable to read the Excel header from {path}: {exc}") from exc
     else:
         raise PlanCompilationError(f"PR3 supports .csv and .xlsx data; received {path.suffix or 'a file without an extension'}.")
+    if requested_columns:
+        canonical_names = [(f"Unnamed: {index}" if value is None or value == "" else str(value)).lstrip("\ufeff") for index, value in enumerate(row)]
+        ambiguous = sorted(column for column in set(requested_columns) if canonical_names.count(column) > 1)
+        if ambiguous:
+            raise PlanCompilationError("Selected or otherwise referenced dataset columns are ambiguous after header normalization: " f"{ambiguous}")
     try:
-        return normalize_dataset_header(row, 256)
+        return normalize_dataset_header(
+            row,
+            256,
+            allow_pandas_duplicate_mangling=(source_allows_pandas_duplicate_mangling(source) or bool(requested_columns)),
+        )
     except HeaderValidationError as exc:
         raise PlanCompilationError(str(exc)) from exc
 
@@ -248,13 +735,18 @@ def _experiment_steps(request: Any, enter_prompt: str) -> List[InteractionStep]:
     return steps
 
 
-def _iter_selected_rows(path: Path, positions: Sequence[int]) -> Iterable[tuple[Any, ...]]:
+def _iter_selected_rows(
+    path: Path,
+    positions: Sequence[int],
+    *,
+    sheet: str = "0",
+) -> Iterable[tuple[Any, ...]]:
     if path.suffix.lower() == ".csv":
         try:
             with path.open(encoding="utf-8-sig", newline="") as stream:
                 reader = csv.reader(stream)
                 next(reader)
-                for row_number, row in enumerate(reader, start=2):
+                for row_number, row in enumerate(iter_cli_csv_rows(reader), start=2):
                     if len(row) <= max(positions):
                         raise PlanCompilationError(f"CSV row {row_number} has fewer values than the header.")
                     yield tuple(row[position] for position in positions)
@@ -270,9 +762,18 @@ def _iter_selected_rows(path: Path, positions: Sequence[int]) -> Iterable[tuple[
         with path.open("rb") as stream:
             workbook = load_workbook(stream, read_only=True, data_only=True)
             try:
-                rows = workbook.active.iter_rows(values_only=True)
+                if str(sheet).isdigit():
+                    index = int(sheet)
+                    if index >= len(workbook.worksheets):
+                        raise ValueError(f"Excel sheet index {index} is out of range.")
+                    worksheet = workbook.worksheets[index]
+                else:
+                    if sheet not in workbook.sheetnames:
+                        raise ValueError(f"Excel sheet {sheet!r} does not exist.")
+                    worksheet = workbook[sheet]
+                rows = worksheet.iter_rows(values_only=True)
                 next(rows)
-                for row_number, row in enumerate(rows, start=2):
+                for row_number, row in enumerate(iter_cli_excel_rows(rows), start=2):
                     if len(row) <= max(positions):
                         raise PlanCompilationError(f"Excel row {row_number} has fewer values than the header.")
                     yield tuple(row[position] for position in positions)
@@ -350,9 +851,49 @@ def _quantile_counts(values: list[float], number_of_classes: int, labels: tuple[
     return Counter(final_labels[bisect.bisect_left(cuts, value)] for value in values)
 
 
+def _semantic_label_identity(value: Any) -> dict[str, Any]:
+    """Return a JSON-safe identity that never conflates numeric and string labels."""
+    if hasattr(value, "item"):
+        try:
+            value = value.item()
+        except (TypeError, ValueError):
+            pass
+    if isinstance(value, bool):
+        return {"type": "boolean", "value": value}
+    if isinstance(value, int):
+        return {"type": "integer", "value": value}
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise PlanCompilationError("Classification semantic labels must be finite JSON scalars.")
+        return {"type": "number", "value": value}
+    if isinstance(value, str):
+        return {"type": "string", "value": value}
+    raise PlanCompilationError(f"Unsupported classification semantic label type: {type(value).__name__}")
+
+
+def _semantic_label_key(value: Any) -> str:
+    return json.dumps(_semantic_label_identity(value), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def _coerce_cli_csv_semantic_labels(labels: list[Any]) -> list[Any]:
+    """Mirror pandas CSV whole-column inference for post-load label semantics."""
+    if not labels or not all(isinstance(label, str) for label in labels):
+        return labels
+    normalized = [label.strip() for label in labels]
+    if all(value in {"True", "False"} for value in normalized):
+        return [value == "True" for value in normalized]
+    if all(re.fullmatch(r"[+-]?\d+", value) is not None for value in normalized):
+        return [int(value) for value in normalized]
+    try:
+        numeric = [float(value) for value in normalized]
+    except ValueError:
+        return labels
+    return numeric if all(math.isfinite(value) for value in numeric) else labels
+
+
 def _scan_training_dataset(path: Path, columns: tuple[str, ...], request: ClassificationRequest) -> _DatasetProfile:
     selected_names = tuple(column for column in columns if column == request.target_column or column in request.feature_columns)
-    scan_names = (request.identifier_column, *selected_names)
+    scan_names = selected_names
     positions = [columns.index(column) for column in scan_names]
     drop_columns = set(getattr(request.missing_values, "columns", ()))
     unknown_drop_columns = sorted(drop_columns - set(selected_names))
@@ -361,39 +902,31 @@ def _scan_training_dataset(path: Path, columns: tuple[str, ...], request: Classi
 
     missing_columns: set[str] = set()
     unresolved_missing: set[str] = set()
-    labels: list[str] = []
+    labels: list[Any] = []
     numeric_targets: list[float] = []
     kept_rows = 0
     label_strategy = request.label_customization.strategy
     mapping = getattr(request.label_customization, "mapping", {})
     cut_points = getattr(request.label_customization, "cut_points", ())
     interval_labels = getattr(request.label_customization, "labels", None)
-    identifiers: set[str] = set()
 
     for row_number, row in enumerate(_iter_selected_rows(path, positions), start=1):
         values = dict(zip(scan_names, row))
-        identifier = values[request.identifier_column]
-        if _is_missing(identifier):
-            raise PlanCompilationError(f"Identifier column {request.identifier_column!r} is missing at data row {row_number}.")
-        identifier_key = str(identifier)
-        if identifier_key in identifiers:
-            raise PlanCompilationError(f"Identifier column {request.identifier_column!r} contains duplicate value {identifier_key!r}.")
-        identifiers.add(identifier_key)
-        target = values[request.target_column]
-        if _is_missing(target):
-            raise PlanCompilationError(f"Target column {request.target_column!r} contains a missing label at data row {row_number}.")
         row_missing = {column for column in selected_names if _is_missing(values[column])}
         missing_columns.update(row_missing)
         should_drop = request.missing_values.method == "drop_rows" and bool(row_missing & (drop_columns or set(selected_names)))
         if should_drop:
             continue
+        target = values[request.target_column]
+        if _is_missing(target):
+            raise PlanCompilationError(f"Target column {request.target_column!r} contains a missing label at data row {row_number}.")
         unresolved_missing.update(row_missing)
         for feature in request.feature_columns:
             if not _is_missing(values[feature]):
                 _numeric(values[feature], feature, row_number)
         kept_rows += 1
         if label_strategy == "encode_original":
-            labels.append(str(target))
+            labels.append(target)
         elif label_strategy == "map":
             key = str(target)
             if key not in mapping:
@@ -440,7 +973,13 @@ def _scan_training_dataset(path: Path, columns: tuple[str, ...], request: Classi
                 request.label_customization.labels,
             ).elements()
         )
-    class_counts = Counter(labels)
+    elif label_strategy == "encode_original" and path.suffix.lower() == ".csv":
+        labels = _coerce_cli_csv_semantic_labels(labels)
+    class_counts = Counter(_semantic_label_key(label) for label in labels)
+    class_labels_by_key: dict[str, dict[str, Any]] = {}
+    for label in labels:
+        key = _semantic_label_key(label)
+        class_labels_by_key.setdefault(key, _semantic_label_identity(label))
     if len(class_counts) < 2:
         raise PlanCompilationError("Classification requires at least two final classes after label customization.")
     too_small = {label: count for label, count in class_counts.items() if count < 2}
@@ -459,6 +998,7 @@ def _scan_training_dataset(path: Path, columns: tuple[str, ...], request: Classi
     return _DatasetProfile(
         kept_rows,
         class_counts,
+        tuple(class_labels_by_key.values()),
         frozenset(missing_columns),
         frozenset(unresolved_missing),
     )
@@ -469,8 +1009,10 @@ def _scan_regression_training_dataset(
     columns: tuple[str, ...],
     request: RegressionRequest,
 ) -> _RegressionDatasetProfile:
-    selected_names = tuple(column for column in columns if column == request.target_column or column in request.feature_columns)
-    scan_names = (request.identifier_column, *selected_names)
+    target_columns = request.resolved_target_columns
+    target_set = set(target_columns)
+    selected_names = tuple(column for column in columns if column in target_set or column in request.feature_columns)
+    scan_names = selected_names
     positions = [columns.index(column) for column in scan_names]
     drop_columns = set(getattr(request.missing_values, "columns", ()))
     unknown_drop_columns = sorted(drop_columns - set(selected_names))
@@ -479,35 +1021,27 @@ def _scan_regression_training_dataset(
 
     missing_columns: set[str] = set()
     unresolved_missing: set[str] = set()
-    identifiers: set[str] = set()
     kept_rows = 0
     has_negative_target = False
     for row_number, row in enumerate(_iter_selected_rows(path, positions), start=1):
         values = dict(zip(scan_names, row))
-        identifier = values[request.identifier_column]
-        if _is_missing(identifier):
-            raise PlanCompilationError(f"Identifier column {request.identifier_column!r} is missing at data row {row_number}.")
-        identifier_key = str(identifier)
-        if identifier_key in identifiers:
-            raise PlanCompilationError(f"Identifier column {request.identifier_column!r} contains duplicate value {identifier_key!r}.")
-        identifiers.add(identifier_key)
-
-        target = values[request.target_column]
-        if _is_missing(target):
-            raise PlanCompilationError(f"Regression target column {request.target_column!r} is missing at data row {row_number}.")
-        try:
-            target_number = float(target)
-        except (TypeError, ValueError) as exc:
-            raise PlanCompilationError(f"Regression target column {request.target_column!r} contains a non-numeric value at data row {row_number}: {target!r}.") from exc
-        if not math.isfinite(target_number):
-            raise PlanCompilationError(f"Regression target column {request.target_column!r} contains a non-finite value at data row {row_number}.")
-        has_negative_target = has_negative_target or target_number < 0
-
-        row_missing = {feature for feature in request.feature_columns if _is_missing(values[feature])}
+        row_missing = {column for column in selected_names if _is_missing(values[column])}
         missing_columns.update(row_missing)
         should_drop = request.missing_values.method == "drop_rows" and bool(row_missing & (drop_columns or set(selected_names)))
         if should_drop:
             continue
+        for target_column in target_columns:
+            target = values[target_column]
+            if _is_missing(target):
+                raise PlanCompilationError(f"Regression target column {target_column!r} is missing at data row {row_number}.")
+            try:
+                target_number = float(target)
+            except (TypeError, ValueError) as exc:
+                raise PlanCompilationError(f"Regression target column {target_column!r} contains a non-numeric value at data row {row_number}: {target!r}.") from exc
+            if not math.isfinite(target_number):
+                raise PlanCompilationError(f"Regression target column {target_column!r} contains a non-finite value at data row {row_number}.")
+            has_negative_target = has_negative_target or target_number < 0
+
         unresolved_missing.update(row_missing)
         for feature in request.feature_columns:
             if feature not in row_missing:
@@ -524,14 +1058,21 @@ def _scan_regression_training_dataset(
     if method == "impute":
         unresolved_missing.clear()
 
-    test_size = math.ceil(kept_rows * request.test_ratio)
-    train_size = kept_rows - test_size
-    if min(test_size, train_size) < 1:
-        raise PlanCompilationError(f"test_ratio={request.test_ratio} produces {train_size} training and {test_size} test rows; regression requires both splits to be non-empty.")
-    if train_size < 10:
-        raise PlanCompilationError(
-            f"test_ratio={request.test_ratio} produces only {train_size} training rows; the existing regression workflow performs fixed 10-fold cross-validation and requires at least 10."
+    if request.evaluation.mode == "external_labeled":
+        train_size = kept_rows
+        validation_folds = 10
+    else:
+        test_size = math.ceil(kept_rows * request.test_ratio)
+        train_size = kept_rows - test_size
+        if min(test_size, train_size) < 1:
+            raise PlanCompilationError(f"test_ratio={request.test_ratio} produces {train_size} training and {test_size} test rows; regression requires both splits to be non-empty.")
+        validation_folds = request.evaluation.folds if request.evaluation.mode == "cross_validation" else 10
+    if train_size < validation_folds:
+        scope = "the complete external-evaluation training cohort" if request.evaluation.mode == "external_labeled" else f"the split produced by test_ratio={request.test_ratio}"
+        validation_description = (
+            "the existing regression workflow performs fixed 10-fold cross-validation" if validation_folds == 10 else f"the requested workflow performs {validation_folds}-fold cross-validation"
         )
+        raise PlanCompilationError(f"{scope} contains only {train_size} training rows; " f"{validation_description} and requires at least {validation_folds}.")
     if unresolved_missing and request.model.type not in REGRESSION_MODELS_SUPPORTING_MISSING_VALUES:
         raise PlanCompilationError(f"Unprocessed missing values remain in {sorted(unresolved_missing)}; the public CLI only offers XGBoost for this regression branch.")
     if request.model.type == "k_nearest_neighbors" and request.model.number_of_neighbors > train_size:
@@ -546,7 +1087,7 @@ def _scan_clustering_training_dataset(
     columns: tuple[str, ...],
     request: ClusteringRequest,
 ) -> _ClusteringDatasetProfile:
-    scan_names = (request.identifier_column, *request.feature_columns)
+    scan_names = request.feature_columns
     positions = [columns.index(column) for column in scan_names]
     drop_columns = set(getattr(request.missing_values, "columns", ()))
     unknown_drop_columns = sorted(drop_columns - set(request.feature_columns))
@@ -555,18 +1096,9 @@ def _scan_clustering_training_dataset(
 
     missing_columns: set[str] = set()
     unresolved_missing: set[str] = set()
-    identifiers: set[str] = set()
     kept_rows = 0
     for row_number, row in enumerate(_iter_selected_rows(path, positions), start=1):
         values = dict(zip(scan_names, row))
-        identifier = values[request.identifier_column]
-        if _is_missing(identifier):
-            raise PlanCompilationError(f"Identifier column {request.identifier_column!r} is missing at data row {row_number}.")
-        identifier_key = str(identifier)
-        if identifier_key in identifiers:
-            raise PlanCompilationError(f"Identifier column {request.identifier_column!r} contains duplicate value {identifier_key!r}.")
-        identifiers.add(identifier_key)
-
         row_missing = {feature for feature in request.feature_columns if _is_missing(values[feature])}
         missing_columns.update(row_missing)
         should_drop = request.missing_values.method == "drop_rows" and bool(row_missing & (drop_columns or set(request.feature_columns)))
@@ -612,7 +1144,7 @@ def _scan_decomposition_training_dataset(
     columns: tuple[str, ...],
     request: DecompositionRequest,
 ) -> _DecompositionDatasetProfile:
-    scan_names = (request.identifier_column, *request.feature_columns)
+    scan_names = request.feature_columns
     positions = [columns.index(column) for column in scan_names]
     drop_columns = set(getattr(request.missing_values, "columns", ()))
     unknown_drop_columns = sorted(drop_columns - set(request.feature_columns))
@@ -621,18 +1153,9 @@ def _scan_decomposition_training_dataset(
 
     missing_columns: set[str] = set()
     unresolved_missing: set[str] = set()
-    identifiers: set[str] = set()
     kept_rows = 0
     for row_number, row in enumerate(_iter_selected_rows(path, positions), start=1):
         values = dict(zip(scan_names, row))
-        identifier = values[request.identifier_column]
-        if _is_missing(identifier):
-            raise PlanCompilationError(f"Identifier column {request.identifier_column!r} is missing at data row {row_number}.")
-        identifier_key = str(identifier)
-        if identifier_key in identifiers:
-            raise PlanCompilationError(f"Identifier column {request.identifier_column!r} contains duplicate value {identifier_key!r}.")
-        identifiers.add(identifier_key)
-
         row_missing = {feature for feature in request.feature_columns if _is_missing(values[feature])}
         missing_columns.update(row_missing)
         should_drop = request.missing_values.method == "drop_rows" and bool(row_missing & (drop_columns or set(request.feature_columns)))
@@ -667,7 +1190,7 @@ def _scan_anomaly_detection_training_dataset(
     columns: tuple[str, ...],
     request: AnomalyDetectionRequest,
 ) -> _AnomalyDetectionDatasetProfile:
-    scan_names = (request.identifier_column, *request.feature_columns)
+    scan_names = request.feature_columns
     positions = [columns.index(column) for column in scan_names]
     drop_columns = set(getattr(request.missing_values, "columns", ()))
     unknown_drop_columns = sorted(drop_columns - set(request.feature_columns))
@@ -676,18 +1199,9 @@ def _scan_anomaly_detection_training_dataset(
 
     missing_columns: set[str] = set()
     unresolved_missing: set[str] = set()
-    identifiers: set[str] = set()
     kept_rows = 0
     for row_number, row in enumerate(_iter_selected_rows(path, positions), start=1):
         values = dict(zip(scan_names, row))
-        identifier = values[request.identifier_column]
-        if _is_missing(identifier):
-            raise PlanCompilationError(f"Identifier column {request.identifier_column!r} is missing at data row {row_number}.")
-        identifier_key = str(identifier)
-        if identifier_key in identifiers:
-            raise PlanCompilationError(f"Identifier column {request.identifier_column!r} contains duplicate value {identifier_key!r}.")
-        identifiers.add(identifier_key)
-
         row_missing = {feature for feature in request.feature_columns if _is_missing(values[feature])}
         missing_columns.update(row_missing)
         should_drop = request.missing_values.method == "drop_rows" and bool(row_missing & (drop_columns or set(request.feature_columns)))
@@ -722,21 +1236,13 @@ def _validate_application_dataset(
     columns: tuple[str, ...],
     request: ClassificationRequest | RegressionRequest,
 ) -> None:
-    scan_names = (request.identifier_column, *request.feature_columns)
+    scan_names = request.feature_columns
     positions = [columns.index(column) for column in scan_names]
-    identifiers: set[str] = set()
     row_count = 0
     usable_rows = 0
     for row_number, row in enumerate(_iter_selected_rows(path, positions), start=1):
         row_count += 1
         values = dict(zip(scan_names, row))
-        identifier = values[request.identifier_column]
-        if _is_missing(identifier):
-            raise PlanCompilationError(f"Application identifier {request.identifier_column!r} is missing at data row {row_number}.")
-        identifier_key = str(identifier)
-        if identifier_key in identifiers:
-            raise PlanCompilationError(f"Application identifier {request.identifier_column!r} contains duplicate value {identifier_key!r}.")
-        identifiers.add(identifier_key)
         missing_features = {feature for feature in request.feature_columns if _is_missing(values[feature])}
         for feature in request.feature_columns:
             if feature not in missing_features:
@@ -790,6 +1296,10 @@ def _compile_engineered_features(
         return ()
     if len(selected_names) + len(request.engineered_features) > 26:
         raise PlanCompilationError("The CLI letter-based feature builder can address at most 26 selected and engineered columns.")
+    request_target_columns = set(getattr(request, "resolved_target_columns", ()))
+    if not request_target_columns:
+        target_column = getattr(request, "target_column", None)
+        request_target_columns = {target_column} if target_column is not None else set()
     available = list(selected_names)
     compiled: list[tuple[str, str]] = []
     for feature in request.engineered_features:
@@ -799,7 +1309,7 @@ def _compile_engineered_features(
             column = match.group(1).strip()
             if column not in available:
                 raise PlanCompilationError(f"Engineered feature {feature.name!r} references unavailable column {column!r}.")
-            if column == getattr(request, "target_column", None):
+            if column in request_target_columns:
                 raise PlanCompilationError(f"Engineered feature {feature.name!r} must not use the target column; that would leak labels into model inputs.")
             referenced.add(column)
             return chr(ord("a") + available.index(column))
@@ -836,7 +1346,7 @@ def _model_steps(request: ClassificationRequest) -> list[InteractionStep]:
 
     def add(step_id: str, label: str, response: Any) -> None:
         anchors = (prompt, label, "(Model) ➜") if not steps else (label, "(Model) ➜")
-        steps.append(InteractionStep(step_id, anchors, str(response)))
+        steps.append(InteractionStep(step_id, anchors, "" if response is None else str(response)))
 
     def add_float(step_id: str, label: str, value: float, default: float) -> None:
         add(step_id, label, _float_response(value, default))
@@ -1038,7 +1548,7 @@ def _regression_model_steps(request: RegressionRequest) -> list[InteractionStep]
 
     def add(step_id: str, label: str, response: Any) -> None:
         anchors = (prompt, label, "(Model)") if not steps else (label, "(Model)")
-        steps.append(InteractionStep(step_id, anchors, str(response)))
+        steps.append(InteractionStep(step_id, anchors, "" if response is None else str(response)))
 
     def add_float(step_id: str, label: str, value: float, default: float) -> None:
         add(step_id, label, _float_response(value, default))
@@ -1414,7 +1924,14 @@ def _anomaly_detection_model_steps(
         add("maximum_features", "Max Features:", model.maximum_features)
         add("bootstrap", "Bootstrap:", "1" if model.bootstrap else "2")
         if model.bootstrap:
-            add("maximum_samples", "Max Samples:", model.maximum_samples)
+            # The legacy prompt accepts only an integer. The v4 sidecar remains
+            # authoritative and restores the exact requested value before the
+            # estimator is constructed.
+            add(
+                "maximum_samples",
+                "Max Samples:",
+                256 if model.maximum_samples == "auto" else model.maximum_samples,
+            )
     else:
         add("number_of_neighbors", "N neighbors:", model.number_of_neighbors)
         add("leaf_size", "Leaf size:", model.leaf_size)
@@ -1431,11 +1948,18 @@ def _anomaly_detection_model_steps(
 class ClassificationPlanCompiler:
     """Compile supported classification branches without importing ML code."""
 
-    def compile(self, request: ClassificationRequest, cli_executable: Optional[Path] = None) -> InteractionPlan:
+    def compile(
+        self,
+        request: ClassificationRequest,
+        cli_executable: Optional[Path] = None,
+        *,
+        dataset_context: DatasetCompilationContext | None = None,
+    ) -> InteractionPlan:
+        dataset_context = dataset_context or DatasetCompilationContext()
         data_path = request.training_dataset_path.expanduser().resolve()
         if not data_path.is_file():
             raise PlanCompilationError(f"Training data file does not exist: {data_path}")
-        columns = _read_dataset_columns(data_path)
+        columns = _read_dataset_columns(data_path, source=dataset_context.training_source)
         _validate_world_map(data_path, columns, request.world_map)
         requested_columns = (
             request.identifier_column,
@@ -1446,20 +1970,43 @@ class ClassificationPlanCompiler:
         if missing:
             raise PlanCompilationError(f"Requested columns are absent from the training dataset: {missing}")
         application_path = None
-        if request.application_dataset_path is not None:
-            application_path = request.application_dataset_path.expanduser().resolve()
+        external_evaluation_path = request.evaluation.evaluation_dataset_path if request.evaluation.mode == "external_labeled" else None
+        if request.evaluation.mode == "external_labeled" and request.evaluation.evaluation_dataset is not None:
+            raise PlanCompilationError("External evaluation dataset references must be resolved to a local path before CLI compilation.")
+        if request.application_dataset_path is not None and external_evaluation_path is not None:
+            raise PlanCompilationError("A distinct external evaluation dataset cannot also be used as ordinary application data.")
+        selected_application_path = request.application_dataset_path or external_evaluation_path
+        if selected_application_path is not None:
+            application_path = selected_application_path.expanduser().resolve()
             if not application_path.is_file():
-                raise PlanCompilationError(f"Application data file does not exist: {application_path}")
-            application_columns = _read_dataset_columns(application_path)
-            required_application = {request.identifier_column, *request.feature_columns}
+                raise PlanCompilationError(f"Application or external evaluation data file does not exist: {application_path}")
+            application_columns = _read_dataset_columns(
+                application_path,
+                source=dataset_context.source_for("application"),
+            )
+            application_identifier = request.evaluation.external_identifier_column or request.identifier_column if external_evaluation_path is not None else request.identifier_column
+            required_application = {application_identifier, *request.feature_columns}
             application_missing = sorted(required_application - set(application_columns))
             if application_missing:
                 raise PlanCompilationError(f"Application dataset is missing required identifier or feature columns: {application_missing}")
+            if external_evaluation_path is not None:
+                evaluation_missing = sorted({request.target_column} - set(application_columns))
+                if evaluation_missing:
+                    raise PlanCompilationError("External evaluation dataset is missing target columns: " f"{evaluation_missing}")
             _validate_application_dataset(application_path, application_columns, request)
 
         selected_names = tuple(column for column in columns if column == request.target_column or column in request.feature_columns)
         engineered = _compile_engineered_features(request, selected_names)
         profile = _scan_training_dataset(data_path, columns, request)
+        if request.metric_average == "binary" and len(profile.class_counts) != 2:
+            raise PlanCompilationError("metric_average='binary' requires exactly two final classes after label customization.")
+        if request.positive_label is not None:
+            if len(profile.class_counts) != 2:
+                raise PlanCompilationError("positive_label is defined only for a two-class final target.")
+            requested_positive = _semantic_label_key(request.positive_label)
+            observed_labels = {json.dumps(label, ensure_ascii=False, sort_keys=True, separators=(",", ":")) for label in profile.class_labels}
+            if requested_positive not in observed_labels:
+                raise PlanCompilationError("positive_label does not exactly match any post-customization semantic label; " "numeric and string labels are distinct.")
         final_feature_names = (
             *request.feature_columns,
             *(name for name, _ in engineered),
@@ -1640,7 +2187,26 @@ class ClassificationPlanCompiler:
                 str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "model" / f"{model_display}.joblib"),
                 str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "model" / "Transform Pipeline.joblib"),
                 str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "image" / "model_output" / f"Precision-Recall vs. Threshold Diagram - {model_display}.png"),
+                str(Path("geopi_output") / request.experiment_name / request.run_name / "metrics" / f"Model Score - {model_display}.txt"),
+                str(Path("geopi_output") / request.experiment_name / request.run_name / "metrics" / f"Classification Report - {model_display}.txt"),
+                str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "image" / "model_output" / f"Confusion Matrix - {model_display}.png"),
+                str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "image" / "model_output" / f"Confusion Matrix - {model_display}.xlsx"),
+                str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "data" / "Target Label Mapping.xlsx"),
+                str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "data" / "Y Test.xlsx"),
+                str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "data" / "Y Test Predict Decoded.xlsx"),
+                str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "image" / "model_output" / "ROC Curve - Probabilities.xlsx"),
+                *(
+                    (
+                        str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "image" / "model_output" / f"Feature Importance Diagram - {model_display}.png"),
+                        str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "image" / "model_output" / f"Feature Importance Diagram - {model_display}.xlsx"),
+                    )
+                    if request.model.type == "xgboost"
+                    else ()
+                ),
+                str(Path("geopi_output") / request.experiment_name / request.run_name / "parameters" / f"Hyper Parameters - {model_display}.txt"),
+                *((str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "data" / "Application Data Predicted.xlsx"),) if application_path is not None else ()),
             ),
+            requires_source_row_pairing=True,
         )
 
     @staticmethod
@@ -1915,7 +2481,10 @@ class ClassificationPlanCompiler:
                         "Please select calculation method for multiclass metrics",
                         "(Model) ➜ @Number:",
                     ),
-                    _choice(request.metric_average, ("micro", "macro", "weighted")),
+                    _choice(
+                        "weighted" if request.metric_average == "auto" else request.metric_average,
+                        ("micro", "macro", "weighted"),
+                    ),
                 )
             )
         steps.append(InteractionStep("continue_after_target", ("contiguous integer codes", enter_prompt), ""))
@@ -1950,7 +2519,14 @@ class ClassificationPlanCompiler:
                     ),
                 ]
             )
-        scaling_anchor = "X With Scaling.xlsx" if request.scaling != "none" else "Feature Selection on X set"
+        scientific_execution_active = _scientific_execution_model_parameters(request) is not None
+        scaling_anchor = (
+            "Scientific execution: scaler fitting is deferred until the model-fitting cohort is defined."
+            if request.scaling != "none" and scientific_execution_active
+            else "X With Scaling.xlsx"
+            if request.scaling != "none"
+            else "Feature Selection on X set"
+        )
         steps.append(
             InteractionStep(
                 "continue_after_scaling",
@@ -1990,42 +2566,66 @@ class ClassificationPlanCompiler:
                     ),
                 ]
             )
-        steps.extend(
-            [
-                InteractionStep(
-                    "continue_after_feature_selection",
-                    (enter_prompt,),
-                    "",
-                    timeout_seconds=180,
-                ),
-                InteractionStep(
-                    "default_test_ratio",
-                    ("Data Split - Train Set and Test Set", "(Data) ➜ @Test Ratio:"),
-                    _float_response(request.test_ratio, 0.2),
-                ),
-                InteractionStep(
-                    "continue_after_split",
-                    ("Y Test.xlsx", enter_prompt),
-                    "",
-                    timeout_seconds=180,
-                ),
-            ]
+        steps.append(
+            InteractionStep(
+                "continue_after_feature_selection",
+                (enter_prompt,),
+                "",
+                timeout_seconds=180,
+            )
         )
+        if getattr(request, "task", None) == "regression" and request.evaluation.mode == "external_labeled":
+            steps.append(
+                InteractionStep(
+                    "continue_after_external_training_scope",
+                    (
+                        "External labeled evaluation uses every prepared training row for model fitting.",
+                        enter_prompt,
+                    ),
+                    "",
+                    timeout_seconds=180,
+                )
+            )
+        else:
+            steps.extend(
+                [
+                    InteractionStep(
+                        "default_test_ratio",
+                        ("Data Split - Train Set and Test Set", "(Data) ➜ @Test Ratio:"),
+                        _float_response(request.test_ratio, 0.2),
+                    ),
+                    InteractionStep(
+                        "continue_after_split",
+                        ("Y Test.xlsx", enter_prompt),
+                        "",
+                        timeout_seconds=180,
+                    ),
+                ]
+            )
         return steps
 
 
 class RegressionPlanCompiler:
     """Compile every supported single-model regression branch without importing ML code."""
 
-    def compile(self, request: RegressionRequest, cli_executable: Optional[Path] = None) -> InteractionPlan:
+    def compile(
+        self,
+        request: RegressionRequest,
+        cli_executable: Optional[Path] = None,
+        *,
+        dataset_context: DatasetCompilationContext | None = None,
+    ) -> InteractionPlan:
+        dataset_context = dataset_context or DatasetCompilationContext()
         data_path = request.training_dataset_path.expanduser().resolve()
         if not data_path.is_file():
             raise PlanCompilationError(f"Training data file does not exist: {data_path}")
-        columns = _read_dataset_columns(data_path)
+        columns = _read_dataset_columns(data_path, source=dataset_context.training_source)
         _validate_world_map(data_path, columns, request.world_map)
+        target_columns = request.resolved_target_columns
+        target_set = set(target_columns)
         requested_columns = (
             request.identifier_column,
-            request.target_column,
+            *target_columns,
             *request.feature_columns,
         )
         missing = sorted({column for column in requested_columns if column not in columns})
@@ -2033,18 +2633,32 @@ class RegressionPlanCompiler:
             raise PlanCompilationError(f"Requested columns are absent from the training dataset: {missing}")
 
         application_path = None
-        if request.application_dataset_path is not None:
-            application_path = request.application_dataset_path.expanduser().resolve()
+        external_evaluation_path = request.evaluation.evaluation_dataset_path if request.evaluation.mode == "external_labeled" else None
+        if request.evaluation.mode == "external_labeled" and request.evaluation.evaluation_dataset is not None:
+            raise PlanCompilationError("External evaluation dataset references must be resolved to a local path before CLI compilation.")
+        if request.application_dataset_path is not None and external_evaluation_path is not None:
+            raise PlanCompilationError("A distinct external evaluation dataset cannot also be used as ordinary application data.")
+        selected_application_path = request.application_dataset_path or external_evaluation_path
+        if selected_application_path is not None:
+            application_path = selected_application_path.expanduser().resolve()
             if not application_path.is_file():
-                raise PlanCompilationError(f"Application data file does not exist: {application_path}")
-            application_columns = _read_dataset_columns(application_path)
-            required_application = {request.identifier_column, *request.feature_columns}
+                raise PlanCompilationError(f"Application or external evaluation data file does not exist: {application_path}")
+            application_columns = _read_dataset_columns(
+                application_path,
+                source=dataset_context.source_for("application"),
+            )
+            application_identifier = request.evaluation.external_identifier_column or request.identifier_column if external_evaluation_path is not None else request.identifier_column
+            required_application = {application_identifier, *request.feature_columns}
             application_missing = sorted(required_application - set(application_columns))
             if application_missing:
                 raise PlanCompilationError(f"Application dataset is missing required identifier or feature columns: {application_missing}")
+            if external_evaluation_path is not None:
+                evaluation_missing = sorted(target_set - set(application_columns))
+                if evaluation_missing:
+                    raise PlanCompilationError("External evaluation dataset is missing target columns: " f"{evaluation_missing}")
             _validate_application_dataset(application_path, application_columns, request)
 
-        selected_names = tuple(column for column in columns if column == request.target_column or column in request.feature_columns)
+        selected_names = tuple(column for column in columns if column in target_set or column in request.feature_columns)
         engineered = _compile_engineered_features(request, selected_names)
         profile = _scan_regression_training_dataset(data_path, columns, request)
         final_feature_names = (
@@ -2053,6 +2667,8 @@ class RegressionPlanCompiler:
         )
         final_feature_count = len(final_feature_names)
         selected_feature_count = getattr(request.feature_selection, "retain_count", final_feature_count)
+        if len(target_columns) > 1 and request.feature_selection.method != "none":
+            raise PlanCompilationError("Multiple-target regression cannot use the CLI's univariate feature-selection methods.")
         if request.feature_selection.method != "none" and selected_feature_count >= final_feature_count:
             raise PlanCompilationError(f"feature_selection.retain_count must be less than the {final_feature_count} input features because that is the CLI's enforced contract.")
         maximum_features = getattr(request.model, "maximum_features", None)
@@ -2063,7 +2679,7 @@ class RegressionPlanCompiler:
         selected_positions = {column: index + 1 for index, column in enumerate((*selected_names, *(name for name, _ in engineered)))}
         selected_expression = _selection_expression([original_positions[column] for column in selected_names])
         feature_expression = _selection_expression([selected_positions[column] for column in final_feature_names])
-        target_expression = _selection_expression([selected_positions[request.target_column]])
+        target_expression = _selection_expression([selected_positions[column] for column in target_columns])
         executable = Path(cli_executable).expanduser().resolve() if cli_executable else resolve_public_cli_executable()
         if not executable.is_file():
             raise PlanCompilationError(f"CLI executable does not exist: {executable}")
@@ -2130,7 +2746,7 @@ class RegressionPlanCompiler:
                     timeout_seconds=180,
                 ),
                 InteractionStep(
-                    "target_column",
+                    "target_columns" if len(target_columns) > 1 else "target_column",
                     (
                         "The selected Y data set",
                         "Select the data range you want to process.",
@@ -2255,16 +2871,46 @@ class RegressionPlanCompiler:
                 str(application_path),
             )
         command = _command_with_analysis_options(command, request.world_map, request.existing_experiment_id)
+        output_root = Path("geopi_output") / request.experiment_name / request.run_name
+        external_labeled_evaluation = request.evaluation.mode == "external_labeled"
+        expected_outputs = [
+            str(output_root / "artifacts" / "model" / f"{model_display}.joblib"),
+            str(output_root / "artifacts" / "model" / "Transform Pipeline.joblib"),
+        ]
+        if external_labeled_evaluation:
+            expected_outputs.extend(
+                (
+                    str(output_root / "parameters" / f"Hyper Parameters - {model_display}.txt"),
+                    str(output_root / "artifacts" / "data" / "Application Data Predicted.xlsx"),
+                )
+            )
+        else:
+            expected_outputs.extend(
+                (
+                    str(output_root / "artifacts" / "image" / "model_output" / f"Predicted vs. Actual Diagram - {model_display}.png"),
+                    str(output_root / "metrics" / f"Model Score - {model_display}.txt"),
+                    str(output_root / "artifacts" / "data" / "Y Test Predict.xlsx"),
+                    str(output_root / "artifacts" / "image" / "model_output" / f"Residuals Diagram - {model_display}.png"),
+                    str(output_root / "artifacts" / "image" / "model_output" / f"Residuals Diagram - {model_display}.xlsx"),
+                    str(output_root / "parameters" / f"Hyper Parameters - {model_display}.txt"),
+                )
+            )
+            if application_path is not None:
+                expected_outputs.append(str(output_root / "artifacts" / "data" / "Application Data Predicted.xlsx"))
+        if request.model.type in REGRESSION_MODELS_WITH_FEATURE_IMPORTANCE:
+            expected_outputs.extend(
+                (
+                    str(output_root / "artifacts" / "image" / "model_output" / f"Feature Importance Diagram - {model_display}.png"),
+                    str(output_root / "artifacts" / "image" / "model_output" / f"Feature Importance Diagram - {model_display}.xlsx"),
+                )
+            )
         return InteractionPlan(
             schema_version=INTERACTION_PLAN_VERSION,
-            name=f"regression-{request.model.type}-v1",
+            name=(f"regression-{request.model.type}-multi-output-v1" if len(target_columns) > 1 else f"regression-{request.model.type}-v1"),
             public_command=command,
             steps=tuple(steps),
-            expected_output_relative_paths=(
-                str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "model" / f"{model_display}.joblib"),
-                str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "model" / "Transform Pipeline.joblib"),
-                str(Path("geopi_output") / request.experiment_name / request.run_name / "artifacts" / "image" / "model_output" / f"Predicted vs. Actual Diagram - {model_display}.png"),
-            ),
+            expected_output_relative_paths=tuple(expected_outputs),
+            requires_source_row_pairing=True,
         )
 
 
@@ -2275,11 +2921,14 @@ class ClusteringPlanCompiler:
         self,
         request: ClusteringRequest,
         cli_executable: Optional[Path] = None,
+        *,
+        dataset_context: DatasetCompilationContext | None = None,
     ) -> InteractionPlan:
+        dataset_context = dataset_context or DatasetCompilationContext()
         data_path = request.training_dataset_path.expanduser().resolve()
         if not data_path.is_file():
             raise PlanCompilationError(f"Training data file does not exist: {data_path}")
-        columns = _read_dataset_columns(data_path)
+        columns = _read_dataset_columns(data_path, source=dataset_context.training_source)
         _validate_world_map(data_path, columns, request.world_map)
         requested_columns = (request.identifier_column, *request.feature_columns)
         missing = sorted({column for column in requested_columns if column not in columns})
@@ -2487,6 +3136,7 @@ class ClusteringPlanCompiler:
             str(base / "artifacts" / "model" / f"{model_display}.joblib"),
             str(base / "artifacts" / "data" / f"Cluster Labels - {model_display}.xlsx"),
             str(base / "metrics" / f"Model Score - {model_display}.txt"),
+            str(base / "parameters" / f"Hyper Parameters - {model_display}.txt"),
             str(base / "artifacts" / "image" / "model_output" / f"Cluster Two-Dimensional Diagram - {model_display}.png"),
             str(base / "artifacts" / "Transform Pipeline Configuration.txt"),
         ]
@@ -2509,6 +3159,7 @@ class ClusteringPlanCompiler:
             ),
             steps=tuple(steps),
             expected_output_relative_paths=tuple(expected_outputs),
+            requires_source_row_pairing=True,
         )
 
 
@@ -2519,11 +3170,90 @@ class DecompositionPlanCompiler:
         self,
         request: DecompositionRequest,
         cli_executable: Optional[Path] = None,
+        *,
+        dataset_context: DatasetCompilationContext | None = None,
     ) -> InteractionPlan:
+        dataset_context = dataset_context or DatasetCompilationContext()
+        if request.mode == "embedding_label_overlay":
+            coordinate_path = request.training_dataset_path.expanduser().resolve()
+            label_path = request.application_dataset_path.expanduser().resolve()
+            if not coordinate_path.is_file():
+                raise PlanCompilationError(f"Coordinate data file does not exist: {coordinate_path}")
+            if not label_path.is_file():
+                raise PlanCompilationError(f"Label data file does not exist: {label_path}")
+            coordinate_columns = _read_dataset_columns(
+                coordinate_path,
+                source=dataset_context.training_source,
+                sheet=request.coordinate_sheet,
+            )
+            label_columns = _read_dataset_columns(
+                label_path,
+                source=dataset_context.application_source or "path",
+                sheet=request.label_sheet,
+            )
+            missing_coordinate_columns = sorted({request.identifier_column, *request.feature_columns} - set(coordinate_columns))
+            if missing_coordinate_columns:
+                raise PlanCompilationError("Embedding coordinate columns are absent from the coordinate dataset: " f"{missing_coordinate_columns}")
+            missing_label_columns = sorted({request.label_identifier_column, request.label_column} - set(label_columns))
+            if missing_label_columns:
+                raise PlanCompilationError("Embedding label columns are absent from the label dataset: " f"{missing_label_columns}")
+            executable = Path(cli_executable).expanduser().resolve() if cli_executable else resolve_public_cli_executable()
+            if not executable.is_file():
+                raise PlanCompilationError(f"CLI executable does not exist: {executable}")
+            command = [
+                str(executable),
+                "embedding-label-overlay",
+                "--coordinates",
+                str(coordinate_path),
+                "--labels",
+                str(label_path),
+                "--coordinate-sheet",
+                request.coordinate_sheet,
+                "--label-sheet",
+                request.label_sheet,
+                "--coordinate-identifier-column",
+                request.identifier_column,
+                "--label-identifier-column",
+                request.label_identifier_column,
+                "--x-column",
+                request.feature_columns[0],
+                "--y-column",
+                request.feature_columns[1],
+                "--label-column",
+                request.label_column,
+                "--experiment-name",
+                request.experiment_name,
+                "--run-name",
+                request.run_name,
+            ]
+            for value in request.positive_label_values:
+                command.extend(("--positive-label-value", value))
+            base = Path(request.experiment_name) / request.run_name
+            return InteractionPlan(
+                schema_version=INTERACTION_PLAN_VERSION,
+                name="decomposition-embedding-label-overlay-v1",
+                public_command=tuple(command),
+                steps=(),
+                expected_output_relative_paths=(
+                    (base / "artifacts" / "data" / "Embedding Label Overlay.csv").as_posix(),
+                    (base / "artifacts" / "image" / "model_output" / "Embedding Label Overlay.png").as_posix(),
+                    (base / "artifacts" / "image" / "model_output" / "Embedding Label Overlay.pdf").as_posix(),
+                    (base / "metrics" / "Embedding Label Overlay Counts.json").as_posix(),
+                    (base / "parameters" / "Embedding Label Overlay Parameters.json").as_posix(),
+                    (base / "summary" / "Embedding Label Overlay Artifact Index.json").as_posix(),
+                    (base / "summary" / "Embedding Label Overlay Manifest.json").as_posix(),
+                ),
+                workflow_family="artifact_composition",
+                workflow_mode="embedding_label_overlay",
+                method="exact_identifier_join",
+                adapter_id="geochemistrypi-cli.artifact-composition.embedding-label-overlay",
+                adapter_version="1",
+                required_cli_capabilities=("command:embedding-label-overlay",),
+            )
         data_path = request.training_dataset_path.expanduser().resolve()
         if not data_path.is_file():
             raise PlanCompilationError(f"Training data file does not exist: {data_path}")
-        columns = _read_dataset_columns(data_path)
+        columns = _read_dataset_columns(data_path, source=dataset_context.training_source)
         _validate_world_map(data_path, columns, request.world_map)
         requested_columns = (request.identifier_column, *request.feature_columns)
         missing = sorted({column for column in requested_columns if column not in columns})
@@ -2738,6 +3468,7 @@ class DecompositionPlanCompiler:
         expected_outputs = [
             str(base / "artifacts" / "model" / f"{model_display}.joblib"),
             str(base / "artifacts" / "data" / "X Reduced.xlsx"),
+            str(base / "parameters" / f"Hyper Parameters - {model_display}.txt"),
             str(base / "artifacts" / "image" / "model_output" / f"Decomposition Two-Dimensional Diagram - {model_display}.png"),
             str(base / "artifacts" / "image" / "model_output" / f"Decomposition Heatmap - {model_display}.png"),
             str(base / "artifacts" / "image" / "model_output" / f"Dimensionality Reduction Contour Plot - {model_display}.png"),
@@ -2764,6 +3495,7 @@ class DecompositionPlanCompiler:
             ),
             steps=tuple(steps),
             expected_output_relative_paths=tuple(expected_outputs),
+            requires_source_row_pairing=True,
         )
 
 
@@ -2774,11 +3506,14 @@ class AnomalyDetectionPlanCompiler:
         self,
         request: AnomalyDetectionRequest,
         cli_executable: Optional[Path] = None,
+        *,
+        dataset_context: DatasetCompilationContext | None = None,
     ) -> InteractionPlan:
+        dataset_context = dataset_context or DatasetCompilationContext()
         data_path = request.training_dataset_path.expanduser().resolve()
         if not data_path.is_file():
             raise PlanCompilationError(f"Training data file does not exist: {data_path}")
-        columns = _read_dataset_columns(data_path)
+        columns = _read_dataset_columns(data_path, source=dataset_context.training_source)
         _validate_world_map(data_path, columns, request.world_map)
         requested_columns = (request.identifier_column, *request.feature_columns)
         missing = sorted({column for column in requested_columns if column not in columns})
@@ -2800,7 +3535,7 @@ class AnomalyDetectionPlanCompiler:
         if request.model.type == "isolation_forest":
             if request.model.maximum_features > final_feature_count:
                 raise PlanCompilationError(f"maximum_features={request.model.maximum_features} exceeds " f"the {final_feature_count} final features.")
-            if request.model.maximum_samples is not None and request.model.maximum_samples > profile.row_count:
+            if isinstance(request.model.maximum_samples, int) and request.model.maximum_samples > profile.row_count:
                 raise PlanCompilationError(f"maximum_samples={request.model.maximum_samples} exceeds " f"the {profile.row_count} retained rows.")
         elif request.model.number_of_neighbors >= profile.row_count:
             raise PlanCompilationError(f"number_of_neighbors={request.model.number_of_neighbors} must be " f"less than the {profile.row_count} retained rows.")
@@ -3006,6 +3741,7 @@ class AnomalyDetectionPlanCompiler:
             str(base / "artifacts" / "data" / "X Abnormal Detection.xlsx"),
             str(base / "artifacts" / "data" / "X Normal.xlsx"),
             str(base / "artifacts" / "data" / "X Abnormal.xlsx"),
+            str(base / "parameters" / f"Hyper Parameters - {model_display}.txt"),
             str(model_output / f"Anomaly Detection Density Estimation - {model_display}.png"),
             str(model_output / f"Anomaly Detection Density Estimation - {model_display}.xlsx"),
             str(base / "artifacts" / "Transform Pipeline Configuration.txt"),
@@ -3043,6 +3779,7 @@ class AnomalyDetectionPlanCompiler:
             ),
             steps=tuple(steps),
             expected_output_relative_paths=tuple(expected_outputs),
+            requires_source_row_pairing=True,
         )
 
 
@@ -3053,28 +3790,278 @@ class TimeSeriesPlanCompiler:
         self,
         request: TimeSeriesRequest,
         cli_executable: Optional[Path] = None,
+        *,
+        dataset_context: DatasetCompilationContext | None = None,
     ) -> InteractionPlan:
+        dataset_context = dataset_context or DatasetCompilationContext()
         data_path = request.training_dataset_path.expanduser().resolve()
         if not data_path.is_file():
             raise PlanCompilationError(f"Training data file does not exist: {data_path}")
-        columns = _read_dataset_columns(data_path)
-        roles = (
-            request.age_column,
-            request.maximum_age_column,
-            request.probability_column,
-            request.latitude_column,
-            request.longitude_column,
+        columns = _read_dataset_columns(
+            data_path,
+            source=dataset_context.training_source,
+            sheet=request.sheet,
+            requested_columns=(
+                *request.resolved_selected_columns,
+                *((request.identifier_column,) if request.identifier_column is not None else ()),
+            ),
         )
-        missing = sorted(set(roles) - set(columns))
+        if request.mode == "reference_anomaly_series":
+            observation_roles = (
+                request.time_column,
+                *request.signal_columns,
+                request.reference_label_column,
+                *((request.comparison_label_column,) if request.comparison_label_column is not None else ()),
+            )
+            required_columns = set(request.resolved_selected_columns)
+            missing = sorted(required_columns - set(columns))
+            if missing:
+                raise PlanCompilationError("Reference anomaly Time Series columns are absent from the observation dataset: " f"{missing}")
+            scan_columns = tuple(dict.fromkeys(observation_roles))
+            positions = [columns.index(column) for column in scan_columns]
+            row_count = 0
+            time_values = set()
+            for row_number, raw_values in enumerate(
+                _iter_selected_rows(data_path, positions, sheet=request.sheet),
+                start=2,
+            ):
+                row = dict(zip(scan_columns, raw_values))
+                missing_values = [column for column in scan_columns if _is_missing(row[column])]
+                if missing_values:
+                    raise PlanCompilationError("Reference anomaly Time Series columns contain missing values at " f"data row {row_number}: {missing_values}.")
+                time_identity = str(row[request.time_column]).strip()
+                if time_identity in time_values:
+                    raise PlanCompilationError("Reference anomaly observation time identifiers must be unique; " f"duplicate value {time_identity!r} occurs at data row {row_number}.")
+                time_values.add(time_identity)
+                for column in request.signal_columns:
+                    try:
+                        number = float(row[column])
+                    except (TypeError, ValueError) as exc:
+                        raise PlanCompilationError(f"Signal column {column!r} contains a non-numeric value at data row {row_number}.") from exc
+                    if not math.isfinite(number):
+                        raise PlanCompilationError(f"Signal column {column!r} contains a non-finite value at data row {row_number}.")
+                row_count += 1
+            if row_count == 0:
+                raise PlanCompilationError("Reference anomaly Time Series input must contain at least one observation row.")
+
+            event_path = request.event_dataset_path.expanduser().resolve() if request.event_dataset_path is not None else None
+            if event_path is not None:
+                if not event_path.is_file():
+                    raise PlanCompilationError(f"Event data file does not exist: {event_path}")
+                event_columns = _read_dataset_columns(
+                    event_path,
+                    source="path",
+                    sheet=request.event_sheet,
+                )
+                event_roles = (
+                    request.event_time_column,
+                    *((request.event_identifier_column,) if request.event_identifier_column is not None else ()),
+                    *((request.event_filter_column,) if request.event_filter_column is not None else ()),
+                )
+                missing_event_columns = sorted(set(event_roles) - set(event_columns))
+                if missing_event_columns:
+                    raise PlanCompilationError("Reference anomaly event columns are absent from the event dataset: " f"{missing_event_columns}")
+
+            executable = Path(cli_executable).expanduser().resolve() if cli_executable is not None else resolve_public_cli_executable()
+            command = [
+                str(executable),
+                "reference-anomaly-time-series",
+                "--input",
+                str(data_path),
+                "--sheet",
+                request.sheet,
+                "--time-column",
+                request.time_column,
+                "--reference-label-column",
+                request.reference_label_column,
+                "--reference-label-provenance",
+                request.reference_label_provenance,
+                "--experiment-name",
+                request.experiment_name,
+                "--run-name",
+                request.run_name,
+            ]
+            for column in request.signal_columns:
+                command.extend(("--signal-column", column))
+            for value in request.reference_positive_values:
+                command.extend(("--reference-positive-value", value))
+            if request.comparison_label_column is not None:
+                command.extend(
+                    (
+                        "--comparison-label-column",
+                        request.comparison_label_column,
+                        "--comparison-label-provenance",
+                        request.comparison_label_provenance,
+                    )
+                )
+                for value in request.comparison_positive_values:
+                    command.extend(("--comparison-positive-value", value))
+            if event_path is not None:
+                command.extend(
+                    (
+                        "--event-input",
+                        str(event_path),
+                        "--event-sheet",
+                        request.event_sheet,
+                        "--event-time-column",
+                        request.event_time_column,
+                    )
+                )
+                if request.event_identifier_column is not None:
+                    command.extend(("--event-identifier-column", request.event_identifier_column))
+                if request.event_filter_column is not None:
+                    command.extend(("--event-filter-column", request.event_filter_column))
+                    for value in request.event_filter_values:
+                        command.extend(("--event-filter-value", value))
+                if request.association_window_days is not None:
+                    command.extend(
+                        (
+                            "--association-window-days",
+                            format(request.association_window_days, ".15g"),
+                        )
+                    )
+                command.extend(("--association-direction", request.association_direction))
+            base = Path(request.experiment_name) / request.run_name
+            return InteractionPlan(
+                schema_version=INTERACTION_PLAN_VERSION,
+                name="time-series-reference-anomaly-v1",
+                public_command=tuple(command),
+                steps=(),
+                expected_output_relative_paths=(
+                    (base / "artifacts" / "data" / "Reference Anomaly Time Series.csv").as_posix(),
+                    (base / "artifacts" / "data" / "Reference Anomaly Event Associations.csv").as_posix(),
+                    (base / "artifacts" / "image" / "model_output" / "Reference Anomaly Time Series.png").as_posix(),
+                    (base / "artifacts" / "image" / "model_output" / "Reference Anomaly Time Series.pdf").as_posix(),
+                    (base / "metrics" / "Reference Anomaly Time Series Metrics.json").as_posix(),
+                    (base / "parameters" / "Reference Anomaly Time Series Parameters.json").as_posix(),
+                    (base / "summary" / "Reference Anomaly Artifact Index.json").as_posix(),
+                    (base / "summary" / "Reference Anomaly Time Series Manifest.json").as_posix(),
+                ),
+                workflow_family="time_series",
+                workflow_mode="reference_anomaly_series",
+                method="reference_label_event_overlay",
+                adapter_id="geochemistrypi-cli.time-series.reference-anomaly-series",
+                adapter_version="1",
+            )
+        if request.mode == "element_mean":
+            selected_columns = request.resolved_selected_columns
+            required_columns = set(selected_columns)
+            if request.identifier_column is not None:
+                required_columns.add(request.identifier_column)
+            missing = sorted(required_columns - set(columns))
+            if missing:
+                raise PlanCompilationError(f"Time Series configured columns are absent from the training dataset: {missing}")
+            numeric_columns = tuple(
+                dict.fromkeys(
+                    (
+                        request.age_column,
+                        *request.element_columns,
+                        *((request.filter_column,) if request.filter_column is not None else ()),
+                    )
+                )
+            )
+            positions = [columns.index(column) for column in numeric_columns]
+            drop_columns = tuple(getattr(request.missing_values, "columns", ()))
+            if request.missing_values.method == "drop_rows" and not drop_columns:
+                drop_columns = numeric_columns
+            retained_rows = 0
+            maximum_observed_age = 0.0
+            for row_number, raw_values in enumerate(
+                _iter_selected_rows(data_path, positions, sheet=request.sheet),
+                start=2,
+            ):
+                row = dict(zip(numeric_columns, raw_values))
+                if request.missing_values.method == "drop_rows" and any(_is_missing(row[column]) for column in drop_columns):
+                    continue
+                missing_selected = [column for column in numeric_columns if _is_missing(row[column])]
+                if missing_selected:
+                    raise PlanCompilationError(f"Time Series selected columns contain missing values at data row {row_number}: {missing_selected}.")
+                values: dict[str, float] = {}
+                for column in numeric_columns:
+                    try:
+                        number = float(row[column])
+                    except (TypeError, ValueError) as exc:
+                        raise PlanCompilationError(f"Time Series column {column!r} contains a non-numeric value at data row {row_number}.") from exc
+                    if not math.isfinite(number):
+                        raise PlanCompilationError(f"Time Series column {column!r} contains a non-finite value at data row {row_number}.")
+                    values[column] = number
+                if values[request.age_column] < 0:
+                    raise PlanCompilationError(f"Time Series ages must be non-negative; data row {row_number} contains {values[request.age_column]}.")
+                retained_rows += 1
+                maximum_observed_age = max(maximum_observed_age, values[request.age_column])
+            if retained_rows == 0:
+                raise PlanCompilationError("Time Series input must contain at least one retained data row.")
+            if maximum_observed_age <= 0:
+                raise PlanCompilationError("Time Series input must contain at least one positive age.")
+            bin_count = math.ceil(maximum_observed_age / request.bin_width)
+            if bin_count > 10_000:
+                raise PlanCompilationError(f"bin_width creates {bin_count} bins; the safety limit is 10000.")
+            return InteractionPlan(
+                schema_version=INTERACTION_PLAN_VERSION,
+                name="time-series-element-mean-unbound-v1",
+                public_command=(),
+                steps=(),
+                workflow_family="time_series",
+                workflow_mode="element_mean",
+                method="binned_arithmetic_mean",
+                adapter_id=None,
+                adapter_version=None,
+                adapter_status="unavailable",
+                execution_ready=False,
+                blocking_issues=(
+                    "The public GeochemistryPi CLI has no element_mean Time Series command; "
+                    "the scientific request is valid but cannot be executed without changing "
+                    "the prohibited scientific/CLI layer.",
+                ),
+            )
+        continuous = request.mode == "continuous"
+        roles = (
+            (
+                request.age_column,
+                request.minimum_age_column,
+                request.maximum_age_column,
+                request.value_column,
+                request.latitude_column,
+                request.longitude_column,
+            )
+            if continuous
+            else (
+                request.age_column,
+                request.maximum_age_column,
+                request.probability_column,
+                request.latitude_column,
+                request.longitude_column,
+            )
+        )
+        selected_columns = request.resolved_selected_columns
+        required_columns = set(selected_columns)
+        if request.identifier_column is not None:
+            required_columns.add(request.identifier_column)
+        missing = sorted(required_columns - set(columns))
         if missing:
-            raise PlanCompilationError(f"Time Series columns are absent from the training dataset: {missing}")
-        positions = [columns.index(column) for column in roles]
+            raise PlanCompilationError(f"Time Series configured columns are absent from the training dataset: {missing}")
+        scan_columns = tuple(dict.fromkeys(selected_columns))
+        positions = [columns.index(column) for column in scan_columns]
+        drop_columns = tuple(getattr(request.missing_values, "columns", ()))
+        if request.missing_values.method == "drop_rows" and not drop_columns:
+            drop_columns = selected_columns
         row_count = 0
-        maximum_age = 0.0
-        for row_number, raw_values in enumerate(_iter_selected_rows(data_path, positions), start=2):
+        maximum_observed_age = 0.0
+        for row_number, raw_values in enumerate(
+            _iter_selected_rows(data_path, positions, sheet=request.sheet),
+            start=2,
+        ):
+            row = dict(zip(scan_columns, raw_values))
+            if request.missing_values.method == "drop_rows" and any(_is_missing(row[column]) for column in drop_columns):
+                continue
+            if request.missing_values.method == "error":
+                missing_selected = [column for column in selected_columns if _is_missing(row[column])]
+                if missing_selected:
+                    raise PlanCompilationError(f"Time Series selected columns contain missing values at data row {row_number}: {missing_selected}.")
             row_count += 1
             values = []
-            for column, raw in zip(roles, raw_values):
+            for column in roles:
+                raw = row[column]
                 try:
                     number = float(raw)
                 except (TypeError, ValueError) as exc:
@@ -3082,32 +4069,52 @@ class TimeSeriesPlanCompiler:
                 if not math.isfinite(number):
                     raise PlanCompilationError(f"Time Series column {column!r} contains a missing or non-finite value at data row {row_number}.")
                 values.append(number)
-            age, age_max, probability, latitude, longitude = values
-            if age < 0:
-                raise PlanCompilationError(f"Time Series ages must be non-negative; data row {row_number} contains {age}.")
-            if age_max < age:
-                raise PlanCompilationError(f"Time Series maximum age must be greater than or equal to age at data row {row_number}.")
-            if probability < 0 or probability > 1:
-                raise PlanCompilationError(f"Time Series probability must be between 0 and 1 at data row {row_number}.")
+            if continuous:
+                age, age_min, age_max, _value, latitude, longitude = values
+                if age < 0:
+                    raise PlanCompilationError(f"Time Series central ages must be non-negative at data row {row_number}.")
+                if request.filter_column is not None:
+                    try:
+                        filter_value = float(row[request.filter_column])
+                    except (TypeError, ValueError) as exc:
+                        raise PlanCompilationError(f"Time Series filter column {request.filter_column!r} contains a non-numeric value at data row {row_number}.") from exc
+                    if not math.isfinite(filter_value):
+                        raise PlanCompilationError(f"Time Series filter column {request.filter_column!r} contains a non-finite value at data row {row_number}.")
+                    if request.filter_minimum is not None and filter_value < request.filter_minimum:
+                        row_count -= 1
+                        continue
+                    if request.filter_maximum is not None and filter_value > request.filter_maximum:
+                        row_count -= 1
+                        continue
+            else:
+                age, age_max, probability, latitude, longitude = values
+                if age < 0:
+                    raise PlanCompilationError(f"Time Series ages must be non-negative; data row {row_number} contains {age}.")
+                if age_max < 0:
+                    raise PlanCompilationError(f"Time Series comparison ages must be non-negative; data row {row_number} contains {age_max}.")
+                if probability < 0 or probability > 1:
+                    raise PlanCompilationError(f"Time Series probability must be between 0 and 1 at data row {row_number}.")
             if latitude < -90 or latitude > 90:
                 raise PlanCompilationError(f"Time Series latitude must be between -90 and 90 degrees at data row {row_number}.")
             if longitude < -180 or longitude > 180:
                 raise PlanCompilationError(f"Time Series longitude must be between -180 and 180 degrees at data row {row_number}.")
-            maximum_age = max(maximum_age, age_max)
+            maximum_observed_age = max(maximum_observed_age, age)
         if row_count == 0:
             raise PlanCompilationError("Time Series input must contain at least one data row.")
-        if maximum_age <= 0:
-            raise PlanCompilationError("Time Series input must contain at least one positive maximum age.")
-        bin_count = math.ceil(maximum_age / request.bin_width)
+        if maximum_observed_age <= 0:
+            raise PlanCompilationError("Time Series input must contain at least one positive age.")
+        bin_count = math.ceil(maximum_observed_age / request.bin_width)
         if bin_count > 10_000:
             raise PlanCompilationError(f"bin_width creates {bin_count} bins; the safety limit is 10000.")
 
         executable = Path(cli_executable).expanduser().resolve() if cli_executable is not None else resolve_public_cli_executable()
-        command = (
+        command = [
             str(executable),
             "time-series",
             "--input",
             str(data_path),
+            "--sheet",
+            request.sheet,
             "--bin-width",
             format(request.bin_width, ".15g"),
             "--iterations",
@@ -3122,28 +4129,79 @@ class TimeSeriesPlanCompiler:
             request.age_column,
             "--maximum-age-column",
             request.maximum_age_column,
-            "--probability-column",
-            request.probability_column,
             "--latitude-column",
             request.latitude_column,
             "--longitude-column",
             request.longitude_column,
-            "--age-unit",
-            request.age_unit,
-            "--fit-curve" if request.fit_curve else "--no-fit-curve",
+        ]
+        if continuous:
+            command.extend(
+                (
+                    "--analysis-mode",
+                    request.mode,
+                    "--minimum-age-column",
+                    request.minimum_age_column,
+                    "--value-column",
+                    request.value_column,
+                    "--relative-value-two-sigma",
+                    format(request.relative_value_two_sigma, ".15g"),
+                    "--minimum-samples-per-bin",
+                    str(request.minimum_samples_per_bin),
+                )
+            )
+            if request.filter_column is not None:
+                command.extend(("--filter-column", request.filter_column))
+            if request.filter_minimum is not None:
+                command.extend(("--filter-minimum", format(request.filter_minimum, ".15g")))
+            if request.filter_maximum is not None:
+                command.extend(("--filter-maximum", format(request.filter_maximum, ".15g")))
+        else:
+            command.extend(("--probability-column", request.probability_column))
+        if request.identifier_column is not None:
+            command.extend(("--identifier-column", request.identifier_column))
+        for column in selected_columns:
+            command.extend(("--selected-column", column))
+        command.extend(("--missing-values", request.missing_values.method))
+        for column in tuple(getattr(request.missing_values, "columns", ())):
+            command.extend(("--drop-missing-column", column))
+        command.extend(
+            (
+                "--feature-engineering",
+                request.feature_engineering,
+                "--age-unit",
+                request.age_unit,
+                "--fit-curve" if request.fit_curve else "--no-fit-curve",
+            )
         )
+        if continuous:
+            command.append("--compact-y-axis" if request.compact_y_axis else "--no-compact-y-axis")
         base = Path(request.experiment_name) / request.run_name
-        return InteractionPlan(
-            schema_version=INTERACTION_PLAN_VERSION,
-            name="time-series-subaerial-proportion-v1",
-            public_command=command,
-            steps=(),
-            expected_output_relative_paths=(
+        if continuous:
+            expected_outputs = (
+                (base / "artifacts" / "data" / "Continuous Time Series.csv").as_posix(),
+                (base / "artifacts" / "image" / "model_output" / "Continuous Time Series.pdf").as_posix(),
+                (base / "artifacts" / "image" / "model_output" / "Continuous Time Series.png").as_posix(),
+                (base / "metrics" / "Time Series Metrics.json").as_posix(),
+                (base / "parameters" / "Time Series Parameters.json").as_posix(),
+            )
+        else:
+            expected_outputs = (
                 (base / "artifacts" / "data" / "Subaerial Proportion.csv").as_posix(),
                 (base / "artifacts" / "image" / "model_output" / "Subaerial Proportion.pdf").as_posix(),
                 (base / "metrics" / "Time Series Metrics.json").as_posix(),
                 (base / "parameters" / "Time Series Parameters.json").as_posix(),
-            ),
+            )
+        return InteractionPlan(
+            schema_version=INTERACTION_PLAN_VERSION,
+            name=("time-series-continuous-v1" if continuous else "time-series-subaerial-proportion-v1"),
+            public_command=tuple(command),
+            steps=(),
+            expected_output_relative_paths=expected_outputs,
+            workflow_family="time_series",
+            workflow_mode=request.mode,
+            method=("spatiotemporal_weighted_continuous_bootstrap" if continuous else "subaerial_proportion_bootstrap"),
+            adapter_id=("geochemistrypi-cli.time-series.continuous" if continuous else "geochemistrypi-cli.time-series.subaerial-proportion"),
+            adapter_version="1",
         )
 
 
@@ -3186,10 +4244,200 @@ class AnalysisPlanCompiler:
             for step in steps
         ]
 
+    @staticmethod
+    def bind_scientific_adapter(
+        plan: InteractionPlan,
+        request: ClassificationRequest | RegressionRequest | ClusteringRequest | DecompositionRequest | AnomalyDetectionRequest | TimeSeriesRequest,
+    ) -> InteractionPlan:
+        """Attach a paper-agnostic scientific identity to an existing CLI plan."""
+        if request.task == "time_series":
+            method = {
+                "subaerial_proportion": "subaerial_proportion_bootstrap",
+                "continuous": "spatiotemporal_weighted_continuous_bootstrap",
+                "element_mean": "binned_arithmetic_mean",
+                "reference_anomaly_series": "reference_label_event_overlay",
+            }[request.mode]
+            seeded_modes = {"subaerial_proportion", "continuous"}
+            effective_seeds = (("model", request.seed),) if request.mode in seeded_modes else ()
+            binding_fields = _scientific_binding_fields(
+                request,
+                "time_series",
+                request.mode,
+                method,
+                plan.expected_output_relative_paths,
+                effective_seeds,
+            )
+            if plan.workflow_family != "legacy":
+                return dataclass_replace(
+                    plan,
+                    scientific_contract_id=f"scientific-contract-v2/time_series/{request.mode}/{method}",
+                    seed_binding="request_parameter" if request.mode in seeded_modes else "not_applicable",
+                    required_cli_capabilities=(("command:reference-anomaly-time-series",) if request.mode == "reference_anomaly_series" else plan.required_cli_capabilities),
+                    **binding_fields,
+                )
+            return dataclass_replace(
+                plan,
+                workflow_family="time_series",
+                workflow_mode=request.mode,
+                method=method,
+                scientific_contract_id=f"scientific-contract-v2/time_series/{request.mode}/{method}",
+                adapter_id=f"geochemistrypi-cli.time-series.{request.mode.replace('_', '-')}",
+                adapter_version="1",
+                seed_binding="request_parameter" if request.mode in seeded_modes else "not_applicable",
+                required_cli_capabilities=(("command:reference-anomaly-time-series",) if request.mode == "reference_anomaly_series" else plan.required_cli_capabilities),
+                **binding_fields,
+            )
+        if request.task == "decomposition" and request.mode == "embedding_label_overlay":
+            binding_fields = _scientific_binding_fields(
+                request,
+                "artifact_composition",
+                request.mode,
+                "exact_identifier_join",
+                plan.expected_output_relative_paths,
+                (),
+            )
+            binding_fields["model_parameter_binding"] = "not_applicable"
+            return dataclass_replace(
+                plan,
+                scientific_contract_id="scientific-contract-v2/artifact_composition/embedding_label_overlay/exact_identifier_join",
+                seed_binding="not_applicable",
+                required_cli_capabilities=("command:embedding-label-overlay",),
+                **binding_fields,
+            )
+        all_models = request.model_selection.mode == "all"
+        model_type = "all_public_methods" if all_models else request.model.type
+        if request.task in {"classification", "regression"}:
+            family = "supervised_learning"
+            mode = request.task
+            method = model_type
+        elif request.task == "decomposition":
+            family = "dimension_reduction"
+            mode = "embedding"
+            method = model_type
+        elif request.task == "clustering":
+            family = "clustering"
+            mode = "clustering"
+            method = model_type
+        else:
+            family = "anomaly_detection"
+            mode = "outlier_detection"
+            method = model_type
+        selected_tuning = request.model_selection.tuning if all_models else getattr(request, "tuning", "manual")
+        scientific_execution = _scientific_execution_contract_json(request, family, mode)
+        if scientific_execution is not None:
+            scientific_execution_json, effective_seeds = scientific_execution
+            model_seed_policy = _manual_model_seed_policy(request)
+            requested_seed_roles = {
+                role
+                for role, value in (
+                    ("split", request.reproducibility.split_seed),
+                    ("model", request.reproducibility.model_seed),
+                    ("tuning", request.reproducibility.tuning_seed),
+                )
+                if value is not None
+            }
+            effective_seed_roles = {role for role, _ in effective_seeds}
+            if model_seed_policy == "unbound":
+                # A v4 sidecar still binds workflow/evaluation identity when a
+                # data-dependent estimator branch (currently PCA(auto)) cannot
+                # truthfully bind its effective model seed before execution.
+                seed_binding = "unbound"
+            elif not effective_seed_roles:
+                seed_binding = "not_applicable"
+            elif not requested_seed_roles:
+                seed_binding = "cli_fixed"
+            elif requested_seed_roles == effective_seed_roles:
+                seed_binding = "request_parameter"
+            else:
+                seed_binding = "mixed"
+        else:
+            scientific_execution_json = None
+            model_seed_policy = _manual_model_seed_policy(request)
+            # A no-sidecar supervised run still uses the CLI's fixed holdout
+            # split.  Never turn that split seed into evidence that the primary
+            # estimator or an AutoML search was model/tuning seeded.
+            effective_seeds = (("split", _CLI_FIXED_RANDOM_SEED),) if request.task in {"classification", "regression"} else ()
+            if all_models or selected_tuning == "automl" or model_seed_policy == "unbound":
+                seed_binding = "unbound"
+            elif model_seed_policy == "not_applicable":
+                seed_binding = "cli_fixed" if effective_seeds else "not_applicable"
+            else:
+                # Every bound manual model is expected to receive a native or
+                # seed-only scientific sidecar.  Fail transparent if the two
+                # registries ever drift apart.
+                seed_binding = "unbound"
+        expected_output_relative_paths = plan.expected_output_relative_paths
+        if scientific_execution is not None:
+            output_root = Path("geopi_output") / request.experiment_name / request.run_name
+            additional_paths = [
+                str(output_root / "parameters" / "Scientific Execution Attestation.json"),
+            ]
+            if request.task in {"classification", "regression"}:
+                additional_paths.append(str(output_root / "artifacts" / "data" / "Split Membership.xlsx"))
+            if request.task == "regression":
+                display_name = REGRESSION_MODEL_DISPLAY_NAMES[model_type]
+                additional_paths.extend(
+                    (
+                        str(output_root / "artifacts" / "data" / "Y Train Predict.xlsx"),
+                        str(output_root / "metrics" / f"Training Model Score - {display_name}.txt"),
+                        str(output_root / "metrics" / f"Cross Validation - {display_name}.txt"),
+                    )
+                )
+                if request.evaluation.mode != "external_labeled":
+                    additional_paths.append(str(output_root / "artifacts" / "image" / "model_output" / f"Predicted vs. Actual Density - {display_name}.png"))
+                if request.target_transformations:
+                    additional_paths.append(str(output_root / "artifacts" / "data" / "Y Original Target.xlsx"))
+                if request.evaluation.mode == "external_labeled":
+                    additional_paths.extend(
+                        (
+                            str(output_root / "metrics" / f"External Evaluation Model Score - {display_name}.txt"),
+                            str(output_root / "artifacts" / "data" / f"External Evaluation Predictions - {display_name}.xlsx"),
+                            str(output_root / "artifacts" / "data" / f"External Evaluation Residuals - {display_name}.xlsx"),
+                            str(output_root / "artifacts" / "image" / "model_output" / f"External Predicted vs. Actual - {display_name}.png"),
+                        )
+                    )
+            elif request.task == "classification":
+                display_name = MODEL_DISPLAY_NAMES[model_type]
+                additional_paths.append(str(output_root / "metrics" / f"Cross Validation - {display_name}.txt"))
+                normalization = request.evaluation.confusion_matrix_normalization
+                if normalization not in {None, "none"}:
+                    normalized_name = f"Normalized Confusion Matrix ({normalization}) - {display_name}"
+                    additional_paths.extend(
+                        (
+                            str(output_root / "artifacts" / "image" / "model_output" / f"{normalized_name}.png"),
+                            str(output_root / "artifacts" / "image" / "model_output" / f"{normalized_name}.xlsx"),
+                        )
+                    )
+            expected_output_relative_paths = tuple(dict.fromkeys((*expected_output_relative_paths, *additional_paths)))
+        binding_fields = _scientific_binding_fields(
+            request,
+            family,
+            mode,
+            method,
+            expected_output_relative_paths,
+            effective_seeds,
+            (_effective_scientific_model_parameters(request, effective_seeds) if scientific_execution is not None else None),
+        )
+        return dataclass_replace(
+            plan,
+            workflow_family=family,
+            workflow_mode=mode,
+            method=method,
+            scientific_contract_id=f"scientific-contract-v{'4' if scientific_execution is not None else '2'}/{family}/{mode}/{method}",
+            adapter_id=f"geochemistrypi-cli.data-mining.{request.task}.{model_type}",
+            adapter_version="3" if scientific_execution is not None else "1",
+            seed_binding=seed_binding,
+            scientific_execution_contract_json=scientific_execution_json,
+            expected_output_relative_paths=expected_output_relative_paths,
+            required_cli_capabilities=(("option:data-mining:--scientific-config",) if scientific_execution is not None else plan.required_cli_capabilities),
+            **binding_fields,
+        )
+
     def _compile_all_models(
         self,
         request: ClassificationRequest | RegressionRequest | ClusteringRequest | DecompositionRequest | AnomalyDetectionRequest,
         cli_executable: Optional[Path],
+        dataset_context: DatasetCompilationContext,
     ) -> InteractionPlan:
         if getattr(request.missing_values, "method", None) == "keep":
             raise PlanCompilationError("model_selection.mode='all' requires missing values to be rejected, dropped, or imputed so every task model receives compatible data.")
@@ -3241,7 +4489,11 @@ class AnalysisPlanCompiler:
             plans.append(
                 (
                     model_name,
-                    compiler.compile(child, cli_executable=cli_executable),
+                    compiler.compile(
+                        child,
+                        cli_executable=cli_executable,
+                        dataset_context=dataset_context,
+                    ),
                 )
             )
 
@@ -3316,27 +4568,44 @@ class AnalysisPlanCompiler:
                 expected_outputs.append((base / display / child_tail).as_posix())
         return InteractionPlan(
             schema_version=INTERACTION_PLAN_VERSION,
-            name=f"{request.task}-all-models-{tuning}-v1",
+            name=(
+                f"regression-all-models-{tuning}-multi-output-v1" if isinstance(request, RegressionRequest) and len(request.resolved_target_columns) > 1 else f"{request.task}-all-models-{tuning}-v1"
+            ),
             public_command=first_plan.public_command,
             steps=tuple(steps),
             expected_output_relative_paths=tuple(dict.fromkeys(expected_outputs)),
+            requires_source_row_pairing=True,
         )
 
     def compile(
         self,
         request: ClassificationRequest | RegressionRequest | ClusteringRequest | DecompositionRequest | AnomalyDetectionRequest | TimeSeriesRequest,
         cli_executable: Optional[Path] = None,
+        *,
+        dataset_context: DatasetCompilationContext | None = None,
     ) -> InteractionPlan:
+        dataset_context = dataset_context or DatasetCompilationContext()
         if request.task != "time_series" and request.model_selection.mode == "all":
-            return self._compile_all_models(request, cli_executable)
+            plan = self._compile_all_models(request, cli_executable, dataset_context)
+            return self.bind_scientific_adapter(plan, request)
         if request.task == "classification":
-            return self.classification.compile(request, cli_executable=cli_executable)
+            plan = self.classification.compile(request, cli_executable=cli_executable, dataset_context=dataset_context)
+            return self.bind_scientific_adapter(plan, request)
         if request.task == "regression":
-            return self.regression.compile(request, cli_executable=cli_executable)
+            plan = self.regression.compile(request, cli_executable=cli_executable, dataset_context=dataset_context)
+            return self.bind_scientific_adapter(plan, request)
         if request.task == "clustering":
-            return self.clustering.compile(request, cli_executable=cli_executable)
+            plan = self.clustering.compile(request, cli_executable=cli_executable, dataset_context=dataset_context)
+            return self.bind_scientific_adapter(plan, request)
         if request.task == "decomposition":
-            return self.decomposition.compile(request, cli_executable=cli_executable)
+            plan = self.decomposition.compile(request, cli_executable=cli_executable, dataset_context=dataset_context)
+            return self.bind_scientific_adapter(plan, request)
         if request.task == "time_series":
-            return self.time_series.compile(request, cli_executable=cli_executable)
-        return self.anomaly_detection.compile(request, cli_executable=cli_executable)
+            plan = self.time_series.compile(
+                request,
+                cli_executable=cli_executable,
+                dataset_context=dataset_context,
+            )
+            return self.bind_scientific_adapter(plan, request)
+        plan = self.anomaly_detection.compile(request, cli_executable=cli_executable, dataset_context=dataset_context)
+        return self.bind_scientific_adapter(plan, request)

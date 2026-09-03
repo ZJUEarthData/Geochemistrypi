@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from geochemistrypi_mcp import AnomalyDetectionPlanCompiler, AnomalyDetectionRequest, PlanCompilationError
+from geochemistrypi_mcp import AnalysisPlanCompiler, AnomalyDetectionPlanCompiler, AnomalyDetectionRequest, PlanCompilationError
 from geochemistrypi_mcp.contracts.anomaly_detection import MODEL_DISPLAY_NAMES, MODEL_ORDER
 from pydantic import ValidationError
 
@@ -65,6 +65,7 @@ def test_every_public_anomaly_detection_family_compiles(model_name: str) -> None
     assert not supervised_steps.intersection(responses)
     assert any(Path(path).name == f"{MODEL_DISPLAY_NAMES[model_name]}.joblib" for path in plan.expected_output_relative_paths)
     assert any(Path(path).name == "X Abnormal Detection.xlsx" for path in plan.expected_output_relative_paths)
+    assert any(Path(path).name == f"Hyper Parameters - {MODEL_DISPLAY_NAMES[model_name]}.txt" for path in plan.expected_output_relative_paths)
 
 
 @pytest.mark.parametrize(
@@ -127,6 +128,30 @@ def test_model_parameters_compile_exact_cli_responses(
     responses = {step.id: step.response for step in plan.steps}
     assert responses.items() >= expected.items()
     assert not absent & responses.keys()
+
+
+@pytest.mark.parametrize("bootstrap", (False, True))
+def test_isolation_forest_auto_samples_remain_exact_in_plan_and_v4_sidecar(
+    bootstrap: bool,
+) -> None:
+    request = _request(
+        model={
+            "type": "isolation_forest",
+            "bootstrap": bootstrap,
+            "maximum_samples": "auto",
+        }
+    )
+    plan = AnalysisPlanCompiler().compile(request, cli_executable=Path(sys.executable))
+    sidecar = json.loads(plan.scientific_execution_contract_json)
+
+    assert dict(plan.requested_model_parameters)["maximum_samples"] == '"auto"'
+    assert dict(plan.effective_model_parameters)["maximum_samples"] == '"auto"'
+    assert sidecar["model_parameters"]["max_samples"] == "auto"
+    assert sidecar["model_parameters"]["bootstrap"] is bootstrap
+    responses = {step.id: step.response for step in plan.steps}
+    assert ("maximum_samples" in responses) is bootstrap
+    if bootstrap:
+        assert responses["maximum_samples"] == "256"
 
 
 def test_plot_selection_and_lof_specific_outputs_follow_cli_branches() -> None:
@@ -222,18 +247,21 @@ def test_anomaly_detection_schema_rejects_unavailable_inputs() -> None:
         with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
             _request(**{field: value})
 
-    with pytest.raises(ValidationError, match="no anomaly-detection models"):
+    with pytest.raises(ValidationError) as exc_info:
         _request(missing_values={"method": "keep"})
-    with pytest.raises(ValidationError, match="maximum_samples is required"):
-        _request(model={"type": "isolation_forest", "bootstrap": True})
-    with pytest.raises(ValidationError, match="only used when bootstrap"):
-        _request(
-            model={
-                "type": "isolation_forest",
-                "bootstrap": False,
-                "maximum_samples": 10,
-            }
-        )
+    assert {error["type"] for error in exc_info.value.errors()} == {"union_tag_invalid"}
+    automatic = _request(model={"type": "isolation_forest", "bootstrap": True})
+    assert automatic.model.maximum_samples == "auto"
+    explicit = _request(
+        model={
+            "type": "isolation_forest",
+            "bootstrap": False,
+            "maximum_samples": 10,
+        }
+    )
+    assert explicit.model.maximum_samples == 10
+    with pytest.raises(ValidationError):
+        _request(model={"type": "isolation_forest", "maximum_samples": 0})
     with pytest.raises(ValidationError, match="positive integer"):
         _request(model={"type": "local_outlier_factor", "number_of_jobs": 0})
     with pytest.raises(ValidationError, match="union_tag_invalid"):

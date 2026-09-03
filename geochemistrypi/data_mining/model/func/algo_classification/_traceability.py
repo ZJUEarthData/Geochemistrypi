@@ -19,12 +19,20 @@ def _safe_json_value(value):
     return value
 
 
-def save_target_transform_configuration(label_config: Optional[dict], metric_average: Optional[str], local_path: str, mlflow_path: Optional[str] = None) -> None:
+def save_target_transform_configuration(
+    label_config: Optional[dict],
+    metric_average: Optional[str],
+    local_path: str,
+    mlflow_path: Optional[str] = None,
+    metric_configuration: Optional[dict] = None,
+) -> None:
     if not label_config or not local_path:
         return
     config = dict(label_config)
     if metric_average:
         config["metric_average"] = metric_average
+    if metric_configuration is not None:
+        config["resolved_metric_semantics"] = metric_configuration
     save_text(json.dumps(_safe_json_value(config), indent=4), "Classification Target Traceability", local_path, mlflow_path)
 
 
@@ -54,12 +62,19 @@ def save_decoded_predictions(predictions: pd.DataFrame, name_column: pd.Series, 
     save_data(decoded, name_column, df_name, local_path, mlflow_path)
 
 
-def save_metric_configuration(algorithm_name: str, metric_average: Optional[str], local_path: str, mlflow_path: Optional[str] = None) -> None:
+def save_metric_configuration(
+    algorithm_name: str,
+    metric_average: Optional[str],
+    local_path: str,
+    mlflow_path: Optional[str] = None,
+    metric_configuration: Optional[dict] = None,
+) -> None:
     if not local_path:
         return
     config = {
         "algorithm": algorithm_name,
         "metric_average": metric_average or "binary_or_default",
+        "resolved_metric_semantics": metric_configuration,
     }
     save_text(json.dumps(config, indent=4), f"Metric Configuration - {algorithm_name}", local_path, mlflow_path)
 

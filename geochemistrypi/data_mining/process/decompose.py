@@ -4,6 +4,7 @@ from typing import Optional
 
 import pandas as pd
 
+from ...scientific_execution import active_scientific_execution, save_scientific_execution_attestation
 from ..constants import MLFLOW_ARTIFACT_DATA_PATH
 from ..model.decomposition import DecompositionWorkflowBase, MDSDecomposition, PCADecomposition, TSNEDecomposition
 from ._base import ModelSelectionBase
@@ -16,6 +17,17 @@ class DecompositionModelSelection(ModelSelectionBase):
         self.model_name = model_name
         self.dcp_workflow = DecompositionWorkflowBase()
         self.transformer_config = {}
+        self.scientific_execution = active_scientific_execution()
+
+    def _constructor_parameters(self, method: str, legacy: dict) -> dict:
+        if self.scientific_execution is None:
+            return legacy
+        return self.scientific_execution.constructor_parameters(
+            method,
+            legacy,
+            workflow_family="dimension_reduction",
+            workflow_mode="embedding",
+        )
 
     def activate(
         self,
@@ -35,34 +47,61 @@ class DecompositionModelSelection(ModelSelectionBase):
 
         if self.model_name == "PCA":
             hyper_parameters = PCADecomposition.manual_hyper_parameters()
-            self.dcp_workflow = PCADecomposition(n_components=hyper_parameters["n_components"], svd_solver=hyper_parameters["svd_solver"])
+            self.dcp_workflow = PCADecomposition(
+                **self._constructor_parameters(
+                    "pca",
+                    {
+                        "n_components": hyper_parameters["n_components"],
+                        "svd_solver": hyper_parameters["svd_solver"],
+                    },
+                )
+            )
         elif self.model_name == "T-SNE":
             hyper_parameters = TSNEDecomposition.manual_hyper_parameters()
             self.dcp_workflow = TSNEDecomposition(
-                n_components=hyper_parameters["n_components"],
-                perplexity=hyper_parameters["perplexity"],
-                learning_rate=hyper_parameters["learning_rate"],
-                n_iter=hyper_parameters["n_iter"],
-                early_exaggeration=hyper_parameters["early_exaggeration"],
+                **self._constructor_parameters(
+                    "tsne",
+                    {
+                        "n_components": hyper_parameters["n_components"],
+                        "perplexity": hyper_parameters["perplexity"],
+                        "learning_rate": hyper_parameters["learning_rate"],
+                        "n_iter": hyper_parameters["n_iter"],
+                        "early_exaggeration": hyper_parameters["early_exaggeration"],
+                    },
+                )
             )
         elif self.model_name == "MDS":
             hyper_parameters = MDSDecomposition.manual_hyper_parameters()
             self.dcp_workflow = MDSDecomposition(
-                n_components=hyper_parameters["n_components"],
-                metric=hyper_parameters["metric"],
-                n_init=hyper_parameters["n_init"],
-                max_iter=hyper_parameters["max_iter"],
+                **self._constructor_parameters(
+                    "mds",
+                    {
+                        "n_components": hyper_parameters["n_components"],
+                        "metric": hyper_parameters["metric"],
+                        "n_init": hyper_parameters["n_init"],
+                        "max_iter": hyper_parameters["max_iter"],
+                    },
+                )
             )
 
         self.dcp_workflow.show_info()
 
         # Use Scikit-learn style API to process input data
         X_reduced = self.dcp_workflow.fit_transform(X)
+        save_scientific_execution_attestation(
+            self.dcp_workflow.model,
+            os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"),
+        )
         X_reduced = self.dcp_workflow.np2pd(X_reduced, [f"Dimension {i+1}" for i in range(X_reduced.shape[1])])
         self.dcp_workflow.data_upload(X=X)
 
         # Save the model hyper-parameters
-        self.dcp_workflow.save_hyper_parameters(hyper_parameters, self.model_name, os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"))
+        effective_hyper_parameters = self.dcp_workflow.model.get_params(deep=False) if self.scientific_execution is not None else hyper_parameters
+        self.dcp_workflow.save_hyper_parameters(
+            effective_hyper_parameters,
+            self.model_name,
+            os.getenv("GEOPI_OUTPUT_PARAMETERS_PATH"),
+        )
 
         # Common components for every decomposition algorithm
         self.dcp_workflow.common_components()
