@@ -237,7 +237,7 @@ def test_full_inspection_combines_missing_and_nonfinite_rows_and_emits_strict_js
 
 
 def test_datasets_help_discovers_full_inspection_contract() -> None:
-    result = CliRunner().invoke(app, ["datasets", "--help"])
+    result = CliRunner().invoke(app, ["datasets", "--help"], terminal_width=40)
 
     assert result.exit_code == 0, result.output
     assert "--detail" in result.output

@@ -72,16 +72,14 @@ def _patch_typer_make_metavar_for_click_context() -> None:
         typer.core.TyperArgument.make_metavar = patched_argument_make_metavar
 
 
-def _use_click_help_when_typer_rich_help_is_incompatible() -> None:
-    """Keep Typer 0.7 help usable with Click versions that require ctx."""
-    ctx_parameter = inspect.signature(click.Parameter.make_metavar).parameters.get("ctx")
-    if ctx_parameter is not None and ctx_parameter.default is inspect.Parameter.empty:
-        typer.core.rich = None
+def _use_width_independent_click_help() -> None:
+    """Keep public option names discoverable at every terminal width."""
+    typer.core.rich = None
 
 
 _patch_typer_option_flag_value_for_click_unset()
 _patch_typer_make_metavar_for_click_context()
-_use_click_help_when_typer_rich_help_is_incompatible()
+_use_width_independent_click_help()
 
 app = typer.Typer()
 

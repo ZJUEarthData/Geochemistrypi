@@ -91,8 +91,9 @@ def _local_geochemistrypi_payload() -> dict[str, Any]:
 def inspect_cli_environment(cli_executable: Path) -> EnvironmentSnapshot:
     """Inspect versions in the interpreter that owns the configured CLI launcher."""
     executable = Path(cli_executable).expanduser().resolve()
-    interpreter = resolve_cli_interpreter(executable).resolve()
-    if interpreter == Path(sys.executable).resolve():
+    interpreter = resolve_cli_interpreter(executable)
+    interpreter_identity = interpreter.resolve()
+    if interpreter_identity == Path(sys.executable).resolve():
         packages = {}
         for installed_distribution in distributions():
             name = str(installed_distribution.metadata.get("Name") or "").strip().lower().replace("_", "-")

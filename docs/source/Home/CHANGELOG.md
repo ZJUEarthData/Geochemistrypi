@@ -40,6 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   explicitly addressing the repository from the non-checkout publication job.
 + Made installed-wheel release validation carry its declared test dependencies
   while preserving the Python 3.9 CLI/Python 3.11 MCP isolation boundary.
++ Kept CLI help option names stable in narrow and non-interactive terminals, and
+  preserved the managed virtual-environment interpreter path during MCP runtime
+  attestation on Linux and macOS.
 
 ---
 

@@ -597,20 +597,28 @@ def test_scientific_config_cli_rejects_invalid_combinations(
     arguments,
     message,
 ) -> None:
-    result = CliRunner().invoke(cli_module.app, arguments)
+    result = CliRunner().invoke(cli_module.app, arguments, terminal_width=40)
 
     assert result.exit_code == 2
     assert message in result.output
 
 
 def test_main_help_discovers_scientific_config_generator() -> None:
-    result = CliRunner().invoke(cli_module.app, ["--help"])
+    result = CliRunner().invoke(cli_module.app, ["--help"], terminal_width=40)
 
     assert result.exit_code == 0, result.output
     assert "scientific-config" in result.output
+    data_mining = CliRunner().invoke(
+        cli_module.app,
+        ["data-mining", "--help"],
+        terminal_width=40,
+    )
+    assert data_mining.exit_code == 0, data_mining.output
+    assert "--scientific-config" in data_mining.output
     detail = CliRunner().invoke(
         cli_module.app,
         ["scientific-config", "--help"],
+        terminal_width=40,
     )
     assert detail.exit_code == 0, detail.output
     for option in (
