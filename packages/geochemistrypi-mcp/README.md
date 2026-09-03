@@ -26,7 +26,7 @@ file.
 ## Environment boundary
 
 The MCP process requires Python 3.10 or newer and the official MCP Python SDK.
-GeochemistryPi 0.8.1 keeps its existing Python 3.9 and Pydantic 1 environment.
+GeochemistryPi 0.8.2 keeps its existing Python 3.9 and Pydantic 1 environment.
 The wrapper starts the public CLI command as a subprocess, so neither process
 has to share incompatible dependencies.
 
@@ -37,14 +37,14 @@ The versioned development compatibility policy is:
 | Private MCP runtime | Python `3.11` exactly; package metadata `>=3.10,<4` |
 | MCP SDK | `==2.0.0` |
 | Private GeochemistryPi CLI runtime | Python `3.9` exactly; package metadata `>=3.9,<3.10` |
-| GeochemistryPi CLI | `0.8.1` |
+| GeochemistryPi CLI | `0.8.2` |
 | Interaction plan | schema 1 |
 | CLI automation input/events | schema 1 |
 | CLI capability manifest | schema 1 |
 | Artifact index | schema 1 |
 
 `get_capabilities` returns this policy and the current resource limits. The
-0.2.1 package is the stable bundle channel and reports
+0.2.2 package is the stable bundle channel and reports
 `public_release_ready` only for artifacts published by the protected release
 workflow. MCP Registry publication remains a separate future distribution
 target and does not change the signed GitHub release-bundle installation.
@@ -89,13 +89,13 @@ bootstrap setup from the MCP wheel in the downloaded bundle. Replace the
 example URI and bundle directory with absolute paths:
 
 ```text
-uvx --python 3.11 --from "geochemistrypi-mcp[release] @ file:///ABSOLUTE/PATH/geochemistrypi_mcp-0.2.1-py3-none-any.whl" geochemistrypi-mcp-setup install --bundle /ABSOLUTE/PATH/release-bundle
+uvx --python 3.11 --from "geochemistrypi-mcp[release] @ file:///ABSOLUTE/PATH/geochemistrypi_mcp-0.2.2-py3-none-any.whl" geochemistrypi-mcp-setup install --bundle /ABSOLUTE/PATH/release-bundle
 ```
 
 Windows file URIs use forward slashes, for example
-`file:///D:/Downloads/release-bundle/geochemistrypi_mcp-0.2.1-py3-none-any.whl`.
+`file:///D:/Downloads/release-bundle/geochemistrypi_mcp-0.2.2-py3-none-any.whl`.
 Linux and macOS use a URI such as
-`file:///home/user/Downloads/release-bundle/geochemistrypi_mcp-0.2.1-py3-none-any.whl`.
+`file:///home/user/Downloads/release-bundle/geochemistrypi_mcp-0.2.2-py3-none-any.whl`.
 Unsigned bundles fail closed. `--allow-unsigned-bundle` exists only for local
 release-candidate testing and is recorded permanently in the install
 manifest; it is not a production verification mode.
@@ -118,7 +118,7 @@ uv run --isolated --no-project --python 3.11 --with-editable packages/geochemist
 The development command creates an MCP Python 3.11 environment and a separate
 GeochemistryPi Python 3.9 environment under the platform-native application
 data directory. It installs both packages from the current clone, verifies the
-0.2.1/0.8.1 version handshake, persists private paths, runs an end-to-end
+0.2.2/0.8.2 version handshake, persists private paths, runs an end-to-end
 doctor, and registers one stable zero-argument server command in detected MCP
 clients. Users never configure either private Python environment or a CLI path.
 The CLI environment accepts third-party dependencies only as prebuilt wheels,
@@ -213,8 +213,8 @@ is never killed.
 
 ```text
 uv run --isolated --no-project --python 3.11 --with-editable packages/geochemistrypi-mcp geochemistrypi-mcp-setup repair
-uvx --python 3.11 --from "geochemistrypi-mcp[release] @ file:///ABSOLUTE/PATH/geochemistrypi_mcp-0.2.1-py3-none-any.whl" geochemistrypi-mcp-setup upgrade --bundle /ABSOLUTE/PATH/new-release-bundle
-uvx --python 3.11 --from "geochemistrypi-mcp[release] @ file:///ABSOLUTE/PATH/geochemistrypi_mcp-0.2.1-py3-none-any.whl" geochemistrypi-mcp-setup rollback
+uvx --python 3.11 --from "geochemistrypi-mcp[release] @ file:///ABSOLUTE/PATH/geochemistrypi_mcp-0.2.2-py3-none-any.whl" geochemistrypi-mcp-setup upgrade --bundle /ABSOLUTE/PATH/new-release-bundle
+uvx --python 3.11 --from "geochemistrypi-mcp[release] @ file:///ABSOLUTE/PATH/geochemistrypi_mcp-0.2.2-py3-none-any.whl" geochemistrypi-mcp-setup rollback
 uv run --isolated --no-project --python 3.11 --with-editable packages/geochemistrypi-mcp geochemistrypi-mcp-setup uninstall
 ```
 
@@ -458,7 +458,7 @@ A minimal clustering request is:
 Clustering exposes the five models in the public menu: KMeans, DBSCAN,
 Agglomerative, AffinityPropagation, and MeanShift. It intentionally has no
 target, train/test split, feature selection, AutoML, or application-data
-inference. OPTICS exists internally in GeochemistryPi 0.8.1 but is not in the
+inference. OPTICS exists internally in GeochemistryPi 0.8.2 but is not in the
 public CLI menu and is therefore not advertised or accepted by MCP. The wrapper
 validates numeric finite features, internal source-row lineage, model/data-size
 constraints, missing-value resolution, and plot dimensions before execution.
@@ -548,7 +548,7 @@ From the repository root, the cross-platform wrapper suite is:
 uv run --isolated --project packages/geochemistrypi-mcp --extra test python -m pytest tests/mcp_wrapper/installation tests/mcp_wrapper/interaction tests/mcp_wrapper/protocol
 ```
 
-The real parity suite additionally requires a supported GeochemistryPi 0.8.1
+The real parity suite additionally requires a supported GeochemistryPi 0.8.2
 CLI command in `GEOCHEMISTRYPI_CLI_EXECUTABLE`.
 
 ## Tools
@@ -700,7 +700,7 @@ aggregate branch and returns a parent summary plus ordered child results;
 regression supports one or more finite numeric targets, including named
 per-target metrics and application predictions, while explicitly rejecting
 multi-target use of the CLI's univariate feature selectors; classification sample balancing is not offered
-because the GeochemistryPi 0.8.1 public CLI does not call its internal balancing
+because the GeochemistryPi 0.8.2 public CLI does not call its internal balancing
 helper; and clustering, decomposition, or anomaly detection does not silently
 inherit supervised controls.
 Application-data inference supports the same validated feature-engineering

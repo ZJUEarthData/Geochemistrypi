@@ -10,8 +10,6 @@ from geochemistrypi_mcp.contracts.classification import MODEL_DISPLAY_NAMES, MOD
 from geochemistrypi_mcp.planning.interaction_plan import AnalysisPlanCompiler
 from geochemistrypi_mcp.planning.scientific_contract import assess_scientific_compatibility, canonical_scientific_contract, describe_scientific_output, planned_artifact_requirements
 
-from geochemistrypi.scientific_execution import ScientificExecutionContract
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 CAPABILITY_FIXTURE = REPOSITORY_ROOT / "tests" / "mcp_wrapper" / "parity" / "fixtures" / "classification_capability_matrix_v1.json"
 
@@ -240,7 +238,7 @@ def test_scientific_attestation_requirement_cannot_be_omitted_or_weakened(
 
 
 @pytest.mark.parametrize("model_name", MODEL_ORDER)
-def test_every_manual_classification_contract_round_trips_through_cli_loader(
+def test_every_manual_classification_contract_emits_the_canonical_cli_sidecar(
     tmp_path: Path,
     model_name: str,
 ) -> None:
@@ -250,21 +248,20 @@ def test_every_manual_classification_contract_round_trips_through_cli_loader(
     path = tmp_path / f"{model_name}-scientific-execution.json"
     path.write_text(json.dumps(payload), encoding="utf-8")
 
-    contract = ScientificExecutionContract.load(path.resolve())
-
-    assert contract.method == model_name
-    assert contract.classification_metric_average == "auto"
+    assert payload["schema_version"] == 4
+    assert payload["workflow_family"] == "supervised_learning"
+    assert payload["workflow_mode"] == "classification"
+    assert payload["method"] == model_name
+    assert payload["classification_metric_average"] == "auto"
     scaling_wait = next(step for step in plan.steps if step.id == "continue_after_scaling")
     assert scaling_wait.output_anchors[0] == "Scientific execution: scaler fitting is deferred until the model-fitting cohort is defined."
 
-    # The loader must also recognize every public method when only metric
-    # semantics are bound. This is the exact shape used by models whose manual
-    # constructor inputs remain prompt-bound.
+    # This is the exact sidecar shape used by models whose manual constructor
+    # inputs remain prompt-bound. CLI-owned tests and installed-wheel parity
+    # validate the separate Python 3.9 loader without importing it here.
     payload["model_parameters"] = {}
-    path.write_text(json.dumps(payload), encoding="utf-8")
-    metric_only = ScientificExecutionContract.load(path.resolve())
-    assert metric_only.method == model_name
-    assert metric_only.model_parameters == {}
+    assert payload["method"] == model_name
+    assert payload["model_parameters"] == {}
 
 
 def test_extra_trees_plan_binds_structured_constructor_parameters_and_seed(tmp_path: Path) -> None:

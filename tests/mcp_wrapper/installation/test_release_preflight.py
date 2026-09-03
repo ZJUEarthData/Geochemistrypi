@@ -72,3 +72,29 @@ def test_default_preflight_runs_every_full_parity_shard(tmp_path: Path, monkeypa
     assert [item[2]["GEOCHEMISTRYPI_PARITY_SHARD"] for item in observed[1:]] == list(preflight.FULL_PARITY_SHARDS)
     assert all(item[2]["GEOCHEMISTRYPI_FULL_PARITY"] == "1" for item in observed[1:])
     assert all("--basetemp" in item[0] for item in observed[1:])
+
+
+def test_candidate_cli_environment_installs_test_dependencies_from_the_built_wheel(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    preflight = _preflight_module()
+    observed = []
+
+    def create_environment(root: Path, _version: str) -> Path:
+        return root / ("Scripts" if os.name == "nt" else "bin") / ("python.exe" if os.name == "nt" else "python")
+
+    def runner(command, *, cwd=preflight.REPOSITORY_ROOT, environment=None):
+        observed.append((tuple(command), cwd, environment))
+
+    cli_wheel = tmp_path / "geochemistrypi-0.8.2-py3-none-any.whl"
+    mcp_wheel = tmp_path / "geochemistrypi_mcp-0.2.2-py3-none-any.whl"
+    cli_command = tmp_path / "geochemistrypi"
+    cli_command.touch()
+    monkeypatch.setattr(preflight, "_create_environment", create_environment)
+    monkeypatch.setattr(preflight, "_run", runner)
+    monkeypatch.setattr(preflight, "_venv_command", lambda _root, _name: cli_command)
+
+    preflight._install_candidate_environments(tmp_path, cli_wheel, mcp_wheel)
+
+    assert observed[0][0][-1] == f"geochemistrypi[test] @ {cli_wheel.as_uri()}"

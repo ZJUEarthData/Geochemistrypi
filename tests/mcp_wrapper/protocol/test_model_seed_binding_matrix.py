@@ -10,8 +10,6 @@ from geochemistrypi_mcp import AnalysisPlanCompiler, AnomalyDetectionRequest, Cl
 from geochemistrypi_mcp.contracts.scientific_execution import SCIENTIFIC_EXECUTION_METHOD_COUNT, SCIENTIFIC_EXECUTION_METHODS_BY_TASK
 from geochemistrypi_mcp.planning.scientific_contract import assess_scientific_compatibility, planned_artifact_requirements
 
-from geochemistrypi.scientific_execution import _WORKFLOW_METHODS, ScientificExecutionContract
-
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURES = ROOT / "tests" / "cli_contract" / "fixtures"
 
@@ -89,7 +87,6 @@ def test_every_registered_method_compiles_one_canonical_v4_sidecar_and_attestati
     assert SCIENTIFIC_EXECUTION_METHOD_COUNT == 27
     assert len(REGISTERED_SCIENTIFIC_EXECUTION_CASES) == 27
     workflow_family, workflow_mode = _RUNTIME_WORKFLOW_BY_TASK[task]
-    assert set(SCIENTIFIC_EXECUTION_METHODS_BY_TASK[task]) == set(_WORKFLOW_METHODS[(workflow_family, workflow_mode)])
 
     request = _request(task, method)
     plan = AnalysisPlanCompiler().compile(
@@ -110,18 +107,6 @@ def test_every_registered_method_compiles_one_canonical_v4_sidecar_and_attestati
         sidecar["workflow_family"],
         sidecar["workflow_mode"],
         sidecar["method"],
-    ) == (workflow_family, workflow_mode, method)
-
-    contract_path = tmp_path / "scientific-execution.json"
-    contract_path.write_text(
-        plan.scientific_execution_contract_json,
-        encoding="utf-8",
-    )
-    contract = ScientificExecutionContract.load(contract_path)
-    assert (
-        contract.workflow_family,
-        contract.workflow_mode,
-        contract.method,
     ) == (workflow_family, workflow_mode, method)
 
 

@@ -108,18 +108,9 @@ class CompactSequenceReceipt(StrictModel, Generic[_ReceiptValue]):
         nested_truncation = any(isinstance(item, BaseModel) and bool(getattr(item, "truncated", False)) for item in self.prefix)
         if self.truncated != (len(self.prefix) < self.total_count or nested_truncation):
             raise ValueError("compact sequence truncation metadata is inconsistent")
-        literal_prefix = all(
-            item is None or isinstance(item, (bool, int, float, str))
-            for item in self.prefix
-        )
-        if (
-            not self.truncated
-            and literal_prefix
-            and self.sha256 != _canonical_json_sha256(self.prefix)
-        ):
-            raise ValueError(
-                "a complete compact literal sequence must match its SHA-256"
-            )
+        literal_prefix = all(item is None or isinstance(item, (bool, int, float, str)) for item in self.prefix)
+        if not self.truncated and literal_prefix and self.sha256 != _canonical_json_sha256(self.prefix):
+            raise ValueError("a complete compact literal sequence must match its SHA-256")
         return self
 
 

@@ -48,9 +48,7 @@ def capabilities_sha256(response: CapabilitiesResponse) -> str:
 
 
 def _capability_view_sha256(
-    response: CapabilitiesResponse
-    | CompactCapabilitiesResponse
-    | StartReadyCapabilitiesResponse,
+    response: CapabilitiesResponse | CompactCapabilitiesResponse | StartReadyCapabilitiesResponse,
 ) -> str:
     """Hash only the fields delivered by one capability projection."""
     payload = response.model_dump(
@@ -68,9 +66,7 @@ def _capability_view_sha256(
 
 
 def capability_projection_sha256(
-    response: CapabilitiesResponse
-    | CompactCapabilitiesResponse
-    | StartReadyCapabilitiesResponse,
+    response: CapabilitiesResponse | CompactCapabilitiesResponse | StartReadyCapabilitiesResponse,
 ) -> str:
     """Return the stable identity of any public capability projection."""
     return _capability_view_sha256(response)

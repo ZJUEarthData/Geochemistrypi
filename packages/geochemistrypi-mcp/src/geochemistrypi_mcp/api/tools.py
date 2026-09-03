@@ -2547,7 +2547,7 @@ def build_tool_handlers(
             notes=(
                 "PR9 covers semantic world maps, seeded Time Series analysis, and isolated "
                 "all-models aggregates in addition to every single-model family offered by "
-                "the GeochemistryPi 0.8.1 public CLI.",
+                "the GeochemistryPi 0.8.2 public CLI.",
                 "The stable compatibility policy is published only by the protected workflow after every required release gate passes.",
                 "The existing GeochemistryPi CLI creates every scientific result and original output file.",
                 "Unsupported or scientifically invalid combinations are rejected before the CLI starts.",

@@ -421,8 +421,8 @@ the protected `pypi` environment authorizes publication of those exact CLI
 files; the same workflow then creates the permanent GitHub Release containing
 the signed MCP bundle. No publication job rebuilds a package.
 
-The annotated CLI Tag `v0.8.1` and annotated bundle Tag
-`mcp-v0.2.1-cli-v0.8.1` must be pushed together and resolve to the same commit.
+The annotated CLI Tag `v0.8.2` and annotated bundle Tag
+`mcp-v0.2.2-cli-v0.8.2` must be pushed together and resolve to the same commit.
 The release workflow fails before building or publishing if either Tag is
 missing, lightweight, or points elsewhere.
 

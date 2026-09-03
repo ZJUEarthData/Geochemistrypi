@@ -4,15 +4,7 @@ from copy import deepcopy
 from pathlib import Path
 
 import pytest
-from geochemistrypi_mcp.api.schemas import (
-    START_READY_METHODS_BY_TASK,
-    AnomalyDetectionRequest,
-    ClassificationRequest,
-    ClusteringRequest,
-    DecompositionRequest,
-    RegressionRequest,
-    TimeSeriesRequest,
-)
+from geochemistrypi_mcp.api.schemas import START_READY_METHODS_BY_TASK, AnomalyDetectionRequest, ClassificationRequest, ClusteringRequest, DecompositionRequest, RegressionRequest, TimeSeriesRequest
 from geochemistrypi_mcp.api.tools import full_output_contract_schema
 from geochemistrypi_mcp.config.settings import McpSettings
 from geochemistrypi_mcp.server import create_server
@@ -158,9 +150,7 @@ async def test_each_task_capability_view_returns_one_exact_executable_validation
         for tool_name, tool in tools.items():
             retained_contract = _retained_output_contract(tool)
             advertised = tool.output_schema
-            contract_sha256 = advertised[
-                "x-geochemistrypi-full-output-schema-sha256"
-            ]
+            contract_sha256 = advertised["x-geochemistrypi-full-output-schema-sha256"]
             resolved = await client.call_tool(
                 "get_capabilities",
                 {"output_contract_sha256": contract_sha256},
@@ -169,29 +159,18 @@ async def test_each_task_capability_view_returns_one_exact_executable_validation
             resolved_payload = resolved.structured_content
             assert resolved_payload["response_detail"] == "output_contract"
             assert resolved_payload["output_contract_sha256"] == contract_sha256
-            assert (
-                resolved_payload["output_contract_utf8_bytes"]
-                == advertised["x-geochemistrypi-full-output-schema-utf8-bytes"]
-            )
+            assert resolved_payload["output_contract_utf8_bytes"] == advertised["x-geochemistrypi-full-output-schema-utf8-bytes"]
             assert resolved_payload["output_contract_schema"] == retained_contract
-            publicly_resolved_output_contracts[tool_name] = resolved_payload[
-                "output_contract_schema"
-            ]
+            publicly_resolved_output_contracts[tool_name] = resolved_payload["output_contract_schema"]
 
-        capabilities_output_contract = publicly_resolved_output_contracts[
-            "get_capabilities"
-        ]
-        Draft202012Validator(capabilities_output_contract).validate(
-            resolved.structured_content
-        )
+        capabilities_output_contract = publicly_resolved_output_contracts["get_capabilities"]
+        Draft202012Validator(capabilities_output_contract).validate(resolved.structured_content)
         unknown_contract = await client.call_tool(
             "get_capabilities",
             {"output_contract_sha256": "0" * 64},
         )
         assert unknown_contract.is_error is True
-        Draft202012Validator(capabilities_output_contract).validate(
-            unknown_contract.structured_content
-        )
+        Draft202012Validator(capabilities_output_contract).validate(unknown_contract.structured_content)
         assert {
             "TaskValidationRequestContract",
             "ValidationRequestNavigation",
@@ -351,9 +330,7 @@ async def test_start_ready_templates_cover_every_public_method_and_resolve_exact
                 assert response["available_methods"] == list(methods)
                 assert response["next_action"] == {
                     "next_tool": "validate_analysis",
-                    "arguments_source": (
-                        "request_template_after_replacing_placeholders_and_overlaying_user_values"
-                    ),
+                    "arguments_source": ("request_template_after_replacing_placeholders_and_overlaying_user_values"),
                     "full_capabilities_required": False,
                     "dataset_inspection_required": False,
                 }
@@ -375,20 +352,10 @@ async def test_start_ready_templates_cover_every_public_method_and_resolve_exact
                     resolved_schema = resolved.structured_content
                     assert resolved_schema["response_detail"] == "request_schema"
                     assert resolved_schema["task"] == task
-                    assert (
-                        resolved_schema["request_schema_sha256"]
-                        == response["request_schema_sha256"]
-                    )
-                    assert (
-                        resolved_schema["request_schema_utf8_bytes"]
-                        == response["request_schema_utf8_bytes"]
-                    )
-                    Draft202012Validator.check_schema(
-                        resolved_schema["request_schema"]
-                    )
-                assert Draft202012Validator(
-                    resolved_schema["request_schema"]
-                ).is_valid(template)
+                    assert resolved_schema["request_schema_sha256"] == response["request_schema_sha256"]
+                    assert resolved_schema["request_schema_utf8_bytes"] == response["request_schema_utf8_bytes"]
+                    Draft202012Validator.check_schema(resolved_schema["request_schema"])
+                assert Draft202012Validator(resolved_schema["request_schema"]).is_valid(template)
 
 
 @pytest.mark.anyio
@@ -409,9 +376,7 @@ async def test_start_ready_is_stateless_and_conditional_only_suppresses_retained
             "get_capabilities",
             {
                 **arguments,
-                "if_capability_view_sha256": first.structured_content[
-                    "capability_view_sha256"
-                ],
+                "if_capability_view_sha256": first.structured_content["capability_view_sha256"],
             },
         )
 
@@ -469,9 +434,7 @@ async def test_capability_tool_guides_direct_validation_without_hiding_tools(
     assert len(tools) == 13
     capability_description = tools["get_capabilities"].description
     inspection_description = tools["inspect_dataset"].description
-    validation_description = tools["validate_analysis"].input_schema[
-        "oneOf"
-    ][0]["description"]
+    validation_description = tools["validate_analysis"].input_schema["oneOf"][0]["description"]
     assert "detail='start_ready'" in capability_description
     assert "detail='full' is audit-only" in capability_description
     assert "retaining the original payload" in capability_description

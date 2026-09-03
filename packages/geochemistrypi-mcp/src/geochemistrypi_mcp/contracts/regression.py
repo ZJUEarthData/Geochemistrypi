@@ -1,4 +1,4 @@
-"""Versioned regression choices exposed by the GeochemistryPi 0.8.1 CLI."""
+"""Versioned regression choices exposed by the GeochemistryPi 0.8.2 CLI."""
 
 from typing import Final
 

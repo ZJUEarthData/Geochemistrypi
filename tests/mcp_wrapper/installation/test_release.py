@@ -1,3 +1,4 @@
+import ast
 import json
 import subprocess
 import tomllib
@@ -82,10 +83,30 @@ def test_release_manifest_records_exact_versions_hashes_and_protected_publicatio
 
 
 def test_release_version_has_one_canonical_package_value() -> None:
+    cli_project = tomllib.loads((REPOSITORY_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     project = tomllib.loads((REPOSITORY_ROOT / "packages" / "geochemistrypi-mcp" / "pyproject.toml").read_text(encoding="utf-8"))
 
     assert project["project"]["version"] == SERVER_VERSION
     assert EXPECTED_RELEASE_TAG == f"mcp-v{SERVER_VERSION}-cli-v{CLI_VERSION}"
+    assert "jsonschema>=4.23,<5" in cli_project["project"]["optional-dependencies"]["test"]
+
+
+def test_mcp_unit_suites_do_not_import_the_separate_cli_runtime() -> None:
+    offending: list[str] = []
+    for directory in ("installation", "interaction", "protocol"):
+        for path in (REPOSITORY_ROOT / "tests" / "mcp_wrapper" / directory).rglob("*.py"):
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    modules = [alias.name for alias in node.names]
+                elif isinstance(node, ast.ImportFrom):
+                    modules = [node.module or ""]
+                else:
+                    continue
+                if any(module == "geochemistrypi" or module.startswith("geochemistrypi.") for module in modules):
+                    offending.append(str(path.relative_to(REPOSITORY_ROOT)))
+
+    assert offending == []
 
 
 def test_release_workflow_installs_the_signed_artifact_on_every_supported_os() -> None:
@@ -118,6 +139,7 @@ def test_release_workflow_installs_the_signed_artifact_on_every_supported_os() -
 
 def test_release_workflow_builds_once_and_publishes_only_after_final_gates() -> None:
     release_workflow = (REPOSITORY_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    github_release = release_workflow.split("  publish-mcp-github-release:", maxsplit=1)[1]
 
     assert "verify-source --repository . --release-tag" in release_workflow
     assert "python -m build --sdist --wheel --outdir cli-dist ." in release_workflow
@@ -127,6 +149,7 @@ def test_release_workflow_builds_once_and_publishes_only_after_final_gates() -> 
     assert "needs: [build-sign-attest, verify-signed-install, verify-signed-parity]" in release_workflow
     assert "needs: [build-sign-attest, verify-signed-install, verify-signed-parity, publish-cli-pypi]" in release_workflow
     assert 'gh release create "${GITHUB_REF_NAME}"' in release_workflow
+    assert '--repo "${GITHUB_REPOSITORY}"' in github_release
 
 
 def test_workflows_use_node24_action_generations() -> None:

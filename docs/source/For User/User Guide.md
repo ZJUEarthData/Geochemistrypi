@@ -198,7 +198,7 @@ The following are four built-in data set in our software stored on Google Drive,
 When you type geochemistrypi data-mining or geochemistrypi data-mining --data your_own_data_set.xlsx command,there are four algorithmic modes you can use,which are Regression,Classification,Clustering and Dimensional Reduction.
 
 ~~~
-Geochemistry Py v.0.8.1
+Geochemistry Py v.0.8.2
 ....... Initializing .......
 -*-*- Data Loading -*-*-
 Built-in Data Option:
