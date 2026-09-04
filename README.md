@@ -45,6 +45,7 @@
 
 **Online Documentation**: <a href="https://geochemistrypi.readthedocs.io" target="_blank">https://geochemistrypi.readthedocs.io</a> &nbsp;|&nbsp;
 **Source Code**: <a href="https://github.com/ZJUEarthData/geochemistrypi" target="_blank">https://github.com/ZJUEarthData/geochemistrypi</a>
+**Web version**: <a href="https://geochemistrypi.com/" target="_blank">https://geochemistrypi.com/</a>
 
 ---
 
@@ -523,6 +524,7 @@ The whole package is under construction and the documentation is progressively e
 - Hanbing Gao (China University of Geosciences, Wuhan, China)
 - Yuanhang Wang (Hangzhou Dianzi University, China)
 - Zhenghao Qu (Yunnan University, China)
+- Lei Gao (Institute of Geochemistry, Chinese Academy of Sciences; University of Chinese Academy of Sciences, China)
 
 ### Product Group
 
@@ -538,6 +540,7 @@ The whole package is under construction and the documentation is progressively e
 - Lianfeng Zhou (Yangtze University,China)
 - Lingping Zhan (Chang'an University, China)
 - Zixuan Zhu (Institute of Geochemistry, Chinese Academy of Sciences; University of Chinese Academy of Sciences, China)
+- Yuxuan Zhang (China University of Petroleum (Beijing) Karamay Campus, China)
 ---
 
 ## 🤝 Join Us :)
