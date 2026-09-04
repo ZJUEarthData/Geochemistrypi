@@ -44,7 +44,7 @@
 ---
 
 **Online Documentation**: <a href="https://geochemistrypi.readthedocs.io" target="_blank">https://geochemistrypi.readthedocs.io</a> &nbsp;|&nbsp;
-**Source Code**: <a href="https://github.com/ZJUEarthData/geochemistrypi" target="_blank">https://github.com/ZJUEarthData/geochemistrypi</a>
+**Source Code**: <a href="https://github.com/ZJUEarthData/geochemistrypi" target="_blank">https://github.com/ZJUEarthData/geochemistrypi</a> &nbsp;|&nbsp;
 **Web version**: <a href="https://geochemistrypi.com/" target="_blank">https://geochemistrypi.com/</a>
 
 ---
