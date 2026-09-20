@@ -1,0 +1,8 @@
+services:
+  web:
+    ports:
+      - "443:443"
+    volumes:
+      - ./deploy/nginx/https.conf:/etc/nginx/conf.d/default.conf:ro
+      - ${TLS_CERT_PATH:?Set TLS_CERT_PATH}:/etc/nginx/certs/fullchain.pem:ro
+      - ${TLS_KEY_PATH:?Set TLS_KEY_PATH}:/etc/nginx/certs/privkey.pem:ro

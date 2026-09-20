@@ -4,7 +4,7 @@ from typing import Optional
 
 import pandas as pd
 
-from ..model.clustering import AffinityPropagationClustering, Agglomerative, ClusteringWorkflowBase, DBSCANClustering, KMeansClustering, MeanShiftClustering
+from ..model.clustering import AffinityPropagationClustering, Agglomerative, ClusteringWorkflowBase, DBSCANClustering, KMeansClustering, MeanShiftClustering, OPTICSClustering
 from ._base import ModelSelectionBase
 
 
@@ -74,6 +74,21 @@ class ClusteringModelSelection(ModelSelectionBase):
                 min_bin_freq=hyper_parameters["min_bin_freq"],
                 n_jobs=hyper_parameters["n_jobs"],
                 max_iter=hyper_parameters["max_iter"],
+            )
+        elif self.model_name == "OPTICS":
+            hyper_parameters = OPTICSClustering.manual_hyper_parameters()
+            self.clt_workflow = OPTICSClustering(
+                min_samples=hyper_parameters["min_samples"],
+                max_eps=hyper_parameters["max_eps"],
+                metric=hyper_parameters["metric"],
+                p=hyper_parameters["p"],
+                cluster_method=hyper_parameters["cluster_method"],
+                eps=hyper_parameters["eps"],
+                xi=hyper_parameters["xi"],
+                predecessor_correction=hyper_parameters["predecessor_correction"],
+                min_cluster_size=hyper_parameters["min_cluster_size"],
+                algorithm=hyper_parameters["algorithm"],
+                leaf_size=hyper_parameters["leaf_size"],
             )
         elif self.model_name == "":
             pass

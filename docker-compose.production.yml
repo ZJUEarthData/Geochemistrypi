@@ -1,0 +1,74 @@
+name: geochemistrypi
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        GEOCHEMISTRYPI_SOURCE_REVISION: ${GEOCHEMISTRYPI_SOURCE_REVISION:?Set GEOCHEMISTRYPI_SOURCE_REVISION}
+    restart: unless-stopped
+    environment:
+      GEOCHEMISTRYPI_ALLOWED_ORIGINS: ${GEOCHEMISTRYPI_ALLOWED_ORIGINS:-}
+      GEOCHEMISTRYPI_RUNTIME_DIR: /app/runtime
+      GEOCHEMISTRYPI_ENABLE_API_DOCS: ${GEOCHEMISTRYPI_ENABLE_API_DOCS:-false}
+      GEOCHEMISTRYPI_ONLINE_INSTANCE_ID: ${GEOCHEMISTRYPI_ONLINE_INSTANCE_ID:?Set GEOCHEMISTRYPI_ONLINE_INSTANCE_ID}
+      GEOCHEMISTRYPI_SOURCE_REVISION: ${GEOCHEMISTRYPI_SOURCE_REVISION:?Set GEOCHEMISTRYPI_SOURCE_REVISION}
+      GEOCHEMISTRYPI_BUILD_ID: ${GEOCHEMISTRYPI_BUILD_ID:?Set GEOCHEMISTRYPI_BUILD_ID}
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY}
+      ALGORITHM: ${ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      OMP_NUM_THREADS: ${COMPUTE_THREADS:-2}
+      OPENBLAS_NUM_THREADS: ${COMPUTE_THREADS:-2}
+      MKL_NUM_THREADS: ${COMPUTE_THREADS:-2}
+      NUMEXPR_NUM_THREADS: ${COMPUTE_THREADS:-2}
+    volumes:
+      - runtime-data:/app/runtime
+    expose:
+      - "8000"
+    cpus: ${BACKEND_CPU_LIMIT:-3.0}
+    mem_limit: ${BACKEND_MEMORY_LIMIT:-6g}
+    pids_limit: 256
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    logging: *default-logging
+    stop_grace_period: 35s
+
+  web:
+    build:
+      context: .
+      dockerfile: deploy/frontend.Dockerfile
+      args:
+        GEOCHEMISTRYPI_ONLINE_INSTANCE_ID: ${GEOCHEMISTRYPI_ONLINE_INSTANCE_ID:?Set GEOCHEMISTRYPI_ONLINE_INSTANCE_ID}
+        GEOCHEMISTRYPI_SOURCE_REVISION: ${GEOCHEMISTRYPI_SOURCE_REVISION:?Set GEOCHEMISTRYPI_SOURCE_REVISION}
+        GEOCHEMISTRYPI_BUILD_ID: ${GEOCHEMISTRYPI_BUILD_ID:?Set GEOCHEMISTRYPI_BUILD_ID}
+        VITE_API_BASE_URL: ""
+        VITE_ENABLE_AUTH_UI: "false"
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+    cpus: ${WEB_CPU_LIMIT:-0.5}
+    mem_limit: ${WEB_MEMORY_LIMIT:-256m}
+    pids_limit: 128
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /var/cache/nginx:size=64m
+      - /var/run:size=16m
+    logging: *default-logging
+
+volumes:
+  runtime-data:
+    name: geochemistrypi-runtime

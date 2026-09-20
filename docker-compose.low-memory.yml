@@ -1,0 +1,21 @@
+# Temporary override for the 2-vCPU / 1-GiB free server.
+# Use only for deployment verification and small datasets.
+services:
+  backend:
+    cpus: 1.5
+    mem_limit: 700m
+    mem_reservation: 384m
+    memswap_limit: 2g
+    pids_limit: 128
+    environment:
+      OMP_NUM_THREADS: 1
+      OPENBLAS_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      NUMEXPR_NUM_THREADS: 1
+
+  web:
+    cpus: 0.25
+    mem_limit: 128m
+    mem_reservation: 32m
+    memswap_limit: 192m
+    pids_limit: 64

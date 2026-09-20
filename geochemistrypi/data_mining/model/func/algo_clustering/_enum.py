@@ -10,11 +10,17 @@ class ClusteringCommonFunction(Enum):
     CLUSTER_THREE_DIMENSIONAL_DIAGRAM = "Cluster Three-Dimensional Diagram"
     SILHOUETTE_DIAGRAM = "Silhouette Diagram"
     SILHOUETTE_VALUE_DIAGRAM = "Silhouette value Diagram"
+    SILHOUETTE_VALUE = "Silhouette Score vs K"
 
 
 class KMeansSpecialFunction(Enum):
     INERTIA_SCORE = "Inertia Score"
+    SILHOUETTE_VALUE = "Silhouette Score vs K"
 
 
 class MeanShiftSpecialFunction(Enum):
     NUM_CLUSTERS = "Num of Clusters"
+
+
+class AgglomeraSpecialFunction(Enum):
+    SILHOUETTE_VALUE = "Silhouette Score vs K"

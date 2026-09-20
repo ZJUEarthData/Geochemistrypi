@@ -1,7 +1,7 @@
 import copy
 import json
 import os
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import mlflow
 import pandas as pd
@@ -75,41 +75,72 @@ def build_transform_pipeline(imputation_config: Dict, feature_scaling_config: Di
     X_train : pd.DataFrame
         The training data.
 
+    y_train : pd.DataFrame
+        The target data.
+
     Returns
     -------
     Tuple[Dict, object]
         The transform pipeline configuration and the transform pipeline object.
     """
     print("Build the transform pipeline according to the previous operations.")
-    # Aggregate transformer configuartion.
+
+    # Aggregate transformer configuration
     transformer_config = {}
     transformer_config.update(imputation_config)
     transformer_config.update(feature_scaling_config)
     transformer_config.update(feature_selection_config)
     transformer_config.update(run.transformer_config)
+
+    # =====================================================================
+    # Multi-output Regression Handling:
+    # Skip feature selection when y_train has multiple columns, because
+    # univariate feature selection methods (GenericUnivariateSelect,
+    # SelectKBest with f_regression) do not support multi-output targets.
+    # =====================================================================
+    if y_train.shape[1] > 1:
+        print(f"[Multi-output Regression] Detected {y_train.shape[1]} target columns. " "Skipping feature selection (GenericUnivariateSelect / SelectKBest) " "to avoid dimension mismatch.")
+        # Remove feature selection transformers from configuration
+        transformer_config = {k: v for k, v in transformer_config.items() if k not in ["GenericUnivariateSelect", "SelectKBest"]}
+    # =====================================================================
+
+    # Save transformer configuration as JSON for logging
     transformer_config_str = copy.deepcopy(transformer_config)
     for key, value in transformer_config_str.items():
         for k, v in value.items():
             if callable(v):
                 transformer_config_str[key][k] = v.__name__
     transformer_config_str = json.dumps(transformer_config_str, indent=4)
+
     GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
     save_text(transformer_config_str, "Transform Pipeline Configuration", GEOPI_OUTPUT_ARTIFACTS_PATH, "root")
-    # If transformer_config is not {}, then create the transform pipeline.
+
+    # If transformer_config is not empty, build and fit the transform pipeline
     if transformer_config:
-        # Create the transform pipeline.
+        # Create the transform pipeline
         transform_pipeline = PipelineConstrutor().chain(transformer_config)
-        # Fit the transform pipeline with the training data.
+
+        # Fit the transform pipeline with the training data
         transform_pipeline.fit(X_train, y_train)
-        # Save the transform pipeline.
+
+        # Save the transform pipeline
         GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH")
         save_model(transform_pipeline, "Transform Pipeline", X_train.iloc[[0]], GEOPI_OUTPUT_ARTIFACTS_MODEL_PATH)
     else:
         transform_pipeline = None
+
     return transformer_config, transform_pipeline
 
 
-def model_inference(inference_data: pd.DataFrame, inference_name_column: str, is_inference: bool, run: object, transformer_config: Dict, transform_pipeline: Optional[object] = None):
+def model_inference(
+    inference_data: pd.DataFrame,
+    inference_name_column: str,
+    is_inference: bool,
+    run: object,
+    transformer_config: Dict,
+    transform_pipeline: Optional[object] = None,
+    y_columns: Optional[List[str]] = None,
+):
     """Run the model inference.
 
     Parameters
@@ -131,17 +162,36 @@ def model_inference(inference_data: pd.DataFrame, inference_name_column: str, is
 
     transform_pipeline : Optional[object], optional
         The transform pipeline object. The default is None.
+
+    y_columns : Optional[List[str]], optional
+        The column names of the target variables. The default is None.
     """
     # If is_inference is True, then run the model inference.
     if is_inference is True:
         print("Use the trained model to make predictions on the application data.")
-        # If transformer_config is not {}, then transform the inference data with the transform pipeline.
+
+        # If transformer_config is not empty, transform the inference data
         if transformer_config:
             inference_data_transformed = transform_pipeline.transform(inference_data)
         else:
             inference_data_transformed = inference_data
+
+        # Load the trained model from MLflow
         loaded_model = mlflow.sklearn.load_model(f"runs:/{mlflow.active_run().info.run_id}/{run.model_name}")
         inference_data_predicted_np = loaded_model.predict(inference_data_transformed)
-        inference_data_predicted = np2pd(inference_data_predicted_np, ["Predicted Value"])
+
+        # Support multi-output: generate column names based on the prediction shape
+        if y_columns is not None and len(y_columns) > 0:
+            # Use the original Y column names as the base
+            predicted_columns = [f"Predicted_{col}" for col in y_columns]
+        else:
+            # Generate generic column names based on the prediction shape
+            if inference_data_predicted_np.ndim == 1:
+                predicted_columns = ["Predicted Value"]
+            else:
+                predicted_columns = [f"Predicted_Value_{i+1}" for i in range(inference_data_predicted_np.shape[1])]
+
+        # Convert predictions to DataFrame and save
+        inference_data_predicted = np2pd(inference_data_predicted_np, predicted_columns)
         GEOPI_OUTPUT_ARTIFACTS_DATA_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_DATA_PATH")
         save_data(inference_data_predicted, inference_name_column, "Application Data Predicted", GEOPI_OUTPUT_ARTIFACTS_DATA_PATH, MLFLOW_ARTIFACT_DATA_PATH)

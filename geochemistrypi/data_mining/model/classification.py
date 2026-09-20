@@ -24,17 +24,7 @@ from ..plot.statistic_plot import basic_statistic
 from ..utils.base import clear_output, save_data, save_data_without_data_identifier, save_fig, save_text
 from ._base import LinearWorkflowMixin, TreeWorkflowMixin, WorkflowBase
 from .func.algo_classification._adaboost import adaboost_manual_hyper_parameters
-from .func.algo_classification._common import (
-    cross_validation,
-    plot_2d_decision_boundary,
-    plot_confusion_matrix,
-    plot_precision_recall,
-    plot_precision_recall_threshold,
-    plot_ROC,
-    resampler,
-    reset_label,
-    score,
-)
+from .func.algo_classification._common import cross_validation, plot_2d_decision_boundary, plot_confusion_matrix, plot_precision_recall, plot_precision_recall_threshold, plot_ROC, resampler, score
 from .func.algo_classification._decision_tree import decision_tree_manual_hyper_parameters
 from .func.algo_classification._enum import (
     AdaBoostSpecialFunction,
@@ -56,6 +46,7 @@ from .func.algo_classification._multi_layer_perceptron import multi_layer_percep
 from .func.algo_classification._rf import random_forest_manual_hyper_parameters
 from .func.algo_classification._sgd_classification import sgd_classificaiton_manual_hyper_parameters
 from .func.algo_classification._svc import svc_manual_hyper_parameters
+from .func.algo_classification._traceability import save_metric_configuration, save_skipped_binary_plot_notice
 from .func.algo_classification._xgboost import xgboost_manual_hyper_parameters
 
 
@@ -126,9 +117,32 @@ class ClassificationWorkflowBase(WorkflowBase):
     def auto_model(self) -> object:
         """Get AutoML trained model by FLAML framework."""
         if self.naming not in RAY_FLAML:
+            from sklearn.multioutput import MultiOutputRegressor
+
+            if isinstance(self.automl, MultiOutputRegressor):
+                return self.automl
             return self.automl.model.estimator
         else:
             return self.ray_best_model
+
+    @property
+    def auto_best_config(self) -> Dict:
+        """Get the best AutoML hyper-parameter configuration."""
+        if self.naming not in RAY_FLAML:
+            from sklearn.multioutput import MultiOutputRegressor
+
+            if isinstance(self.automl, MultiOutputRegressor):
+                estimators = getattr(self.automl, "estimators_", None)
+                if estimators:
+                    best_configs = [getattr(est, "best_config", None) for est in estimators]
+                    best_configs = [config for config in best_configs if config is not None]
+                    if len(best_configs) == 1:
+                        return best_configs[0]
+                    if best_configs:
+                        return {"best_config_per_output": best_configs}
+                return {}
+            return self.automl.best_config
+        return {}
 
     @classmethod
     def manual_hyper_parameters(cls) -> Dict:
@@ -136,21 +150,21 @@ class ClassificationWorkflowBase(WorkflowBase):
         return dict()
 
     @staticmethod
-    def _score(y_true: pd.DataFrame, y_predict: pd.DataFrame, algorithm_name: str, store_path: str, func_name: str) -> str:
+    def _score(y_true: pd.DataFrame, y_predict: pd.DataFrame, algorithm_name: str, store_path: str, func_name: str, average: Optional[str] = None, interactive: bool = True) -> str:
         """Print the classification score report of the model."""
         print(f"-----* {func_name} *-----")
-        average, scores = score(y_true, y_predict)
+        average, scores = score(y_true, y_predict, average=average, interactive=interactive)
         scores_str = json.dumps(scores, indent=4)
         save_text(scores_str, f"{func_name} - {algorithm_name}", store_path)
-        mlflow.log_metrics(scores)
+        mlflow.log_metrics({key: value for key, value in scores.items() if isinstance(value, (int, float))})
         return average
 
     @staticmethod
     def _classification_report(y_true: pd.DataFrame, y_predict: pd.DataFrame, algorithm_name: str, store_path: str, func_name: str) -> None:
         """Print the classification report of the model."""
         print(f"-----* {func_name} *-----")
-        print(classification_report(y_true, y_predict))
-        scores = classification_report(y_true, y_predict, output_dict=True)
+        print(classification_report(y_true, y_predict, zero_division=0))
+        scores = classification_report(y_true, y_predict, output_dict=True, zero_division=0)
         scores_str = json.dumps(scores, indent=4)
         save_text(scores_str, f"{func_name} - {algorithm_name}", store_path)
         mlflow.log_artifact(os.path.join(store_path, f"{func_name} - {algorithm_name}.txt"))
@@ -172,10 +186,34 @@ class ClassificationWorkflowBase(WorkflowBase):
         print(f"-----* {graph_name} *-----")
         data = plot_confusion_matrix(y_test, y_test_predict, trained_model)
         save_fig(f"{graph_name} - {algorithm_name}", local_path, mlflow_path)
-        index = [f"true_{i}" for i in range(int(y_test.nunique().values))]
-        columns = [f"pred_{i}" for i in range(int(y_test.nunique().values))]
+        labels = getattr(trained_model, "classes_", None)
+        if labels is None or len(labels) != data.shape[0]:
+            labels = pd.unique(pd.concat([pd.Series(np.ravel(y_test)), pd.Series(np.ravel(y_test_predict))], ignore_index=True))
+        if len(labels) != data.shape[0]:
+            labels = range(data.shape[0])
+        index = [f"true_{label}" for label in labels]
+        columns = [f"pred_{label}" for label in labels]
         data = pd.DataFrame(data, columns=columns, index=index)
         save_data(data, name_column, f"{graph_name} - {algorithm_name}", local_path, mlflow_path, True)
+
+    @staticmethod
+    def _count_unique_labels(y_values: Optional[pd.DataFrame]) -> Optional[int]:
+        if y_values is None:
+            return None
+        labels = pd.Series(np.ravel(y_values)).dropna()
+        if labels.empty:
+            return None
+        return int(labels.nunique())
+
+    @classmethod
+    def _get_total_class_count(cls, label_config: Optional[Dict[str, Any]] = None) -> int:
+        if label_config and label_config.get("num_classes") is not None:
+            return int(label_config["num_classes"])
+        for y_values in (getattr(cls, "y", None), getattr(cls, "y_train", None), getattr(cls, "y_test", None)):
+            class_count = cls._count_unique_labels(y_values)
+            if class_count is not None:
+                return class_count
+        return 0
 
     @staticmethod
     def _plot_precision_recall(X_test: pd.DataFrame, y_test: pd.DataFrame, name_column: str, trained_model: object, graph_name: str, algorithm_name: str, local_path: str, mlflow_path: str) -> None:
@@ -255,29 +293,231 @@ class ClassificationWorkflowBase(WorkflowBase):
 
     @staticmethod
     def customize_label(
-        y: pd.DataFrame, y_train: pd.DataFrame, y_test: pd.DataFrame, name_column1: str, name_column2: str, name_column3: str, local_path: str, mlflow_path: str
-    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-        """Using this function to customize the label to which samples of each category belong."""
-        print("[bold green]-*-*- Customize Label on Label Set -*-*-[/bold green]")
-        num2option(OPTION)
-        is_customize_label = limit_num_input(OPTION, SECTION[1], num_input)
-        if is_customize_label == 1:
-            y_show = y.copy()
-            print("Which strategy do you want to apply?")
+        y: pd.DataFrame,
+        y_train: Optional[pd.DataFrame] = None,
+        y_test: Optional[pd.DataFrame] = None,
+        name_column1: Optional[pd.Series] = None,
+        name_column2: Optional[pd.Series] = None,
+        name_column3: Optional[pd.Series] = None,
+        local_path: Optional[str] = None,
+        mlflow_path: Optional[str] = None,
+        label_mapping: Optional[dict] = None,
+        interactive: bool = True,
+        return_config: bool = False,
+    ):
+        if not isinstance(y, pd.DataFrame) or y.shape[1] != 1:
+            raise ValueError("Classification target Y must be exactly one column.")
+        if y.isnull().any().any():
+            raise ValueError("Classification target Y contains missing values. Please handle missing labels before training.")
+
+        target_column = y.columns[0]
+        y_original = y.copy()
+
+        def _split_semicolon(raw: str) -> List[str]:
+            return [item.strip() for item in raw.split(";") if item.strip()]
+
+        def _default_labels(num_classes: int) -> List[str]:
+            return [f"Class_{idx}" for idx in range(num_classes)]
+
+        def _parse_labels(num_classes: int) -> List[str]:
+            raw = input("Input class labels separated by ';' or press Enter to use Class_0, Class_1, ...\n@Labels: ").strip()
+            labels = _split_semicolon(raw) if raw else _default_labels(num_classes)
+            if len(labels) != num_classes:
+                raise ValueError(f"The number of labels must be {num_classes}, but got {len(labels)}.")
+            if len(set(labels)) != len(labels):
+                raise ValueError("Class labels must be unique.")
+            return labels
+
+        def _ordered_unique(series: pd.Series) -> List[Any]:
+            return list(pd.Series(series).drop_duplicates())
+
+        def _final_label_order(y_custom: pd.DataFrame, extra: Optional[dict] = None) -> List[Any]:
+            observed_labels = _ordered_unique(y_custom[target_column])
+            preferred_labels = (extra or {}).get("label_order")
+            if not preferred_labels:
+                return observed_labels
+            ordered_labels = [label for label in preferred_labels if label in observed_labels]
+            ordered_labels.extend(label for label in observed_labels if label not in ordered_labels)
+            return ordered_labels
+
+        def _encode_df(df: pd.DataFrame, custom_label_to_code: Dict[Any, int]) -> pd.DataFrame:
+            encoded = df.copy()
+            encoded[target_column] = encoded[target_column].map(custom_label_to_code)
+            if encoded[target_column].isnull().any():
+                missing = df.loc[encoded[target_column].isnull(), target_column].drop_duplicates().tolist()
+                raise ValueError(f"Some labels were not encoded: {missing}")
+            encoded[target_column] = encoded[target_column].astype(int)
+            return encoded
+
+        def _build_config(strategy: str, y_custom: pd.DataFrame, extra: Optional[dict] = None) -> dict:
+            custom_labels = _final_label_order(y_custom, extra)
+            if len(custom_labels) < 2:
+                raise ValueError("Classification requires at least two final classes.")
+            custom_label_to_code = {label: idx for idx, label in enumerate(custom_labels)}
+            class_counts = y_custom[target_column].value_counts(sort=False).to_dict()
+            config = {
+                "target_transform_version": 1,
+                "strategy": strategy,
+                "target_column": target_column,
+                "num_classes": len(custom_labels),
+                "classes": [str(label) for label in custom_labels],
+                "custom_label_to_code": {str(label): code for label, code in custom_label_to_code.items()},
+                "code_to_custom_label": {str(code): str(label) for label, code in custom_label_to_code.items()},
+                "class_counts": {str(label): int(count) for label, count in class_counts.items()},
+            }
+            if extra:
+                config.update(extra)
+            return config
+
+        def _save_outputs(y_custom: pd.DataFrame, y_encoded: pd.DataFrame, config: dict) -> None:
+            if not local_path:
+                return
+            os.makedirs(local_path, exist_ok=True)
+            mapping_rows = [{"custom_label": label, "encoded_label": code} for label, code in config["custom_label_to_code"].items()]
+            mapping_df = pd.DataFrame(mapping_rows)
+            counts_df = pd.DataFrame(list(config["class_counts"].items()), columns=["custom_label", "count"])
+            save_data(y_original, name_column1, "Y Raw Before Customizing Label", local_path, mlflow_path)
+            save_data(y_custom, name_column1, "Y Human-Readable After Customizing Label", local_path, mlflow_path)
+            save_data(y_encoded, name_column1, "Y Encoded After Customizing Label", local_path, mlflow_path)
+            save_data_without_data_identifier(mapping_df, "Target Label Mapping", local_path, mlflow_path)
+            save_data_without_data_identifier(counts_df, "Target Class Counts", local_path, mlflow_path)
+            save_text(json.dumps(config, indent=4), "Target Transform Configuration", local_path, mlflow_path)
+
+        def _apply_mapping(mapping: dict, source: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
+            mapping_type = mapping.get("type")
+            y_custom = source.copy()
+            extra = {}
+            if mapping_type == "interval":
+                bins = mapping.get("bins")
+                labels = mapping.get("labels")
+                if not bins or not labels or len(labels) != len(bins) - 1:
+                    raise ValueError("Interval mapping requires bins and exactly len(bins)-1 labels.")
+                if not pd.api.types.is_numeric_dtype(source[target_column]):
+                    raise ValueError("Interval mapping requires a numeric target column.")
+                if any(bins[idx] >= bins[idx + 1] for idx in range(len(bins) - 1)):
+                    raise ValueError("Interval bins must be strictly increasing.")
+                y_custom[target_column] = pd.cut(source[target_column], bins=bins, labels=labels, include_lowest=True)
+                extra = {"bins": bins, "interval_closed": "right", "label_order": labels}
+            elif mapping_type == "quantile":
+                num_classes = int(mapping.get("num_classes", 2))
+                labels = mapping.get("labels") or _default_labels(num_classes)
+                if len(labels) != num_classes:
+                    raise ValueError("Quantile mapping requires labels to match num_classes.")
+                if not pd.api.types.is_numeric_dtype(source[target_column]):
+                    raise ValueError("Quantile mapping requires a numeric target column.")
+                _, bins = pd.qcut(source[target_column], q=num_classes, retbins=True)
+                y_custom[target_column] = pd.cut(source[target_column], bins=bins, labels=labels, include_lowest=True)
+                extra = {"bins": [float(value) for value in bins], "interval_closed": "right", "label_order": labels}
+            elif mapping_type == "dict":
+                mapping_dict = mapping.get("mapping", {})
+                observed = set(source[target_column].drop_duplicates())
+                missing = [label for label in observed if label not in mapping_dict and str(label) not in mapping_dict]
+                if missing:
+                    raise ValueError(f"Mapping does not cover all original labels. Missing labels: {missing}")
+                y_custom[target_column] = source[target_column].map(lambda value: mapping_dict.get(value, mapping_dict.get(str(value))))
+                label_order = []
+                for value in mapping_dict.values():
+                    if value not in label_order:
+                        label_order.append(value)
+                extra = {"original_to_custom_label": {str(key): str(value) for key, value in mapping_dict.items()}, "label_order": label_order}
+            else:
+                raise ValueError(f"Unsupported label mapping type: {mapping_type}")
+            if y_custom[target_column].isnull().any():
+                raise ValueError("Label customization produced missing labels. Please check bins or mapping rules.")
+            return y_custom, extra
+
+        if label_mapping is not None:
+            y_custom, extra = _apply_mapping(label_mapping, y)
+            strategy = label_mapping.get("type", "custom")
+        elif interactive:
+            print("[bold green]-*-*- Classification Label Customization -*-*-[/bold green]")
+            print("Choose how to define the final classification labels.")
             num2option(CUSTOMIZE_LABEL_STRATEGY)
-            customize_label_num = limit_num_input(CUSTOMIZE_LABEL_STRATEGY, SECTION[1], num_input)
-            y, y_train, y_test = reset_label(y, y_train, y_test, CUSTOMIZE_LABEL_STRATEGY, customize_label_num - 1)
-            y_show = pd.concat([y_show, y], axis=1)
-            y_show = y_show.drop_duplicates().reset_index(drop=True)
-            y_show.columns = ["original_label", "new_label"]
-            print("------------------------------------")
-            print("Originla label VS Customizing label:")
-            print(y_show)
-            save_data(y, name_column1, "Y Set After Customizing label", local_path, mlflow_path)
-            save_data(y_train, name_column2, "Y Train After Customizing label", local_path, mlflow_path)
-            save_data(y_test, name_column3, "Y Test After Customizing label", local_path, mlflow_path)
-        clear_output()
-        return y, y_train, y_test
+            strategy_num = limit_num_input(CUSTOMIZE_LABEL_STRATEGY, SECTION[1], num_input)
+            y_custom = y.copy()
+            extra = {}
+            if strategy_num == 1:
+                strategy = "encode_original"
+            elif strategy_num == 2:
+                strategy = "dict"
+                original_labels = _ordered_unique(y[target_column])
+                print("Original labels:")
+                for label in original_labels:
+                    print(f"- {label}")
+                raw = input("Map every original label with format original:new; original:new\n@Mapping: ").strip()
+                mapping_dict = {}
+                for item in _split_semicolon(raw):
+                    if ":" not in item:
+                        raise ValueError("Each mapping item must use original:new format.")
+                    original, new = item.split(":", 1)
+                    mapping_dict[original.strip()] = new.strip()
+                y_custom, extra = _apply_mapping({"type": "dict", "mapping": mapping_dict}, y)
+            elif strategy_num == 3:
+                strategy = "interval"
+                if not pd.api.types.is_numeric_dtype(y[target_column]):
+                    raise ValueError("Numeric interval bins require a numeric target column.")
+                num_classes = num_input(SECTION[1], "@Number of Classes: ")
+                if num_classes < 2:
+                    raise ValueError("The number of classes must be at least 2.")
+                labels = _parse_labels(num_classes)
+                raw_edges = input(f"Input {num_classes - 1} internal cut points separated by ';'. The full data range will be covered automatically.\n@Cut Points: ").strip()
+                edges = [float(value) for value in _split_semicolon(raw_edges)]
+                if len(edges) != num_classes - 1:
+                    raise ValueError(f"Expected {num_classes - 1} cut points, but got {len(edges)}.")
+                if any(edges[idx] >= edges[idx + 1] for idx in range(len(edges) - 1)):
+                    raise ValueError("Cut points must be strictly increasing.")
+                bins = [-float("inf")] + edges + [float("inf")]
+                y_custom, extra = _apply_mapping({"type": "interval", "bins": bins, "labels": labels}, y)
+            elif strategy_num == 4:
+                strategy = "quantile"
+                if not pd.api.types.is_numeric_dtype(y[target_column]):
+                    raise ValueError("Quantile bins require a numeric target column.")
+                num_classes = num_input(SECTION[1], "@Number of Classes: ")
+                if num_classes < 2:
+                    raise ValueError("The number of classes must be at least 2.")
+                if y[target_column].nunique() < num_classes:
+                    raise ValueError("The number of classes cannot exceed the number of unique target values.")
+                labels = _parse_labels(num_classes)
+                y_custom, extra = _apply_mapping({"type": "quantile", "num_classes": num_classes, "labels": labels}, y)
+            else:
+                raise ValueError("Unsupported classification label strategy.")
+        else:
+            if return_config:
+                strategy = "unchanged"
+                y_custom = y.copy()
+                extra = {}
+            else:
+                return y, y_train, y_test
+
+        config = _build_config(strategy, y_custom, extra)
+        custom_label_to_code = {label: idx for idx, label in enumerate(_final_label_order(y_custom, extra))}
+        y_encoded = _encode_df(y_custom, custom_label_to_code)
+        _save_outputs(y_custom, y_encoded, config)
+        print("------------------------------------")
+        print("Original label VS Human-readable label VS Encoded label:")
+        y_show = pd.concat([y_original, y_custom, y_encoded], axis=1).drop_duplicates().reset_index(drop=True)
+        y_show.columns = ["original_label", "custom_label", "encoded_label"]
+        print(y_show)
+
+        if y_train is not None and y_test is not None:
+            if label_mapping is not None:
+                y_train_custom, _ = _apply_mapping(label_mapping, y_train)
+                y_test_custom, _ = _apply_mapping(label_mapping, y_test)
+            else:
+                y_train_custom = y_train.copy()
+                y_test_custom = y_test.copy()
+            y_train_encoded = _encode_df(y_train_custom, custom_label_to_code)
+            y_test_encoded = _encode_df(y_test_custom, custom_label_to_code)
+            if local_path:
+                save_data(y_train_encoded, name_column2, "Y Train Encoded After Customizing Label", local_path, mlflow_path)
+                save_data(y_test_encoded, name_column3, "Y Test Encoded After Customizing Label", local_path, mlflow_path)
+            if return_config:
+                return y_encoded, y_train_encoded, y_test_encoded, config
+            return y_encoded, y_train_encoded, y_test_encoded
+
+        if return_config:
+            return y_encoded, config
+        return y_encoded
 
     @dispatch()
     def common_components(self) -> None:
@@ -290,6 +530,8 @@ class ClassificationWorkflowBase(WorkflowBase):
             func_name=ClassificationCommonFunction.MODEL_SCORE.value,
             algorithm_name=self.naming,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
+            average=getattr(self, "metric_average", None),
+            interactive=getattr(self, "metric_average", None) is None,
         )
         self._classification_report(
             y_true=ClassificationWorkflowBase.y_test,
@@ -298,6 +540,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             algorithm_name=self.naming,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
+        save_metric_configuration(self.naming, average, GEOPI_OUTPUT_METRICS_PATH)
         self._cross_validation(
             trained_model=self.model,
             X_train=ClassificationWorkflowBase.X_train,
@@ -318,7 +561,8 @@ class ClassificationWorkflowBase(WorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
-        if int(ClassificationWorkflowBase.y_test.nunique().values) == 2:
+        class_count = self._get_total_class_count(getattr(self, "label_config", None))
+        if class_count == 2:
             self._plot_precision_recall(
                 X_test=ClassificationWorkflowBase.X_test,
                 y_test=ClassificationWorkflowBase.y_test,
@@ -349,6 +593,8 @@ class ClassificationWorkflowBase(WorkflowBase):
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
+        else:
+            save_skipped_binary_plot_notice(self.naming, class_count, GEOPI_OUTPUT_METRICS_PATH)
         self._plot_permutation_importance(
             X_test=ClassificationWorkflowBase.X_test,
             y_test=ClassificationWorkflowBase.y_test,
@@ -385,6 +631,8 @@ class ClassificationWorkflowBase(WorkflowBase):
             algorithm_name=self.naming,
             func_name=ClassificationCommonFunction.MODEL_SCORE.value,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
+            average=getattr(self, "metric_average", None),
+            interactive=getattr(self, "metric_average", None) is None,
         )
         self._classification_report(
             y_true=ClassificationWorkflowBase.y_test,
@@ -393,6 +641,7 @@ class ClassificationWorkflowBase(WorkflowBase):
             func_name=ClassificationCommonFunction.CLASSIFICATION_REPORT.value,
             store_path=GEOPI_OUTPUT_METRICS_PATH,
         )
+        save_metric_configuration(self.naming, average, GEOPI_OUTPUT_METRICS_PATH)
         self._cross_validation(
             trained_model=self.auto_model,
             X_train=ClassificationWorkflowBase.X_train,
@@ -413,7 +662,8 @@ class ClassificationWorkflowBase(WorkflowBase):
             local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
             mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
         )
-        if int(ClassificationWorkflowBase.y_test.nunique().values) == 2:
+        class_count = self._get_total_class_count(getattr(self, "label_config", None))
+        if class_count == 2:
             self._plot_precision_recall(
                 X_test=ClassificationWorkflowBase.X_test,
                 y_test=ClassificationWorkflowBase.y_test,
@@ -444,6 +694,8 @@ class ClassificationWorkflowBase(WorkflowBase):
                 local_path=GEOPI_OUTPUT_ARTIFACTS_IMAGE_MODEL_OUTPUT_PATH,
                 mlflow_path=MLFLOW_ARTIFACT_IMAGE_MODEL_OUTPUT_PATH,
             )
+        else:
+            save_skipped_binary_plot_notice(self.naming, class_count, GEOPI_OUTPUT_METRICS_PATH)
         self._plot_permutation_importance(
             X_test=ClassificationWorkflowBase.X_test,
             y_test=ClassificationWorkflowBase.y_test,
@@ -662,7 +914,7 @@ class SVMClassification(ClassificationWorkflowBase):
         from sklearn.svm import SVC
 
         class MySVMClassification(SKLearnEstimator):
-            def __init__(self, task="binary", n_jobs=None, **config):
+            def __init__(self, task="classification", n_jobs=None, **config):
                 super().__init__(task, **config)
                 if task in CLASSIFICATION:
                     self.estimator_class = SVC
@@ -914,7 +1166,7 @@ class DecisionTreeClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         from sklearn.tree import DecisionTreeClassifier
 
         class MyDTClassification(SKLearnEstimator):
-            def __init__(self, task="binary", n_jobs=None, **config):
+            def __init__(self, task="classification", n_jobs=None, **config):
                 super().__init__(task, **config)
                 if task in CLASSIFICATION:
                     self.estimator_class = DecisionTreeClassifier
@@ -1608,6 +1860,21 @@ class XGBoostClassification(TreeWorkflowMixin, ClassificationWorkflowBase):
         )
 
         self.naming = XGBoostClassification.name
+
+    @dispatch(object, object)
+    def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> None:
+        y_series = pd.Series(np.ravel(y))
+        classes = sorted(y_series.dropna().unique().tolist())
+        expected_classes = list(range(len(classes)))
+        if classes != expected_classes:
+            raise ValueError(f"XGBoost classification labels must be contiguous integers {expected_classes}, but got {classes}.")
+        if len(classes) > 2:
+            if self.objective not in (None, "multi:softprob", "multi:softmax"):
+                raise ValueError("XGBoost multiclass classification requires objective 'multi:softprob' or 'multi:softmax'.")
+            self.model.set_params(objective=self.objective or "multi:softprob", num_class=len(classes), eval_metric=self.eval_metric or "mlogloss")
+        else:
+            self.model.set_params(eval_metric=self.eval_metric or "logloss")
+        self.model.fit(X, y_series)
 
     @property
     def settings(self) -> Dict:
@@ -3647,7 +3914,7 @@ class SGDClassification(LinearWorkflowMixin, ClassificationWorkflowBase):
         """Invoke all special application functions for this algorithms by Scikit-learn framework."""
         GEOPI_OUTPUT_ARTIFACTS_PATH = os.getenv("GEOPI_OUTPUT_ARTIFACTS_PATH")
         self._show_formula(
-            coef=[self.model.coef_],
+            coef=self.model.coef_,
             intercept=self.model.intercept_,
             features_name=SGDClassification.X_train.columns,
             regression_classification="Classification",

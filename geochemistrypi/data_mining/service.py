@@ -1,7 +1,7 @@
-import auth.sql_models as auth_models
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from ..auth import sql_models as auth_models
 from .constants import MAX_UPLOADS_PER_USER
 from .sql_models import Dataset
 

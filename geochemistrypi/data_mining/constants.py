@@ -68,7 +68,7 @@ CLASSIFICATION_MODELS = [
     # "Decision Tree",
     # Histogram-based Gradient Boosting,
 ]
-CLUSTERING_MODELS = ["KMeans", "DBSCAN", "Agglomerative", "AffinityPropagation", "MeanShift"]
+CLUSTERING_MODELS = ["KMeans", "DBSCAN", "Agglomerative", "AffinityPropagation", "MeanShift", "OPTICS"]
 DECOMPOSITION_MODELS = ["PCA", "T-SNE", "MDS"]
 ANOMALYDETECTION_MODELS = ["Isolation Forest", "Local Outlier Factor"]
 
@@ -103,7 +103,12 @@ FEATURE_SCALING_STRATEGY = ["Min-max Scaling", "Standardization", "Mean Normaliz
 
 SAMPLE_BALANCE_STRATEGY = ["Over Sampling", "Under Sampling", "Oversampling and Undersampling"]
 
-CUSTOMIZE_LABEL_STRATEGY = ["Automatic Coding", "Custom Numeric Labels", "Custom Non-numeric Labels"]
+CUSTOMIZE_LABEL_STRATEGY = [
+    "Keep Original Labels and Encode",
+    "Map Existing Labels to Custom Labels",
+    "Numeric Interval Bins",
+    "Quantile Bins",
+]
 
 FEATURE_SELECTION_STRATEGY = ["Generic Univariate Select", "Select K Best"]
 

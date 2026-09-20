@@ -1,5 +1,6 @@
 from typing import Dict
 
+import matplotlib.pyplot as plt
 from rich import print
 
 from ....constants import SECTION
@@ -33,3 +34,23 @@ def kmeans_manual_hyper_parameters() -> Dict:
     algorithm = str_input(algorithms, SECTION[2])
     hyper_parameters = {"n_clusters": n_clusters, "init": init, "max_iter": max_iters, "tol": tol, "algorithm": algorithm}
     return hyper_parameters
+
+
+def plot_silhouette_scores(silhouette_scores: dict, algorithm_name: str, save_path=None):
+    """
+    Plot silhouette scores for different K values.
+
+    Parameters:
+        silhouette_scores (dict): Mapping of K (int) to silhouette score (float).
+        algorithm_name (str): Name of the clustering algorithm for title.
+        save_path (str, optional): Path to save the figure. If None, just show the plot.
+    """
+    K = list(map(int, silhouette_scores.keys()))
+    scores = list(silhouette_scores.values())
+
+    plt.figure(figsize=(8, 5))
+    plt.plot(K, scores, marker="o", color="royalblue")
+    plt.xlabel("Number of Clusters K")
+    plt.ylabel("Silhouette Coefficient")
+    plt.title(f"{algorithm_name} - Silhouette Score vs K")
+    plt.grid(True)

@@ -34,7 +34,7 @@ def plot_decision_tree(trained_model: object, image_config: Dict) -> None:
         label=image_config["label"],
         filled=image_config["filled"],
         impurity=image_config["impurity"],
-        node_ids=image_config["node_ids"],
+        node_ids=image_config["node_ids"] if image_config["node_ids"] is not None else False,
         proportion=image_config["proportion"],
         rounded=image_config["rounded"],
         precision=image_config["precision"],
