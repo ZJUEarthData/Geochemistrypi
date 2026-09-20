@@ -19,6 +19,7 @@ from geochemistrypi.chemical_modeling.dispatcher import (
     run_task_method,
 )
 
+from .artifact_paths import resolve_artifact_path
 from .method_metadata import get_method_metadata
 from .limits import MAX_UPLOAD_BYTES
 from .schemas import ArtifactResponse, InputColumnItem, MethodCatalogItem, RunResponse, TaskCatalogItem
@@ -156,15 +157,7 @@ class OnlineService:
         )
 
     def resolve_artifact(self, job_id: str, file_path: str) -> Path:
-        output_dir = (self.jobs_dir / job_id / "output").resolve()
-        candidate = (output_dir / file_path).resolve()
-        try:
-            candidate.relative_to(output_dir)
-        except ValueError as exc:
-            raise FileNotFoundError(file_path) from exc
-        if not candidate.is_file():
-            raise FileNotFoundError(file_path)
-        return candidate
+        return resolve_artifact_path(self.jobs_dir, job_id, file_path)
 
     def _validate_upload(self, filename: str | None, content: bytes) -> str:
         suffix = Path(filename or "").suffix.lower()

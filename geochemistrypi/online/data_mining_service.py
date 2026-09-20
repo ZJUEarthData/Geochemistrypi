@@ -43,6 +43,8 @@ from geochemistrypi.data_mining.process.time_series import (
     compute_subaerial_proportion,
 )
 
+from .artifact_paths import resolve_artifact_path
+from .summary_service import build_summary
 from .data_mining_models import (
     ANOMALY_DETECTION_MODELS,
     CLASSIFICATION_MODELS,
@@ -4979,16 +4981,12 @@ text{{font-family:Arial,Helvetica,sans-serif;fill:#18323a}} .title{{font-size:22
 </svg>'''
         path.write_text(svg, encoding="utf-8")
 
+    def generate_summary(self, job_id: str) -> dict[str, Any]:
+        """Package existing outputs without loading or rerunning any model."""
+        return build_summary(self.jobs_dir, job_id)
+
     def resolve_artifact(self, job_id: str, file_path: str) -> Path:
-        output_dir = (self.jobs_dir / job_id / "output").resolve()
-        candidate = (output_dir / file_path).resolve()
-        try:
-            candidate.relative_to(output_dir)
-        except ValueError as exc:
-            raise FileNotFoundError(file_path) from exc
-        if not candidate.is_file():
-            raise FileNotFoundError(file_path)
-        return candidate
+        return resolve_artifact_path(self.jobs_dir, job_id, file_path)
 
     def _validate_upload(self, filename: str | None, content: bytes) -> str:
         suffix = Path(filename or "").suffix.lower()

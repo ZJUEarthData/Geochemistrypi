@@ -62,6 +62,7 @@ docs/build
 .env
 .env.production
 deploy/certs/
+/certs/
 
 # mlflow
 mlruns

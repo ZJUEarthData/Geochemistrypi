@@ -2,9 +2,11 @@
 
 import asyncio
 import json
+import re
 
 from fastapi import APIRouter, File, Form, Header, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
+from starlette.concurrency import run_in_threadpool
 
 from geochemistrypi._version import __version__
 
@@ -814,6 +816,15 @@ def create_router(
         finally:
             await dataset.close()
 
+    @router.post("/data-mining/jobs/{job_id}/summary", tags=["data-mining"])
+    async def generate_data_mining_summary(job_id: str):
+        try:
+            return await run_in_threadpool(data_mining_service.generate_summary, job_id)
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail="Result files not found for this job") from exc
+        except OSError as exc:
+            raise HTTPException(status_code=500, detail="Could not prepare Summary. Please retry.") from exc
+
     @router.get("/jobs/{job_id}/files/{file_path:path}", tags=["jobs"])
     async def download_artifact(job_id: str, file_path: str) -> FileResponse:
         try:
@@ -837,6 +848,7 @@ def create_router(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Data Mining result file not found",
             ) from exc
-        return FileResponse(artifact, filename=artifact.name)
+        download_name = "summary.zip" if re.fullmatch(r"summary_[0-9a-f]{64}\.zip", artifact.name) else artifact.name
+        return FileResponse(artifact, filename=download_name)
 
     return router

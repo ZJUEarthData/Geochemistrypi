@@ -31,6 +31,7 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     RunSummary: typeof import('./src/components/run-summary.vue')['default']
+    SummaryDownload: typeof import('./src/components/summary-download.vue')['default']
     TaskProgress: typeof import('./src/components/task-progress.vue')['default']
     TraceElementChart: typeof import('./src/components/trace-element-chart.vue')['default']
     WorkspaceSidebar: typeof import('./src/components/workspace-sidebar.vue')['default']

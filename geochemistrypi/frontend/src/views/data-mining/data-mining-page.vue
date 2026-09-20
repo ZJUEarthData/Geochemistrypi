@@ -4,6 +4,7 @@ import { ElInputNumber, ElMessage } from 'element-plus'
 
 import MobileFieldCards from '@/components/mobile-field-cards.vue'
 import RunSummary from '@/components/run-summary.vue'
+import SummaryDownload from '@/components/summary-download.vue'
 import TaskProgress from '@/components/task-progress.vue'
 import { useTaskTracking } from '@/composables/use-task-tracking'
 
@@ -3584,6 +3585,11 @@ function formatCell(value: unknown) {
             <MobileFieldCards :rows="regressionResult.preview" />
           </section>
 
+          <SummaryDownload
+            v-if="regressionResult.artifacts.length"
+            :key="regressionResult.job_id"
+            :job-id="regressionResult.job_id"
+          />
           <div
             v-for="artifact in regressionResult.artifacts"
             :key="artifact.download_url"
@@ -3783,6 +3789,11 @@ function formatCell(value: unknown) {
             <MobileFieldCards :rows="classificationResult.preview" />
           </section>
 
+          <SummaryDownload
+            v-if="classificationResult.artifacts.length"
+            :key="classificationResult.job_id"
+            :job-id="classificationResult.job_id"
+          />
           <div
             v-for="artifact in classificationResult.artifacts"
             :key="artifact.download_url"
@@ -4298,6 +4309,11 @@ function formatCell(value: unknown) {
             <MobileFieldCards :rows="clusteringResult.preview" />
           </section>
 
+          <SummaryDownload
+            v-if="clusteringResult.artifacts.length"
+            :key="clusteringResult.job_id"
+            :job-id="clusteringResult.job_id"
+          />
           <div
             v-for="artifact in clusteringResult.artifacts"
             :key="artifact.download_url"
@@ -4467,6 +4483,11 @@ function formatCell(value: unknown) {
             <MobileFieldCards :rows="dimensionalityReductionResult.preview" />
           </section>
 
+          <SummaryDownload
+            v-if="dimensionalityReductionResult.artifacts.length"
+            :key="dimensionalityReductionResult.job_id"
+            :job-id="dimensionalityReductionResult.job_id"
+          />
           <div
             v-for="artifact in dimensionalityReductionResult.artifacts"
             :key="artifact.download_url"
@@ -4681,6 +4702,11 @@ function formatCell(value: unknown) {
             <MobileFieldCards :rows="anomalyDetectionResult.preview" />
           </section>
 
+          <SummaryDownload
+            v-if="anomalyDetectionResult.artifacts.length"
+            :key="anomalyDetectionResult.job_id"
+            :job-id="anomalyDetectionResult.job_id"
+          />
           <div
             v-for="artifact in anomalyDownloadArtifacts"
             :key="artifact.download_url"
@@ -5040,6 +5066,11 @@ function formatCell(value: unknown) {
             <MobileFieldCards :rows="timeSeriesResult.bins" />
           </section>
 
+          <SummaryDownload
+            v-if="timeSeriesResult.artifacts.length"
+            :key="timeSeriesResult.job_id"
+            :job-id="timeSeriesResult.job_id"
+          />
           <div
             v-for="artifact in timeSeriesResult.artifacts"
             :key="artifact.download_url"

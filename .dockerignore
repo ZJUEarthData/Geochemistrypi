@@ -19,5 +19,6 @@ tmp_research
 .env
 .env.production
 deploy/certs
+certs
 *.log
 *.db

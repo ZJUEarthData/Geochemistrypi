@@ -449,6 +449,19 @@ export interface TimeSeriesResponse {
   artifacts: ArtifactResponse[]
 }
 
+export interface SummaryResponse {
+  artifact: ArtifactResponse
+  files: string[]
+}
+
+export async function generateSummary(jobId: string): Promise<SummaryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/data-mining/jobs/${encodeURIComponent(jobId)}/summary`,
+    { method: 'POST' }
+  )
+  return parseResponse<SummaryResponse>(response)
+}
+
 async function parseResponse<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => null)
   if (!response.ok) {
