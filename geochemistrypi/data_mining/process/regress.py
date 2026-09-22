@@ -10,6 +10,7 @@ from ...scientific_execution import active_scientific_execution, save_scientific
 from ..constants import MLFLOW_ARTIFACT_DATA_PATH, SECTION
 from ..data.data_readiness import num_input
 from ..model.regression import (
+    AdaBoostRegression,
     BayesianRidgeRegression,
     ClassicalLinearRegression,
     DecisionTreeRegression,
@@ -266,9 +267,11 @@ class RegressionModelSelection(ModelSelectionBase):
                 max_iter=hyper_parameters["max_iter"],
                 tol=hyper_parameters["tol"],
             )
+        elif self.model_name == "AdaBoost":
+            hyper_parameters = AdaBoostRegression.manual_hyper_parameters()
+            self.reg_workflow = AdaBoostRegression(loss=hyper_parameters["loss"], n_estimators=hyper_parameters["n_estimators"], learning_rate=hyper_parameters["learning_rate"])
 
         self.reg_workflow.show_info()
-
         # Use Scikit-learn style API to process input data
         self.reg_workflow.fit(X_train, y_train)
         save_scientific_execution_attestation(
@@ -379,6 +382,8 @@ class RegressionModelSelection(ModelSelectionBase):
             self.reg_workflow = BayesianRidgeRegression()
         elif self.model_name == "Ridge Regression":
             self.reg_workflow = RidgeRegression()
+        elif self.model_name == "AdaBoost":
+            self.reg_workflow = AdaBoostRegression()
 
         self.reg_workflow.show_info()
 
